@@ -478,173 +478,174 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
     barrierColor: const Color(0xFF5A7BBB).withValues(alpha: 0.85),
     builder: (BuildContext context) {
       return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Container(
-          width: 480,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            width: 440,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-              // AppBar (Height: 40, Color: #004FDE)
-              Container(
-                height: 40,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF004FDE),
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
+                // AppBar (Height: 40, Color: #004FDE)
+                Container(
+                  height: 40,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF004FDE),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Mark Attendance',
+                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                      ),
+                    ],
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Mark Attendance',
-                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
-                    ),
-                  ],
-                ),
-              ),
-              // Profile Section (Color: #0247C4)
-              Container(
-                color: const Color(0xFF0247C4),
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Profile Image: 140x140, circular with 2px border
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/profile_placeholder.png'),
-                          fit: BoxFit.cover,
+                // Profile Section (Color: #0247C4)
+                Container(
+                  color: const Color(0xFF0247C4),
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Profile Image: 140x140, circular with 2px border
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          image: const DecorationImage(
+                            image: AssetImage('assets/profile_placeholder.png'),
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 40),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'SF Pro Display',
-                                height: 1.0,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                const Icon(Icons.email, color: Colors.white, size: 16),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    email,
-                                    style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display'),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                      const SizedBox(width: 40),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.0,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            const Row(
-                              children: [
-                                Icon(Icons.phone, color: Colors.white, size: 16),
-                                SizedBox(width: 10),
-                                Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display')),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Body Section
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: _buildToggleChip('Present', 'assets/present.svg', const Color(0xFF00C853), isSelected: true)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildToggleChip('Absent', 'assets/absent.svg', const Color(0xFFF44336))),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildToggleChip('Leave', 'assets/leave.svg', const Color(0xFFFF9800))),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Text('Reason (Required)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87, fontFamily: 'SF Pro Display')),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 100,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const TextField(
-                        maxLines: null,
-                        decoration: InputDecoration.collapsed(
-                          hintText: 'Enter reason......',
-                          hintStyle: TextStyle(color: Colors.black38, fontSize: 13, fontFamily: 'SF Pro Display'),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.grey.shade300),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            minimumSize: const Size(0, 40),
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  const Icon(Icons.email, color: Colors.white, size: 16),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      email,
+                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display'),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Row(
+                                children: [
+                                  Icon(Icons.phone, color: Colors.white, size: 16),
+                                  SizedBox(width: 10),
+                                  Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                ],
+                              ),
+                            ],
                           ),
-                          child: const Text('Cancel', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0F52BA),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            minimumSize: const Size(0, 40),
-                            elevation: 0,
-                          ),
-                          child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
-                        ),
-                      ],
-                    )
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                // Body Section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: _buildToggleChip('Present', 'assets/present.svg', const Color(0xFF00C853), isSelected: true)),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildToggleChip('Absent', 'assets/absent.svg', const Color(0xFFF44336))),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildToggleChip('Leave', 'assets/leave.svg', const Color(0xFFFF9800))),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Reason (Required)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87, fontFamily: 'SF Pro Display')),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 100,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const TextField(
+                          maxLines: null,
+                          decoration: InputDecoration.collapsed(
+                            hintText: 'Enter reason......',
+                            hintStyle: TextStyle(color: Colors.black38, fontSize: 13, fontFamily: 'SF Pro Display'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              minimumSize: const Size(0, 40),
+                            ),
+                            child: const Text('Cancel', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F52BA),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              minimumSize: const Size(0, 40),
+                              elevation: 0,
+                            ),
+                            child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -657,7 +658,7 @@ Widget _buildToggleChip(String label, String svgAsset, Color iconColor, {bool is
     padding: const EdgeInsets.symmetric(vertical: 10),
     decoration: BoxDecoration(
       color: isSelected ? const Color(0xFF0F52BA) : Colors.white,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(4),
       border: Border.all(color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200),
     ),
     child: Row(
