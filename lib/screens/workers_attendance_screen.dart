@@ -503,17 +503,12 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(width: 40),
-                    const Text(
+                    Text(
                       'Mark Attendance',
                       style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.close, color: Colors.white, size: 20),
                     ),
                   ],
                 ),
@@ -538,36 +533,48 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                         ),
                       ),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 40),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Icon(Icons.email, color: Colors.white, size: 14),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  email,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'SF Pro Display'),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'SF Pro Display',
+                                height: 1.0,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Row(
-                            children: [
-                              Icon(Icons.phone, color: Colors.white, size: 14),
-                              SizedBox(width: 8),
-                              Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'SF Pro Display')),
-                            ],
-                          ),
-                        ],
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                const Icon(Icons.email, color: Colors.white, size: 16),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    email,
+                                    style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display'),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            const Row(
+                              children: [
+                                Icon(Icons.phone, color: Colors.white, size: 16),
+                                SizedBox(width: 10),
+                                Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display')),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
