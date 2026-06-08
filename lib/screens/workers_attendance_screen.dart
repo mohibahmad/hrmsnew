@@ -424,6 +424,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               ),
             ),
           ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  child: const Icon(Icons.close, size: 18, color: Colors.black),
+                )
+              : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
@@ -804,16 +814,19 @@ class TodayAttendanceItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                data["name"],
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: textDark,
-                  fontFamily: 'SF Pro Display',
+              Expanded(
+                child: Text(
+                  data["name"],
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: textDark,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 12),
               StatusPill(status: data["status"]),
             ],
           ),

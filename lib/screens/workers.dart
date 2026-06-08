@@ -392,6 +392,22 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   final Color actionBtnBlue = const Color(0xFF0E53C5);
   final Color buttonColor = const Color(0xFF0C51C1);
   final Color textDark = const Color(0xFF111111);
+  String _searchQuery = '';
+
+  final List<Map<String, String>> _allWorkers = [
+    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Full-Time', 'position': 'Web Developer', 'type2': 'On-Site'},
+    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Part-Time', 'position': 'Graphic Designer', 'type2': 'Remote'},
+    {'name': 'Amelia', 'email': 'amelia123@gmail.com', 'type1': 'Contract', 'position': 'Engineering', 'type2': 'On-Site'},
+    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Freelance', 'position': 'Graphic Designer', 'type2': 'Remote'},
+    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Full-Time', 'position': 'Web Developer', 'type2': 'On-Site'},
+  ];
+
+  List<Map<String, String>> get _filteredWorkers {
+    return _allWorkers.where((w) {
+      return w['name']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          w['position']!.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -509,6 +525,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: TextField(
+                                onChanged: (val) {
+                                  setState(() {
+                                    _searchQuery = val;
+                                  });
+                                },
                                 decoration: InputDecoration(
                                   hintText: 'Search by workers name / position',
                                   hintStyle: TextStyle(
@@ -521,6 +542,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                 ),
                               ),
                             ),
+                            if (_searchQuery.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -626,41 +659,28 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ),
 
                 // List Items
-                _buildListItem(
-                  'Olivia',
-                  'oliva23abs@gmail.com',
-                  'Full-Time',
-                  'Web Developer',
-                  'On-Site',
-                ),
-                _buildListItem(
-                  'Olivia',
-                  'oliva23abs@gmail.com',
-                  'Part-Time',
-                  'Graphic Designer',
-                  'Remote',
-                ),
-                _buildListItem(
-                  'Amelia',
-                  'amelia123@gmail.com',
-                  'Contract',
-                  'Engineering',
-                  'On-Site',
-                ),
-                _buildListItem(
-                  'Olivia',
-                  'oliva23abs@gmail.com',
-                  'Freelance',
-                  'Graphic Designer',
-                  'Remote',
-                ),
-                _buildListItem(
-                  'Olivia',
-                  'oliva23abs@gmail.com',
-                  'Full-Time',
-                  'Web Developer',
-                  'On-Site',
-                ),
+                if (_filteredWorkers.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Center(
+                      child: Text(
+                        "No Workers Found",
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 15,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ..._filteredWorkers.map((w) => _buildListItem(
+                    w['name']!,
+                    w['email']!,
+                    w['type1']!,
+                    w['position']!,
+                    w['type2']!,
+                  )),
 
                 // Pagination
                 const SizedBox(height: 24),

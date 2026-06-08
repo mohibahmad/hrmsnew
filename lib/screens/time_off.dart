@@ -180,27 +180,39 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: TextField(
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: "Search by workers name",
-                hintStyle: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 14,
-                  fontFamily: 'SF Pro Display',
+              child: TextField(
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: "Search by workers name",
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
                 ),
-                border: InputBorder.none,
-                isDense: true,
               ),
             ),
-          ),
-        ],
-      ),
-    );
+            if (_searchQuery.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                ),
+              ),
+          ],
+        ),
+      );
   }
 
   Widget _buildFilterTabs() {

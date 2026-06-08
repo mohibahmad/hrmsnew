@@ -280,25 +280,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search by workers name",
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 14,
-                        fontFamily: 'SF Pro Display',
+                    child: TextField(
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Search by workers name",
+                        hintStyle: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 14,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
                       ),
-                      border: InputBorder.none,
-                      isDense: true,
                     ),
                   ),
-                ),
-              ],
+                  if (_searchQuery.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                      ),
+                    ),
+                ],
             ),
           ),
         ),
@@ -687,64 +699,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void _showAttendancePreview(BuildContext context, AttendanceRecord record) {
     showDialog(
       context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
         backgroundColor: Colors.transparent,
-        child: Container(
-          width: 500,
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundImage: const AssetImage('assets/profile_placeholder.png'),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(record.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
-                      const SizedBox(height: 4),
-                      Text(record.email, style: const TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'SF Pro Display')),
-                    ],
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
-              _previewRow('Role', record.role),
-              _previewRow('Attendance Type', record.attendanceType),
-              _previewRow('Work Type', record.workType),
-              _previewRow('Status', record.status),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _previewRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 150,
-            child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey, fontFamily: 'SF Pro Display')),
-          ),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
-        ],
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: WorkerAttendancePreviewCard(record: record),
       ),
     );
   }
@@ -915,7 +876,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  static Widget _tableHeader(String title) {
+  Widget _tableHeader(String title) {
     return Text(
       title,
       style: const TextStyle(
@@ -923,6 +884,425 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         fontSize: 15,
         color: textDark,
         fontFamily: 'SF Pro Display',
+      ),
+    );
+  }
+}
+
+class WorkerAttendancePreviewCard extends StatelessWidget {
+  final AttendanceRecord record;
+
+  const WorkerAttendancePreviewCard({super.key, required this.record});
+
+  static const Color primaryBlue = Color(0xFF0A51D0);
+  
+  static const Color lightGreenBg = Color(0xFFE4F9E8);
+  static const Color darkGreen = Color(0xFF00C853);
+  
+  static const Color lightRedBg = Color(0xFFFCE9EA);
+  static const Color darkRed = Color(0xFFFF1717);
+  
+  static const Color lightOrangeBg = Color(0xFFFEF0E2);
+  static const Color darkOrange = Color(0xFFFF8A00);
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 500,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildBlueHeader(context),
+            _buildMiddleSummary(),
+            _buildBottomDetails(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlueHeader(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          color: const Color(0xFF004FDE),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const Text(
+                'Worker Attendance Preview',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              IconButton(
+                icon: SvgPicture.asset(
+                  'assets/share1.svg',
+                  height: 18,
+                  width: 18,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                onPressed: () {},
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          color: const Color(0xFF0247C4),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/profile_placeholder.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        record.workType,
+                        style: const TextStyle(
+                          color: Color(0xFF0A51D0),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    Row(
+                      children: [
+                        const Icon(Icons.email_outlined, color: Colors.white, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            record.email,
+                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    
+                    Row(
+                      children: [
+                        const Icon(Icons.phone, color: Colors.white, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          '123 5434567',
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiddleSummary() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 140,
+            child: _buildSummaryCard(
+              title: 'Total Presents',
+              value: '112',
+              bgColor: lightGreenBg,
+              iconColor: darkGreen,
+              iconBuilder: (color) => _buildPresentIcon(color),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 140,
+            child: _buildSummaryCard(
+              title: 'Total Absent',
+              value: '10',
+              bgColor: lightRedBg,
+              iconColor: darkRed,
+              iconBuilder: (color) => _buildAbsentIcon(color),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 140,
+            child: _buildSummaryCard(
+              title: 'Total Leaves',
+              value: '4',
+              bgColor: lightOrangeBg,
+              iconColor: darkOrange,
+              iconBuilder: (color) => _buildLeaveIcon(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required Color bgColor,
+    required Color iconColor,
+    required Widget Function(Color) iconBuilder,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          iconBuilder(iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Text(
+                  'Days',
+                  style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPresentIcon(Color color) {
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: Stack(
+        children: [
+          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              padding: const EdgeInsets.all(1),
+              child: Icon(Icons.check_circle, color: color, size: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbsentIcon(Color color) {
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: Stack(
+        children: [
+          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              padding: const EdgeInsets.all(1),
+              child: Icon(Icons.cancel, color: color, size: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeaveIcon(Color color) {
+    return SizedBox(
+      width: 32,
+      height: 32,
+      child: Stack(
+        children: [
+          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              padding: const EdgeInsets.all(1),
+              child: Icon(Icons.work, color: color, size: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomDetails() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 214,
+            child: _buildDetailCard(
+              title: 'Attendance',
+              rows: [
+                _buildDetailRow('Total Working Days', '132 Days', Colors.black),
+                _buildDetailRow('Total Presents', '112 Days', darkGreen),
+                _buildDetailRow('Total Absents', '8 Days', darkRed),
+                _buildDetailRow('Total Leaves', '12 Days', darkOrange),
+                _buildDetailRow('Attendance %', '8.5%', primaryBlue),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 214,
+            child: _buildDetailCard(
+              title: 'Worker Information',
+              rows: [
+                _buildDetailRow('Position', record.role, Colors.black),
+                _buildDetailRow('Work Type', record.workType, Colors.black),
+                _buildDetailRow('Attendance Type', record.attendanceType, Colors.black),
+              ],
+            ),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  Widget _buildDetailCard({required String title, required List<Widget> rows}) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: primaryBlue,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...rows,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: valueColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

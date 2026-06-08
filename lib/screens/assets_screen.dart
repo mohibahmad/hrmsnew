@@ -513,6 +513,18 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                   ),
                 ),
+                if (_searchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                    ),
+                  ),
               ],
             ),
           ),

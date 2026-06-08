@@ -91,6 +91,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     },
   ];
 
+  String _searchQuery = '';
   String _selectedFilter = 'All';
 
   @override
@@ -180,6 +181,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
         decoration: InputDecoration(
           border: InputBorder.none,
           icon: Padding(
@@ -193,19 +199,34 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ),
           hintText: 'Search by workers',
           hintStyle: const TextStyle(color: Colors.grey),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                  child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                )
+              : null,
         ),
       ),
     );
   }
 
   List<Map<String, dynamic>> get _filteredEmployees {
-    if (_selectedFilter == 'All') return employees;
     return employees.where((e) {
-      final pos = e['position'] as String;
+      final name = (e['name'] as String).toLowerCase();
+      final pos = (e['position'] as String).toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      final matchesSearch = name.contains(query) || pos.contains(query);
+
+      if (!matchesSearch) return false;
+      if (_selectedFilter == 'All') return true;
       if (_selectedFilter == 'Management') {
-        return pos.toLowerCase().contains('manag');
+        return pos.contains('manag');
       }
-      return pos.toLowerCase().contains(_selectedFilter.toLowerCase());
+      return pos.contains(_selectedFilter.toLowerCase());
     }).toList();
   }
 
