@@ -1,0 +1,22 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:hrms/main.dart';
+
+void main() {
+  testWidgets('App launches splash screen', (WidgetTester tester) async {
+    // Set simulator viewport size to match target desktop dimensions to prevent layout overflows
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+
+    await tester.pumpWidget(const HRMSApp());
+
+    // Verify the splash screen shows the HR SVG logo
+    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(find.text('Human Resource Management System'), findsOneWidget);
+
+    // Let the timer fire and transition complete so no timers are pending
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+}

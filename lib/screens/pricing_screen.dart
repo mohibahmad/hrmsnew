@@ -1,0 +1,422 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../services/preferences_service.dart';
+
+class SubscriptionDialog extends StatefulWidget {
+  final bool isPremium;
+  const SubscriptionDialog({super.key, this.isPremium = false});
+
+  @override
+  State<SubscriptionDialog> createState() => _SubscriptionDialogState();
+}
+
+class _SubscriptionDialogState extends State<SubscriptionDialog> {
+  final Color primaryBlue = const Color(0xFF0A44A9);
+  final Color leftPanelBlue = const Color(0xFF0F52BA);
+  final Color cardLightBlue = const Color(0xFFE5EEFC);
+  int _selectedPlanIndex = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Center(
+        child: SizedBox(
+          width: 1000,
+          height: 670,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: 950,
+                  height: 620,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 25,
+                        offset: const Offset(0, 15),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 9,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage('assets/splashscreenbg.png'),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 40,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // --- App Icon (Premium HR App Icon) ---
+                              SvgPicture.asset(
+                                'assets/app_icon.svg',
+                                height: 70,
+                                fit: BoxFit.contain,
+                              ),
+                              const SizedBox(height: 36),
+
+                              // --- Heading ---
+                              const Text(
+                                'All-in-one HR Solution',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+
+                              // --- Features List (with solid play arrow triangles) ---
+                              _buildFeatureItem('Secure Staff Records'),
+                              _buildFeatureItem('Modern HRMS Experience'),
+                              _buildFeatureItem('Leave & Shift Management'),
+                              _buildFeatureItem('Employee & Asset Tracking'),
+                              _buildFeatureItem('Smart Workforce Management'),
+                              _buildFeatureItem(
+                                'Attendance & Payroll Automation',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      Expanded(
+                        flex: 11,
+                        child: Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 48,
+                            vertical: 24,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 10),
+                              Text(
+                                'Choose Your Plan',
+                                style: TextStyle(
+                                  color: primaryBlue,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Select the subscription that works best\nfor your team',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: primaryBlue,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.3,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // --- Subscription Cards ---
+                              _buildPlanCard(
+                                index: 0,
+                                title: 'Monthly',
+                                price: '\$6.99',
+                              ),
+                              _buildPlanCard(
+                                index: 1,
+                                title: 'Six Month',
+                                price: '\$46.99',
+                                isPopular: true,
+                              ),
+                              _buildPlanCard(
+                                index: 2,
+                                title: 'Yearly',
+                                price: '\$64.99',
+                              ),
+                              const SizedBox(height: 16),
+
+                              // --- Continue Button ---
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    await PreferencesService.setPremium(true);
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop(true);
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryBlue,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Continue',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // --- Free Plan Link ---
+                              GestureDetector(
+                                onTap: () => Navigator.of(context).pop(false),
+                                child: Text(
+                                  'Continue with free plan',
+                                  style: TextStyle(
+                                    color: primaryBlue,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // --- Disclaimer Text ---
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'Subscription automatically renew unless canceled before the\nend of the current period. You won\'t be change if you\ncancel during the trial period.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 11,
+                                    height: 1.3,
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // --- Footer Links ---
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildFooterLink('Privacy Policy'),
+                                  _buildFooterDivider(),
+                                  _buildFooterLink('Restore'),
+                                  _buildFooterDivider(),
+                                  _buildFooterLink('Terms of Use'),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              Positioned(
+                top: -7,
+                right: -7,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Color(0xFF0A44A9),
+                      size: 22,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          const Icon(Icons.play_arrow, color: Colors.white, size: 18),
+          const SizedBox(width: 14),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanCard({
+    required int index,
+    required String title,
+    required String price,
+    bool isPopular = false,
+  }) {
+    bool isSelected = _selectedPlanIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedPlanIndex = index;
+        });
+      },
+      child: Container(
+        height: 68,
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: cardLightBlue,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected ? Border.all(color: primaryBlue, width: 2) : null,
+        ),
+        child: Stack(
+          children: [
+            // Centered content (radio button, title, and right-aligned price)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: primaryBlue, width: 2),
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: primaryBlue,
+                                ),
+                              ),
+                            )
+                          : const SizedBox(),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: primaryBlue,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      price,
+                      style: TextStyle(
+                        color: primaryBlue,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Popular badge
+            if (isPopular)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryBlue,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'POPULAR',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooterLink(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: primaryBlue,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        fontFamily: 'SF Pro Display',
+      ),
+    );
+  }
+
+  Widget _buildFooterDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Text(
+        '|',
+        style: TextStyle(
+          color: primaryBlue.withValues(alpha: 0.5),
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+}

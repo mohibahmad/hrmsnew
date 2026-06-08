@@ -1,0 +1,376 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+class SettingsScreen extends StatefulWidget {
+  final VoidCallback onLogout;
+  final VoidCallback onProfileTap;
+
+  const SettingsScreen({
+    super.key,
+    required this.onLogout,
+    required this.onProfileTap,
+  });
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _selectedLanguage = 'United State';
+
+  void _showLanguageModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.05), // Very light transparent bg
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 60.0, top: 40.0), // Position it roughly over the Language row
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 320,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Select Language',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Search Bar
+                        Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search language',
+                              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                              prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 18),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Language List
+                        ...[
+                          'United State',
+                          'Chinese',
+                          'French',
+                          'German',
+                          'Russian',
+                          'Italian',
+                          'UK',
+                        ].map((lang) {
+                          final isSel = _selectedLanguage == lang;
+                          return InkWell(
+                            onTap: () {
+                              setModalState(() {
+                                _selectedLanguage = lang;
+                              });
+                              setState(() {}); // Rebuild main screen language text
+                              Future.delayed(const Duration(milliseconds: 150), () {
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              margin: const EdgeInsets.only(bottom: 4),
+                              decoration: BoxDecoration(
+                                color: isSel ? const Color(0xFFF1F3F5) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    lang,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                  if (isSel)
+                                    const Icon(Icons.check, color: Color(0xFF0247C4), size: 16),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Column(
+        children: [
+          _buildHeader(context),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+              child: Column(
+                children: [
+                  _buildActionSettingItem(
+                    'assets/changepassword.svg',
+                    'Change your password to keep your account secure.',
+                    'Reset Password',
+                  ),
+                  _buildActionSettingItem(
+                    'assets/permenantly_delete.svg',
+                    'Permanently remove your profile and account data securely.',
+                    'Delete Profile',
+                  ),
+                  _buildLanguageItem(),
+                  _buildSimpleSettingItem('assets/share.svg', 'Share App'),
+                  _buildSimpleSettingItem('assets/terms&condition.svg', 'Terms & Condition'),
+                  _buildSimpleSettingItem('assets/privacy_policy.svg', 'Privacy Policy'),
+                  _buildSimpleSettingItem(
+                    'assets/signout.svg',
+                    'Sign out',
+                    onTap: widget.onLogout,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= CONTENT BUILDERS =================
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      height: 94,
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Text(
+                'Setting',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Manage your account preferences, security, and application settings.',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          SvgPicture.asset(
+            'assets/notification_icon.svg',
+            height: 24,
+            width: 24,
+            colorFilter: const ColorFilter.mode(
+              Colors.black,
+              BlendMode.srcIn,
+            ),
+          ),
+          const SizedBox(width: 20),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: CircleAvatar(
+              radius: 19,
+              backgroundImage: const AssetImage('assets/profileimage.png'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionSettingItem(String iconPath, String text, String buttonText) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Row(
+        children: [
+          SvgPicture.asset(
+            iconPath,
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F3F5),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              buttonText,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageItem() {
+    return GestureDetector(
+      onTap: () => _showLanguageModal(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              'assets/lanuguage.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+            ),
+            const SizedBox(width: 16),
+            const Text(
+              'Language',
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const Spacer(),
+            Text(
+              _selectedLanguage,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_drop_down, color: Colors.black, size: 28),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleSettingItem(String iconPath, String text, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              iconPath,
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
