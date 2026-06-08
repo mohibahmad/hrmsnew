@@ -493,63 +493,83 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              // Top Blue Section
+              children: [
+              // AppBar (Height: 40, Color: #004FDE)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                height: 40,
+                width: double.infinity,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF0F52BA),
+                  color: Color(0xFF004FDE),
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
                 ),
-                child: Column(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    const SizedBox(width: 40),
                     const Text(
                       'Mark Attendance',
                       style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            image: const DecorationImage(
-                              image: AssetImage('assets/profile_placeholder.png'),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Icon(Icons.close, color: Colors.white, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+              // Profile Section (Color: #0247C4)
+              Container(
+                color: const Color(0xFF0247C4),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Profile Image: 140x140, circular with 2px border
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        image: const DecorationImage(
+                          image: AssetImage('assets/profile_placeholder.png'),
+                          fit: BoxFit.cover,
                         ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                          const SizedBox(height: 12),
+                          Row(
                             children: [
-                              Text(name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  const Icon(Icons.email, color: Colors.white, size: 14),
-                                  const SizedBox(width: 8),
-                                  Text(email, style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'SF Pro Display')),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              const Row(
-                                children: [
-                                  Icon(Icons.phone, color: Colors.white, size: 14),
-                                  SizedBox(width: 8),
-                                  Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'SF Pro Display')),
-                                ],
+                              const Icon(Icons.email, color: Colors.white, size: 14),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  email,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'SF Pro Display'),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
-                        )
-                      ],
-                    )
+                          const SizedBox(height: 8),
+                          const Row(
+                            children: [
+                              Icon(Icons.phone, color: Colors.white, size: 14),
+                              SizedBox(width: 8),
+                              Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'SF Pro Display')),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
