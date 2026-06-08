@@ -1102,8 +1102,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   const SizedBox(height: 32),
 
                   // Switch Content based on active tab
-                  if (_activeTabIndex == 0) const WorkerDetailFormSection(),
-                  if (_activeTabIndex == 1) const ExperienceFormSection(),
+                  if (_activeTabIndex == 0)
+                    WorkerDetailFormSection(
+                      onNextStep: () => setState(() => _activeTabIndex = 1),
+                    ),
+                  if (_activeTabIndex == 1)
+                    ExperienceFormSection(
+                      onNextStep: () => setState(() => _activeTabIndex = 2),
+                    ),
                   if (_activeTabIndex == 2) const DocumentationSection(),
                 ],
               ),
@@ -1116,13 +1122,27 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   Widget _buildTopTab(String title, int index) {
     bool isActive = _activeTabIndex == index;
+    BorderRadiusGeometry? borderRadius;
+    if (isActive) {
+      if (index == 0) {
+        borderRadius = const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          bottomLeft: Radius.circular(8),
+        );
+      } else if (index == 2) {
+        borderRadius = const BorderRadius.only(
+          topRight: Radius.circular(8),
+          bottomRight: Radius.circular(8),
+        );
+      }
+    }
     return GestureDetector(
       onTap: () => setState(() => _activeTabIndex = index),
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: borderRadius,
         ),
         child: Text(
           title,
@@ -1142,7 +1162,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 // WORKER DETAIL FORM SECTION
 // ==========================================
 class WorkerDetailFormSection extends StatelessWidget {
-  const WorkerDetailFormSection({super.key});
+  const WorkerDetailFormSection({super.key, this.onNextStep});
+
+  final VoidCallback? onNextStep;
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
@@ -1164,28 +1186,31 @@ class WorkerDetailFormSection extends StatelessWidget {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-              ),
-              child: Row(
-                children: const [
-                  Text(
-                    'Next Step',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
+            GestureDetector(
+              onTap: onNextStep,
+              child: Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                ),
+                child: const Row(
+                  children: [
+                    Text(
+                      'Next Step',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward, size: 18, color: Colors.black),
-                ],
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, size: 18, color: Colors.black),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1307,7 +1332,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Container(
-                    height: 240,
+                    height: 280,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -1323,11 +1348,10 @@ class WorkerDetailFormSection extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/profile_placeholder.png',
+                        SvgPicture.asset(
+                          'assets/Upload_profile.svg',
                           height: 64,
                           width: 64,
-                          fit: BoxFit.cover,
                         ),
                         const SizedBox(height: 12),
                         const Text(
@@ -1387,7 +1411,9 @@ class WorkerDetailFormSection extends StatelessWidget {
 // EXPERIENCE SECTION (IMAGE 1 + CUSTOM LEAVE)
 // ==========================================
 class ExperienceFormSection extends StatelessWidget {
-  const ExperienceFormSection({super.key});
+  const ExperienceFormSection({super.key, this.onNextStep});
+
+  final VoidCallback? onNextStep;
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
@@ -1409,28 +1435,31 @@ class ExperienceFormSection extends StatelessWidget {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-              ),
-              child: Row(
-                children: const [
-                  Text(
-                    'Next Step',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
+            GestureDetector(
+              onTap: onNextStep,
+              child: Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                ),
+                child: const Row(
+                  children: [
+                    Text(
+                      'Next Step',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward, size: 18, color: Colors.black),
-                ],
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, size: 18, color: Colors.black),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1801,51 +1830,29 @@ class ExperienceFormSection extends StatelessWidget {
 // ==========================================
 // DOCUMENTATION SECTION (IMAGE 2)
 // ==========================================
-class DocumentationSection extends StatelessWidget {
+class DocumentationSection extends StatefulWidget {
   const DocumentationSection({super.key});
+
+  @override
+  State<DocumentationSection> createState() => _DocumentationSectionState();
+}
+
+class _DocumentationSectionState extends State<DocumentationSection> {
+  bool _isCvUploaded = false;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Personal Documentation',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-              ),
-              child: Row(
-                children: const [
-                  Text(
-                    'Next Step',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward, size: 18, color: Colors.black),
-                ],
-              ),
-            ),
-          ],
+        const Text(
+          'Personal Documentation',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'SF Pro Display',
+          ),
         ),
         const SizedBox(height: 24),
 
@@ -1919,124 +1926,169 @@ class DocumentationSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    height: 580,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F5F8),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Mock blurred document image
-                        Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                height: 16,
-                                width: 200,
-                                color: Colors.grey.shade300,
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 10,
-                                width: 150,
-                                color: Colors.grey.shade300,
-                              ),
-                              const SizedBox(height: 40),
-                              ...List.generate(
-                                8,
-                                (index) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Container(
-                                    height: 12,
-                                    width: double.infinity,
-                                    color: Colors.grey.shade300,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Blurred overlay
-                        Container(color: Colors.white.withValues(alpha: 0.5)),
-                        // Edit / Delete Buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: const [
-                                  Text(
-                                    'Edit',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Icon(
-                                    Icons.edit_square,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: const [
-                                  Text(
-                                    'Delete',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Icon(
-                                    Icons.delete,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  _isCvUploaded ? _buildCvPreview() : _buildCvUpload(),
                 ],
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildCvUpload() {
+    return _buildCvContainer(
+      overlay: GestureDetector(
+        onTap: () => setState(() => _isCvUploaded = true),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Upload',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+              const SizedBox(width: 8),
+              SvgPicture.asset(
+                'assets/Upload_profile.svg',
+                height: 18,
+                width: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCvPreview() {
+    return _buildCvContainer(
+      overlay: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Text(
+                  'Edit',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  height: 18,
+                  width: 18,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SvgPicture.asset(
+                  'assets/delete_icon.svg',
+                  height: 18,
+                  width: 18,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCvContainer({required Widget overlay}) {
+    return Container(
+      height: 580,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F5F8),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  height: 16,
+                  width: 200,
+                  color: Colors.grey.shade300,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 10,
+                  width: 150,
+                  color: Colors.grey.shade300,
+                ),
+                const SizedBox(height: 40),
+                ...List.generate(
+                  8,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      height: 12,
+                      width: double.infinity,
+                      color: Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(color: Colors.white.withValues(alpha: 0.5)),
+          overlay,
+        ],
+      ),
     );
   }
 
