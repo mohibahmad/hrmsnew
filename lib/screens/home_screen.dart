@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import 'login_screen.dart';
 import 'workers.dart';
 import 'pricing_screen.dart';
@@ -31,8 +32,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Always start with Dashboard selected
     _selectedIndex = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPremiumAndShowDialog();
+    });
+  }
+
+  Future<void> _checkPremiumAndShowDialog() async {
+    final isPremium = await PreferencesService.isPremium();
+    if (!isPremium && mounted) {
+      await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const SubscriptionDialog(),
+      );
+    }
   }
 
   void _handlePeriodChanged(String period) {

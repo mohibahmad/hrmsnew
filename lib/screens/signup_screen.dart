@@ -3,11 +3,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
-import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
-import 'pricing_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -84,19 +82,9 @@ class _SignupScreenState extends State<SignupScreen> {
       await credential.user?.updateDisplayName(_usernameController.text.trim());
 
       if (mounted) {
-        final isPremium = await PreferencesService.isPremium();
-        if (!isPremium) {
-          await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const SubscriptionDialog(),
-          );
-        }
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
-        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       String message;
