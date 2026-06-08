@@ -20,19 +20,17 @@ class AttendanceRecord {
   final String name;
   final String email;
   final String role;
-  final String status; // 'Present', 'Absent', 'Leave'
-  final String checkInTime;
-  final String checkOutTime;
-  final Color avatarColor;
+  final String status;
+  final String attendanceType;
+  final String workType;
 
   AttendanceRecord({
     required this.name,
     required this.email,
     required this.role,
     required this.status,
-    required this.checkInTime,
-    required this.checkOutTime,
-    required this.avatarColor,
+    this.attendanceType = 'Remote',
+    this.workType = 'Full Time',
   });
 }
 
@@ -61,47 +59,42 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     AttendanceRecord(
       name: 'Olivia Vance',
       email: 'oliva23abs@gmail.com',
-      role: 'Web Developer',
+      role: 'Designer',
       status: 'Present',
-      checkInTime: '09:00 AM',
-      checkOutTime: '05:00 PM',
-      avatarColor: const Color(0xFFCDE2F6),
-    ),
-    AttendanceRecord(
-      name: 'Amelia Gray',
-      email: 'amelia123@gmail.com',
-      role: 'Graphic Designer',
-      status: 'Present',
-      checkInTime: '09:15 AM',
-      checkOutTime: '05:30 PM',
-      avatarColor: const Color(0xFFF1657A),
-    ),
-    AttendanceRecord(
-      name: 'Liam Vance',
-      email: 'liam.vance@gmail.com',
-      role: 'Engineering Lead',
-      status: 'Absent',
-      checkInTime: '-',
-      checkOutTime: '-',
-      avatarColor: const Color(0xFFCDE2F6),
+      attendanceType: 'Remote',
+      workType: 'Full Time',
     ),
     AttendanceRecord(
       name: 'Sophia Smith',
       email: 'sophia.smith@gmail.com',
-      role: 'UX Designer',
+      role: 'Developer',
+      status: 'Absent',
+      attendanceType: 'On-Site',
+      workType: 'Remote',
+    ),
+    AttendanceRecord(
+      name: 'Liam Vance',
+      email: 'liam.vance@gmail.com',
+      role: 'Designer',
+      status: 'Present',
+      attendanceType: 'Remote',
+      workType: 'Hybrid',
+    ),
+    AttendanceRecord(
+      name: 'Amelia Gray',
+      email: 'amelia123@gmail.com',
+      role: 'Designer',
       status: 'Leave',
-      checkInTime: '-',
-      checkOutTime: '-',
-      avatarColor: const Color(0xFFF1657A),
+      attendanceType: 'On-Site',
+      workType: 'Full Time',
     ),
     AttendanceRecord(
       name: 'Jackson Miller',
       email: 'jackson@gmail.com',
       role: 'Developer',
       status: 'Present',
-      checkInTime: '08:45 AM',
-      checkOutTime: '04:45 PM',
-      avatarColor: const Color(0xFFCDE2F6),
+      attendanceType: 'On-Site',
+      workType: 'Full Time',
     ),
   ];
 
@@ -655,6 +648,107 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  TapDownDetails? _tapPosition;
+
+  void _showRowMenu(BuildContext context, AttendanceRecord record) {
+    if (_tapPosition == null) return;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(_tapPosition!.globalPosition.dx, _tapPosition!.globalPosition.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        const PopupMenuItem(value: 'preview', child: Row(
+          children: [
+            Icon(Icons.visibility, size: 18, color: Colors.black87),
+            SizedBox(width: 8),
+            Text('Preview', style: TextStyle(fontSize: 14)),
+          ],
+        )),
+        const PopupMenuItem(value: 'delete', child: Row(
+          children: [
+            Icon(Icons.delete_outline, size: 18, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Delete', style: TextStyle(fontSize: 14, color: Colors.red)),
+          ],
+        )),
+      ],
+    ).then((value) {
+      if (value == 'preview') {
+        _showAttendancePreview(context, record);
+      }
+    });
+  }
+
+  void _showAttendancePreview(BuildContext context, AttendanceRecord record) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 500,
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundImage: const AssetImage('assets/profile_placeholder.png'),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(record.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display')),
+                      const SizedBox(height: 4),
+                      Text(record.email, style: const TextStyle(fontSize: 14, color: Colors.grey, fontFamily: 'SF Pro Display')),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              _previewRow('Role', record.role),
+              _previewRow('Attendance Type', record.attendanceType),
+              _previewRow('Work Type', record.workType),
+              _previewRow('Status', record.status),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _previewRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey, fontFamily: 'SF Pro Display')),
+          ),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'SF Pro Display')),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAttendanceTable(List<AttendanceRecord> records) {
     return Container(
       decoration: BoxDecoration(
@@ -668,206 +762,167 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
-              children: const [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Worker Name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: textDark,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Position',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: textDark,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Status',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: textDark,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Check-In',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: textDark,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Check-Out',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: textDark,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
+              children: [
+                Expanded(flex: 3, child: _tableHeader('Worker Name')),
+                Expanded(flex: 2, child: _tableHeader('Attendance Type')),
+                Expanded(flex: 2, child: _tableHeader('Status')),
+                Expanded(flex: 2, child: _tableHeader('Work Type')),
+                Expanded(flex: 2, child: _tableHeader('Position')),
+                const SizedBox(width: 24),
               ],
             ),
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: records.length,
-            separatorBuilder: (context, index) =>
-                const Divider(height: 1, color: Color(0xFFEEEEEE)),
-            itemBuilder: (context, index) {
-              final record = records[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                child: Row(
-                  children: [
-                    // Worker Name with Avatar
-                    Expanded(
-                      flex: 3,
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundImage: const AssetImage(
-                              'assets/profile_placeholder.png',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  record.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: textDark,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                                Text(
-                                  record.email,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: textMuted,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Position
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        record.role,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: textDark,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    // Status Badge
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: record.status == 'Present'
-                                  ? greenPresentBg
-                                  : (record.status == 'Absent'
-                                        ? redAbsentBg
-                                        : orangeLeaveBg),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              record.status,
-                              style: TextStyle(
-                                color: record.status == 'Present'
-                                    ? greenPresent
-                                    : (record.status == 'Absent'
-                                          ? redAbsent
-                                          : orangeLeave),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
+          ...List.generate(records.length, (index) {
+            final record = records[index];
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundImage: const AssetImage(
+                                'assets/profile_placeholder.png',
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    record.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: textDark,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    record.email,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade600,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          record.attendanceType,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: textDark,
+                            fontFamily: 'SF Pro Display',
                           ),
-                        ],
-                      ),
-                    ),
-                    // Check-in
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        record.checkInTime,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: textDark,
-                          fontFamily: 'SF Pro Display',
                         ),
                       ),
-                    ),
-                    // Check-out
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        record.checkOutTime,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: textDark,
-                          fontFamily: 'SF Pro Display',
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          record.status,
+                          style: TextStyle(
+                            color: record.status == 'Present'
+                                ? greenPresent
+                                : (record.status == 'Absent' ? redAbsent : orangeLeave),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          record.workType,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: textDark,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          record.role,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: textDark,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTapDown: (details) {
+                          _tapPosition = details;
+                        },
+                        onTap: () => _showRowMenu(context, record),
+                        child: const Icon(Icons.more_vert, color: Colors.black87, size: 24),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
+                if (index < records.length - 1)
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              ],
+            );
+          }),
+          const SizedBox(height: 16),
+          // Pagination
+          Padding(
+            padding: const EdgeInsets.only(right: 24, bottom: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(Icons.chevron_left, color: Colors.black54),
+                const SizedBox(width: 8),
+                Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: primaryBlue,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    '1',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: Colors.black54),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  static Widget _tableHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: 15,
+        color: textDark,
+        fontFamily: 'SF Pro Display',
       ),
     );
   }
