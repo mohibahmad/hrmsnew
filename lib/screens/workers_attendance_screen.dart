@@ -475,7 +475,7 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
   final email = data["email"] ?? "";
   showDialog(
     context: context,
-    barrierColor: const Color(0xFF5A7BBB).withValues(alpha: 0.85),
+    barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
     builder: (BuildContext context) {
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
