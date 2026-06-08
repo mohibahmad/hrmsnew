@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../utils/snackbar_utils.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -110,11 +111,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                 );
                               });
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Successfully added holiday "${holidayNameController.text}"'),
-                                  backgroundColor: const Color(0xFF0247C4),
-                                ),
+                              FlashySnackBar.show(
+                                context,
+                                message: 'Successfully added holiday "${holidayNameController.text}"',
                               );
                             }
                           },

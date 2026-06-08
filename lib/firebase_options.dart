@@ -41,51 +41,58 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBf4NJ9TcuRKpMDO75xltm-gl847rSpAgU',
-    appId: '1:806894781275:web:71e0d39eadb34dc50dd07e',
-    messagingSenderId: '806894781275',
-    projectId: 'myauthapp-5cc2c',
-    authDomain: 'myauthapp-5cc2c.firebaseapp.com',
-    storageBucket: 'myauthapp-5cc2c.firebasestorage.app',
-    measurementId: 'G-NX9VHX2SKC',
+    apiKey: 'AIzaSyDlw3flE_8JrtFX2uAbAtBpi_B89J6p8Ac',
+    appId: '1:343295414565:web:56b1edf40047b945e70acc',
+    messagingSenderId: '343295414565',
+    projectId: 'businesscard-6f5c4',
+    authDomain: 'businesscard-6f5c4.firebaseapp.com',
+    databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
+    storageBucket: 'businesscard-6f5c4.firebasestorage.app',
+    measurementId: 'G-HFCNS1QQPS',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAvn_5NjkzUGu80d8SQoxkjbtq2ncre0CY',
-    appId: '1:806894781275:android:abd8a89c96a053f10dd07e',
-    messagingSenderId: '806894781275',
-    projectId: 'myauthapp-5cc2c',
-    storageBucket: 'myauthapp-5cc2c.firebasestorage.app',
+    apiKey: 'AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE',
+    appId: '1:343295414565:android:c86c6faf16f650a6e70acc',
+    messagingSenderId: '343295414565',
+    projectId: 'businesscard-6f5c4',
+    databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
+    storageBucket: 'businesscard-6f5c4.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCGZ1nIhhoEyBOi7HZ5AeKTFw5tcPA4rgg',
-    appId: '1:806894781275:ios:6afbeeaa8cfbe82e0dd07e',
-    messagingSenderId: '806894781275',
-    projectId: 'myauthapp-5cc2c',
-    storageBucket: 'myauthapp-5cc2c.firebasestorage.app',
-    iosClientId: '806894781275-5lat5a7h4vejedjkc0uka65h1ne17338.apps.googleusercontent.com',
+    apiKey: 'AIzaSyD3nXfQrlg6GdGxLkBPZD0DoY7-rgF7ZSM',
+    appId: '1:343295414565:ios:723a81a3aeebe655e70acc',
+    messagingSenderId: '343295414565',
+    projectId: 'businesscard-6f5c4',
+    databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
+    storageBucket: 'businesscard-6f5c4.firebasestorage.app',
+    androidClientId: '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
+    iosClientId: '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
     iosBundleId: 'com.example.hrms',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCGZ1nIhhoEyBOi7HZ5AeKTFw5tcPA4rgg',
-    appId: '1:806894781275:ios:6afbeeaa8cfbe82e0dd07e',
-    messagingSenderId: '806894781275',
-    projectId: 'myauthapp-5cc2c',
-    storageBucket: 'myauthapp-5cc2c.firebasestorage.app',
-    iosClientId: '806894781275-5lat5a7h4vejedjkc0uka65h1ne17338.apps.googleusercontent.com',
+    apiKey: 'AIzaSyD3nXfQrlg6GdGxLkBPZD0DoY7-rgF7ZSM',
+    appId: '1:343295414565:ios:723a81a3aeebe655e70acc',
+    messagingSenderId: '343295414565',
+    projectId: 'businesscard-6f5c4',
+    databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
+    storageBucket: 'businesscard-6f5c4.firebasestorage.app',
+    androidClientId: '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
+    iosClientId: '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
     iosBundleId: 'com.example.hrms',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBf4NJ9TcuRKpMDO75xltm-gl847rSpAgU',
-    appId: '1:806894781275:web:4ea223de9104fb660dd07e',
-    messagingSenderId: '806894781275',
-    projectId: 'myauthapp-5cc2c',
-    authDomain: 'myauthapp-5cc2c.firebaseapp.com',
-    storageBucket: 'myauthapp-5cc2c.firebasestorage.app',
-    measurementId: 'G-1P4VNM8P7S',
+    apiKey: 'AIzaSyDlw3flE_8JrtFX2uAbAtBpi_B89J6p8Ac',
+    appId: '1:343295414565:web:79666ebfc815a41ce70acc',
+    messagingSenderId: '343295414565',
+    projectId: 'businesscard-6f5c4',
+    authDomain: 'businesscard-6f5c4.firebaseapp.com',
+    databaseURL: 'https://businesscard-6f5c4-default-rtdb.firebaseio.com',
+    storageBucket: 'businesscard-6f5c4.firebasestorage.app',
+    measurementId: 'G-GZH9PPB9VZ',
   );
 
 }

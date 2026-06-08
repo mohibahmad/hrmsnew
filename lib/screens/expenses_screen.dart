@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import '../utils/snackbar_utils.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -139,13 +140,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 );
                               });
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Successfully added expense "${categoryController.text}"',
-                                  ),
-                                  backgroundColor: const Color(0xFF0247C4),
-                                ),
+                              FlashySnackBar.show(
+                                context,
+                                message: 'Successfully added expense "${categoryController.text}"',
                               );
                             }
                           },

@@ -1,40 +1,41 @@
 {
   "project_info": {
-    "project_number": "806894781275",
-    "project_id": "myauthapp-5cc2c",
-    "storage_bucket": "myauthapp-5cc2c.firebasestorage.app"
+    "project_number": "343295414565",
+    "firebase_url": "https://businesscard-6f5c4-default-rtdb.firebaseio.com",
+    "project_id": "businesscard-6f5c4",
+    "storage_bucket": "businesscard-6f5c4.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:806894781275:android:abd8a89c96a053f10dd07e",
+        "mobilesdk_app_id": "1:343295414565:android:bc1f82d7f666d86de70acc",
         "android_client_info": {
-          "package_name": "com.example.hrms"
+          "package_name": "com.autech.property"
         }
       },
       "oauth_client": [
         {
-          "client_id": "806894781275-98no3pojugjf2po7ntgqi9aotjqjgtbl.apps.googleusercontent.com",
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAvn_5NjkzUGu80d8SQoxkjbtq2ncre0CY"
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "806894781275-98no3pojugjf2po7ntgqi9aotjqjgtbl.apps.googleusercontent.com",
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "806894781275-5lat5a7h4vejedjkc0uka65h1ne17338.apps.googleusercontent.com",
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.hrms"
+                "bundle_id": "com.example.cryptoApp"
               }
             }
           ]
@@ -43,34 +44,230 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:806894781275:android:f3c0344648fdbbc90dd07e",
+        "mobilesdk_app_id": "1:343295414565:android:54632be686f3ee34e70acc",
         "android_client_info": {
-          "package_name": "com.example.myauthapp"
+          "package_name": "com.autech.terra"
         }
       },
       "oauth_client": [
         {
-          "client_id": "806894781275-98no3pojugjf2po7ntgqi9aotjqjgtbl.apps.googleusercontent.com",
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAvn_5NjkzUGu80d8SQoxkjbtq2ncre0CY"
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "806894781275-98no3pojugjf2po7ntgqi9aotjqjgtbl.apps.googleusercontent.com",
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "806894781275-5lat5a7h4vejedjkc0uka65h1ne17338.apps.googleusercontent.com",
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.hrms"
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:81c0ee03db280244e70acc",
+        "android_client_info": {
+          "package_name": "com.ebroker.ebroker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:8c08abd2f979d1d0e70acc",
+        "android_client_info": {
+          "package_name": "com.ebroker.wrteam"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:c86c6faf16f650a6e70acc",
+        "android_client_info": {
+          "package_name": "com.example.hrms"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:3ada7b6994d8c70ee70acc",
+        "android_client_info": {
+          "package_name": "com.example.qshopify"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:9a770bdf5b6a1bc0e70acc",
+        "android_client_info": {
+          "package_name": "com.smartsolutions.businesscard.business_card_master"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-l1ohfkr85o4kn52mf62rilt1qv3a75ml.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartsolutions.businesscard.business_card_master",
+            "certificate_hash": "109dd9faf01e2bfaf7d0bbf15bab61f1fadb9b21"
+          }
+        },
+        {
+          "client_id": "343295414565-ul552seaj3989la9k30vp4tjf47q6jcm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartsolutions.businesscard.business_card_master",
+            "certificate_hash": "f96ec91edf3ccf19dc829c54ac0250636c0de38e"
+          }
+        },
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
               }
             }
           ]

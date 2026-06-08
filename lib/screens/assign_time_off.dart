@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../utils/snackbar_utils.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -282,13 +283,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
               onPressed: () {
                 // Show assign success confirmation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Successfully assigned $_timeOffType from ${_formatDate(_startDate)} to ${_formatDate(_endDate)} ($_requestedDays days)',
-                    ),
-                    backgroundColor: const Color(0xFF0247C4),
-                  ),
+                FlashySnackBar.show(
+                  context,
+                  message: 'Successfully assigned $_timeOffType from ${_formatDate(_startDate)} to ${_formatDate(_endDate)} ($_requestedDays days)',
                 );
                 // Return to Time Off screen after a short delay
                 Future.delayed(const Duration(milliseconds: 1500), () {

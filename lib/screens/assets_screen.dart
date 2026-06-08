@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../utils/snackbar_utils.dart';
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -168,13 +169,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 );
                               });
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Successfully added asset for ${nameController.text}',
-                                  ),
-                                  backgroundColor: const Color(0xFF0247C4),
-                                ),
+                              FlashySnackBar.show(
+                                context,
+                                message: 'Successfully added asset for ${nameController.text}',
                               );
                             }
                           },
