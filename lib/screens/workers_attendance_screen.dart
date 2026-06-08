@@ -25,6 +25,7 @@ class WorkersAttendanceScreen extends StatefulWidget {
 
 class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   String _searchQuery = '';
+  String _selectedStatusFilter = 'All';
 
   List<Map<String, dynamic>> _getWorkerData() {
     return [
@@ -118,7 +119,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       final name = worker["name"].toString().toLowerCase();
       final role = worker["role"].toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      return name.contains(query) || role.contains(query);
+      final matchesSearch = name.contains(query) || role.contains(query);
+      
+      if (_selectedStatusFilter == 'All') return matchesSearch;
+      return matchesSearch && worker["status"] == _selectedStatusFilter;
     }).toList();
 
     return Scaffold(
@@ -166,6 +170,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
+                                  const SizedBox(height: 16),
+                                  _buildFilterChips(),
                                   const SizedBox(height: 16),
                                   Container(
                                     padding: const EdgeInsets.all(24),
@@ -422,6 +428,44 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
+    );
+  }
+
+  Widget _buildFilterChips() {
+    final filters = ['All', 'Present', 'Absent', 'Leave'];
+    return Row(
+      children: filters.map((filter) {
+        final isActive = _selectedStatusFilter == filter;
+        return Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedStatusFilter = filter;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: isActive ? primaryBlue : Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isActive ? primaryBlue : const Color(0xFFEEEEEE),
+                ),
+              ),
+              child: Text(
+                filter,
+                style: TextStyle(
+                  color: isActive ? Colors.white : textDark,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

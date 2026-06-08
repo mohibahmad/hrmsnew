@@ -33,7 +33,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   // Toggle this to see the Empty State
   bool isDataEmpty = false;
   String _searchQuery = '';
-  String _selectedTab = 'All'; // 'All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Manag'
+  String _selectedTab = 'All'; // 'All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'
 
   final List<Worker> _allWorkers = [
     Worker('Olivia', 'oliva23abs@gmail.com', 'Web Developer', '12345678901', 'Payroll Data', true),
@@ -50,7 +50,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           w.email.toLowerCase().contains(_searchQuery.toLowerCase());
       
       if (_selectedTab == 'All') return matchesSearch;
-      if (_selectedTab == 'Manag') {
+      if (_selectedTab == 'Management') {
         return matchesSearch && w.position.toLowerCase().contains('manag');
       }
       return matchesSearch && w.position.toLowerCase().contains(_selectedTab.toLowerCase());
@@ -219,7 +219,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           _buildTabItem('Developer'),
           _buildTabItem('Engineering'),
           _buildTabItem('Sales'),
-          _buildTabItem('Manag'),
+          _buildTabItem('Management'),
         ],
       ),
     );

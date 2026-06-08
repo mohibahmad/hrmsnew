@@ -198,6 +198,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
+  List<Map<String, dynamic>> get _filteredEmployees {
+    if (_selectedFilter == 'All') return employees;
+    return employees.where((e) {
+      final pos = e['position'] as String;
+      if (_selectedFilter == 'Management') {
+        return pos.toLowerCase().contains('manag');
+      }
+      return pos.toLowerCase().contains(_selectedFilter.toLowerCase());
+    }).toList();
+  }
+
   Widget _buildFilterTabs() {
     final filters = [
       'All',
@@ -205,7 +216,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       'Developer',
       'Engineering',
       'Sales',
-      'Manag...',
+      'Management',
     ];
     return Container(
       padding: const EdgeInsets.all(8),
@@ -276,14 +287,46 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: employees.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) =>
-                _buildEmployeeRow(employees[index]),
-          ),
+          if (_filteredEmployees.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(40.0),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 16),
+                    Text(
+                      "No Employees Found",
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Try adjusting your filters.",
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 14,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _filteredEmployees.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) =>
+                  _buildEmployeeRow(_filteredEmployees[index]),
+            ),
           const SizedBox(height: 16),
           _buildPagination(),
         ],
