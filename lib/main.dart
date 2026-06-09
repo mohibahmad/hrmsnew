@@ -7,10 +7,8 @@ import 'screens/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize window manager with macOS standard size (1280x800)
   await windowManager.ensureInitialized();
   windowManager.waitUntilReadyToShow().then((_) async {
     await windowManager.setMinimumSize(const Size(1280, 800));

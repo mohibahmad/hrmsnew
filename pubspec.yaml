@@ -38,11 +38,14 @@ dependencies:
   flutter_svg: ^2.3.0
   window_manager: ^0.5.1
   firebase_auth: ^6.5.2
+  cloud_firestore: ^6.5.0
   shared_preferences: ^2.5.5
   fl_chart: ^0.70.2
   flutter_launcher_icons: ^0.14.4
   flashy_flushbar: ^1.4.1
   intl: ^0.20.2
+  file_picker: ^11.0.2
+  firebase_storage: ^13.4.2
 
 flutter_launcher_icons:
   android: true

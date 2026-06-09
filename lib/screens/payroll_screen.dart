@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/firestore_service.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -18,81 +20,23 @@ class PayrollScreen extends StatefulWidget {
 }
 
 class _PayrollScreenState extends State<PayrollScreen> {
-  final List<Map<String, dynamic>> employees = [
-    {
-      'name': 'Mohib Ahmad',
-      'email': 'sarakhan65@gmail.com',
-      'position': 'Web Developer',
-      'contact': '123 5434567',
-      'status': 'Active',
-      'totalWorkDays': '224',
-      'absents': '09',
-      'leaves': '05',
-      'overtimeDays': '08',
-      'salary': '\$ 50,000',
-      'avatarColor': Colors.blue[100],
-      'icon': Icons.person,
-    },
-    {
-      'name': 'Olivia',
-      'email': 'oliva23abs@gmail.com',
-      'position': 'Graphic Designer',
-      'contact': '123 4567890',
-      'status': 'Active',
-      'totalWorkDays': '210',
-      'absents': '12',
-      'leaves': '08',
-      'overtimeDays': '15',
-      'salary': '\$ 45,000',
-      'avatarColor': Colors.pink[400],
-      'icon': Icons.face_3,
-    },
-    {
-      'name': 'Amelia',
-      'email': 'amelia123@gmail.com',
-      'position': 'Engineering',
-      'contact': '123 8901234',
-      'status': 'Active',
-      'totalWorkDays': '220',
-      'absents': '05',
-      'leaves': '04',
-      'overtimeDays': '10',
-      'salary': '\$ 60,000',
-      'avatarColor': Colors.blue[100],
-      'icon': Icons.person,
-    },
-    {
-      'name': 'Olivia',
-      'email': 'oliva23abs@gmail.com',
-      'position': 'Graphic Designer',
-      'contact': '123 4567890',
-      'status': 'Active',
-      'totalWorkDays': '215',
-      'absents': '10',
-      'leaves': '06',
-      'overtimeDays': '12',
-      'salary': '\$ 48,000',
-      'avatarColor': Colors.pink[400],
-      'icon': Icons.face_3,
-    },
-    {
-      'name': 'Olivia',
-      'email': 'oliva23abs@gmail.com',
-      'position': 'Web Developer',
-      'contact': '123 4567890',
-      'status': 'Active',
-      'totalWorkDays': '224',
-      'absents': '09',
-      'leaves': '05',
-      'overtimeDays': '08',
-      'salary': '\$ 50,000',
-      'avatarColor': Colors.blue[100],
-      'icon': Icons.person,
-    },
-  ];
-
   String _searchQuery = '';
   String _selectedFilter = 'All';
+  List<QueryDocumentSnapshot> _payrollDocs = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    FirestoreService().payrollStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _payrollDocs = snapshot.docs;
+          _isLoading = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,10 +158,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  List<Map<String, dynamic>> get _filteredEmployees {
-    return employees.where((e) {
-      final name = (e['name'] as String).toLowerCase();
-      final pos = (e['position'] as String).toLowerCase();
+  List<QueryDocumentSnapshot> get _filteredEmployees {
+    return _payrollDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final pos = (data['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final matchesSearch = name.contains(query) || pos.contains(query);
 
@@ -364,7 +309,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  Widget _buildEmployeeRow(Map<String, dynamic> data) {
+  Widget _buildEmployeeRow(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -388,7 +334,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data['name'],
+                      (data['name'] ?? '').toString(),
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -397,7 +343,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      data['email'],
+                      (data['email'] ?? '').toString(),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black87,
@@ -412,7 +358,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              data['position'],
+              (data['position'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black87,
@@ -423,7 +369,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              data['contact'],
+              (data['contact'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black87,

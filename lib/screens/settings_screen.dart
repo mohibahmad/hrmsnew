@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 16,
-                                        fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                                         color: Colors.black,
                                         fontFamily: 'SF Pro Display',
                                       ),
@@ -216,19 +216,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Setting',
                 style: TextStyle(
                   color: Colors.black,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
                   fontFamily: 'SF Pro Display',
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Manage your account preferences, security, and application settings.',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
+                  height: 1.0,
+                  letterSpacing: 0,
                 ),
               ),
             ],
@@ -260,28 +252,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            iconPath,
-            width: 24,
-            height: 24,
-            colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              iconPath,
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
               text,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 18,
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
+                height: 1.0,
+                letterSpacing: 0,
               ),
             ),
           ),
@@ -294,10 +287,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Text(
               buttonText,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 18,
                 color: Colors.black,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
+                height: 1.0,
+                letterSpacing: 0,
               ),
             ),
           )
@@ -315,7 +310,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
         ),
         child: Row(
           children: [
@@ -329,20 +323,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text(
               'Language',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 18,
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
+                height: 1.0,
+                letterSpacing: 0,
               ),
             ),
             const Spacer(),
             Text(
               _selectedLanguage,
               style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
+                height: 1.0,
+                letterSpacing: 0,
               ),
             ),
             const SizedBox(width: 8),
@@ -362,7 +360,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
         ),
         child: Row(
           children: [
@@ -376,10 +373,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               text,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 18,
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
+                height: 1.0,
+                letterSpacing: 0,
               ),
             ),
           ],

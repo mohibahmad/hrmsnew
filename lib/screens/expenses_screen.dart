@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 
 class ExpensesScreen extends StatefulWidget {
@@ -20,27 +22,31 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   bool isDataEmpty = false;
   String _searchQuery = '';
-
-  final List<ExpenseItem> _expenses = [
-    ExpenseItem('Olivia Vance', '01/12/2025', 'Dinner', 24000.0),
-    ExpenseItem('Olivia Vance', '01/12/2025', 'Table', 22000.0),
-    ExpenseItem('Amelia Gray', '01/12/2025', 'Lunch', 3000.0),
-    ExpenseItem('Olivia Vance', '01/12/2025', 'Chairs', 4000.0),
-  ];
+  List<QueryDocumentSnapshot> _expensesDocs = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Automatically show the dialog after the screen renders to match the mockup
+    FirestoreService().expensesStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _expensesDocs = snapshot.docs;
+          _isLoading = false;
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAddExpenseModal(context);
     });
   }
 
-  // Calculate dynamic metrics
   double get _totalExpenseSum {
     if (isDataEmpty) return 0.0;
-    return _filteredExpenses.fold(0.0, (sum, item) => sum + item.amount);
+    return _filteredExpenses.fold(0.0, (sum, doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return sum + ((data['amount'] ?? 0).toDouble());
+    });
   }
 
   String _formatCurrency(double amount) {
@@ -48,13 +54,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return format.format(amount);
   }
 
-  List<ExpenseItem> get _filteredExpenses {
-    return _expenses.where((item) {
-      final matchesSearch =
-          item.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.category.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesSearch;
+  List<QueryDocumentSnapshot> get _filteredExpenses {
+    return _expensesDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final category = (data['category'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || category.contains(query);
     }).toList();
+  }
+
+  Future<void> _deleteExpense(String docId) async {
+    await FirestoreService().deleteExpense(docId);
   }
 
   void _showAddExpenseModal(BuildContext context) {
@@ -126,18 +137,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             );
                             if (categoryController.text.isNotEmpty &&
                                 amt != null) {
-                              setState(() {
-                                final dateStr =
-                                    '${selectedDay.toString().padLeft(2, '0')}/05/2025';
-                                _expenses.insert(
-                                  0,
-                                  ExpenseItem(
-                                    'Ali Ahmad', // Default logged-in worker mock name
-                                    dateStr,
-                                    categoryController.text,
-                                    amt,
-                                  ),
-                                );
+                              final dateStr =
+                                  '${selectedDay.toString().padLeft(2, '0')}/05/2025';
+                              FirestoreService().addExpense({
+                                'name': 'Ali Ahmad',
+                                'date': dateStr,
+                                'category': categoryController.text,
+                                'amount': amt,
                               });
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
@@ -770,7 +776,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   // ================= FILLED STATE (LIST) =================
 
-  Widget _buildDataTable(List<ExpenseItem> expenses) {
+  Widget _buildDataTable(List<QueryDocumentSnapshot> expenses) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -850,7 +856,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDataRow(ExpenseItem item) {
+  Widget _buildDataRow(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final name = (data['name'] ?? '').toString();
+    final date = (data['date'] ?? '').toString();
+    final category = (data['category'] ?? '').toString();
+    final amount = (data['amount'] ?? 0).toDouble();
+    final docId = doc.id;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       child: Row(
@@ -865,7 +878,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  item.name,
+                  name,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -879,7 +892,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              item.date,
+              date,
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF0F172A),
@@ -890,7 +903,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              item.category,
+              category,
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF0F172A),
@@ -901,7 +914,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              _formatCurrency(item.amount),
+              _formatCurrency(amount),
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF0247C4),
@@ -910,13 +923,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
           ),
-          _buildActionMenu(item),
+          _buildActionMenu(docId),
         ],
       ),
     );
   }
 
-  Widget _buildActionMenu(ExpenseItem item) {
+  Widget _buildActionMenu(String docId) {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, color: Colors.black87),
       offset: const Offset(0, 40),
@@ -924,9 +937,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       elevation: 4,
       onSelected: (value) {
         if (value == 'delete') {
-          setState(() {
-            _expenses.remove(item);
-          });
+          _deleteExpense(docId);
         }
       },
       itemBuilder: (context) => [

@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/firestore_service.dart';
 import 'workers_attendance_screen.dart';
 
 // --- STYLING CONSTANTS (Curated HSL/Hex Harmonious Palette) ---
@@ -50,81 +52,51 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   String _searchQuery = '';
-  String _selectedTab = 'All'; // 'All', 'Present', 'Absent', 'Leaves'
-  String _selectedTimeframe =
-      'Week'; // 'Week', 'Month', '3 Month', '6 Month', 'Yearly'
+  String _selectedTab = 'All';
+  String _selectedTimeframe = 'Week';
   bool _isTimeframeDropdownOpen = false;
+  List<QueryDocumentSnapshot> _attendanceDocs = [];
+  bool _isLoading = true;
 
-  final List<AttendanceRecord> _mockRecords = [
-    AttendanceRecord(
-      name: 'Olivia Vance',
-      email: 'oliva23abs@gmail.com',
-      role: 'Designer',
-      status: 'Present',
-      attendanceType: 'Remote',
-      workType: 'Full Time',
-    ),
-    AttendanceRecord(
-      name: 'Sophia Smith',
-      email: 'sophia.smith@gmail.com',
-      role: 'Developer',
-      status: 'Absent',
-      attendanceType: 'On-Site',
-      workType: 'Remote',
-    ),
-    AttendanceRecord(
-      name: 'Liam Vance',
-      email: 'liam.vance@gmail.com',
-      role: 'Designer',
-      status: 'Present',
-      attendanceType: 'Remote',
-      workType: 'Hybrid',
-    ),
-    AttendanceRecord(
-      name: 'Amelia Gray',
-      email: 'amelia123@gmail.com',
-      role: 'Designer',
-      status: 'Leave',
-      attendanceType: 'On-Site',
-      workType: 'Full Time',
-    ),
-    AttendanceRecord(
-      name: 'Jackson Miller',
-      email: 'jackson@gmail.com',
-      role: 'Developer',
-      status: 'Present',
-      attendanceType: 'On-Site',
-      workType: 'Full Time',
-    ),
-  ];
-
-  List<AttendanceRecord> get _filteredRecords {
-    return _mockRecords.where((record) {
-      // Search matching
-      final matchesSearch =
-          record.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          record.role.toLowerCase().contains(_searchQuery.toLowerCase());
-
-      // Tab matching
-      if (_selectedTab == 'All') {
-        return matchesSearch;
-      } else if (_selectedTab == 'Present') {
-        return matchesSearch && record.status == 'Present';
-      } else if (_selectedTab == 'Absent') {
-        return matchesSearch && record.status == 'Absent';
-      } else if (_selectedTab == 'Leaves') {
-        return matchesSearch && record.status == 'Leave';
+  @override
+  void initState() {
+    super.initState();
+    FirestoreService().attendanceStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _attendanceDocs = snapshot.docs;
+          _isLoading = false;
+        });
       }
-      return matchesSearch;
+    });
+  }
+
+  List<QueryDocumentSnapshot> get _filteredRecords {
+    return _attendanceDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final role = (data['role'] ?? '').toString().toLowerCase();
+      final status = (data['status'] ?? '').toString();
+      final query = _searchQuery.toLowerCase();
+
+      final matchesSearch = name.contains(query) || role.contains(query);
+      if (!matchesSearch) return false;
+
+      if (_selectedTab == 'All') return true;
+      if (_selectedTab == 'Present') return status == 'Present';
+      if (_selectedTab == 'Absent') return status == 'Absent';
+      if (_selectedTab == 'Leaves') return status == 'Leave';
+      return false;
     }).toList();
   }
 
-  int get _totalCount => _mockRecords.length;
+  int get _totalCount => _attendanceDocs.length;
   int get _presentCount =>
-      _mockRecords.where((r) => r.status == 'Present').length;
+      _attendanceDocs.where((d) => (d.data() as Map<String, dynamic>)['status'] == 'Present').length;
   int get _absentCount =>
-      _mockRecords.where((r) => r.status == 'Absent').length;
-  int get _leaveCount => _mockRecords.where((r) => r.status == 'Leave').length;
+      _attendanceDocs.where((d) => (d.data() as Map<String, dynamic>)['status'] == 'Absent').length;
+  int get _leaveCount =>
+      _attendanceDocs.where((d) => (d.data() as Map<String, dynamic>)['status'] == 'Leave').length;
 
   @override
   Widget build(BuildContext context) {
@@ -662,10 +634,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   TapDownDetails? _tapPosition;
 
-  void _showRowMenu(BuildContext context, AttendanceRecord record) {
+  void _showRowMenu(BuildContext context, QueryDocumentSnapshot doc) {
     if (_tapPosition == null) return;
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
+
+    final docId = doc.id;
 
     showMenu<String>(
       context: context,
@@ -681,7 +655,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             Text('Preview', style: TextStyle(fontSize: 14)),
           ],
         )),
-        const PopupMenuItem(value: 'delete', child: Row(
+        PopupMenuItem(value: 'delete', child: Row(
           children: [
             Icon(Icons.delete_outline, size: 18, color: Colors.red),
             SizedBox(width: 8),
@@ -691,12 +665,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ],
     ).then((value) {
       if (value == 'preview') {
-        _showAttendancePreview(context, record);
+        _showAttendancePreview(context, doc);
+      } else if (value == 'delete') {
+        FirestoreService().deleteAttendanceRecord(docId);
       }
     });
   }
 
-  void _showAttendancePreview(BuildContext context, AttendanceRecord record) {
+  void _showAttendancePreview(BuildContext context, QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final record = AttendanceRecord(
+      name: (data['name'] ?? '').toString(),
+      email: (data['email'] ?? '').toString(),
+      role: (data['role'] ?? '').toString(),
+      status: (data['status'] ?? '').toString(),
+      attendanceType: (data['attendanceType'] ?? 'Remote').toString(),
+      workType: (data['workType'] ?? 'Full Time').toString(),
+    );
     showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -710,7 +695,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildAttendanceTable(List<AttendanceRecord> records) {
+  Widget _buildAttendanceTable(List<QueryDocumentSnapshot> records) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -736,7 +721,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Table Rows
           ...List.generate(records.length, (index) {
-            final record = records[index];
+            final doc = records[index];
+            final data = doc.data() as Map<String, dynamic>;
+            final name = (data['name'] ?? '').toString();
+            final email = (data['email'] ?? '').toString();
+            final role = (data['role'] ?? '').toString();
+            final status = (data['status'] ?? '').toString();
+            final attendanceType = (data['attendanceType'] ?? 'Remote').toString();
+            final workType = (data['workType'] ?? 'Full Time').toString();
             return Column(
               children: [
                 Padding(
@@ -759,7 +751,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    record.name,
+                                    name,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
@@ -769,7 +761,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    record.email,
+                                    email,
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: Colors.grey.shade600,
@@ -785,7 +777,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          record.attendanceType,
+                          attendanceType,
                           style: const TextStyle(
                             fontSize: 14,
                             color: textDark,
@@ -796,11 +788,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          record.status,
+                          status,
                           style: TextStyle(
-                            color: record.status == 'Present'
+                            color: status == 'Present'
                                 ? greenPresent
-                                : (record.status == 'Absent' ? redAbsent : orangeLeave),
+                                : (status == 'Absent' ? redAbsent : orangeLeave),
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
@@ -810,7 +802,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          record.workType,
+                          workType,
                           style: const TextStyle(
                             fontSize: 14,
                             color: textDark,
@@ -821,7 +813,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          record.role,
+                          role,
                           style: const TextStyle(
                             fontSize: 14,
                             color: textDark,
@@ -833,7 +825,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         onTapDown: (details) {
                           _tapPosition = details;
                         },
-                        onTap: () => _showRowMenu(context, record),
+                        onTap: () => _showRowMenu(context, doc),
                         child: const Icon(Icons.more_vert, color: Colors.black87, size: 24),
                       ),
                     ],

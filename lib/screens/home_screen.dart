@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import 'login_screen.dart';
 import 'workers.dart';
@@ -146,10 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
     } else if (_selectedSubIndex == 3) {
-      return AssetsScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-      );
+      return AssetsScreen(onLogout: _handleLogout, onProfileTap: _openProfile);
     } else if (_selectedSubIndex == 4) {
       return HolidaysScreen(
         onLogout: _handleLogout,
@@ -411,8 +409,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-
   Widget _buildProfileView() {
     return Column(
       children: [
@@ -578,19 +574,40 @@ class _ProfileBodyState extends State<ProfileBody> {
   late final TextEditingController _contact1Controller;
   late final TextEditingController _contact2Controller;
   late final TextEditingController _addressController;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _businessNameController = TextEditingController(text: 'Realm Apps');
-    _companyIdController = TextEditingController(text: '0124578');
-    _emailController = TextEditingController(text: 'realmapps123@email.com');
-    _currencyController = TextEditingController(text: 'USD');
-    _contact1Controller = TextEditingController(text: '01236547890');
-    _contact2Controller = TextEditingController(text: '041236547890');
-    _addressController = TextEditingController(
-      text: 'Anywhere st 123 Anywhere city , United State.',
+    _businessNameController = TextEditingController();
+    _companyIdController = TextEditingController();
+    _emailController = TextEditingController(
+      text: AuthService().currentUser?.email ?? '',
     );
+    _currencyController = TextEditingController(text: 'USD');
+    _contact1Controller = TextEditingController();
+    _contact2Controller = TextEditingController();
+    _addressController = TextEditingController();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await FirestoreService().getUserProfile();
+    if (profile != null && mounted) {
+      setState(() {
+        _businessNameController.text = profile['businessName'] ?? '';
+        _companyIdController.text = profile['companyId'] ?? '';
+        _emailController.text =
+            profile['email'] ?? AuthService().currentUser?.email ?? '';
+        _currencyController.text = profile['currency'] ?? 'USD';
+        _contact1Controller.text = profile['contact1'] ?? '';
+        _contact2Controller.text = profile['contact2'] ?? '';
+        _addressController.text = profile['address'] ?? '';
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -605,6 +622,18 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.dispose();
   }
 
+  Future<void> _saveProfile() async {
+    await FirestoreService().updateUserProfile({
+      'businessName': _businessNameController.text,
+      'companyId': _companyIdController.text,
+      'email': _emailController.text,
+      'currency': _currencyController.text,
+      'contact1': _contact1Controller.text,
+      'contact2': _contact2Controller.text,
+      'address': _addressController.text,
+    });
+  }
+
   void _showPreviewDialog() {
     showDialog(
       context: context,
@@ -617,6 +646,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         contact1: _contact1Controller.text,
         contact2: _contact2Controller.text,
         address: _addressController.text,
+        onSave: _saveProfile,
       ),
     );
   }
@@ -632,7 +662,10 @@ class _ProfileBodyState extends State<ProfileBody> {
           children: [
             _buildProfileIcon(),
             ElevatedButton(
-              onPressed: _showPreviewDialog,
+              onPressed: () async {
+                await _saveProfile();
+                if (mounted) _showPreviewDialog();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF155ED5),
                 foregroundColor: Colors.white,
@@ -820,6 +853,7 @@ class ProfilePreviewDialog extends StatelessWidget {
   final String contact1;
   final String contact2;
   final String address;
+  final VoidCallback? onSave;
 
   const ProfilePreviewDialog({
     super.key,
@@ -830,6 +864,7 @@ class ProfilePreviewDialog extends StatelessWidget {
     required this.contact1,
     required this.contact2,
     required this.address,
+    this.onSave,
   });
 
   static const Color primaryBlue = Color(0xFF0B51C1);
@@ -1152,7 +1187,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 290,
+      width: 265,
       color: const Color(0xFF0247C4),
       child: Column(
         children: [
@@ -1165,8 +1200,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               );
             },
             child: Container(
-              width: 252,
-              height: 218,
+              width: 220,
+              height: 181,
               margin: const EdgeInsets.only(top: 29, left: 19, right: 19),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1179,7 +1214,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.white,
-                    blurRadius: 8.0,
+                    blurRadius: 3.0,
                     spreadRadius: 0.0,
                   ),
                 ],
@@ -1200,56 +1235,59 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         'Upgrade Pro',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
                           fontFamily: 'SF Pro Display',
+                          height: 1.0,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 4),
                   _buildCheckText('Unlock All Features'),
                   _buildCheckText('No Commitment'),
                   _buildCheckText('Cancel Anytime'),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 4),
                   Stack(
                     clipBehavior: Clip.none,
                     alignment: Alignment.centerRight,
                     children: [
                       Container(
                         width: double.infinity,
-                        height: 46,
-                        padding: const EdgeInsets.only(left: 16, right: 52),
+                        height: 40,
+                        padding: const EdgeInsets.only(left: 14, right: 46),
                         decoration: BoxDecoration(
                           color: Colors.black,
-                          borderRadius: BorderRadius.circular(23),
+                          borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: Colors.white, width: 1.0),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
+                            const Text(
                               'Get to Pro',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w700,
                                 fontFamily: 'SF Pro',
                                 height: 1.1,
                                 letterSpacing: 0,
                               ),
                             ),
-                            Text(
+                            const SizedBox(height: 2),
+                            const Text(
                               'Subscribe Now',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w700,
                                 fontFamily: 'SF Pro',
                                 height: 1.1,
                                 letterSpacing: 0,
@@ -1259,11 +1297,11 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         ),
                       ),
                       Positioned(
-                        top: -3,
-                        bottom: -3,
+                        top: -6,
+                        bottom: -6,
                         child: Container(
-                          width: 48,
-                          height: 48,
+                          width: 40,
+                          height: 40,
                           decoration: const BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
@@ -1271,8 +1309,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           alignment: Alignment.center,
                           child: Image.asset(
                             "assets/right_back_arrow.png",
-                            width: 20,
-                            height: 20,
+                            width: 16,
+                            height: 16,
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -1317,7 +1355,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
       return Stack(
         children: [
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.36),
               borderRadius: BorderRadius.circular(8),
@@ -1348,22 +1386,22 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               ],
             ),
           ),
-          if (isSelected)
-            Positioned(
-              left: 0,
-              top: 4,
-              child: Container(
-                width: 6,
-                height: 46,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(4),
-                    bottomRight: Radius.circular(4),
-                  ),
+          Positioned(
+            left: 0,
+            top: 11.0,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 8,
+              height: isSelected ? 32 : 0,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
                 ),
               ),
             ),
+          ),
         ],
       );
     } else {
@@ -1386,9 +1424,10 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 46,
+        height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
               'assets/workforce_icon_sldiebar.svg',
@@ -1396,7 +1435,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               width: 22,
               color: Colors.white,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             const Text(
               'Workforce',
               style: TextStyle(
@@ -1428,8 +1467,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.white.withValues(alpha: 0.36)
@@ -1437,6 +1476,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
               iconAsset,
@@ -1444,7 +1484,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               width: 20,
               color: Colors.white,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Text(
               title,
               style: TextStyle(
@@ -1462,7 +1502,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
 
   Widget _buildCheckText(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Row(
         children: [
           SvgPicture.asset(
@@ -1499,8 +1539,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: 46,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            height: 42,
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: isSelected
@@ -1509,6 +1549,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SvgPicture.asset(
                   iconAsset,
@@ -1516,7 +1557,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   width: 22,
                   color: Colors.white,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Text(
                   title,
                   style: TextStyle(
@@ -1543,8 +1584,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             child: Center(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 6,
-                height: isSelected ? 46 : 0,
+                width: 8,
+                height: isSelected ? 32 : 0,
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
@@ -2417,7 +2458,7 @@ class PeriodFilterDropdown extends StatelessWidget {
         final isSelected = option == selectedPeriod;
         return PopupMenuItem<String>(
           value: option,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2632,7 +2673,7 @@ class HolidayCard extends StatelessWidget {
                       color: mainTextColor,
                       fontSize: 13,
                       height: 1.1,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       fontFamily: 'SF Pro Display',
                     ),
                   ),

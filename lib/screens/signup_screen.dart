@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -80,6 +81,12 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       await credential.user?.updateDisplayName(_usernameController.text.trim());
+
+      await FirestoreService().createUserProfile(
+        username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
 
       if (mounted) {
         Navigator.of(context).pushReplacement(

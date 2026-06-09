@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/firestore_service.dart';
 import 'assign_time_off.dart';
 
 class Worker {
@@ -30,30 +32,43 @@ class TimeOffScreen extends StatefulWidget {
 }
 
 class _TimeOffScreenState extends State<TimeOffScreen> {
-  // Toggle this to see the Empty State
   bool isDataEmpty = false;
   String _searchQuery = '';
-  String _selectedTab = 'All'; // 'All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'
+  String _selectedTab = 'All';
+  List<QueryDocumentSnapshot> _timeoffDocs = [];
+  bool _isLoading = true;
 
-  final List<Worker> _allWorkers = [
-    Worker('Olivia', 'oliva23abs@gmail.com', 'Web Developer', '12345678901', 'Payroll Data', true),
-    Worker('Olivia', 'oliva23abs@gmail.com', 'Graphic Designer', '12345678901', 'Assign Time off', false),
-    Worker('Amelia', 'amelia123@gmail.com', 'Engineering', '12345678901', 'Payroll Data', true),
-    Worker('Olivia', 'oliva23abs@gmail.com', 'Graphic Designer', '12345678901', 'Assign Time off', false),
-    Worker('Olivia', 'oliva23abs@gmail.com', 'Web Developer', '12345678901', 'Payroll Data', true),
-  ];
-
-  List<Worker> get _filteredWorkers {
-    return _allWorkers.where((w) {
-      final matchesSearch = w.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          w.position.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          w.email.toLowerCase().contains(_searchQuery.toLowerCase());
-      
-      if (_selectedTab == 'All') return matchesSearch;
-      if (_selectedTab == 'Management') {
-        return matchesSearch && w.position.toLowerCase().contains('manag');
+  @override
+  void initState() {
+    super.initState();
+    FirestoreService().timeoffStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _timeoffDocs = snapshot.docs;
+          _isLoading = false;
+        });
       }
-      return matchesSearch && w.position.toLowerCase().contains(_selectedTab.toLowerCase());
+    });
+  }
+
+  List<QueryDocumentSnapshot> get _filteredWorkers {
+    return _timeoffDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final position = (data['position'] ?? '').toString().toLowerCase();
+      final email = (data['email'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+
+      final matchesSearch = name.contains(query) ||
+          position.contains(query) ||
+          email.contains(query);
+      
+      if (!matchesSearch) return false;
+      if (_selectedTab == 'All') return true;
+      if (_selectedTab == 'Management') {
+        return position.contains('manag');
+      }
+      return position.contains(_selectedTab.toLowerCase());
     }).toList();
   }
 
@@ -265,7 +280,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
-  Widget _buildDataTable(List<Worker> workers) {
+  Widget _buildDataTable(List<QueryDocumentSnapshot> workers) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -338,7 +353,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             itemCount: workers.length,
             separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
-              final w = workers[index];
+              final doc = workers[index];
+              final data = doc.data() as Map<String, dynamic>;
+              final name = (data['name'] ?? '').toString();
+              final email = (data['email'] ?? '').toString();
+              final position = (data['position'] ?? '').toString();
+              final contact = (data['contact'] ?? '').toString();
+              final action = (data['action'] ?? 'Payroll Data').toString();
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 child: Row(
@@ -358,7 +379,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  w.name,
+                                  name,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -367,7 +388,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   ),
                                 ),
                                 Text(
-                                  w.email,
+                                  email,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
@@ -384,7 +405,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        w.position,
+                        position,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -397,7 +418,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        w.contact,
+                        contact,
                         style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF0F172A),
@@ -426,7 +447,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         child: MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: Text(
-                            w.action,
+                            action,
                             style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF0247C4),

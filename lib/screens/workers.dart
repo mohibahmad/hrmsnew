@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/firestore_service.dart';
 import 'pricing_screen.dart';
 
 void main() {
@@ -118,7 +120,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                             Container(
                               width: double.infinity,
                               height: 46,
-                              padding: const EdgeInsets.only(left: 16, right: 52),
+                              padding: const EdgeInsets.only(
+                                left: 16,
+                                right: 52,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.black,
                                 borderRadius: BorderRadius.circular(23),
@@ -311,7 +316,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
               bottom: 0,
               child: Center(
                 child: Container(
-                  height: 46,
+                  height: 26,
                   width: 6,
                   decoration: const BoxDecoration(
                     color: Colors.white,
@@ -393,20 +398,34 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   final Color buttonColor = const Color(0xFF0C51C1);
   final Color textDark = const Color(0xFF111111);
   String _searchQuery = '';
+  List<QueryDocumentSnapshot> _allWorkers = [];
+  bool _isLoading = true;
 
-  final List<Map<String, String>> _allWorkers = [
-    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Full-Time', 'position': 'Web Developer', 'type2': 'On-Site'},
-    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Part-Time', 'position': 'Graphic Designer', 'type2': 'Remote'},
-    {'name': 'Amelia', 'email': 'amelia123@gmail.com', 'type1': 'Contract', 'position': 'Engineering', 'type2': 'On-Site'},
-    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Freelance', 'position': 'Graphic Designer', 'type2': 'Remote'},
-    {'name': 'Olivia', 'email': 'oliva23abs@gmail.com', 'type1': 'Full-Time', 'position': 'Web Developer', 'type2': 'On-Site'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    FirestoreService().workersStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _allWorkers = snapshot.docs;
+          _isLoading = false;
+        });
+      }
+    });
+  }
 
-  List<Map<String, String>> get _filteredWorkers {
-    return _allWorkers.where((w) {
-      return w['name']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          w['position']!.toLowerCase().contains(_searchQuery.toLowerCase());
+  List<QueryDocumentSnapshot> get _filteredWorkers {
+    return _allWorkers.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      final position = (data['position'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || position.contains(query);
     }).toList();
+  }
+
+  Future<void> _deleteWorker(String docId) async {
+    await FirestoreService().deleteWorker(docId);
   }
 
   @override
@@ -438,7 +457,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                  const SizedBox(height: 4),
                   Text(
                     'Complete all required fields to register a new worker.',
                     style: TextStyle(
@@ -551,7 +569,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                 },
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 8),
-                                  child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 18,
+                                    color: Colors.grey[400],
+                                  ),
                                 ),
                               ),
                           ],
@@ -659,28 +681,54 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ),
 
                 // List Items
-                if (_filteredWorkers.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(40.0),
-                    child: Center(
-                      child: Text(
-                        "No Workers Found",
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 15,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(40.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_filteredWorkers.isEmpty)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 80),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/placeholder_workers.svg',
+                            width: 120,
+                            height: 100,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Add Workers to get started",
+                            style: TextStyle(
+                              color: Color(0xFF0247C4),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
                 else
-                  ..._filteredWorkers.map((w) => _buildListItem(
-                    w['name']!,
-                    w['email']!,
-                    w['type1']!,
-                    w['position']!,
-                    w['type2']!,
-                  )),
+                  ..._filteredWorkers.map((doc) {
+                    final w = doc.data() as Map<String, dynamic>;
+                    final name = (w['name'] ?? '').toString();
+                    final email = (w['email'] ?? '').toString();
+                    final type1 = (w['type1'] ?? '').toString();
+                    final position = (w['position'] ?? '').toString();
+                    final type2 = (w['type2'] ?? '').toString();
+                    return _buildListItem(
+                      name,
+                      email,
+                      type1,
+                      position,
+                      type2,
+                      doc.id,
+                    );
+                  }),
 
                 // Pagination
                 const SizedBox(height: 24),
@@ -725,6 +773,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     String type1,
     String position,
     String type2,
+    String docId,
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -830,6 +879,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       attendanceType: type2,
                     ),
                   );
+                } else if (value == 'delete') {
+                  _deleteWorker(docId);
                 }
               },
               itemBuilder: (BuildContext context) => [
@@ -983,6 +1034,19 @@ class AddNewWorkerFlow extends StatefulWidget {
 class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   int _activeTabIndex = 0; // 0: Worker Detail, 1: Experience, 2: Documentation
 
+  Future<void> _saveWorker() async {
+    await FirestoreService().addWorker({
+      'name': 'New Worker',
+      'email': 'worker@email.com',
+      'type1': 'Full-Time',
+      'position': 'Employee',
+      'type2': 'On-Site',
+    });
+    if (mounted) {
+      widget.onBack?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1048,21 +1112,24 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   ],
                 ),
                 // Save Button (Blue state based on image 2)
-                Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B50C3),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      fontFamily: 'SF Pro Display',
+                GestureDetector(
+                  onTap: _saveWorker,
+                  child: Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B50C3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
                 ),
@@ -1941,10 +2008,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
       overlay: GestureDetector(
         onTap: () => setState(() => _isCvUploaded = true),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.black,
             borderRadius: BorderRadius.circular(8),
@@ -1980,10 +2044,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(8),
@@ -2000,20 +2061,13 @@ class _DocumentationSectionState extends State<DocumentationSection> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                SvgPicture.asset(
-                  'assets/edit_icon.svg',
-                  height: 18,
-                  width: 18,
-                ),
+                SvgPicture.asset('assets/edit_icon.svg', height: 18, width: 18),
               ],
             ),
           ),
           const SizedBox(width: 16),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(8),
@@ -2059,17 +2113,9 @@ class _DocumentationSectionState extends State<DocumentationSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  height: 16,
-                  width: 200,
-                  color: Colors.grey.shade300,
-                ),
+                Container(height: 16, width: 200, color: Colors.grey.shade300),
                 const SizedBox(height: 8),
-                Container(
-                  height: 10,
-                  width: 150,
-                  color: Colors.grey.shade300,
-                ),
+                Container(height: 10, width: 150, color: Colors.grey.shade300),
                 const SizedBox(height: 40),
                 ...List.generate(
                   8,
