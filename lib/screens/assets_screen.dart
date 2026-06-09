@@ -108,7 +108,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              backgroundColor: Colors.white,
+              backgroundColor: Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
                 width: 450,
@@ -178,7 +178,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           child: const Text(
                             'Save',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),
@@ -415,7 +415,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
@@ -478,7 +478,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFFEEEEEE)),
             ),
@@ -545,12 +545,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
             'assets/add asset.svg',
             width: 20,
             height: 20,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
           ),
           label: const Text(
             'Add Asset',
             style: TextStyle(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               fontSize: 15,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
@@ -566,7 +566,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   Widget _buildDataTable(List<AssetData> assets) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -617,7 +617,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   child: const Text(
                     '1',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Display',
                     ),

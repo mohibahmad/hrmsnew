@@ -161,7 +161,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                   height: 94,
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     border: Border(
                         bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
                   ),
@@ -179,7 +179,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               child: const Padding(
                                 padding: EdgeInsets.only(top: 2.0),
                                 child: Icon(Icons.arrow_back_ios_new,
-                                    color: Colors.black, size: 24),
+                                    color: Color(0xFF000000), size: 24),
                               ),
                             ),
                           ),
@@ -230,12 +230,12 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(
-                                      color: Colors.black, strokeWidth: 2),
+                                      color: Color(0xFF000000), strokeWidth: 2),
                                 )
                               : const Text(
                                   'Save',
                                   style: TextStyle(
-                                    color: Colors.black,
+                                    color: Color(0xFF000000),
                                     fontWeight: FontWeight.w500,
                                     fontSize: 16,
                                     fontFamily: 'SF Pro Display',
@@ -261,11 +261,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           Container(
                             height: 56,
                             decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 borderRadius: BorderRadius.circular(8),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.02),
+                                    color: Color(0xFF000000).withOpacity(0.02),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   )
@@ -289,7 +289,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               const Text(
                                 'Personal Information',
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: Color(0xFF000000),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   fontFamily: 'SF Pro Display',
@@ -300,7 +300,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                       color: const Color(0xFFE0E0E0), width: 1),
@@ -310,7 +310,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     Text(
                                       'Next Step',
                                       style: TextStyle(
-                                        color: Colors.black,
+                                        color: Color(0xFF000000),
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
                                         fontFamily: 'SF Pro Display',
@@ -318,7 +318,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     ),
                                     SizedBox(width: 8),
                                     Icon(Icons.arrow_forward,
-                                        size: 18, color: Colors.black),
+                                        size: 18, color: Color(0xFF000000)),
                                   ],
                                 ),
                               )
@@ -423,7 +423,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     const Text(
                                       'Worker Profile',
                                       style: TextStyle(
-                                        color: Colors.black,
+                                        color: Color(0xFF000000),
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
@@ -434,12 +434,12 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                       height: 240,
                                       width: double.infinity,
                                       decoration: BoxDecoration(
-                                          color: Colors.white,
+                                          color: Color(0xFFFFFFFF),
                                           borderRadius:
                                               BorderRadius.circular(16),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black
+                                              color: Color(0xFF000000)
                                                   .withOpacity(0.01),
                                               blurRadius: 10,
                                               offset: const Offset(0, 5),
@@ -464,7 +464,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                           const Text(
                                             'Upload Profile',
                                             style: TextStyle(
-                                              color: Colors.black,
+                                              color: Color(0xFF000000),
                                               fontWeight: FontWeight.w700,
                                               fontSize: 14,
                                               fontFamily: 'SF Pro Display',
@@ -490,7 +490,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     const Text(
                                       'Relationship Status:',
                                       style: TextStyle(
-                                        color: Colors.black,
+                                        color: Color(0xFF000000),
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
@@ -543,7 +543,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.black,
+          color: Color(0xFF000000),
           fontSize: 15,
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
           fontFamily: 'SF Pro Display',
@@ -562,7 +562,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         Text(
           label,
           style: const TextStyle(
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontSize: 14,
             fontWeight: FontWeight.bold,
             fontFamily: 'SF Pro Display',
@@ -573,7 +573,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           height: isTextArea ? 90 : 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(4),
           ),
           alignment: isTextArea ? Alignment.topLeft : Alignment.center,
@@ -582,7 +582,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             maxLines: isTextArea ? 4 : 1,
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black,
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
             decoration: InputDecoration(
@@ -622,7 +622,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               height: 20,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.black, width: 2),
+                border: Border.all(color: Color(0xFF000000), width: 2),
               ),
               child: isSelected
                   ? Center(
@@ -631,7 +631,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                         height: 10,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.black,
+                          color: Color(0xFF000000),
                         ),
                       ),
                     )
@@ -641,7 +641,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             Text(
               label,
               style: const TextStyle(
-                color: Colors.black,
+                color: Color(0xFF000000),
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',

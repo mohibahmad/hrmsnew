@@ -96,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen>
                       'Human Resource Management System',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         fontSize: 38,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'SF Pro Display',

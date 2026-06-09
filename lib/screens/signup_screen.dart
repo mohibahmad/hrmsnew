@@ -166,7 +166,7 @@ class _SignupScreenState extends State<SignupScreen> {
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: const Color(0xFF000000),
+          color: Color(0xFF000000),
           fontFamily: 'SF Pro Display',
           height: 1.0,
         ),
@@ -287,7 +287,7 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: _isLoading ? null : _handleSignUp,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
-            foregroundColor: Colors.white,
+            foregroundColor: Color(0xFFFFFFFF),
             disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
@@ -300,7 +300,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
                   ),
                 )
               : const Text(
@@ -308,7 +308,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     fontFamily: 'SF Pro Display',
                     height: 1.0,
                   ),
@@ -339,7 +339,7 @@ class _SignupScreenState extends State<SignupScreen> {
           text: TextSpan(
             text: 'Already have an account? ',
             style: const TextStyle(
-              color: Colors.black,
+              color: Color(0xFF000000),
               fontSize: 13,
               fontFamily: 'SF Pro Display',
             ),
@@ -422,7 +422,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final cardDecoration = BoxDecoration(
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(40),
       boxShadow: const [
         BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10)),
@@ -442,7 +442,7 @@ class _SignupScreenState extends State<SignupScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Color(0xFFFFFFFF),
                 shape: BoxShape.circle,
                 boxShadow: const [
                   BoxShadow(

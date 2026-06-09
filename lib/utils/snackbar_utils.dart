@@ -127,7 +127,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     ),
                   ],
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: Color(0xFFFFFFFF).withValues(alpha: 0.25),
                     width: 1.5,
                   ),
                 ),
@@ -138,14 +138,14 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Color(0xFFFFFFFF).withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         widget.isError
                             ? Icons.error_outline
                             : Icons.check_circle_outline,
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         size: 22,
                       ),
                     ),
@@ -160,7 +160,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                                 (widget.isError ? 'Error' : 'Success'),
                             softWrap: true,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'SF Pro Display',
@@ -171,7 +171,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                             widget.message,
                             softWrap: true,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                               fontFamily: 'SF Pro Display',

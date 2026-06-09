@@ -8,7 +8,7 @@ const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
 const Color cardLightGray = Color(0xFFF3F5F8);
 const Color textDark = Color(0xFF0F172A);
-const Color textMuted = Colors.black;
+const Color textMuted = Color(0xFF000000);
 
 const Color greenPresent = Color(0xFF00FF2A);
 const Color redAbsent = Color(0xFFFF0004);
@@ -176,7 +176,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(24),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
                                         color: const Color(0xFFEEEEEE),
@@ -191,7 +191,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               child: Text(
                                                 "No Workers Found",
                                                 style: TextStyle(
-                                                  color: Colors.black,
+                                                  color: Color(0xFF000000),
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.w500,
                                                   fontFamily: 'SF Pro Display',
@@ -235,7 +235,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(24),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
                                         color: const Color(0xFFEEEEEE),
@@ -276,7 +276,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       height: 94,
       padding: const EdgeInsets.only(left: 32, right: 32, top: 24, bottom: 24),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
@@ -287,7 +287,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               padding: EdgeInsets.only(top: 2.0),
               child: Icon(
                 Icons.arrow_back_ios_new,
-                color: Colors.black,
+                color: Color(0xFF000000),
                 size: 24,
               ),
             ),
@@ -326,7 +326,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: Color(0xFFE2E8F0)),
             ),
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
             child: SvgPicture.asset(
@@ -395,7 +395,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -408,7 +408,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         decoration: InputDecoration(
           hintText: "Search by workers name / position",
           hintStyle: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontSize: 14,
             fontFamily: 'SF Pro Display',
           ),
@@ -419,7 +419,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               height: 20,
               width: 20,
               colorFilter: const ColorFilter.mode(
-                Colors.black,
+                Color(0xFF000000),
                 BlendMode.srcIn,
               ),
             ),
@@ -431,7 +431,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       _searchQuery = '';
                     });
                   },
-                  child: const Icon(Icons.close, size: 18, color: Colors.black),
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFF000000)),
                 )
               : null,
           border: InputBorder.none,
@@ -457,7 +457,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: isActive ? primaryBlue : Colors.white,
+                color: isActive ? primaryBlue : Color(0xFFFFFFFF),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isActive ? primaryBlue : const Color(0xFFEEEEEE),
@@ -466,7 +466,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               child: Text(
                 filter,
                 style: TextStyle(
-                  color: isActive ? Colors.white : textDark,
+                  color: isActive ? Color(0xFFFFFFFF) : textDark,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                   fontFamily: 'SF Pro Display',
@@ -497,9 +497,9 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
           child: Container(
             width: 440,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
+                BoxShadow(color: Color(0xFF000000).withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
               ],
             ),
             child: Column(
@@ -518,7 +518,7 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                     children: [
                       Text(
                         'Mark Attendance',
-                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                        style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
                       ),
                     ],
                   ),
@@ -536,7 +536,7 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                         height: 140,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                           image: const DecorationImage(
                             image: AssetImage('assets/profile_placeholder.png'),
                             fit: BoxFit.cover,
@@ -554,7 +554,7 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                               Text(
                                 name,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   fontSize: 32,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'SF Pro Display',
@@ -564,12 +564,12 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                               const SizedBox(height: 20),
                               Row(
                                 children: [
-                                  const Icon(Icons.email, color: Colors.white, size: 16),
+                                  const Icon(Icons.email, color: Color(0xFFFFFFFF), size: 16),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       email,
-                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display'),
+                                      style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontFamily: 'SF Pro Display'),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -578,9 +578,9 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                               const SizedBox(height: 10),
                               const Row(
                                 children: [
-                                  Icon(Icons.phone, color: Colors.white, size: 16),
+                                  Icon(Icons.phone, color: Color(0xFFFFFFFF), size: 16),
                                   SizedBox(width: 10),
-                                  Text('123 5434567', style: TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                  Text('123 5434567', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontFamily: 'SF Pro Display')),
                                 ],
                               ),
                             ],
@@ -647,7 +647,7 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                               minimumSize: const Size(0, 40),
                               elevation: 0,
                             ),
-                            child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                            child: const Text('Save', style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
                           ),
                         ],
                       )
@@ -667,7 +667,7 @@ Widget _buildToggleChip(String label, String svgAsset, Color iconColor, {bool is
   return Container(
     padding: const EdgeInsets.symmetric(vertical: 10),
     decoration: BoxDecoration(
-      color: isSelected ? const Color(0xFF0F52BA) : Colors.white,
+      color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(4),
       border: Border.all(color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200),
     ),
@@ -683,7 +683,7 @@ Widget _buildToggleChip(String label, String svgAsset, Color iconColor, {bool is
         Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
             fontSize: 12,
             fontWeight: FontWeight.w600,
             fontFamily: 'SF Pro Display',
@@ -779,7 +779,7 @@ class WorkerListItem extends StatelessWidget {
               'assets/edit_icon.svg',
               height: 20,
               width: 20,
-              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Color(0xFF000000), BlendMode.srcIn),
             ),
           ),
         ],
@@ -868,7 +868,7 @@ class StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color bgColor;
-    Color textColor = Colors.white;
+    Color textColor = Color(0xFFFFFFFF);
     double hPadding = 16;
 
     if (status == "*****") {
@@ -925,7 +925,7 @@ class PaginationWidget extends StatelessWidget {
           child: const Text(
             "1",
             style: TextStyle(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               fontWeight: FontWeight.bold,
               fontSize: 14,
               fontFamily: 'SF Pro Display',

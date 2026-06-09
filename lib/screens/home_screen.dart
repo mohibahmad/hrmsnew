@@ -197,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -289,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Text(
                       'Upcoming Holidays',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: Color(0xFF000000),
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         fontFamily: 'SF Pro Display',
@@ -308,14 +309,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             'Yearly',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
                           SizedBox(width: 8),
-                          Icon(Icons.arrow_drop_down, color: Colors.white),
+                          Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
                         ],
                       ),
                     ),
@@ -330,11 +331,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
+                        color: Color(0xFF000000).withValues(alpha: 0.02),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -346,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Text(
                         'Overview',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: Color(0xFF000000),
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           fontFamily: 'SF Pro Display',
@@ -438,7 +439,7 @@ class ProfileInlineHeader extends StatelessWidget {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 30),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
         boxShadow: [
           BoxShadow(
@@ -480,7 +481,7 @@ class ProfileInlineHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: Color(0xFFE2E8F0)),
             ),
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
             itemBuilder: (context) => [
@@ -668,7 +669,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF155ED5),
-                foregroundColor: Colors.white,
+                foregroundColor: Color(0xFFFFFFFF),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 40,
                   vertical: 18,
@@ -770,7 +771,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               child: SvgPicture.asset(
                 'assets/edit_pencil_profile.svg',
                 colorFilter: const ColorFilter.mode(
-                  Colors.white,
+                  Color(0xFFFFFFFF),
                   BlendMode.srcIn,
                 ),
               ),
@@ -814,7 +815,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
@@ -830,7 +831,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   ),
                   style: const TextStyle(
                     fontSize: 15,
-                    color: Colors.black,
+                    color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -885,7 +886,7 @@ class ProfilePreviewDialog extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Color(0xFF000000).withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -903,7 +904,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                     const Text(
                       'Profile Preview',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         fontSize: 20,
 
                         fontFamily: 'SF Pro Display',
@@ -916,7 +917,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         child: IconButton(
                           icon: const Icon(
                             Icons.close,
-                            color: Colors.white,
+                            color: Color(0xFFFFFFFF),
                             size: 28,
                           ),
                           onPressed: () => Navigator.of(context).pop(),
@@ -935,7 +936,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                             height: 20,
                             width: 20,
                             colorFilter: const ColorFilter.mode(
-                              Colors.white,
+                              Color(0xFFFFFFFF),
                               BlendMode.srcIn,
                             ),
                           ),
@@ -959,10 +960,10 @@ class ProfilePreviewDialog extends StatelessWidget {
                       width: 140,
                       height: 140,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
+                        color: Color(0xFFFFFFFF),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFFFFFFFF),
+                          color: Color(0xFFFFFFFF),
                           width: 2,
                         ),
                       ),
@@ -1106,7 +1107,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       height: 1.0,
                       letterSpacing: 0,
-                      color: Colors.black,
+                      color: Color(0xFF000000),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1121,7 +1122,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     height: 1.0,
                     letterSpacing: 0,
-                    color: Colors.black,
+                    color: Color(0xFF000000),
                   ),
                 ),
               ],
@@ -1206,14 +1207,14 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white, width: 1.0),
+                border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
                 image: const DecorationImage(
                   image: AssetImage('assets/premium_bg.png'),
                   fit: BoxFit.cover,
                 ),
                 boxShadow: const [
                   BoxShadow(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     blurRadius: 3.0,
                     spreadRadius: 0.0,
                   ),
@@ -1234,7 +1235,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                       const Text(
                         'Upgrade Pro',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFFFFFFFF),
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'SF Pro Display',
@@ -1258,9 +1259,9 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         height: 40,
                         padding: const EdgeInsets.only(left: 14, right: 46),
                         decoration: BoxDecoration(
-                          color: Colors.black,
+                          color: Color(0xFF000000),
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white, width: 1.0),
+                          border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1271,7 +1272,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'SF Pro',
@@ -1285,7 +1286,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'SF Pro',
@@ -1303,7 +1304,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           width: 40,
                           height: 40,
                           decoration: const BoxDecoration(
-                            color: Colors.white,
+                            color: Color(0xFFFFFFFF),
                             shape: BoxShape.circle,
                           ),
                           alignment: Alignment.center,
@@ -1357,7 +1358,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF).withValues(alpha: 0.36),
+              color: Color(0xFFFFFFFF).withValues(alpha: 0.36),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -1433,7 +1434,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/workforce_icon_sldiebar.svg',
               height: 22,
               width: 22,
-              color: const Color(0xFFFFFFFF),
+              color: Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -1471,7 +1472,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
+              ? Color(0xFFFFFFFF).withValues(alpha: 0.36)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
@@ -1482,15 +1483,15 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               iconAsset,
               height: 20,
               width: 20,
-              color: const Color(0xFFFFFFFF),
+              color: Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
             Text(
               title,
               style: TextStyle(
-                color: const Color(0xFFFFFFFF),
+                color: Color(0xFFFFFFFF),
                 fontSize: 15,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
                 fontFamily: 'SF Pro',
               ),
             ),
@@ -1509,7 +1510,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             'assets/tick_icon.svg',
             width: 14,
             height: 10,
-            color: const Color(0xFFFFFFFF),
+            color: Color(0xFFFFFFFF),
           ),
           const SizedBox(width: 8),
           Text(
@@ -1544,7 +1545,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
+                  ? Color(0xFFFFFFFF).withValues(alpha: 0.36)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1555,15 +1556,15 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   iconAsset,
                   height: 22,
                   width: 22,
-                  color: const Color(0xFFFFFFFF),
+                  color: Color(0xFFFFFFFF),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   title,
                   style: TextStyle(
-                    color: const Color(0xFFFFFFFF),
+                    color: Color(0xFFFFFFFF),
                     fontSize: 18,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
                     fontFamily: 'SF Pro',
                   ),
                 ),
@@ -1615,7 +1616,7 @@ class TopHeader extends StatelessWidget {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 30),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
         boxShadow: [
           BoxShadow(
@@ -1639,16 +1640,16 @@ class TopHeader extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 1),
               const Text(
                 "Here's what's happening in your organization today.",
                 style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF64748B),
+                  color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -1691,7 +1692,7 @@ class TotalWorkersCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1940,7 +1941,7 @@ class SparklineCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2054,7 +2055,7 @@ class AttendanceLineChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -2236,7 +2237,7 @@ class LeaveTypesPieChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -2386,7 +2387,7 @@ class _ChartLabel extends StatelessWidget {
       style: const TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 16,
-        color: Colors.black,
+        color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
     );
@@ -2397,7 +2398,7 @@ class CalloutLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.black
+      ..color = Color(0xFF000000)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -2451,7 +2452,7 @@ class PeriodFilterDropdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         side: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       elevation: 8,
       tooltip: '',
       itemBuilder: (context) => _options.map((option) {
@@ -2479,7 +2480,7 @@ class PeriodFilterDropdown extends StatelessWidget {
                 ),
                 child: isSelected
                     ? const Center(
-                        child: Icon(Icons.check, size: 12, color: Colors.white),
+                        child: Icon(Icons.check, size: 12, color: Color(0xFFFFFFFF)),
                       )
                     : null,
               ),
@@ -2508,9 +2509,9 @@ class PeriodFilterDropdown extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(selectedPeriod, style: const TextStyle(color: Colors.white)),
+            Text(selectedPeriod, style: const TextStyle(color: Color(0xFFFFFFFF))),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_drop_down, color: Colors.white),
+            const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
           ],
         ),
       ),
@@ -2546,14 +2547,14 @@ class HolidayCard extends StatelessWidget {
     // Active (Red) State Colors
     final Color activeLeftBg = const Color(0xFFFA6668); // Soft coral red
     final Color activeRightBg = const Color(0xFFFF0000); // Pure bright red
-    final Color activeTextColor = Colors.white;
-    final Color activeSubTextColor = Colors.white.withValues(alpha: 0.9);
+    final Color activeTextColor = Color(0xFFFFFFFF);
+    final Color activeSubTextColor = Color(0xFFFFFFFF).withValues(alpha: 0.9);
     final Color activeBadgeBg = const Color(0xFFFA6668); // Matches left bg
 
     // Inactive (Grey) State Colors
     final Color inactiveLeftBg = const Color(0xFFE2E4E4); // Darker grey left
     final Color inactiveRightBg = const Color(0xFFF1F1F1); // Lighter grey right
-    final Color inactiveTextColor = Colors.black;
+    final Color inactiveTextColor = Color(0xFF000000);
     final Color inactiveSubTextColor = Colors.black87;
     final Color inactiveBadgeBg = const Color(0xFF4C84E0); // Blue badge
 
@@ -2656,7 +2657,7 @@ class HolidayCard extends StatelessWidget {
                     child: Text(
                       dayOfWeek,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         fontSize: 9,
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',

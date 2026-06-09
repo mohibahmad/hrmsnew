@@ -57,7 +57,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           builder: (context, setModalState) {
             return Dialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              backgroundColor: Colors.white,
+              backgroundColor: Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
                 width: 380,
@@ -120,7 +120,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           child: const Text(
                             'Save',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
@@ -231,7 +231,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       child: Text(
         day,
         style: const TextStyle(
-          color: Colors.white,
+          color: Color(0xFFFFFFFF),
           fontSize: 10,
           fontWeight: FontWeight.w700,
           fontFamily: 'SF Pro Display',
@@ -288,7 +288,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           child: Text(
             day,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black87,
+              color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               fontFamily: 'SF Pro Display',
@@ -333,7 +333,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(
           bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
         ),
@@ -413,12 +413,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             'assets/holidays_icon.svg',
             width: 18,
             height: 18,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
           ),
           label: const Text(
             'Add Holiday',
             style: TextStyle(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               fontSize: 14,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
@@ -469,7 +469,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),

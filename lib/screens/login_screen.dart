@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: const BoxConstraints(maxWidth: 400),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: const [
                       BoxShadow(
@@ -350,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     onPressed: isSending ? null : sendReset,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF0044C9),
-                                      foregroundColor: Colors.white,
+                                      foregroundColor: Color(0xFFFFFFFF),
                                       disabledBackgroundColor: const Color(
                                         0xFF0044C9,
                                       ).withOpacity(0.6),
@@ -367,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               strokeWidth: 2.5,
                                               valueColor:
                                                   AlwaysStoppedAnimation<Color>(
-                                                    Colors.white,
+                                                    Color(0xFFFFFFFF),
                                                   ),
                                             ),
                                           )
@@ -378,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               Text(
                                                 'Send Reset Link',
                                                 style: TextStyle(
-                                                  color: Colors.white,
+                                                  color: Color(0xFFFFFFFF),
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w600,
                                                   fontFamily: 'SF Pro Display',
@@ -388,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               Icon(
                                                 Icons.arrow_forward_rounded,
                                                 size: 16,
-                                                color: Colors.white,
+                                                color: Color(0xFFFFFFFF),
                                               ),
                                             ],
                                           ),
@@ -438,7 +438,7 @@ class _LoginScreenState extends State<LoginScreen> {
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: const Color(0xFF000000),
+          color: Color(0xFF000000),
           fontFamily: 'SF Pro Display',
           height: 1.0,
         ),
@@ -533,7 +533,7 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: _isLoading ? null : _handleLogin,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
-            foregroundColor: Colors.white,
+            foregroundColor: Color(0xFFFFFFFF),
             disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
@@ -546,7 +546,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
                   ),
                 )
               : const Text(
@@ -554,7 +554,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     fontFamily: 'SF Pro Display',
                     height: 1.0,
                   ),
@@ -585,7 +585,7 @@ class _LoginScreenState extends State<LoginScreen> {
           text: TextSpan(
             text: "Don't have an account? ",
             style: const TextStyle(
-              color: Colors.black,
+              color: Color(0xFF000000),
               fontSize: 13,
               fontFamily: 'SF Pro Display',
             ),
@@ -668,7 +668,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final cardDecoration = BoxDecoration(
-      color: Colors.white,
+      color: Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(40),
       boxShadow: const [
         BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10)),
@@ -688,7 +688,7 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Color(0xFFFFFFFF),
                 shape: BoxShape.circle,
                 boxShadow: const [
                   BoxShadow(

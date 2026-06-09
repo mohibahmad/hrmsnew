@@ -172,7 +172,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
@@ -234,7 +234,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFFEEEEEE)),
             ),
@@ -310,7 +310,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: const Text(
               "Workers Attendance",
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFFFFFFFF),
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
@@ -373,11 +373,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Color(0xFF000000).withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -425,7 +425,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFEEEEEE)),
           ),
@@ -464,7 +464,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 Text(
                   _selectedTimeframe == 'Week' ? 'Today' : _selectedTimeframe,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w500,
                     fontSize: 15,
                     fontFamily: 'SF Pro Display',
@@ -474,7 +474,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   _isTimeframeDropdownOpen
                       ? Icons.arrow_drop_up
                       : Icons.arrow_drop_down,
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                 ),
               ],
             ),
@@ -501,7 +501,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         child: Text(
           text,
           style: TextStyle(
-            color: isActive ? Colors.white : textDark,
+            color: isActive ? Color(0xFFFFFFFF) : textDark,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
             fontFamily: 'SF Pro Display',
@@ -515,7 +515,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Container(
       width: 140,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(6),
@@ -523,7 +523,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Color(0xFF000000).withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -698,7 +698,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildAttendanceTable(List<QueryDocumentSnapshot> records) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -855,7 +855,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   child: const Text(
                     '1',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -904,10 +904,10 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       child: Container(
         width: 500,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFFFFFFFF),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Color(0xFF000000).withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -935,7 +935,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                icon: const Icon(Icons.close, color: Color(0xFFFFFFFF), size: 20),
                 onPressed: () => Navigator.of(context).pop(),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -943,7 +943,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
               const Text(
                 'Worker Attendance Preview',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
@@ -955,7 +955,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   height: 18,
                   width: 18,
                   colorFilter: const ColorFilter.mode(
-                    Colors.white,
+                    Color(0xFFFFFFFF),
                     BlendMode.srcIn,
                   ),
                 ),
@@ -977,7 +977,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                   image: const DecorationImage(
                     image: AssetImage('assets/profile_placeholder.png'),
                     fit: BoxFit.cover,
@@ -993,7 +993,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     Text(
                       record.name,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1002,7 +1002,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -1018,12 +1018,12 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     
                     Row(
                       children: [
-                        const Icon(Icons.email_outlined, color: Colors.white, size: 14),
+                        const Icon(Icons.email_outlined, color: Color(0xFFFFFFFF), size: 14),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             record.email,
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                            style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13, fontWeight: FontWeight.w500),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -1033,11 +1033,11 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     
                     Row(
                       children: [
-                        const Icon(Icons.phone, color: Colors.white, size: 14),
+                        const Icon(Icons.phone, color: Color(0xFFFFFFFF), size: 14),
                         const SizedBox(width: 6),
                         Text(
                           '123 5434567',
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -1106,7 +1106,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: Color(0xFF000000).withValues(alpha: 0.05)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1151,7 +1151,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             bottom: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: Color(0xFFFFFFFF), shape: BoxShape.circle),
               padding: const EdgeInsets.all(1),
               child: Icon(Icons.check_circle, color: color, size: 14),
             ),
@@ -1172,7 +1172,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             bottom: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: Color(0xFFFFFFFF), shape: BoxShape.circle),
               padding: const EdgeInsets.all(1),
               child: Icon(Icons.cancel, color: color, size: 14),
             ),
@@ -1193,7 +1193,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             bottom: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: Color(0xFFFFFFFF), shape: BoxShape.circle),
               padding: const EdgeInsets.all(1),
               child: Icon(Icons.work, color: color, size: 10),
             ),
@@ -1216,7 +1216,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             child: _buildDetailCard(
               title: 'Attendance',
               rows: [
-                _buildDetailRow('Total Working Days', '132 Days', Colors.black),
+                _buildDetailRow('Total Working Days', '132 Days', Color(0xFF000000)),
                 _buildDetailRow('Total Presents', '112 Days', darkGreen),
                 _buildDetailRow('Total Absents', '8 Days', darkRed),
                 _buildDetailRow('Total Leaves', '12 Days', darkOrange),
@@ -1230,9 +1230,9 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             child: _buildDetailCard(
               title: 'Worker Information',
               rows: [
-                _buildDetailRow('Position', record.role, Colors.black),
-                _buildDetailRow('Work Type', record.workType, Colors.black),
-                _buildDetailRow('Attendance Type', record.attendanceType, Colors.black),
+                _buildDetailRow('Position', record.role, Color(0xFF000000)),
+                _buildDetailRow('Work Type', record.workType, Color(0xFF000000)),
+                _buildDetailRow('Attendance Type', record.attendanceType, Color(0xFF000000)),
               ],
             ),
           ),
@@ -1246,7 +1246,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.grey.shade300),
       ),

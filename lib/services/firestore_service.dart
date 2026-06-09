@@ -31,6 +31,10 @@ class FirestoreService {
     await _userDoc.update(data);
   }
 
+  Future<void> deleteUserData() async {
+    await _userDoc.delete();
+  }
+
   Future<Map<String, dynamic>?> getUserProfile() async {
     final doc = await _userDoc.get();
     return doc.data() as Map<String, dynamic>?;

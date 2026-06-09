@@ -80,7 +80,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
@@ -121,7 +121,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
@@ -187,7 +187,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -208,7 +208,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: Text(
                 filter,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black87,
+                  color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontFamily: 'SF Pro Display',
                 ),
@@ -224,7 +224,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -439,11 +439,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
             height: 480,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
+                  color: Color(0xFF000000).withValues(alpha: 0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -471,7 +471,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         child: Text(
                           'PayRoll Data Preview',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFFFFFFFF),
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'SF Pro Display',
@@ -483,7 +483,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         onTap: () => Navigator.of(context).pop(),
                         child: const Icon(
                           Icons.close,
-                          color: Colors.white,
+                          color: Color(0xFFFFFFFF),
                           size: 24,
                         ),
                       ),
@@ -502,7 +502,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         height: 140,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                           image: const DecorationImage(
                             image: AssetImage('assets/profileimage.png'),
                             fit: BoxFit.cover,
@@ -518,7 +518,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             Text(
                               name,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'SF Pro Display',
@@ -531,7 +531,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -560,7 +560,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               children: [
                                 const Icon(
                                   Icons.mail_outline,
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
@@ -568,7 +568,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   child: Text(
                                     email,
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
@@ -583,7 +583,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               children: [
                                 const Icon(
                                   Icons.phone,
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
@@ -591,7 +591,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   child: Text(
                                     contact,
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
@@ -611,7 +611,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 Expanded(
                   child: Container(
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       border: Border(
                         left: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
                         right: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
@@ -712,7 +712,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
       ),
@@ -750,7 +750,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   value,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.black,
+                    color: Color(0xFF000000),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
                   ),
@@ -848,7 +848,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             color: const Color(0xFF0D4CC6),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Text('1', style: TextStyle(color: Colors.white)),
+          child: const Text('1', style: TextStyle(color: Color(0xFFFFFFFF))),
         ),
         const SizedBox(width: 8),
         const Icon(Icons.chevron_right, color: Colors.black54),

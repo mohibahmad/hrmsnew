@@ -58,7 +58,7 @@ class ProfileTopHeader extends StatelessWidget {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 30),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
         boxShadow: [
           BoxShadow(
@@ -101,7 +101,7 @@ class ProfileTopHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: Color(0xFFE2E8F0)),
             ),
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
             itemBuilder: (context) => [

@@ -37,7 +37,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF0247C4),
-              onPrimary: Colors.white,
+              onPrimary: Color(0xFFFFFFFF),
               onSurface: Colors.black87,
             ),
           ),
@@ -119,7 +119,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       height: 94,
       padding: const EdgeInsets.only(left: 32, right: 32, top: 24, bottom: 24),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(
           bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
         ),
@@ -130,7 +130,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             onTap: widget.onBack,
             child: const Padding(
               padding: EdgeInsets.only(top: 2.0),
-              child: Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 24),
+              child: Icon(Icons.arrow_back_ios_new, color: Color(0xFF000000), size: 24),
             ),
           ),
           const SizedBox(width: 16),
@@ -167,7 +167,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: Color(0xFFE2E8F0)),
             ),
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
             child: SvgPicture.asset(
@@ -227,7 +227,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -297,7 +297,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               child: const Text(
                 'Assign',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'SF Pro Display',
@@ -468,7 +468,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: Text(
         day,
         style: const TextStyle(
-          color: Colors.white,
+          color: Color(0xFFFFFFFF),
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
@@ -518,7 +518,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         child: Text(
           day,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             fontFamily: 'SF Pro Display',

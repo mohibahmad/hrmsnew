@@ -72,14 +72,14 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white, width: 1.0),
+                      border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
                       image: const DecorationImage(
                         image: AssetImage('assets/premium_bg.png'),
                         fit: BoxFit.cover,
                       ),
                       boxShadow: const [
                         BoxShadow(
-                          color: Colors.white,
+                          color: Color(0xFFFFFFFF),
                           blurRadius: 8.0,
                           spreadRadius: 0.0,
                         ),
@@ -100,7 +100,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                             const Text(
                               'Upgrade Pro',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'SF Pro Display',
@@ -125,10 +125,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                 right: 52,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.black,
+                                color: Color(0xFF000000),
                                 borderRadius: BorderRadius.circular(23),
                                 border: Border.all(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   width: 1.0,
                                 ),
                               ),
@@ -141,7 +141,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'SF Pro',
@@ -153,7 +153,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'SF Pro',
@@ -171,7 +171,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                 width: 52,
                                 height: 52,
                                 decoration: const BoxDecoration(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   shape: BoxShape.circle,
                                 ),
                                 alignment: Alignment.center,
@@ -244,13 +244,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             'assets/tick_icon.svg',
             width: 14,
             height: 10,
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
           ),
           const SizedBox(width: 8),
           Text(
             text,
             style: const TextStyle(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               fontSize: 15,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
@@ -284,13 +284,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  Icon(icon, color: Colors.white, size: 22),
+                  Icon(icon, color: Color(0xFFFFFFFF), size: 22),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       title,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         fontSize: 18,
                         fontWeight: isActive
                             ? FontWeight.w700
@@ -302,7 +302,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   if (hasDropdown)
                     const Icon(
                       Icons.keyboard_arrow_down,
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       size: 20,
                     ),
                 ],
@@ -319,7 +319,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   height: 26,
                   width: 6,
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.only(
                       topRight: Radius.circular(4),
                       bottomRight: Radius.circular(4),
@@ -437,7 +437,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           height: 94,
           padding: const EdgeInsets.symmetric(horizontal: 40),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             border: Border(
               bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
             ),
@@ -493,7 +493,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               ] else ...[
                 const Icon(
                   Icons.notifications_active,
-                  color: Colors.black,
+                  color: Color(0xFF000000),
                   size: 28,
                 ),
                 const SizedBox(width: 24),
@@ -524,7 +524,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         height: 50,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Color(0xFFFFFFFF),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFFEEEEEE)),
                         ),
@@ -602,7 +602,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   height: 50,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFFEEEEEE)),
                   ),
@@ -749,7 +749,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       child: const Text(
                         '1',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFFFFFFFF),
                           fontWeight: FontWeight.bold,
                           fontFamily: 'SF Pro Display',
                         ),
@@ -779,7 +779,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -861,7 +861,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               elevation: 8,
               offset: const Offset(0, 40),
               onSelected: (value) {
@@ -889,12 +889,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.remove_red_eye, size: 16, color: Colors.black),
+                      Icon(Icons.remove_red_eye, size: 16, color: Color(0xFF000000)),
                       SizedBox(width: 8),
                       Text(
                         'Preview',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: Color(0xFF000000),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           fontFamily: 'SF Pro Display',
@@ -974,7 +974,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   width: 20,
                   height: 20,
                   colorFilter: const ColorFilter.mode(
-                    Colors.white,
+                    Color(0xFFFFFFFF),
                     BlendMode.srcIn,
                   ),
                 ),
@@ -982,7 +982,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 Text(
                   label,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
                     fontFamily: 'SF Pro Display',
@@ -1009,7 +1009,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       child: Text(
         label,
         style: TextStyle(
-          color: isActive ? Colors.white : Colors.black87,
+          color: isActive ? Color(0xFFFFFFFF) : Colors.black87,
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
           fontSize: 14,
           fontFamily: 'SF Pro Display',
@@ -1059,7 +1059,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             height: 94,
             padding: const EdgeInsets.symmetric(horizontal: 40),
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               border: Border(
                 bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
               ),
@@ -1077,7 +1077,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         padding: EdgeInsets.only(top: 2.0),
                         child: Icon(
                           Icons.arrow_back_ios_new,
-                          color: Colors.black,
+                          color: Color(0xFF000000),
                           size: 24,
                         ),
                       ),
@@ -1090,7 +1090,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         Text(
                           'Add New Worker',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: Color(0xFF000000),
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
@@ -1125,7 +1125,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     child: const Text(
                       'Save',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFFFFFFF),
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         fontFamily: 'SF Pro Display',
@@ -1148,11 +1148,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   Container(
                     height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
+                          color: Color(0xFF000000).withValues(alpha: 0.02),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -1214,7 +1214,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         child: Text(
           title,
           style: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontSize: 15,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
             fontFamily: 'SF Pro Display',
@@ -1247,7 +1247,7 @@ class WorkerDetailFormSection extends StatelessWidget {
             const Text(
               'Personal Information',
               style: TextStyle(
-                color: Colors.black,
+                color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 fontFamily: 'SF Pro Display',
@@ -1259,7 +1259,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
                 ),
@@ -1268,14 +1268,14 @@ class WorkerDetailFormSection extends StatelessWidget {
                     Text(
                       'Next Step',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: Color(0xFF000000),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
                     SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 18, color: Colors.black),
+                    Icon(Icons.arrow_forward, size: 18, color: Color(0xFF000000)),
                   ],
                 ),
               ),
@@ -1391,7 +1391,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   const Text(
                     'Worker Profile',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: Color(0xFF000000),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Display',
@@ -1402,11 +1402,11 @@ class WorkerDetailFormSection extends StatelessWidget {
                     height: 280,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.01),
+                          color: Color(0xFF000000).withValues(alpha: 0.01),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -1424,7 +1424,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         const Text(
                           'Upload Profile',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: Color(0xFF000000),
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                             fontFamily: 'SF Pro Display',
@@ -1450,7 +1450,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   const Text(
                     'Relationship Status:',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: Color(0xFF000000),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Display',
@@ -1496,7 +1496,7 @@ class ExperienceFormSection extends StatelessWidget {
             const Text(
               'Job Experience Information',
               style: TextStyle(
-                color: Colors.black,
+                color: Color(0xFF000000),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 fontFamily: 'SF Pro Display',
@@ -1508,7 +1508,7 @@ class ExperienceFormSection extends StatelessWidget {
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
                 ),
@@ -1517,14 +1517,14 @@ class ExperienceFormSection extends StatelessWidget {
                     Text(
                       'Next Step',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: Color(0xFF000000),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
                     SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 18, color: Colors.black),
+                    Icon(Icons.arrow_forward, size: 18, color: Color(0xFF000000)),
                   ],
                 ),
               ),
@@ -1617,7 +1617,7 @@ class ExperienceFormSection extends StatelessWidget {
                   const Text(
                     'Joining Date set',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: Color(0xFF000000),
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'SF Pro Display',
@@ -1627,11 +1627,11 @@ class ExperienceFormSection extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color: Color(0xFF000000).withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -1682,7 +1682,7 @@ class ExperienceFormSection extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? const Color(0xFF0B50C3)
-                                    : Colors.white,
+                                    : Color(0xFFFFFFFF),
                                 border: isSelected
                                     ? null
                                     : Border.all(color: Colors.grey.shade300),
@@ -1693,7 +1693,7 @@ class ExperienceFormSection extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: isSelected
-                                      ? Colors.white
+                                      ? Color(0xFFFFFFFF)
                                       : Colors.black87,
                                   fontWeight: isSelected
                                       ? FontWeight.bold
@@ -1739,7 +1739,7 @@ class ExperienceFormSection extends StatelessWidget {
                               child: const Text(
                                 'Set',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   fontFamily: 'SF Pro Display',
@@ -1762,7 +1762,7 @@ class ExperienceFormSection extends StatelessWidget {
         const Text(
           'Salary Section',
           style: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontSize: 20,
             fontWeight: FontWeight.w800,
             fontFamily: 'SF Pro Display',
@@ -1818,7 +1818,7 @@ class ExperienceFormSection extends StatelessWidget {
         const Text(
           'Leave Section',
           style: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontSize: 20,
             fontWeight: FontWeight.w800,
             fontFamily: 'SF Pro Display',
@@ -1884,7 +1884,7 @@ class ExperienceFormSection extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: Colors.white,
+          color: Color(0xFFFFFFFF),
           fontSize: 8,
           fontWeight: FontWeight.bold,
           fontFamily: 'SF Pro Display',
@@ -1915,7 +1915,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
         const Text(
           'Personal Documentation',
           style: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontSize: 20,
             fontWeight: FontWeight.w800,
             fontFamily: 'SF Pro Display',
@@ -2010,7 +2010,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.black,
+            color: Color(0xFF000000),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -2019,7 +2019,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
               const Text(
                 'Upload',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   fontFamily: 'SF Pro Display',
@@ -2046,7 +2046,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black,
+              color: Color(0xFF000000),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -2054,7 +2054,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
                 const Text(
                   'Edit',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     fontFamily: 'SF Pro Display',
@@ -2069,7 +2069,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black,
+              color: Color(0xFF000000),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -2077,7 +2077,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
                 const Text(
                   'Delete',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     fontFamily: 'SF Pro Display',
@@ -2131,7 +2131,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
               ],
             ),
           ),
-          Container(color: Colors.white.withValues(alpha: 0.5)),
+          Container(color: Color(0xFFFFFFFF).withValues(alpha: 0.5)),
           overlay,
         ],
       ),
@@ -2143,7 +2143,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
       height: 200,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -2183,7 +2183,7 @@ Widget _buildInputField(
       Text(
         label,
         style: const TextStyle(
-          color: Colors.black,
+          color: Color(0xFF000000),
           fontSize: 14,
           fontWeight: FontWeight.bold,
           fontFamily: 'SF Pro Display',
@@ -2194,7 +2194,7 @@ Widget _buildInputField(
         height: isTextArea ? 90 : 48,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(4),
         ),
         alignment: isTextArea ? Alignment.topLeft : Alignment.center,
@@ -2202,7 +2202,7 @@ Widget _buildInputField(
           maxLines: isTextArea ? 4 : 1,
           style: const TextStyle(
             fontSize: 14,
-            color: Colors.black,
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
           decoration: InputDecoration(
@@ -2240,7 +2240,7 @@ Widget _buildCustomRadio({required String label, required bool isSelected}) {
         height: 20,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.black, width: 2),
+          border: Border.all(color: Color(0xFF000000), width: 2),
         ),
         child: isSelected
             ? Center(
@@ -2249,7 +2249,7 @@ Widget _buildCustomRadio({required String label, required bool isSelected}) {
                   height: 10,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black,
+                    color: Color(0xFF000000),
                   ),
                 ),
               )
@@ -2259,7 +2259,7 @@ Widget _buildCustomRadio({required String label, required bool isSelected}) {
       Text(
         label,
         style: const TextStyle(
-          color: Colors.black,
+          color: Color(0xFF000000),
           fontSize: 16,
           fontWeight: FontWeight.w500,
           fontFamily: 'SF Pro Display',
@@ -2308,11 +2308,11 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
           height: 568,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(4),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Color(0xFF000000).withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -2343,7 +2343,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           const Text(
                             'Worker Profile Preview',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
@@ -2352,7 +2352,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           IconButton(
                             icon: const Icon(
                               Icons.close,
-                              color: Colors.white,
+                              color: Color(0xFFFFFFFF),
                               size: 28,
                             ),
                             onPressed: () => Navigator.of(context).pop(),
@@ -2374,7 +2374,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white,
+                                color: Color(0xFFFFFFFF),
                                 width: 2.5,
                               ),
                               image: const DecorationImage(
@@ -2396,7 +2396,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 Text(
                                   name,
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Color(0xFFFFFFFF),
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'SF Pro Display',
@@ -2411,7 +2411,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: Color(0xFFFFFFFF),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
@@ -2442,7 +2442,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   children: [
                                     const Icon(
                                       Icons.mail_outline,
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       size: 20,
                                     ),
                                     const SizedBox(width: 10),
@@ -2450,7 +2450,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                       child: Text(
                                         email,
                                         style: const TextStyle(
-                                          color: Colors.white,
+                                          color: Color(0xFFFFFFFF),
                                           fontSize: 15,
                                           fontWeight: FontWeight.w500,
                                           fontFamily: 'SF Pro Display',
@@ -2466,14 +2466,14 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   children: const [
                                     Icon(
                                       Icons.phone,
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       size: 20,
                                     ),
                                     SizedBox(width: 10),
                                     Text(
                                       '123 5434567',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFFFFFFFF),
                                         fontSize: 15,
                                         fontWeight: FontWeight.w500,
                                         fontFamily: 'SF Pro Display',
@@ -2603,7 +2603,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
       height: 70, // Reduced from 90 to match 568px dialog height
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cardBorderGrey, width: 1.2),
       ),
@@ -2644,7 +2644,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                   value,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.black,
+                    color: Color(0xFF000000),
                     fontWeight: FontWeight.bold, // Bold for the value
                     fontFamily: 'SF Pro Display',
                   ),

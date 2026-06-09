@@ -116,7 +116,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         border: Border(
           bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
         ),
@@ -177,7 +177,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -234,7 +234,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -270,7 +270,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF0F172A),
+            color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF0F172A),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
             fontFamily: 'SF Pro Display',
@@ -283,7 +283,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   Widget _buildDataTable(List<QueryDocumentSnapshot> workers) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -480,7 +480,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     color: const Color(0xFF0247C4),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('1', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text('1', style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
                 const Icon(Icons.chevron_right, color: Colors.black54),

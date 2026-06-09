@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/preferences_service.dart';
 
 class SubscriptionDialog extends StatefulWidget {
@@ -35,11 +36,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                   height: 620,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Color(0xFF000000).withValues(alpha: 0.2),
                         blurRadius: 25,
                         offset: const Offset(0, 15),
                       ),
@@ -76,7 +77,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const Text(
                                 'All-in-one HR Solution',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFFFFF),
                                   fontSize: 28,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'SF Pro Display',
@@ -101,7 +102,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                       Expanded(
                         flex: 11,
                         child: Container(
-                          color: Colors.white,
+                          color: Color(0xFFFFFFFF),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 48,
                             vertical: 24,
@@ -173,7 +174,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   child: const Text(
                                     'Continue',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontSize: 18,
                                       fontWeight: FontWeight.w600,
                                       fontFamily: 'SF Pro Display',
@@ -223,7 +224,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   _buildFooterDivider(),
                                   _buildFooterLink('Restore'),
                                   _buildFooterDivider(),
-                                  _buildFooterLink('Terms of Use'),
+                                  GestureDetector(
+                                    onTap: () => launchUrl(Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: _buildFooterLink('Terms of Use'),
+                                  ),
                                 ],
                               ),
                             ],
@@ -240,11 +245,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 right: -7,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
+                        color: Color(0xFF000000).withValues(alpha: 0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -272,12 +277,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          const Icon(Icons.play_arrow, color: Colors.white, size: 18),
+          const Icon(Icons.play_arrow, color: Color(0xFFFFFFFF), size: 18),
           const SizedBox(width: 14),
           Text(
             text,
             style: const TextStyle(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               fontSize: 15,
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
@@ -380,7 +385,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                   child: const Text(
                     'POPULAR',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFFFFFFFF),
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
