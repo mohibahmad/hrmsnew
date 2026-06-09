@@ -305,7 +305,7 @@ class _SignupScreenState extends State<SignupScreen> {
           height: 1.0,
         ),
       ),
-      const SizedBox(height: 24),
+      const SizedBox(height: 16),
 
       Form(
         key: _formKey,
@@ -336,7 +336,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const _InputLabel(label: 'E-mail'),
             const SizedBox(height: 8),
             TextFormField(
@@ -361,7 +361,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const _InputLabel(label: 'Password'),
             const SizedBox(height: 8),
             TextFormField(
@@ -393,7 +393,7 @@ class _SignupScreenState extends State<SignupScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 16),
       SizedBox(
         width: double.infinity,
         height: 48,
@@ -431,7 +431,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
       Row(
         children: [
           Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -449,7 +449,7 @@ class _SignupScreenState extends State<SignupScreen> {
           Expanded(child: Divider(color: Colors.grey.shade300)),
         ],
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
 
       // Continue with Google Button
       _buildSocialButton(
@@ -460,7 +460,7 @@ class _SignupScreenState extends State<SignupScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0F172A),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
 
       // Continue with Apple Button
       _buildSocialButton(
@@ -477,7 +477,7 @@ class _SignupScreenState extends State<SignupScreen> {
         textColor: Colors.white,
         border: const BorderSide(color: Color(0xFF0F172A)),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
 
       // Continue as Guest Button
       _buildSocialButton(
@@ -641,11 +641,11 @@ class _SignupScreenState extends State<SignupScreen> {
                       vertical: 12,
                     ),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
+                      constraints: const BoxConstraints(maxWidth: 480),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 40,
-                          vertical: 24,
+                          vertical: 16,
                         ),
                         decoration: cardDecoration,
                         child: SingleChildScrollView(

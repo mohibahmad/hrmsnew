@@ -599,7 +599,7 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 1.0,
         ),
       ),
-      const SizedBox(height: 24),
+      const SizedBox(height: 16),
 
       Form(
         key: _formKey,
@@ -633,7 +633,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             const _InputLabel(label: 'Password'),
             const SizedBox(height: 8),
             TextFormField(
@@ -665,7 +665,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
       GestureDetector(
         onTap: _anyLoading ? null : _showForgotPasswordDialog,
         behavior: HitTestBehavior.opaque,
@@ -682,7 +682,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
       SizedBox(
         width: double.infinity,
         height: 48,
@@ -720,7 +720,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
         ),
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 16),
       Row(
         children: [
           Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -738,7 +738,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Expanded(child: Divider(color: Colors.grey.shade300)),
         ],
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 16),
 
       // Continue with Google Button
       _buildSocialButton(
@@ -749,7 +749,7 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0F172A),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
 
       // Continue with Apple Button
       _buildSocialButton(
@@ -766,7 +766,7 @@ class _LoginScreenState extends State<LoginScreen> {
         textColor: Colors.white,
         border: const BorderSide(color: Color(0xFF0F172A)),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
 
       // Continue as Guest Button
       _buildSocialButton(
@@ -930,11 +930,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       vertical: 12,
                     ),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
+                      constraints: const BoxConstraints(maxWidth: 480),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 40,
-                          vertical: 24,
+                          vertical: 16,
                         ),
                         decoration: cardDecoration,
                         child: SingleChildScrollView(
