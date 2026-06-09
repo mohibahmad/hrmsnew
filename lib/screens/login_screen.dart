@@ -17,8 +17,15 @@ const String _googleSvg = '''
 ''';
 
 const String _appleSvg = '''
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px" fill="#000000">
-  <path d="M17.05 20.28c-.98.95-2.05 1.88-3.08 1.88-1.02 0-1.4-.62-2.55-.62-1.16 0-1.57.62-2.55.62-.97 0-2.14-1.01-3.12-1.98-2.01-2-3.55-5.62-3.55-9.02 0-5.38 3.48-8.22 6.9-8.22 1.07 0 2.08.4 2.76 1.02.69-.62 1.74-1.02 2.81-1.02 3.23 0 5.53 2.65 6.01 5.92-.09.05-.18.11-.26.17-1.76 1.11-2.93 2.92-2.93 5.06 0 2.65 1.76 4.78 4.22 5.58-.69 1.99-1.76 3.99-2.76 4.96zm-1.89-18.42c.86-1.07 1.4-2.55 1.22-3.86-1.12.05-2.5.76-3.3 1.71-.69.81-1.3 2.29-1.11 3.56 1.25.1 2.54-.57 3.19-1.41z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px" fill="currentColor">
+  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.93.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.499c.87-1.066 1.43-2.56 1.261-4.04-1.274.052-2.813.858-3.722 1.91-.78.897-1.467 2.418-1.287 3.873 1.416.104 2.873-.675 3.748-1.743z"/>
+</svg>
+''';
+
+const String _guestSvg = '''
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+  <circle cx="12" cy="7" r="4"/>
 </svg>
 ''';
 
@@ -257,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
               insetPadding: const EdgeInsets.symmetric(horizontal: 24),
               alignment: Alignment.center,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
+                constraints: const BoxConstraints(maxWidth: 300),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
@@ -517,7 +524,7 @@ class _LoginScreenState extends State<LoginScreen> {
     BorderSide? border,
   }) {
     return SizedBox(
-      width: 600,
+      width: double.infinity,
       height: 48,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -764,10 +771,14 @@ class _LoginScreenState extends State<LoginScreen> {
       // Continue as Guest Button
       _buildSocialButton(
         text: 'Continue as Guest',
-        icon: Icon(
-          Icons.person_outline_rounded,
-          color: const Color(0xFF0044C9),
-          size: 16,
+        icon: SvgPicture.string(
+          _guestSvg,
+          width: 16,
+          height: 16,
+          colorFilter: const ColorFilter.mode(
+            Color(0xFF0044C9),
+            BlendMode.srcIn,
+          ),
         ),
         isLoading: _isGuestLoading,
         onPressed: _anyLoading ? null : _handleGuestLogin,

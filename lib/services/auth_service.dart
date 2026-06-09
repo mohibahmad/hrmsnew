@@ -7,6 +7,10 @@ import 'firestore_service.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Toggle this to `false` to test native Google/Apple authentication.
+  /// When `true`, it bypasses native SDKs and logs in instantly in demo mode.
+  static const bool useDemoAuth = true;
+
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
@@ -52,6 +56,9 @@ class AuthService {
 
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
+    if (useDemoAuth) {
+      return await signInAnonymously(displayName: 'Google Demo User');
+    }
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -78,6 +85,9 @@ class AuthService {
 
   /// Sign in with Apple
   Future<UserCredential?> signInWithApple() async {
+    if (useDemoAuth) {
+      return await signInAnonymously(displayName: 'Apple Demo User');
+    }
     try {
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
