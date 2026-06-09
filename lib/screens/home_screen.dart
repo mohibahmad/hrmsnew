@@ -1357,7 +1357,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.36),
+              color: const Color(0xFFFFFFFF).withValues(alpha: 0.36),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -1394,7 +1394,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               width: 8,
               height: isSelected ? 32 : 0,
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: Color(0xFFFFFFFF),
                 borderRadius: BorderRadius.only(
                   topRight: Radius.circular(4),
                   bottomRight: Radius.circular(4),
@@ -1433,13 +1433,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               'assets/workforce_icon_sldiebar.svg',
               height: 22,
               width: 22,
-              color: Colors.white,
+              color: const Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
             const Text(
               'Workforce',
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFFFFFFFF),
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro',
@@ -1448,7 +1448,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             const Spacer(),
             const Icon(
               Icons.keyboard_arrow_down,
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               size: 20,
             ),
           ],
@@ -1471,7 +1471,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.36)
+              ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
@@ -1482,13 +1482,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               iconAsset,
               height: 20,
               width: 20,
-              color: Colors.white,
+              color: const Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
             Text(
               title,
               style: TextStyle(
-                color: Colors.white,
+                color: const Color(0xFFFFFFFF),
                 fontSize: 15,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 fontFamily: 'SF Pro',
@@ -1509,13 +1509,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             'assets/tick_icon.svg',
             width: 14,
             height: 10,
-            color: Colors.white,
+            color: const Color(0xFFFFFFFF),
           ),
           const SizedBox(width: 8),
           Text(
             text,
             style: const TextStyle(
-              color: Colors.white,
+              color: Color(0xFFFFFFFF),
               fontSize: 15,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
@@ -1544,7 +1544,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: isSelected
-                  ? Colors.white.withValues(alpha: 0.36)
+                  ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1555,13 +1555,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   iconAsset,
                   height: 22,
                   width: 22,
-                  color: Colors.white,
+                  color: const Color(0xFFFFFFFF),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   title,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFFFFFFFF),
                     fontSize: 18,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     fontFamily: 'SF Pro',
@@ -1571,7 +1571,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 if (hasDropdown)
                   const Icon(
                     Icons.keyboard_arrow_down,
-                    color: Colors.white,
+                    color: Color(0xFFFFFFFF),
                     size: 20,
                   ),
               ],
@@ -1587,7 +1587,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 width: 8,
                 height: isSelected ? 32 : 0,
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.only(
                     topRight: Radius.circular(4),
                     bottomRight: Radius.circular(4),
