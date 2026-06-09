@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
+import '../utils/logout_dialog.dart';
 
 // --- STYLING CONSTANTS ---
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -313,12 +314,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             ),
           ),
           const SizedBox(width: 24),
-          // Clicking avatar menu also pops/navigates properly
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
-                AuthService().signOut();
-                Navigator.of(context).pop();
+                showLogoutDialog(context);
               }
             },
             offset: const Offset(0, 52),

@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
-import 'login_screen.dart';
 import 'workers.dart';
 import 'pricing_screen.dart';
 import 'attendance_screen.dart';
@@ -15,6 +14,7 @@ import 'assets_screen.dart';
 import 'holidays_screen.dart';
 import 'expenses_screen.dart';
 import 'settings_screen.dart';
+import '../utils/logout_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,13 +56,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _handleLogout() async {
-    await AuthService().signOut();
-    if (mounted) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-    }
+  void _handleLogout() {
+    showLogoutDialog(context);
   }
 
   void _openProfile() {

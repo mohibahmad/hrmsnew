@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../utils/logout_dialog.dart';
 import 'home_screen.dart';
-import 'login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  void _handleLogout(BuildContext context) async {
-    await AuthService().signOut();
-    if (context.mounted) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-    }
+  void _handleLogout(BuildContext context) {
+    showLogoutDialog(context);
   }
 
   @override

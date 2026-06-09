@@ -7,6 +7,21 @@ import '../utils/snackbar_utils.dart';
 import 'home_screen.dart';
 import 'signup_screen.dart';
 
+const String _googleSvg = '''
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+  <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.55 2.89-2.2 5.33-4.66 7l7.25 5.62C43.59 36.43 46.5 30.73 46.5 24z"/>
+  <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
+  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.25-5.62c-2.03 1.37-4.63 2.19-8.64 2.19-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+</svg>
+''';
+
+const String _appleSvg = '''
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px" fill="#000000">
+  <path d="M17.05 20.28c-.98.95-2.05 1.88-3.08 1.88-1.02 0-1.4-.62-2.55-.62-1.16 0-1.57.62-2.55.62-.97 0-2.14-1.01-3.12-1.98-2.01-2-3.55-5.62-3.55-9.02 0-5.38 3.48-8.22 6.9-8.22 1.07 0 2.08.4 2.76 1.02.69-.62 1.74-1.02 2.81-1.02 3.23 0 5.53 2.65 6.01 5.92-.09.05-.18.11-.26.17-1.76 1.11-2.93 2.92-2.93 5.06 0 2.65 1.76 4.78 4.22 5.58-.69 1.99-1.76 3.99-2.76 4.96zm-1.89-18.42c.86-1.07 1.4-2.55 1.22-3.86-1.12.05-2.5.76-3.3 1.71-.69.81-1.3 2.29-1.11 3.56 1.25.1 2.54-.57 3.19-1.41z"/>
+</svg>
+''';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,8 +34,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
+  bool _isGuestLoading = false;
   bool _obscurePassword = true;
   bool _submitted = false;
+
+  bool get _anyLoading =>
+      _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
 
   final AuthService _authService = AuthService();
 
@@ -29,6 +50,81 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final credential = await _authService.signInWithGoogle();
+      if (credential != null && mounted) {
+        final name = credential.user?.displayName ?? 'Google User';
+        if (name == 'Google Demo User') {
+          FlashySnackBar.show(
+            context,
+            message: 'Signed in via Google Demo Mode (Development Fallback).',
+            isError: false,
+          );
+        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Google login failed. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  Future<void> _handleAppleLogin() async {
+    setState(() => _isAppleLoading = true);
+    try {
+      final credential = await _authService.signInWithApple();
+      if (credential != null && mounted) {
+        final name = credential.user?.displayName ?? 'Apple User';
+        if (name == 'Apple Demo User') {
+          FlashySnackBar.show(
+            context,
+            message: 'Signed in via Apple Demo Mode (Development Fallback).',
+            isError: false,
+          );
+        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Apple login failed. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isAppleLoading = false);
+    }
+  }
+
+  Future<void> _handleGuestLogin() async {
+    setState(() => _isGuestLoading = true);
+    try {
+      await _authService.signInAnonymously();
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Continuing as Guest User.',
+          isError: false,
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Guest login failed. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isGuestLoading = false);
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -411,6 +507,59 @@ class _LoginScreenState extends State<LoginScreen> {
     emailController.dispose();
   }
 
+  Widget _buildSocialButton({
+    required String text,
+    required Widget icon,
+    required VoidCallback? onPressed,
+    required bool isLoading,
+    Color? backgroundColor,
+    Color? textColor,
+    BorderSide? border,
+  }) {
+    return SizedBox(
+      width: 600,
+      height: 48,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: backgroundColor ?? Colors.white,
+          foregroundColor: textColor ?? const Color(0xFF0F172A),
+          side: border ?? BorderSide(color: Colors.grey.shade200),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    textColor ?? const Color(0xFF0F172A),
+                  ),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icon,
+                  const SizedBox(width: 12),
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
   List<Widget> _buildFormContent(BuildContext context) {
     return [
       Center(
@@ -457,6 +606,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _emailController,
+              enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               style: const TextStyle(
                 fontSize: 14,
@@ -481,6 +631,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
+              enabled: !_anyLoading,
               obscureText: _obscurePassword,
               style: const TextStyle(
                 fontSize: 14,
@@ -501,7 +652,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (value.length < 6) {
                   return 'Password must be at least 6 characters';
                 }
-                // Check if password has at least one letter and one number/digit
                 return null;
               },
             ),
@@ -510,7 +660,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 12),
       GestureDetector(
-        onTap: _showForgotPasswordDialog,
+        onTap: _anyLoading ? null : _showForgotPasswordDialog,
         behavior: HitTestBehavior.opaque,
         child: const Padding(
           padding: EdgeInsets.symmetric(vertical: 4),
@@ -530,7 +680,7 @@ class _LoginScreenState extends State<LoginScreen> {
         width: double.infinity,
         height: 48,
         child: ElevatedButton(
-          onPressed: _isLoading ? null : _handleLogin,
+          onPressed: _anyLoading ? null : _handleLogin,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
             foregroundColor: Color(0xFFFFFFFF),
@@ -546,7 +696,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFFFFFF),
+                    ),
                   ),
                 )
               : const Text(
@@ -580,6 +732,54 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
       const SizedBox(height: 20),
+
+      // Continue with Google Button
+      _buildSocialButton(
+        text: 'Continue with Google',
+        icon: SvgPicture.string(_googleSvg, width: 16, height: 16),
+        isLoading: _isGoogleLoading,
+        onPressed: _anyLoading ? null : _handleGoogleLogin,
+        backgroundColor: Colors.white,
+        textColor: const Color(0xFF0F172A),
+      ),
+      const SizedBox(height: 12),
+
+      // Continue with Apple Button
+      _buildSocialButton(
+        text: 'Continue with Apple',
+        icon: SvgPicture.string(
+          _appleSvg,
+          width: 16,
+          height: 16,
+          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        ),
+        isLoading: _isAppleLoading,
+        onPressed: _anyLoading ? null : _handleAppleLogin,
+        backgroundColor: const Color(0xFF0F172A),
+        textColor: Colors.white,
+        border: const BorderSide(color: Color(0xFF0F172A)),
+      ),
+      const SizedBox(height: 12),
+
+      // Continue as Guest Button
+      _buildSocialButton(
+        text: 'Continue as Guest',
+        icon: Icon(
+          Icons.person_outline_rounded,
+          color: const Color(0xFF0044C9),
+          size: 16,
+        ),
+        isLoading: _isGuestLoading,
+        onPressed: _anyLoading ? null : _handleGuestLogin,
+        backgroundColor: Colors.white,
+        textColor: const Color(0xFF0044C9),
+        border: BorderSide(
+          color: const Color(0xFF0044C9).withOpacity(0.4),
+          width: 1.5,
+        ),
+      ),
+      const SizedBox(height: 24),
+
       Center(
         child: RichText(
           text: TextSpan(

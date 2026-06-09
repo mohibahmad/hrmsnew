@@ -118,4 +118,289 @@ class FirestoreService {
 
   Stream<QuerySnapshot> get timeoffStream =>
       _timeoff.orderBy('createdAt', descending: true).snapshots();
+
+  Future<void> seedDummyDataForUser({
+    required String uid,
+    required String displayName,
+    required String email,
+  }) async {
+    final docRef = _db.collection('users').doc(uid);
+    final userSnap = await docRef.get();
+
+    if (userSnap.exists) {
+      final data = userSnap.data();
+      if (data != null && data['hasDummyData'] == true) {
+        return; // Already seeded
+      }
+    }
+
+    // Create user profile
+    await docRef.set({
+      'username': displayName,
+      'email': email,
+      'phone': '+1 (555) 019-2834',
+      'businessName': 'Stark Industries',
+      'companyId': 'STARK-999',
+      'currency': 'USD',
+      'contact1': '+1 (555) 019-2834',
+      'contact2': '+1 (555) 019-5678',
+      'address': '10880 Malibu Point, Malibu, CA',
+      'hasDummyData': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    final workersColl = docRef.collection('workers');
+    final attendanceColl = docRef.collection('attendance');
+    final expensesColl = docRef.collection('expenses');
+    final payrollColl = docRef.collection('payroll');
+    final timeoffColl = docRef.collection('timeoff');
+
+    // 1. Seed Workers
+    final dummyWorkers = [
+      {
+        'name': 'Ali Ahmad',
+        'email': 'ali.ahmad@stark.com',
+        'type1': 'Full-Time',
+        'position': 'Senior Web Developer',
+        'type2': 'Remote',
+      },
+      {
+        'name': 'Sara Khan',
+        'email': 'sara.khan@stark.com',
+        'type1': 'Full-Time',
+        'position': 'UI/UX Designer',
+        'type2': 'On-Site',
+      },
+      {
+        'name': 'John Doe',
+        'email': 'john.doe@stark.com',
+        'type1': 'Contract',
+        'position': 'DevOps Engineer',
+        'type2': 'Hybrid',
+      },
+      {
+        'name': 'Mohib Ahmad',
+        'email': 'mohib.ahmad@stark.com',
+        'type1': 'Full-Time',
+        'position': 'Product Manager',
+        'type2': 'On-Site',
+      },
+      {
+        'name': 'Emily Watson',
+        'email': 'emily.w@stark.com',
+        'type1': 'Part-Time',
+        'position': 'Marketing Specialist',
+        'type2': 'Remote',
+      },
+    ];
+
+    for (var w in dummyWorkers) {
+      await workersColl.add({
+        ...w,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // 2. Seed Attendance
+    final dummyAttendance = [
+      {
+        'name': 'Ali Ahmad',
+        'email': 'ali.ahmad@stark.com',
+        'role': 'Senior Web Developer',
+        'status': 'Present',
+        'attendanceType': 'Remote',
+        'workType': 'Full Time',
+      },
+      {
+        'name': 'Sara Khan',
+        'email': 'sara.khan@stark.com',
+        'role': 'UI/UX Designer',
+        'status': 'Present',
+        'attendanceType': 'On-Site',
+        'workType': 'Full Time',
+      },
+      {
+        'name': 'John Doe',
+        'email': 'john.doe@stark.com',
+        'role': 'DevOps Engineer',
+        'status': 'Absent',
+        'attendanceType': 'On-Site',
+        'workType': 'Contract',
+      },
+      {
+        'name': 'Mohib Ahmad',
+        'email': 'mohib.ahmad@stark.com',
+        'role': 'Product Manager',
+        'status': 'Present',
+        'attendanceType': 'On-Site',
+        'workType': 'Full Time',
+      },
+      {
+        'name': 'Emily Watson',
+        'email': 'emily.w@stark.com',
+        'role': 'Marketing Specialist',
+        'status': 'Leave',
+        'attendanceType': 'Remote',
+        'workType': 'Part Time',
+      },
+    ];
+
+    for (var a in dummyAttendance) {
+      await attendanceColl.add({
+        ...a,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // 3. Seed Expenses
+    final dummyExpenses = [
+      {
+        'name': 'Ali Ahmad',
+        'date': '05/06/2026',
+        'category': 'Client Dinner',
+        'amount': 124.50,
+      },
+      {
+        'name': 'Sara Khan',
+        'date': '04/06/2026',
+        'category': 'Figma Subscription',
+        'amount': 45.00,
+      },
+      {
+        'name': 'Mohib Ahmad',
+        'date': '02/06/2026',
+        'category': 'Office Keyboard',
+        'amount': 89.99,
+      },
+      {
+        'name': 'John Doe',
+        'date': '01/06/2026',
+        'category': 'AWS Cloud Hosting',
+        'amount': 250.00,
+      },
+      {
+        'name': 'Emily Watson',
+        'date': '28/05/2026',
+        'category': 'Google Ads Campaign',
+        'amount': 500.00,
+      },
+    ];
+
+    for (var e in dummyExpenses) {
+      await expensesColl.add({
+        ...e,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // 4. Seed Payroll
+    final dummyPayroll = [
+      {
+        'name': 'Ali Ahmad',
+        'email': 'ali.ahmad@stark.com',
+        'position': 'Senior Web Developer',
+        'contact': '+1 555-0101',
+        'status': 'Active',
+        'totalWorkDays': '240',
+        'absents': '04',
+        'leaves': '08',
+        'overtimeDays': '12',
+        'salary': '\$ 95,000',
+      },
+      {
+        'name': 'Sara Khan',
+        'email': 'sara.khan@stark.com',
+        'position': 'UI/UX Designer',
+        'contact': '+1 555-0102',
+        'status': 'Active',
+        'totalWorkDays': '230',
+        'absents': '02',
+        'leaves': '06',
+        'overtimeDays': '05',
+        'salary': '\$ 75,000',
+      },
+      {
+        'name': 'John Doe',
+        'email': 'john.doe@stark.com',
+        'position': 'DevOps Engineer',
+        'contact': '+1 555-0103',
+        'status': 'Active',
+        'totalWorkDays': '120',
+        'absents': '01',
+        'leaves': '02',
+        'overtimeDays': '00',
+        'salary': '\$ 85,000',
+      },
+      {
+        'name': 'Mohib Ahmad',
+        'email': 'mohib.ahmad@stark.com',
+        'position': 'Product Manager',
+        'contact': '+1 555-0104',
+        'status': 'Active',
+        'totalWorkDays': '250',
+        'absents': '01',
+        'leaves': '10',
+        'overtimeDays': '15',
+        'salary': '\$ 110,000',
+      },
+      {
+        'name': 'Emily Watson',
+        'email': 'emily.w@stark.com',
+        'position': 'Marketing Specialist',
+        'contact': '+1 555-0105',
+        'status': 'Active',
+        'totalWorkDays': '180',
+        'absents': '05',
+        'leaves': '12',
+        'overtimeDays': '02',
+        'salary': '\$ 60,000',
+      },
+    ];
+
+    for (var p in dummyPayroll) {
+      await payrollColl.add({
+        ...p,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // 5. Seed Time Off requests
+    final dummyTimeoff = [
+      {
+        'name': 'Ali Ahmad',
+        'email': 'ali.ahmad@stark.com',
+        'position': 'Senior Web Developer',
+        'contact': '+1 555-0101',
+        'action': 'Annual Leave',
+      },
+      {
+        'name': 'Sara Khan',
+        'email': 'sara.khan@stark.com',
+        'position': 'UI/UX Designer',
+        'contact': '+1 555-0102',
+        'action': 'Sick Leave',
+      },
+      {
+        'name': 'John Doe',
+        'email': 'john.doe@stark.com',
+        'position': 'DevOps Engineer',
+        'contact': '+1 555-0103',
+        'action': 'Casual Leave',
+      },
+      {
+        'name': 'Emily Watson',
+        'email': 'emily.w@stark.com',
+        'position': 'Marketing Specialist',
+        'contact': '+1 555-0105',
+        'action': 'Maternity Leave',
+      },
+    ];
+
+    for (var t in dummyTimeoff) {
+      await timeoffColl.add({
+        ...t,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
 }

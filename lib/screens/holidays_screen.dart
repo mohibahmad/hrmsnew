@@ -56,7 +56,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               backgroundColor: Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
@@ -71,7 +73,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.black87, size: 20),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.black87,
+                            size: 20,
+                          ),
                           onPressed: () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -92,13 +98,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             minimumSize: const Size(0, 32),
                           ),
                           onPressed: () {
                             if (holidayNameController.text.isNotEmpty) {
                               setState(() {
-                                if (!_holidaysByMonth.containsKey(selectedMonth)) {
+                                if (!_holidaysByMonth.containsKey(
+                                  selectedMonth,
+                                )) {
                                   _holidaysByMonth[selectedMonth] = [];
                                 }
                                 _holidaysByMonth[selectedMonth]!.insert(
@@ -113,7 +124,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
-                                message: 'Successfully added holiday "${holidayNameController.text}"',
+                                message:
+                                    'Successfully added holiday "${holidayNameController.text}"',
                               );
                             }
                           },
@@ -152,7 +164,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextField(
                         controller: holidayNameController,
-                        decoration: const InputDecoration.collapsed(hintText: ''),
+                        decoration: const InputDecoration.collapsed(
+                          hintText: '',
+                        ),
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black87,
@@ -227,7 +241,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     return Container(
       height: 22,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(3),
+      ),
       child: Text(
         day,
         style: const TextStyle(
@@ -282,7 +299,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? Colors.red : Colors.transparent,
-            border: Border.all(color: isSelected ? Colors.red : Colors.grey.shade300, width: 1),
+            border: Border.all(
+              color: isSelected ? Colors.red : Colors.grey.shade300,
+              width: 1,
+            ),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
@@ -334,9 +354,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         children: [
@@ -406,14 +424,19 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(140, 44),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             elevation: 0,
           ),
           icon: SvgPicture.asset(
             'assets/holidays_icon.svg',
             width: 18,
             height: 18,
-            colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFFFFFFF),
+              BlendMode.srcIn,
+            ),
           ),
           label: const Text(
             'Add Holiday',
@@ -432,7 +455,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   // ================= FILLED STATE (LIST) =================
 
   Widget _buildFilledState() {
-    final months = _holidaysByMonth.keys.where((m) => _holidaysByMonth[m]!.isNotEmpty).toList();
+    final months = _holidaysByMonth.keys
+        .where((m) => _holidaysByMonth[m]!.isNotEmpty)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

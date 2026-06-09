@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/logout_dialog.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -157,9 +158,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
-                AuthService().signOut();
-                // Pop standard context since it's the root session popup
-                Navigator.of(context).pop();
+                showLogoutDialog(context);
               }
             },
             offset: const Offset(0, 52),
