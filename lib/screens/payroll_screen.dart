@@ -90,7 +90,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -100,7 +100,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),

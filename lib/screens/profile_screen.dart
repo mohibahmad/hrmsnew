@@ -77,7 +77,7 @@ class ProfileTopHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -87,7 +87,7 @@ class ProfileTopHeader extends StatelessWidget {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -116,7 +116,7 @@ class ProfileTopHeader extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
+                        color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
                       ),
                     ),

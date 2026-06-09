@@ -81,7 +81,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -137,7 +137,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
+                        color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -347,7 +347,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               Text(
                 'Workforce',
                 style: TextStyle(
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'SF Pro Display',
@@ -371,7 +371,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -397,7 +397,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -453,7 +453,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           month,
           style: const TextStyle(
             fontSize: 14,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontWeight: FontWeight.w600,
             fontFamily: 'SF Pro Display',
           ),
@@ -488,7 +488,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -498,7 +498,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             item.name,
             style: const TextStyle(
               fontSize: 15,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
             ),

@@ -132,7 +132,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -226,7 +226,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -286,7 +286,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -329,7 +329,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -391,7 +391,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -427,7 +427,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               Text(
                 'Workforce',
                 style: TextStyle(
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'SF Pro Display',
@@ -452,7 +452,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -639,7 +639,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       style: const TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 15,
-        color: Color(0xFF0F172A),
+        color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
     );
@@ -665,7 +665,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: Color(0xFF0F172A),
+                    color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -679,7 +679,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -690,7 +690,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               data.type,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -701,7 +701,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               data.dateLoaned,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),

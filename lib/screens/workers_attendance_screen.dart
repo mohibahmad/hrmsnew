@@ -7,7 +7,7 @@ import 'home_screen.dart';
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
 const Color cardLightGray = Color(0xFFF3F5F8);
-const Color textDark = Color(0xFF0F172A);
+const Color textDark = Color(0xFF000000);
 const Color textMuted = Color(0xFF000000);
 
 const Color greenPresent = Color(0xFF00FF2A);
@@ -308,7 +308,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),

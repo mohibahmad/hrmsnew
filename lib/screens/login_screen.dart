@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
+                                  color: Color(0xFF000000),
                                   fontFamily: 'SF Pro Display',
                                   letterSpacing: -0.3,
                                 ),
@@ -248,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontFamily: 'SF Pro Display',
-                                  color: Color(0xFF0F172A),
+                                  color: Color(0xFF000000),
                                 ),
                                 decoration: InputDecoration(
                                   hintText: 'you@example.com',

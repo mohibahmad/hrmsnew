@@ -114,7 +114,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -200,7 +200,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0F172A),
+                                  color: Color(0xFF000000),
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
@@ -265,7 +265,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -479,7 +479,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               Text(
                 'Expenses',
                 style: TextStyle(
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'SF Pro Display',
@@ -503,7 +503,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -676,7 +676,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -697,7 +697,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -850,7 +850,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       style: const TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 15,
-        color: Color(0xFF0F172A),
+        color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
     );
@@ -882,7 +882,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: Color(0xFF0F172A),
+                    color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -895,7 +895,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               date,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -906,7 +906,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               category,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),

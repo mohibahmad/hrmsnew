@@ -8,7 +8,7 @@ import 'workers_attendance_screen.dart';
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color lightBlueBg = Color(0xFFE8F0FE);
 const Color bgGray = Color(0xFFF8FAFC);
-const Color textDark = Color(0xFF0F172A);
+const Color textDark = Color(0xFF000000);
 const Color textMuted = Color(0xFF64748B);
 
 const Color greenPresent = Color(0xFF00FF2A);
@@ -209,7 +209,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),

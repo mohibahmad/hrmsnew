@@ -94,7 +94,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -139,7 +139,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -149,7 +149,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -185,7 +185,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -319,7 +319,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -365,7 +365,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -544,7 +544,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -600,7 +600,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             label,
             style: const TextStyle(
               fontSize: 15,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
           ),

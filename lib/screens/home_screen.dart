@@ -170,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -457,7 +457,7 @@ class ProfileInlineHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
+              color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -467,7 +467,7 @@ class ProfileInlineHeader extends StatelessWidget {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -496,7 +496,7 @@ class ProfileInlineHeader extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
+                        color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -1664,7 +1664,7 @@ class TopHeader extends StatelessWidget {
                 height: 24,
                 width: 24,
                 colorFilter: const ColorFilter.mode(
-                  Color(0xFF0F172A),
+                  Color(0xFF000000),
                   BlendMode.srcIn,
                 ),
               ),
@@ -1748,7 +1748,7 @@ class TotalWorkersCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
+                              color: Color(0xFF000000),
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1781,7 +1781,7 @@ class TotalWorkersCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
+                              color: Color(0xFF000000),
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -2367,7 +2367,7 @@ class LeaveTypesPieChart extends StatelessWidget {
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: Color(0xFF000000),
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -2490,7 +2490,7 @@ class PeriodFilterDropdown extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   color: isSelected
-                      ? const Color(0xFF0F172A)
+                      ? const Color(0xFF000000)
                       : const Color(0xFF94A3B8),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   fontFamily: 'SF Pro Display',

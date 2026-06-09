@@ -476,7 +476,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   height: 24,
                   width: 24,
                   colorFilter: const ColorFilter.mode(
-                    Color(0xFF0F172A),
+                    Color(0xFF000000),
                     BlendMode.srcIn,
                   ),
                 ),

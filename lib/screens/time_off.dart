@@ -94,7 +94,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -130,7 +130,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               Text(
                 'Workforce',
                 style: TextStyle(
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'SF Pro Display',
@@ -155,7 +155,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             height: 24,
             width: 24,
             colorFilter: const ColorFilter.mode(
-              Color(0xFF0F172A),
+              Color(0xFF000000),
               BlendMode.srcIn,
             ),
           ),
@@ -270,7 +270,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF0F172A),
+            color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
             fontFamily: 'SF Pro Display',
@@ -301,7 +301,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -313,7 +313,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -325,7 +325,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -337,7 +337,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -383,7 +383,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
-                                    color: Color(0xFF0F172A),
+                                    color: Color(0xFF000000),
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
@@ -409,7 +409,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF0F172A),
+                          color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
@@ -421,7 +421,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         contact,
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF0F172A),
+                          color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
