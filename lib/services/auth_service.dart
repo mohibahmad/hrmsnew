@@ -16,6 +16,12 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
+  Future<void> _clearSeededDummyDataIfNeeded() async {
+    try {
+      await FirestoreService().clearDummyDataForCurrentUser();
+    } catch (_) {}
+  }
+
   Future<UserCredential> signUp({
     required String email,
     required String password,
@@ -25,6 +31,7 @@ class AuthService {
       password: password,
     );
     await PreferencesService.setLoggedIn(true);
+    await _clearSeededDummyDataIfNeeded();
     return credential;
   }
 
@@ -37,6 +44,7 @@ class AuthService {
       password: password,
     );
     await PreferencesService.setLoggedIn(true);
+    await _clearSeededDummyDataIfNeeded();
     return credential;
   }
 
@@ -49,6 +57,7 @@ class AuthService {
       await credential.user!.updateDisplayName(displayName).catchError((_) {});
     }
     await PreferencesService.setLoggedIn(true);
+    await _clearSeededDummyDataIfNeeded();
     return credential;
   }
 
@@ -67,7 +76,7 @@ class AuthService {
         final name =
             googleUser.displayName ?? userCredential.user!.email ?? 'User';
         await userCredential.user!.updateDisplayName(name);
-        
+
         // Ensure user profile is created in Firestore
         final firestore = FirestoreService();
         final profile = await firestore.getUserProfile();
@@ -80,6 +89,7 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
+      await _clearSeededDummyDataIfNeeded();
       return userCredential;
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled ||
@@ -101,7 +111,7 @@ class AuthService {
       final userCredential = await _auth.signInWithProvider(appleProvider);
       if (userCredential.user != null) {
         final name = userCredential.user!.displayName ?? 'Apple User';
-        
+
         // Ensure user profile is created in Firestore
         final firestore = FirestoreService();
         final profile = await firestore.getUserProfile();
@@ -114,6 +124,7 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
+      await _clearSeededDummyDataIfNeeded();
       return userCredential;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {

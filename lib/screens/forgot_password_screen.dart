@@ -332,6 +332,10 @@ InputDecoration _inputDecoration(String hintText) {
       borderRadius: BorderRadius.circular(2),
       borderSide: const BorderSide(color: Color(0xFFD4D4D8), width: 1),
     ),
+    disabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(2),
+      borderSide: const BorderSide(color: Color(0xFFD4D4D8), width: 1),
+    ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(2),
       borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),

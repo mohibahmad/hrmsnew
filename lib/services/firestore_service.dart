@@ -4,9 +4,13 @@ import 'auth_service.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  String? get _uid => AuthService().currentUser?.uid;
+  String get _userKey {
+    final email = AuthService().currentUser?.email?.trim().toLowerCase();
+    if (email != null && email.isNotEmpty) return email;
+    return AuthService().currentUser?.uid ?? '';
+  }
 
-  DocumentReference get _userDoc => _db.collection('hrms_user').doc(_uid);
+  DocumentReference get _userDoc => _db.collection('hrms_user').doc(_userKey);
 
   CollectionReference get _workers => _userDoc.collection('hrms_workers');
   CollectionReference get _expenses => _userDoc.collection('hrms_expenses');
@@ -23,15 +27,9 @@ class FirestoreService {
       'username': username,
       'email': email,
       'phone': phone,
+      'hasDummyData': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    if (_uid != null) {
-      await seedDummyDataForUser(
-        uid: _uid!,
-        displayName: username,
-        email: email,
-      );
-    }
   }
 
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
@@ -39,11 +37,36 @@ class FirestoreService {
   }
 
   Future<void> deleteUserData() async {
-    if (_uid == null) return;
+    if (_userKey.isEmpty) return;
     await _userDoc.set({
       'isDeleted': true,
       'deletedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Future<void> clearDummyDataForCurrentUser() async {
+    if (_userKey.isEmpty) return;
+
+    final profile = await getUserProfile();
+    if (profile?['hasDummyData'] != true) return;
+
+    final batch = _db.batch();
+
+    for (final collectionName in [
+      'hrms_workers',
+      'hrms_expenses',
+      'hrms_attendance',
+      'hrms_payroll',
+      'hrms_timeoff',
+    ]) {
+      final snapshot = await _userDoc.collection(collectionName).get();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    batch.update(_userDoc, {'hasDummyData': false});
+    await batch.commit();
   }
 
   Future<bool> isCurrentUserDeleted() async {

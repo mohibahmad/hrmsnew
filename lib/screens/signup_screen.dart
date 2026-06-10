@@ -205,33 +205,60 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } on FirebaseAuthException catch (e) {
       String message;
-      switch (e.code) {
-        case 'email-already-in-use':
-          message = 'An account with this email already exists.';
-          break;
-        case 'invalid-email':
-          message = 'The email address is not valid.';
-          break;
-        case 'weak-password':
-          message = 'The password is too weak (min 6 characters).';
-          break;
-        case 'operation-not-allowed':
-          message = 'Email/password accounts are not enabled.';
-          break;
-        case 'network-request-failed':
-        case 'network-error':
-        case 'unavailable':
-          message =
-              'Network error. Please check your internet connection and try again.';
-          break;
-        default:
-          if (e.message != null &&
-              e.message!.toLowerCase().contains('network')) {
+      if (e.code == 'email-already-in-use') {
+        try {
+          final credential = await _authService.signIn(
+            email: _emailController.text,
+            password: _passwordController.text,
+          );
+          await credential.user?.updateDisplayName(
+            _usernameController.text.trim(),
+          );
+          await FirestoreService().createUserProfile(
+            username: _usernameController.text.trim(),
+            email: _emailController.text.trim(),
+            phone: "",
+          );
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          }
+          return;
+        } on FirebaseAuthException catch (signInError) {
+          if (signInError.code == 'wrong-password') {
+            message =
+                'This email already exists. Please sign in with the correct password.';
+          } else {
+            message = 'This email already exists. Please sign in instead.';
+          }
+        }
+      } else {
+        switch (e.code) {
+          case 'invalid-email':
+            message = 'The email address is not valid.';
+            break;
+          case 'weak-password':
+            message = 'The password is too weak (min 6 characters).';
+            break;
+          case 'operation-not-allowed':
+            message = 'Email/password accounts are not enabled.';
+            break;
+          case 'network-request-failed':
+          case 'network-error':
+          case 'unavailable':
             message =
                 'Network error. Please check your internet connection and try again.';
-          } else {
-            message = 'Sign up failed (${e.code}): ${e.message}';
-          }
+            break;
+          default:
+            if (e.message != null &&
+                e.message!.toLowerCase().contains('network')) {
+              message =
+                  'Network error. Please check your internet connection and try again.';
+            } else {
+              message = 'Sign up failed (${e.code}): ${e.message}';
+            }
+        }
       }
       if (mounted) {
         FlashySnackBar.show(context, message: message, isError: true);
@@ -465,7 +492,9 @@ class _SignupScreenState extends State<SignupScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
             foregroundColor: Color(0xFFFFFFFF),
-            disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+            disabledBackgroundColor: const Color(
+              0xFF0044C9,
+            ).withValues(alpha: 0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -559,7 +588,7 @@ class _SignupScreenState extends State<SignupScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withOpacity(0.4),
+          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
           width: 1.5,
         ),
       ),
@@ -624,6 +653,10 @@ class _SignupScreenState extends State<SignupScreen> {
             )
           : null,
       enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(2),
+        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+      ),
+      disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(2),
         borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
       ),
