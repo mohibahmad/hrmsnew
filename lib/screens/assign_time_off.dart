@@ -110,8 +110,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  // ================= TOP HEADER =================
-
   Widget _buildHeader(BuildContext context) {
     final user = AuthService().currentUser;
     final name = user?.displayName ?? 'User';
@@ -121,9 +119,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       padding: const EdgeInsets.only(left: 32, right: 32, top: 24, bottom: 24),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         children: [
@@ -131,7 +127,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             onTap: widget.onBack,
             child: const Padding(
               padding: EdgeInsets.only(top: 2.0),
-              child: Icon(Icons.arrow_back_ios_new, color: Color(0xFF000000), size: 24),
+              child: Icon(
+                Icons.arrow_back_ios_new,
+                color: Color(0xFF000000),
+                size: 24,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -178,7 +178,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             itemBuilder: (context) => [
               PopupMenuItem<String>(
                 enabled: false,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Text(
                   name,
                   style: const TextStyle(
@@ -191,7 +194,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
               PopupMenuItem<String>(
                 value: 'logout',
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -262,12 +268,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         const SizedBox(width: 16),
         Expanded(
           flex: 3,
-          child: _buildLabeledInput('Start Date', _formatDate(_startDate), isStart: true),
+          child: _buildLabeledInput(
+            'Start Date',
+            _formatDate(_startDate),
+            isStart: true,
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
           flex: 3,
-          child: _buildLabeledInput('End Date', _formatDate(_endDate), isStart: false),
+          child: _buildLabeledInput(
+            'End Date',
+            _formatDate(_endDate),
+            isStart: false,
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -277,14 +291,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0247C4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 elevation: 0,
               ),
               onPressed: () {
                 // Show assign success confirmation
                 FlashySnackBar.show(
                   context,
-                  message: 'Successfully assigned $_timeOffType from ${_formatDate(_startDate)} to ${_formatDate(_endDate)} ($_requestedDays days)',
+                  message:
+                      'Successfully assigned $_timeOffType from ${_formatDate(_startDate)} to ${_formatDate(_endDate)} ($_requestedDays days)',
                 );
                 // Return to Time Off screen after a short delay
                 Future.delayed(const Duration(milliseconds: 1500), () {
@@ -336,10 +353,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               value: value,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
               items: const [
-                DropdownMenuItem(value: 'Annual Leave', child: Text('Annual Leave')),
-                DropdownMenuItem(value: 'Sick Leave', child: Text('Sick Leave')),
-                DropdownMenuItem(value: 'Casual Leave', child: Text('Casual Leave')),
-                DropdownMenuItem(value: 'Maternity Leave', child: Text('Maternity Leave')),
+                DropdownMenuItem(
+                  value: 'Annual Leave',
+                  child: Text('Annual Leave'),
+                ),
+                DropdownMenuItem(
+                  value: 'Sick Leave',
+                  child: Text('Sick Leave'),
+                ),
+                DropdownMenuItem(
+                  value: 'Casual Leave',
+                  child: Text('Casual Leave'),
+                ),
+                DropdownMenuItem(
+                  value: 'Maternity Leave',
+                  child: Text('Maternity Leave'),
+                ),
               ],
               onChanged: (v) {
                 if (v != null) {
@@ -355,7 +384,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildLabeledInput(String label, String value, {required bool isStart}) {
+  Widget _buildLabeledInput(
+    String label,
+    String value, {
+    required bool isStart,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -390,7 +423,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Colors.grey.shade600,
+                ),
               ],
             ),
           ),
@@ -488,13 +525,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         if (i == 0 && j == 0) {
           rowChildren.add(Expanded(child: _buildDayCell('')));
         } else if (currentDay <= 31) {
-          rowChildren.add(Expanded(
-              child: _buildDayCell('$currentDay', isSelected: currentDay == selectedDay)));
+          rowChildren.add(
+            Expanded(
+              child: _buildDayCell(
+                '$currentDay',
+                isSelected: currentDay == selectedDay,
+              ),
+            ),
+          );
           currentDay++;
         } else {
           rowChildren.add(Expanded(child: _buildDayCell('')));
         }
-        if (j < 6) rowChildren.add(const SizedBox(width: 8)); // Space between cells
+        if (j < 6)
+          rowChildren.add(const SizedBox(width: 8)); // Space between cells
       }
       rows.add(Row(children: rowChildren));
       if (i < 4) rows.add(const SizedBox(height: 8)); // Space between rows
@@ -511,7 +555,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.red : Colors.transparent,
           border: Border.all(
-              color: isSelected ? Colors.red : Colors.grey.shade300, width: 1),
+            color: isSelected ? Colors.red : Colors.grey.shade300,
+            width: 1,
+          ),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -554,7 +600,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 child: TextField(
                   controller: _notesController,
                   maxLines: null,
@@ -578,9 +627,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             padding: const EdgeInsets.only(top: 32),
             child: Column(
               children: [
-                _buildSummaryRow('Available Annual Leave Days', '-1', Colors.red),
-                _buildSummaryRow('Requested Days', '$_requestedDays', Colors.black),
-                _buildSummaryRow('Remaining Days', '${-1 - _requestedDays}', Colors.red),
+                _buildSummaryRow(
+                  'Available Annual Leave Days',
+                  '-1',
+                  Colors.red,
+                ),
+                _buildSummaryRow(
+                  'Requested Days',
+                  '$_requestedDays',
+                  Colors.black,
+                ),
+                _buildSummaryRow(
+                  'Remaining Days',
+                  '${-1 - _requestedDays}',
+                  Colors.red,
+                ),
               ],
             ),
           ),

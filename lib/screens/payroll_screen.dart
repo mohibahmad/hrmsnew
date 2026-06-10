@@ -4,7 +4,6 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
-
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -34,20 +33,25 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().payrollStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _payrollDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+      FirestoreService().payrollStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _payrollDocs = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } else {
       _payrollDocs = DummyData.payroll;
       _isLoading = false;
@@ -270,28 +274,23 @@ class _PayrollScreenState extends State<PayrollScreen> {
           const SizedBox(height: 8),
           if (_filteredEmployees.isEmpty)
             Padding(
-              padding: const EdgeInsets.all(40.0),
+              padding: const EdgeInsets.symmetric(vertical: 40.0),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
-                    const SizedBox(height: 16),
-                    Text(
-                      "No Employees Found",
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
-                      ),
+                    SvgPicture.asset(
+                      'assets/placeholder_workers.svg',
+                      width: 120,
+                      height: 100,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Try adjusting your filters.",
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No Payroll Records',
                       style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 14,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0247C4),
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -516,7 +515,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         height: 140,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Color(0xFFFFFFFF), width: 2),
+                          border: Border.all(
+                            color: Color(0xFFFFFFFF),
+                            width: 2,
+                          ),
                           image: const DecorationImage(
                             image: AssetImage('assets/profileimage.png'),
                             fit: BoxFit.cover,

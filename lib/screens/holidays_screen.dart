@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
+import '../services/auth_service.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -20,24 +21,30 @@ class HolidaysScreen extends StatefulWidget {
 class _HolidaysScreenState extends State<HolidaysScreen> {
   bool isDataEmpty = false;
 
-  final Map<String, List<HolidayItem>> _holidaysByMonth = {
-    'May': [
-      HolidayItem(1, 'Labour Day', false),
-      HolidayItem(6, 'Memorial Day', true),
-      HolidayItem(14, 'Mother\'s Day', false),
-      HolidayItem(26, 'Victoria Day', true),
-    ],
-    'Feb': [
-      HolidayItem(1, 'Groundhog Day', false),
-      HolidayItem(6, 'Super Bowl', true),
-      HolidayItem(14, 'Valentine\'s Day', true),
-      HolidayItem(26, 'Presidents\' Day', true),
-    ],
-  };
+  Map<String, List<HolidayItem>> _holidaysByMonth = {};
 
   @override
   void initState() {
     super.initState();
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      _holidaysByMonth = {
+        'May': [
+          HolidayItem(1, 'Labour Day', false),
+          HolidayItem(6, 'Memorial Day', true),
+          HolidayItem(14, 'Mother\'s Day', false),
+          HolidayItem(26, 'Victoria Day', true),
+        ],
+        'Feb': [
+          HolidayItem(1, 'Groundhog Day', false),
+          HolidayItem(6, 'Super Bowl', true),
+          HolidayItem(14, 'Valentine\'s Day', true),
+          HolidayItem(26, 'Presidents\' Day', true),
+        ],
+      };
+    } else {
+      _holidaysByMonth = {};
+    }
     // Automatically show the dialog after the screen renders to match the mockup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAddHolidayModal(context);

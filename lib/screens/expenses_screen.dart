@@ -26,6 +26,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
+  String _selectedPeriod = 'Week';
 
   @override
   void initState() {
@@ -69,12 +70,50 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return format.format(amount);
   }
 
+  bool _isDateWithinPeriod(String dateStr, String period) {
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length != 3) return true;
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      final date = DateTime(year, month, day);
+
+      final now = DateTime.now();
+      // Cap at June 10, 2026 if today is earlier, to ensure dummy data shows up correctly
+      final refDate = now.isBefore(DateTime(2026, 6, 10)) ? DateTime(2026, 6, 10) : now;
+      
+      final diff = refDate.difference(date).inDays;
+      if (diff < 0) {
+        // Future/newly added date, keep visible
+        return true;
+      }
+
+      if (period == 'Week') {
+        return diff <= 7;
+      } else if (period == 'Month') {
+        return diff <= 30;
+      } else if (period == '3 Month') {
+        return diff <= 90;
+      } else if (period == '6 Month') {
+        return diff <= 180;
+      } else if (period == 'Yearly') {
+        return diff <= 365;
+      }
+    } catch (_) {}
+    return true;
+  }
+
   List<Map<String, dynamic>> get _filteredExpenses {
     return _expensesDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      return name.contains(query) || category.contains(query);
+      final dateStr = (doc['date'] ?? '').toString();
+      
+      final matchesSearch = name.contains(query) || category.contains(query);
+      final matchesPeriod = _isDateWithinPeriod(dateStr, _selectedPeriod);
+      return matchesSearch && matchesPeriod;
     }).toList();
   }
 
@@ -713,7 +752,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _buildTodayDropdown() {
     return PopupMenuButton<String>(
       offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFFCCCCCC), width: 1),
+      ),
+      color: const Color(0xFFFFFFFF),
+      elevation: 4,
+      onSelected: (value) {
+        setState(() {
+          _selectedPeriod = value;
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -721,27 +770,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
-          children: const [
+          children: [
             Text(
-              'Today',
-              style: TextStyle(
+              _selectedPeriod,
+              style: const TextStyle(
                 color: Color(0xFFFFFFFF),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            SizedBox(width: 8),
-            Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF), size: 20),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF), size: 20),
           ],
         ),
       ),
       itemBuilder: (context) => [
-        _buildPopupItem('Week', isSelected: true),
-        _buildPopupItem('Month'),
-        _buildPopupItem('3 Month'),
-        _buildPopupItem('6 Month'),
-        _buildPopupItem('Yearly'),
+        _buildPopupItem('Week', isSelected: _selectedPeriod == 'Week'),
+        _buildPopupItem('Month', isSelected: _selectedPeriod == 'Month'),
+        _buildPopupItem('3 Month', isSelected: _selectedPeriod == '3 Month'),
+        _buildPopupItem('6 Month', isSelected: _selectedPeriod == '6 Month'),
+        _buildPopupItem('Yearly', isSelected: _selectedPeriod == 'Yearly'),
       ],
     );
   }
@@ -752,24 +801,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }) {
     return PopupMenuItem<String>(
       value: text,
-      height: 36,
+      height: 40,
       child: Row(
         children: [
           Icon(
             isSelected
                 ? Icons.radio_button_checked
                 : Icons.radio_button_unchecked,
-            color: isSelected ? const Color(0xFF0247C4) : Colors.grey.shade400,
-            size: 16,
+            color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFCCCCCC),
+            size: 18,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Text(
             text,
             style: TextStyle(
-              color: isSelected
-                  ? const Color(0xFF0247C4)
-                  : Colors.grey.shade500,
-              fontSize: 13,
+              color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFCCCCCC),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
             ),
           ),

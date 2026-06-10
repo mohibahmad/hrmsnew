@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
+import '../services/auth_service.dart';
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -20,52 +21,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
   bool isDataEmpty = false;
   String _searchQuery = '';
 
-  final List<AssetData> _assets = [
-    AssetData(
-      'Olivia Vance',
-      'Web Developer',
-      'Laptop',
-      '01/12/2022',
-      '01/12/2022',
-      true,
-    ),
-    AssetData(
-      'Sophia Smith',
-      'Graphic Designer',
-      'Mouse',
-      '01/12/2022',
-      'In use',
-      false,
-    ),
-    AssetData(
-      'Amelia Gray',
-      'Engineering',
-      'Keyboard',
-      '01/12/2022',
-      '01/12/2022',
-      true,
-    ),
-    AssetData(
-      'Olivia Vance',
-      'Graphic Designer',
-      'Mac',
-      '01/12/2022',
-      'In use',
-      false,
-    ),
-    AssetData(
-      'Lucas Johnson',
-      'Web Developer',
-      'Table',
-      '01/12/2022',
-      'In use',
-      false,
-    ),
-  ];
+  List<AssetData> _assets = [];
 
   @override
   void initState() {
     super.initState();
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      _assets = [
+        AssetData('Olivia Vance', 'Web Developer', 'Laptop', '01/12/2022', '01/12/2022', true),
+        AssetData('Sophia Smith', 'Graphic Designer', 'Mouse', '01/12/2022', 'In use', false),
+        AssetData('Amelia Gray', 'Engineering', 'Keyboard', '01/12/2022', '01/12/2022', true),
+        AssetData('Olivia Vance', 'Graphic Designer', 'Mac', '01/12/2022', 'In use', false),
+        AssetData('Lucas Johnson', 'Web Developer', 'Table', '01/12/2022', 'In use', false),
+      ];
+    } else {
+      _assets = [];
+    }
     // Automatically show the dialog after the screen renders to match the mockup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAddAssetModal(context);
