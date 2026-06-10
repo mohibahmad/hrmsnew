@@ -47,7 +47,7 @@ class AuthService {
     final credential = await _auth.signInAnonymously();
     if (credential.user != null) {
       await credential.user!.updateDisplayName(displayName).catchError((_) {});
-      await FirestoreService()
+      FirestoreService()
           .seedDummyDataForUser(
             uid: credential.user!.uid,
             displayName: displayName,
