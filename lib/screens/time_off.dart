@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 import 'assign_time_off.dart';
 
 class Worker {
@@ -35,28 +35,30 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   bool isDataEmpty = false;
   String _searchQuery = '';
   String _selectedTab = 'All';
-  List<QueryDocumentSnapshot> _timeoffDocs = [];
+  List<Map<String, dynamic>> _timeoffDocs = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _timeoffDocs = DummyData.timeoff;
+    _isLoading = false;
     FirestoreService().timeoffStream.listen((snapshot) {
       if (mounted) {
         setState(() {
-          _timeoffDocs = snapshot.docs;
-          _isLoading = false;
+          _timeoffDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
         });
       }
+    }, onError: (e) {
+      // Keep using dummy data on error
     });
   }
 
-  List<QueryDocumentSnapshot> get _filteredWorkers {
+  List<Map<String, dynamic>> get _filteredWorkers {
     return _timeoffDocs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final name = (data['name'] ?? '').toString().toLowerCase();
-      final position = (data['position'] ?? '').toString().toLowerCase();
-      final email = (data['email'] ?? '').toString().toLowerCase();
+      final name = (doc['name'] ?? '').toString().toLowerCase();
+      final position = (doc['position'] ?? '').toString().toLowerCase();
+      final email = (doc['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
 
       final matchesSearch = name.contains(query) ||
@@ -280,7 +282,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
-  Widget _buildDataTable(List<QueryDocumentSnapshot> workers) {
+  Widget _buildDataTable(List<Map<String, dynamic>> workers) {
     return Container(
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -354,12 +356,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
               final doc = workers[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final name = (data['name'] ?? '').toString();
-              final email = (data['email'] ?? '').toString();
-              final position = (data['position'] ?? '').toString();
-              final contact = (data['contact'] ?? '').toString();
-              final action = (data['action'] ?? 'Payroll Data').toString();
+              final name = (doc['name'] ?? '').toString();
+              final email = (doc['email'] ?? '').toString();
+              final position = (doc['position'] ?? '').toString();
+              final contact = (doc['contact'] ?? '').toString();
+              final action = (doc['action'] ?? 'Payroll Data').toString();
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 child: Row(

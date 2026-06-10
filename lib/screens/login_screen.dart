@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 import '../utils/snackbar_utils.dart';
 import 'home_screen.dart';
@@ -60,11 +61,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleLogin() async {
-    setState(() => _isGoogleLoading = true);
+    setState(() {
+      _isGoogleLoading = true;
+    });
+
     try {
-      final credential = await _authService.signInWithGoogle();
-      if (credential != null && mounted) {
-        final name = credential.user?.displayName ?? 'Google User';
+      await GoogleSignIn.instance.initialize();
+
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
+          .authenticate();
+
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      if (mounted) {
+        final name = userCredential.user?.displayName ?? 'Google User';
         if (name == 'Google Demo User') {
           FlashySnackBar.show(
             context,
@@ -76,38 +93,62 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
-    } catch (e) {
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        return;
+      }
       if (mounted) {
         _showErrorSnackBar('Google login failed. Please try again.');
       }
+    } on FirebaseAuthException catch (_) {
+      if (mounted) {
+        _showErrorSnackBar('Google login failed. Please try again.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showErrorSnackBar('An unexpected error occurred. Please try again.');
+      }
     } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
     }
   }
 
   Future<void> _handleAppleLogin() async {
-    setState(() => _isAppleLoading = true);
+    setState(() {
+      _isAppleLoading = true;
+    });
+
     try {
-      final credential = await _authService.signInWithApple();
-      if (credential != null && mounted) {
-        final name = credential.user?.displayName ?? 'Apple User';
-        if (name == 'Apple Demo User') {
-          FlashySnackBar.show(
-            context,
-            message: 'Signed in via Apple Demo Mode (Development Fallback).',
-            isError: false,
-          );
-        }
+      final appleProvider = OAuthProvider('apple.com');
+      appleProvider.setCustomParameters({'locale': 'en'});
+      appleProvider.addScope('email');
+      appleProvider.addScope('name');
+
+      await FirebaseAuth.instance.signInWithProvider(appleProvider);
+
+      if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
+        return;
+      }
+      if (mounted) {
+        _showErrorSnackBar('Apple login failed. Please try again.');
       }
     } catch (e) {
       if (mounted) {
         _showErrorSnackBar('Apple login failed. Please try again.');
       }
     } finally {
-      if (mounted) setState(() => _isAppleLoading = false);
+      if (mounted) {
+        setState(() => _isAppleLoading = false);
+      }
     }
   }
 

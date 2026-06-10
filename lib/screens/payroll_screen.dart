@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -22,19 +22,22 @@ class PayrollScreen extends StatefulWidget {
 class _PayrollScreenState extends State<PayrollScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'All';
-  List<QueryDocumentSnapshot> _payrollDocs = [];
+  List<Map<String, dynamic>> _payrollDocs = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _payrollDocs = DummyData.payroll;
+    _isLoading = false;
     FirestoreService().payrollStream.listen((snapshot) {
       if (mounted) {
         setState(() {
-          _payrollDocs = snapshot.docs;
-          _isLoading = false;
+          _payrollDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
         });
       }
+    }, onError: (e) {
+      // Keep using dummy data on error
     });
   }
 
@@ -158,11 +161,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  List<QueryDocumentSnapshot> get _filteredEmployees {
+  List<Map<String, dynamic>> get _filteredEmployees {
     return _payrollDocs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final name = (data['name'] ?? '').toString().toLowerCase();
-      final pos = (data['position'] ?? '').toString().toLowerCase();
+      final name = (doc['name'] ?? '').toString().toLowerCase();
+      final pos = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final matchesSearch = name.contains(query) || pos.contains(query);
 
@@ -309,8 +311,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  Widget _buildEmployeeRow(QueryDocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  Widget _buildEmployeeRow(Map<String, dynamic> doc) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -334,7 +335,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (data['name'] ?? '').toString(),
+                      (doc['name'] ?? '').toString(),
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -343,7 +344,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      (data['email'] ?? '').toString(),
+                      (doc['email'] ?? '').toString(),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black87,
@@ -358,7 +359,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              (data['position'] ?? '').toString(),
+              (doc['position'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black87,
@@ -369,7 +370,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              (data['contact'] ?? '').toString(),
+              (doc['contact'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black87,
@@ -386,7 +387,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   if (widget.onAssignTimeOff != null) {
                     widget.onAssignTimeOff!();
                   } else {
-                    _showPayrollDataDialog(context, data);
+                    _showPayrollDataDialog(context, doc);
                   }
                 },
                 style: TextButton.styleFrom(

@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 import 'workers_attendance_screen.dart';
 
 // --- STYLING CONSTANTS (Curated HSL/Hex Harmonious Palette) ---
@@ -55,28 +55,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _selectedTab = 'All';
   String _selectedTimeframe = 'Week';
   bool _isTimeframeDropdownOpen = false;
-  List<QueryDocumentSnapshot> _attendanceDocs = [];
+  List<Map<String, dynamic>> _attendanceDocs = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _attendanceDocs = DummyData.attendance;
+    _isLoading = false;
     FirestoreService().attendanceStream.listen((snapshot) {
       if (mounted) {
         setState(() {
-          _attendanceDocs = snapshot.docs;
-          _isLoading = false;
+          _attendanceDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
         });
       }
+    }, onError: (e) {
+      // Keep using dummy data on error
     });
   }
 
-  List<QueryDocumentSnapshot> get _filteredRecords {
+  List<Map<String, dynamic>> get _filteredRecords {
     return _attendanceDocs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final name = (data['name'] ?? '').toString().toLowerCase();
-      final role = (data['role'] ?? '').toString().toLowerCase();
-      final status = (data['status'] ?? '').toString();
+      final name = (doc['name'] ?? '').toString().toLowerCase();
+      final role = (doc['role'] ?? '').toString().toLowerCase();
+      final status = (doc['status'] ?? '').toString();
       final query = _searchQuery.toLowerCase();
 
       final matchesSearch = name.contains(query) || role.contains(query);
@@ -92,11 +94,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   int get _totalCount => _attendanceDocs.length;
   int get _presentCount =>
-      _attendanceDocs.where((d) => (d.data() as Map<String, dynamic>)['status'] == 'Present').length;
+      _attendanceDocs.where((d) => d['status'] == 'Present').length;
   int get _absentCount =>
-      _attendanceDocs.where((d) => (d.data() as Map<String, dynamic>)['status'] == 'Absent').length;
+      _attendanceDocs.where((d) => d['status'] == 'Absent').length;
   int get _leaveCount =>
-      _attendanceDocs.where((d) => (d.data() as Map<String, dynamic>)['status'] == 'Leave').length;
+      _attendanceDocs.where((d) => d['status'] == 'Leave').length;
 
   @override
   Widget build(BuildContext context) {
@@ -634,12 +636,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   TapDownDetails? _tapPosition;
 
-  void _showRowMenu(BuildContext context, QueryDocumentSnapshot doc) {
+  void _showRowMenu(BuildContext context, Map<String, dynamic> doc) {
     if (_tapPosition == null) return;
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
 
-    final docId = doc.id;
+    final docId = doc['id'] as String;
 
     showMenu<String>(
       context: context,
@@ -672,15 +674,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  void _showAttendancePreview(BuildContext context, QueryDocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
     final record = AttendanceRecord(
-      name: (data['name'] ?? '').toString(),
-      email: (data['email'] ?? '').toString(),
-      role: (data['role'] ?? '').toString(),
-      status: (data['status'] ?? '').toString(),
-      attendanceType: (data['attendanceType'] ?? 'Remote').toString(),
-      workType: (data['workType'] ?? 'Full Time').toString(),
+      name: (doc['name'] ?? '').toString(),
+      email: (doc['email'] ?? '').toString(),
+      role: (doc['role'] ?? '').toString(),
+      status: (doc['status'] ?? '').toString(),
+      attendanceType: (doc['attendanceType'] ?? 'Remote').toString(),
+      workType: (doc['workType'] ?? 'Full Time').toString(),
     );
     showDialog(
       context: context,
@@ -695,7 +696,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildAttendanceTable(List<QueryDocumentSnapshot> records) {
+  Widget _buildAttendanceTable(List<Map<String, dynamic>> records) {
     return Container(
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -722,13 +723,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           // Table Rows
           ...List.generate(records.length, (index) {
             final doc = records[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final name = (data['name'] ?? '').toString();
-            final email = (data['email'] ?? '').toString();
-            final role = (data['role'] ?? '').toString();
-            final status = (data['status'] ?? '').toString();
-            final attendanceType = (data['attendanceType'] ?? 'Remote').toString();
-            final workType = (data['workType'] ?? 'Full Time').toString();
+            final name = (doc['name'] ?? '').toString();
+            final email = (doc['email'] ?? '').toString();
+            final role = (doc['role'] ?? '').toString();
+            final status = (doc['status'] ?? '').toString();
+            final attendanceType = (doc['attendanceType'] ?? 'Remote').toString();
+            final workType = (doc['workType'] ?? 'Full Time').toString();
             return Column(
               children: [
                 Padding(

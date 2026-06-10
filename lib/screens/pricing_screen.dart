@@ -12,8 +12,8 @@ class SubscriptionDialog extends StatefulWidget {
 }
 
 class _SubscriptionDialogState extends State<SubscriptionDialog> {
-  final Color primaryBlue = const Color(0xFF0A44A9);
-  final Color leftPanelBlue = const Color(0xFF0F52BA);
+  final Color primaryBlue = const Color(0xFF0247C4);
+  final Color leftPanelBlue = const Color(0xFF0247C4);
   final Color cardLightBlue = const Color(0xFFE5EEFC);
   int _selectedPlanIndex = 1;
 
@@ -41,7 +41,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     boxShadow: [
                       BoxShadow(
                         color: Color(0xFF000000).withValues(alpha: 0.2),
-                        blurRadius: 25,
+                        blurRadius: 0.5,
                         offset: const Offset(0, 15),
                       ),
                     ],
@@ -250,7 +250,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     boxShadow: [
                       BoxShadow(
                         color: Color(0xFF000000).withValues(alpha: 0.15),
-                        blurRadius: 8,
+                        blurRadius: 0.5,
                         offset: const Offset(0, 2),
                       ),
                     ],

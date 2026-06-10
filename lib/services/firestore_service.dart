@@ -134,8 +134,10 @@ class FirestoreService {
       }
     }
 
+    final batch = _db.batch();
+
     // Create user profile
-    await docRef.set({
+    batch.set(docRef, {
       'username': displayName,
       'email': email,
       'phone': '+1 (555) 019-2834',
@@ -155,39 +157,39 @@ class FirestoreService {
     final payrollColl = docRef.collection('payroll');
     final timeoffColl = docRef.collection('timeoff');
 
-    // 1. Seed Workers
+    // 1. Seed Workers (batch)
     final dummyWorkers = [
       {
-        'name': 'Ali Ahmad',
-        'email': 'ali.ahmad@stark.com',
+        'name': 'John Smith',
+        'email': 'john.smith@stark.com',
         'type1': 'Full-Time',
         'position': 'Senior Web Developer',
         'type2': 'Remote',
       },
       {
-        'name': 'Sara Khan',
-        'email': 'sara.khan@stark.com',
+        'name': 'Michael Johnson',
+        'email': 'michael.johnson@stark.com',
         'type1': 'Full-Time',
         'position': 'UI/UX Designer',
         'type2': 'On-Site',
       },
       {
-        'name': 'John Doe',
-        'email': 'john.doe@stark.com',
+        'name': 'Robert Wilson',
+        'email': 'robert.wilson@stark.com',
         'type1': 'Contract',
         'position': 'DevOps Engineer',
-        'type2': 'Hybrid',
+        'type2': 'On-Site',
       },
       {
-        'name': 'Mohib Ahmad',
-        'email': 'mohib.ahmad@stark.com',
+        'name': 'Emily Davis',
+        'email': 'emily.davis@stark.com',
         'type1': 'Full-Time',
         'position': 'Product Manager',
         'type2': 'On-Site',
       },
       {
-        'name': 'Emily Watson',
-        'email': 'emily.w@stark.com',
+        'name': 'David Brown',
+        'email': 'david.brown@stark.com',
         'type1': 'Part-Time',
         'position': 'Marketing Specialist',
         'type2': 'Remote',
@@ -195,49 +197,46 @@ class FirestoreService {
     ];
 
     for (var w in dummyWorkers) {
-      await workersColl.add({
-        ...w,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      batch.set(workersColl.doc(), {...w, 'createdAt': FieldValue.serverTimestamp()});
     }
 
-    // 2. Seed Attendance
+    // 2. Seed Attendance (matches workers list)
     final dummyAttendance = [
       {
-        'name': 'Ali Ahmad',
-        'email': 'ali.ahmad@stark.com',
+        'name': 'John Smith',
+        'email': 'john.smith@stark.com',
         'role': 'Senior Web Developer',
         'status': 'Present',
         'attendanceType': 'Remote',
         'workType': 'Full Time',
       },
       {
-        'name': 'Sara Khan',
-        'email': 'sara.khan@stark.com',
+        'name': 'Michael Johnson',
+        'email': 'michael.johnson@stark.com',
         'role': 'UI/UX Designer',
         'status': 'Present',
         'attendanceType': 'On-Site',
         'workType': 'Full Time',
       },
       {
-        'name': 'John Doe',
-        'email': 'john.doe@stark.com',
+        'name': 'Robert Wilson',
+        'email': 'robert.wilson@stark.com',
         'role': 'DevOps Engineer',
         'status': 'Absent',
         'attendanceType': 'On-Site',
         'workType': 'Contract',
       },
       {
-        'name': 'Mohib Ahmad',
-        'email': 'mohib.ahmad@stark.com',
+        'name': 'Emily Davis',
+        'email': 'emily.davis@stark.com',
         'role': 'Product Manager',
         'status': 'Present',
         'attendanceType': 'On-Site',
         'workType': 'Full Time',
       },
       {
-        'name': 'Emily Watson',
-        'email': 'emily.w@stark.com',
+        'name': 'David Brown',
+        'email': 'david.brown@stark.com',
         'role': 'Marketing Specialist',
         'status': 'Leave',
         'attendanceType': 'Remote',
@@ -252,34 +251,34 @@ class FirestoreService {
       });
     }
 
-    // 3. Seed Expenses
+    // 3. Seed Expenses (matches workers list)
     final dummyExpenses = [
       {
-        'name': 'Ali Ahmad',
+        'name': 'John Smith',
         'date': '05/06/2026',
         'category': 'Client Dinner',
         'amount': 124.50,
       },
       {
-        'name': 'Sara Khan',
+        'name': 'Michael Johnson',
         'date': '04/06/2026',
         'category': 'Figma Subscription',
         'amount': 45.00,
       },
       {
-        'name': 'Mohib Ahmad',
+        'name': 'Emily Davis',
         'date': '02/06/2026',
         'category': 'Office Keyboard',
         'amount': 89.99,
       },
       {
-        'name': 'John Doe',
+        'name': 'Robert Wilson',
         'date': '01/06/2026',
         'category': 'AWS Cloud Hosting',
         'amount': 250.00,
       },
       {
-        'name': 'Emily Watson',
+        'name': 'David Brown',
         'date': '28/05/2026',
         'category': 'Google Ads Campaign',
         'amount': 500.00,
@@ -287,17 +286,14 @@ class FirestoreService {
     ];
 
     for (var e in dummyExpenses) {
-      await expensesColl.add({
-        ...e,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await expensesColl.add({...e, 'createdAt': FieldValue.serverTimestamp()});
     }
 
-    // 4. Seed Payroll
+    // 4. Seed Payroll (matches workers list)
     final dummyPayroll = [
       {
-        'name': 'Ali Ahmad',
-        'email': 'ali.ahmad@stark.com',
+        'name': 'John Smith',
+        'email': 'john.smith@stark.com',
         'position': 'Senior Web Developer',
         'contact': '+1 555-0101',
         'status': 'Active',
@@ -308,8 +304,8 @@ class FirestoreService {
         'salary': '\$ 95,000',
       },
       {
-        'name': 'Sara Khan',
-        'email': 'sara.khan@stark.com',
+        'name': 'Michael Johnson',
+        'email': 'michael.johnson@stark.com',
         'position': 'UI/UX Designer',
         'contact': '+1 555-0102',
         'status': 'Active',
@@ -320,8 +316,8 @@ class FirestoreService {
         'salary': '\$ 75,000',
       },
       {
-        'name': 'John Doe',
-        'email': 'john.doe@stark.com',
+        'name': 'Robert Wilson',
+        'email': 'robert.wilson@stark.com',
         'position': 'DevOps Engineer',
         'contact': '+1 555-0103',
         'status': 'Active',
@@ -332,8 +328,8 @@ class FirestoreService {
         'salary': '\$ 85,000',
       },
       {
-        'name': 'Mohib Ahmad',
-        'email': 'mohib.ahmad@stark.com',
+        'name': 'Emily Davis',
+        'email': 'emily.davis@stark.com',
         'position': 'Product Manager',
         'contact': '+1 555-0104',
         'status': 'Active',
@@ -344,8 +340,8 @@ class FirestoreService {
         'salary': '\$ 110,000',
       },
       {
-        'name': 'Emily Watson',
-        'email': 'emily.w@stark.com',
+        'name': 'David Brown',
+        'email': 'david.brown@stark.com',
         'position': 'Marketing Specialist',
         'contact': '+1 555-0105',
         'status': 'Active',
@@ -358,38 +354,35 @@ class FirestoreService {
     ];
 
     for (var p in dummyPayroll) {
-      await payrollColl.add({
-        ...p,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await payrollColl.add({...p, 'createdAt': FieldValue.serverTimestamp()});
     }
 
-    // 5. Seed Time Off requests
+    // 5. Seed Time Off requests (matches workers list)
     final dummyTimeoff = [
       {
-        'name': 'Ali Ahmad',
-        'email': 'ali.ahmad@stark.com',
+        'name': 'John Smith',
+        'email': 'john.smith@stark.com',
         'position': 'Senior Web Developer',
         'contact': '+1 555-0101',
         'action': 'Annual Leave',
       },
       {
-        'name': 'Sara Khan',
-        'email': 'sara.khan@stark.com',
+        'name': 'Michael Johnson',
+        'email': 'michael.johnson@stark.com',
         'position': 'UI/UX Designer',
         'contact': '+1 555-0102',
         'action': 'Sick Leave',
       },
       {
-        'name': 'John Doe',
-        'email': 'john.doe@stark.com',
+        'name': 'Robert Wilson',
+        'email': 'robert.wilson@stark.com',
         'position': 'DevOps Engineer',
         'contact': '+1 555-0103',
         'action': 'Casual Leave',
       },
       {
-        'name': 'Emily Watson',
-        'email': 'emily.w@stark.com',
+        'name': 'David Brown',
+        'email': 'david.brown@stark.com',
         'position': 'Marketing Specialist',
         'contact': '+1 555-0105',
         'action': 'Maternity Leave',
@@ -397,10 +390,7 @@ class FirestoreService {
     ];
 
     for (var t in dummyTimeoff) {
-      await timeoffColl.add({
-        ...t,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await timeoffColl.add({...t, 'createdAt': FieldValue.serverTimestamp()});
     }
   }
 }

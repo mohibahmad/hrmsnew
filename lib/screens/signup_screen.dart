@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
@@ -63,11 +64,27 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _handleGoogleLogin() async {
-    setState(() => _isGoogleLoading = true);
+    setState(() {
+      _isGoogleLoading = true;
+    });
+
     try {
-      final credential = await _authService.signInWithGoogle();
-      if (credential != null && mounted) {
-        final name = credential.user?.displayName ?? 'Google User';
+      await GoogleSignIn.instance.initialize();
+
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
+          .authenticate();
+
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      if (mounted) {
+        final name = userCredential.user?.displayName ?? 'Google User';
         if (name == 'Google Demo User') {
           FlashySnackBar.show(
             context,
@@ -79,7 +96,11 @@ class _SignupScreenState extends State<SignupScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
-    } catch (e) {
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        return;
+      }
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -87,26 +108,56 @@ class _SignupScreenState extends State<SignupScreen> {
           isError: true,
         );
       }
+    } on FirebaseAuthException catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Google login failed. Please try again.',
+          isError: true,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'An unexpected error occurred. Please try again.',
+          isError: true,
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
     }
   }
 
   Future<void> _handleAppleLogin() async {
-    setState(() => _isAppleLoading = true);
+    setState(() {
+      _isAppleLoading = true;
+    });
+
     try {
-      final credential = await _authService.signInWithApple();
-      if (credential != null && mounted) {
-        final name = credential.user?.displayName ?? 'Apple User';
-        if (name == 'Apple Demo User') {
-          FlashySnackBar.show(
-            context,
-            message: 'Signed in via Apple Demo Mode (Development Fallback).',
-            isError: false,
-          );
-        }
+      final appleProvider = OAuthProvider('apple.com');
+      appleProvider.setCustomParameters({'locale': 'en'});
+      appleProvider.addScope('email');
+      appleProvider.addScope('name');
+
+      await FirebaseAuth.instance.signInWithProvider(appleProvider);
+
+      if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
+        return;
+      }
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Apple login failed. Please try again.',
+          isError: true,
         );
       }
     } catch (e) {
@@ -118,7 +169,9 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isAppleLoading = false);
+      if (mounted) {
+        setState(() => _isAppleLoading = false);
+      }
     }
   }
 

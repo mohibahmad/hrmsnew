@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 
 class ExpensesScreen extends StatefulWidget {
@@ -22,19 +22,22 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   bool isDataEmpty = false;
   String _searchQuery = '';
-  List<QueryDocumentSnapshot> _expensesDocs = [];
+  List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _expensesDocs = DummyData.expenses;
+    _isLoading = false;
     FirestoreService().expensesStream.listen((snapshot) {
       if (mounted) {
         setState(() {
-          _expensesDocs = snapshot.docs;
-          _isLoading = false;
+          _expensesDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
         });
       }
+    }, onError: (e) {
+      // Keep using dummy data on error
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAddExpenseModal(context);
@@ -44,8 +47,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   double get _totalExpenseSum {
     if (isDataEmpty) return 0.0;
     return _filteredExpenses.fold(0.0, (sum, doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      return sum + ((data['amount'] ?? 0).toDouble());
+      return sum + ((doc['amount'] ?? 0).toDouble());
     });
   }
 
@@ -54,11 +56,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return format.format(amount);
   }
 
-  List<QueryDocumentSnapshot> get _filteredExpenses {
+  List<Map<String, dynamic>> get _filteredExpenses {
     return _expensesDocs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final name = (data['name'] ?? '').toString().toLowerCase();
-      final category = (data['category'] ?? '').toString().toLowerCase();
+      final name = (doc['name'] ?? '').toString().toLowerCase();
+      final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       return name.contains(query) || category.contains(query);
     }).toList();
@@ -776,7 +777,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   // ================= FILLED STATE (LIST) =================
 
-  Widget _buildDataTable(List<QueryDocumentSnapshot> expenses) {
+  Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
     return Container(
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -856,13 +857,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDataRow(QueryDocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final name = (data['name'] ?? '').toString();
-    final date = (data['date'] ?? '').toString();
-    final category = (data['category'] ?? '').toString();
-    final amount = (data['amount'] ?? 0).toDouble();
-    final docId = doc.id;
+  Widget _buildDataRow(Map<String, dynamic> doc) {
+    final name = (doc['name'] ?? '').toString();
+    final date = (doc['date'] ?? '').toString();
+    final category = (doc['category'] ?? '').toString();
+    final amount = (doc['amount'] ?? 0).toDouble();
+    final docId = doc['id'] as String;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),

@@ -23,15 +23,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   final Map<String, List<HolidayItem>> _holidaysByMonth = {
     'May': [
       HolidayItem(1, 'Labour Day', false),
-      HolidayItem(6, 'Labour Day', true),
-      HolidayItem(14, 'Labour Day', false),
-      HolidayItem(26, 'Labour Day', true),
+      HolidayItem(6, 'Memorial Day', true),
+      HolidayItem(14, 'Mother\'s Day', false),
+      HolidayItem(26, 'Victoria Day', true),
     ],
     'Feb': [
-      HolidayItem(1, 'Labour Day', false),
-      HolidayItem(6, 'Labour Day', true),
-      HolidayItem(14, 'Labour Day', true),
-      HolidayItem(26, 'Labour Day', true),
+      HolidayItem(1, 'Groundhog Day', false),
+      HolidayItem(6, 'Super Bowl', true),
+      HolidayItem(14, 'Valentine\'s Day', true),
+      HolidayItem(26, 'Presidents\' Day', true),
     ],
   };
 

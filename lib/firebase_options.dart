@@ -81,7 +81,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'businesscard-6f5c4.firebasestorage.app',
     androidClientId: '343295414565-jn4gu5u7ia32tm5if028ucke6325q15l.apps.googleusercontent.com',
     iosClientId: '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
-    iosBundleId: 'com.iosapp.hrms',
+    iosBundleId: 'com.example.hrms',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

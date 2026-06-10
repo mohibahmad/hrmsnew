@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 import 'pricing_screen.dart';
 
 void main() {
@@ -80,7 +80,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                       boxShadow: const [
                         BoxShadow(
                           color: Color(0xFFFFFFFF),
-                          blurRadius: 8.0,
+                          blurRadius: 0.5,
                           spreadRadius: 0.0,
                         ),
                       ],
@@ -398,27 +398,29 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   final Color buttonColor = const Color(0xFF0C51C1);
   final Color textDark = const Color(0xFF111111);
   String _searchQuery = '';
-  List<QueryDocumentSnapshot> _allWorkers = [];
+  List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _allWorkers = DummyData.workers;
+    _isLoading = false;
     FirestoreService().workersStream.listen((snapshot) {
       if (mounted) {
         setState(() {
-          _allWorkers = snapshot.docs;
-          _isLoading = false;
+          _allWorkers = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
         });
       }
+    }, onError: (e) {
+      // Keep using dummy data on error
     });
   }
 
-  List<QueryDocumentSnapshot> get _filteredWorkers {
+  List<Map<String, dynamic>> get _filteredWorkers {
     return _allWorkers.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final name = (data['name'] ?? '').toString().toLowerCase();
-      final position = (data['position'] ?? '').toString().toLowerCase();
+      final name = (doc['name'] ?? '').toString().toLowerCase();
+      final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       return name.contains(query) || position.contains(query);
     }).toList();
@@ -714,19 +716,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   )
                 else
                   ..._filteredWorkers.map((doc) {
-                    final w = doc.data() as Map<String, dynamic>;
-                    final name = (w['name'] ?? '').toString();
-                    final email = (w['email'] ?? '').toString();
-                    final type1 = (w['type1'] ?? '').toString();
-                    final position = (w['position'] ?? '').toString();
-                    final type2 = (w['type2'] ?? '').toString();
+                    final name = (doc['name'] ?? '').toString();
+                    final email = (doc['email'] ?? '').toString();
+                    final type1 = (doc['type1'] ?? '').toString();
+                    final position = (doc['position'] ?? '').toString();
+                    final type2 = (doc['type2'] ?? '').toString();
                     return _buildListItem(
                       name,
                       email,
                       type1,
                       position,
                       type2,
-                      doc.id,
+                      doc['id'] as String,
                     );
                   }),
 
