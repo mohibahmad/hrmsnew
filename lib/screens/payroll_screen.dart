@@ -203,7 +203,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     if (startIndex >= filtered.length) return [];
     final endIndex = startIndex + _itemsPerPage;
-    return filtered.sublist(startIndex, endIndex > filtered.length ? filtered.length : endIndex);
+    return filtered.sublist(
+      startIndex,
+      endIndex > filtered.length ? filtered.length : endIndex,
+    );
   }
 
   int get _totalPages {
@@ -332,7 +335,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: ListView.separated(
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: _currentPageItems.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) =>
                     _buildEmployeeRow(_currentPageItems[index]),
               ),
@@ -888,9 +892,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         GestureDetector(
-          onTap: _currentPage > 1
-              ? () => setState(() => _currentPage--)
-              : null,
+          onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
           behavior: HitTestBehavior.opaque,
           child: Icon(
             Icons.chevron_left,
@@ -906,7 +908,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ),
           child: Text(
             '$_currentPage',
-            style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(width: 8),
