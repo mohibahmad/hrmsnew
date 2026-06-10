@@ -25,6 +25,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _payrollDocs = [];
   bool _isLoading = true;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 4;
 
   @override
   void initState() {
@@ -148,6 +150,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         onChanged: (val) {
           setState(() {
             _searchQuery = val;
+            _currentPage = 1;
           });
         },
         decoration: InputDecoration(
@@ -168,6 +171,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   onTap: () {
                     setState(() {
                       _searchQuery = '';
+                      _currentPage = 1;
                     });
                   },
                   child: const Icon(Icons.close, size: 18, color: Colors.grey),
@@ -194,6 +198,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
     }).toList();
   }
 
+  List<Map<String, dynamic>> get _currentPageItems {
+    final filtered = _filteredEmployees;
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    if (startIndex >= filtered.length) return [];
+    final endIndex = startIndex + _itemsPerPage;
+    return filtered.sublist(startIndex, endIndex > filtered.length ? filtered.length : endIndex);
+  }
+
+  int get _totalPages {
+    final filtered = _filteredEmployees;
+    if (filtered.isEmpty) return 1;
+    return (filtered.length / _itemsPerPage).ceil();
+  }
+
   Widget _buildFilterTabs() {
     final filters = [
       'All',
@@ -214,7 +232,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
         children: filters.map((filter) {
           final isSelected = _selectedFilter == filter;
           return GestureDetector(
-            onTap: () => setState(() => _selectedFilter = filter),
+            onTap: () => setState(() {
+              _selectedFilter = filter;
+              _currentPage = 1;
+            }),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -241,6 +262,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Widget _buildTable() {
     return Container(
+      height: 440,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -273,43 +295,47 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ),
           const SizedBox(height: 8),
           if (_filteredEmployees.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40.0),
+            Expanded(
               child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SvgPicture.asset(
-                      'assets/placeholder_workers.svg',
-                      width: 120,
-                      height: 100,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFFCBCBCB),
-                        BlendMode.srcIn,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/placeholder_workers.svg',
+                        width: 120,
+                        height: 100,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFFCBCBCB),
+                          BlendMode.srcIn,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No Payroll Records',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0247C4),
-                        fontFamily: 'SF Pro Display',
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No Payroll Records',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0247C4),
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _filteredEmployees.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) =>
-                  _buildEmployeeRow(_filteredEmployees[index]),
+            Expanded(
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _currentPageItems.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) =>
+                    _buildEmployeeRow(_currentPageItems[index]),
+              ),
             ),
           const SizedBox(height: 16),
           _buildPagination(),
@@ -857,10 +883,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildPagination() {
+    final total = _totalPages;
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        const Icon(Icons.chevron_left, color: Colors.black),
+        GestureDetector(
+          onTap: _currentPage > 1
+              ? () => setState(() => _currentPage--)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: Icon(
+            Icons.chevron_left,
+            color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+          ),
+        ),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -868,10 +904,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
             color: const Color(0xFF0D4CC6),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Text('1', style: TextStyle(color: Color(0xFFFFFFFF))),
+          child: Text(
+            '$_currentPage',
+            style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold),
+          ),
         ),
         const SizedBox(width: 8),
-        const Icon(Icons.chevron_right, color: Colors.black),
+        GestureDetector(
+          onTap: _currentPage < total
+              ? () => setState(() => _currentPage++)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: Icon(
+            Icons.chevron_right,
+            color: _currentPage < total ? Colors.black : Colors.grey.shade400,
+          ),
+        ),
       ],
     );
   }

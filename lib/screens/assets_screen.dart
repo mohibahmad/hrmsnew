@@ -20,6 +20,8 @@ class AssetsScreen extends StatefulWidget {
 class _AssetsScreenState extends State<AssetsScreen> {
   bool isDataEmpty = false;
   String _searchQuery = '';
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   List<AssetData> _assets = [];
 
@@ -55,9 +57,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   void _showAddAssetModal(BuildContext context) {
-    final nameController = TextEditingController(text: 'Ali Ahmad');
-    final typeController = TextEditingController(text: 'Laptop');
-    final positionController = TextEditingController(text: 'Graphic Designer');
+    final nameController = TextEditingController();
+    final typeController = TextEditingController();
+    final positionController = TextEditingController();
     DateTime loanedDate = DateTime(2022, 2, 1);
     DateTime returnedDate = DateTime(2026, 10, 9);
     bool isReturned = true;
@@ -161,11 +163,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     const SizedBox(height: 24),
 
                     // Form Fields
-                    _buildModalTextField('Worker Name', nameController),
+                    _buildModalTextField('Worker Name', nameController, 'Ali Ahmad'),
                     const SizedBox(height: 16),
-                    _buildModalTextField('Asset Type', typeController),
+                    _buildModalTextField('Asset Type', typeController, 'Laptop'),
                     const SizedBox(height: 16),
-                    _buildModalTextField('Position', positionController),
+                    _buildModalTextField('Position', positionController, 'Graphic Designer'),
                     const SizedBox(height: 16),
 
                     // Date Picker for Loaned Date
@@ -249,7 +251,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Widget _buildModalTextField(String label, TextEditingController controller) {
+  Widget _buildModalTextField(String label, TextEditingController controller, String hintText) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -273,7 +275,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
           alignment: Alignment.centerLeft,
           child: TextField(
             controller: controller,
-            decoration: const InputDecoration.collapsed(hintText: ''),
+            decoration: InputDecoration.collapsed(
+              hintText: hintText,
+              hintStyle: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 14,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
             style: const TextStyle(
               fontSize: 14,
               color: Colors.black,
@@ -464,6 +473,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
+                        _currentPage = 1;
                       });
                     },
                     decoration: InputDecoration(
@@ -482,6 +492,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     onTap: () {
                       setState(() {
                         _searchQuery = '';
+                        _currentPage = 1;
                       });
                     },
                     child: Padding(
@@ -528,6 +539,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
   // ================= DATA TABLE (FILLED STATE) =================
 
   Widget _buildDataTable(List<AssetData> assets) {
+    final totalPages = (assets.isEmpty) ? 1 : (assets.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= assets.length ? 0 : (_currentPage - 1) * _itemsPerPage;
+    final paginatedAssets = assets.isEmpty ? <AssetData>[] : assets.sublist(
+      safeStartIndex,
+      (safeStartIndex + _itemsPerPage) > assets.length ? assets.length : (safeStartIndex + _itemsPerPage),
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -554,11 +572,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: assets.length,
+            itemCount: paginatedAssets.length,
             separatorBuilder: (context, index) =>
                 const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
-              return _buildDataRow(assets[index]);
+              return _buildDataRow(paginatedAssets[index]);
             },
           ),
           const SizedBox(height: 16),
@@ -568,7 +586,16 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black),
+                GestureDetector(
+                  onTap: _currentPage > 1
+                      ? () => setState(() => _currentPage--)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -578,9 +605,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     color: const Color(0xFF0247C4),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    '1',
-                    style: TextStyle(
+                  child: Text(
+                    '$_currentPage',
+                    style: const TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Display',
@@ -588,7 +615,16 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black),
+                GestureDetector(
+                  onTap: _currentPage < totalPages
+                      ? () => setState(() => _currentPage++)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
               ],
             ),
           ),
@@ -693,9 +729,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 80),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
               'assets/placeholder_workers.svg',

@@ -52,7 +52,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   void _showAddHolidayModal(BuildContext context) {
-    final holidayNameController = TextEditingController(text: 'Labour Day');
+    final holidayNameController = TextEditingController();
     int selectedDay = 1;
     String selectedMonth = 'May';
 
@@ -171,8 +171,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextField(
                         controller: holidayNameController,
-                        decoration: const InputDecoration.collapsed(
-                          hintText: '',
+                        decoration: InputDecoration.collapsed(
+                          hintText: 'Labour Day',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
                         style: const TextStyle(
                           fontSize: 14,
@@ -553,24 +558,32 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 100),
       child: Center(
-        child: Column(
-          children: [
-            SvgPicture.asset(
-              'assets/placeholder_workers.svg',
-              width: 120,
-              height: 100,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No Holidays Found',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0247C4),
-                fontFamily: 'SF Pro Display',
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                'assets/placeholder_workers.svg',
+                width: 120,
+                height: 100,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFFCBCBCB),
+                  BlendMode.srcIn,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const Text(
+                'No Holidays Found',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0247C4),
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -402,6 +402,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   String _searchQuery = '';
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   @override
   void initState() {
@@ -437,6 +439,20 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       final query = _searchQuery.toLowerCase();
       return name.contains(query) || position.contains(query);
     }).toList();
+  }
+
+  List<Map<String, dynamic>> get _currentPageItems {
+    final filtered = _filteredWorkers;
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    if (startIndex >= filtered.length) return [];
+    final endIndex = startIndex + _itemsPerPage;
+    return filtered.sublist(startIndex, endIndex > filtered.length ? filtered.length : endIndex);
+  }
+
+  int get _totalPages {
+    final filtered = _filteredWorkers;
+    if (filtered.isEmpty) return 1;
+    return (filtered.length / _itemsPerPage).ceil();
   }
 
   Future<void> _deleteWorker(String docId) async {
@@ -561,6 +577,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                 onChanged: (val) {
                                   setState(() {
                                     _searchQuery = val;
+                                    _currentPage = 1;
                                   });
                                 },
                                 decoration: InputDecoration(
@@ -580,6 +597,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                 onTap: () {
                                   setState(() {
                                     _searchQuery = '';
+                                    _currentPage = 1;
                                   });
                                 },
                                 child: Padding(
@@ -704,9 +722,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 else if (_filteredWorkers.isEmpty)
                   Center(
                     child: Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 80),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SvgPicture.asset(
                             'assets/placeholder_workers.svg',
@@ -732,7 +752,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     ),
                   )
                 else
-                  ..._filteredWorkers.map((doc) {
+                  ..._currentPageItems.map((doc) {
                     final name = (doc['name'] ?? '').toString();
                     final email = (doc['email'] ?? '').toString();
                     final type1 = (doc['type1'] ?? '').toString();
@@ -753,7 +773,17 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Icon(Icons.keyboard_arrow_left, size: 20),
+                    GestureDetector(
+                      onTap: _currentPage > 1
+                          ? () => setState(() => _currentPage--)
+                          : null,
+                      behavior: HitTestBehavior.opaque,
+                      child: Icon(
+                        Icons.keyboard_arrow_left,
+                        size: 20,
+                        color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -764,9 +794,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         color: actionBtnBlue,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        '1',
-                        style: TextStyle(
+                      child: Text(
+                        '$_currentPage',
+                        style: const TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontWeight: FontWeight.bold,
                           fontFamily: 'SF Pro Display',
@@ -774,7 +804,17 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.keyboard_arrow_right, size: 20),
+                    GestureDetector(
+                      onTap: _currentPage < _totalPages
+                          ? () => setState(() => _currentPage++)
+                          : null,
+                      behavior: HitTestBehavior.opaque,
+                      child: Icon(
+                        Icons.keyboard_arrow_right,
+                        size: 20,
+                        color: _currentPage < _totalPages ? Colors.black : Colors.grey.shade400,
+                      ),
+                    ),
                   ],
                 ),
               ],

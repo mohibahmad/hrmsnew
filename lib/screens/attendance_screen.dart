@@ -59,6 +59,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _isTimeframeDropdownOpen = false;
   List<Map<String, dynamic>> _attendanceDocs = [];
   bool _isLoading = true;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   @override
   void initState() {
@@ -267,6 +269,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
+                        _currentPage = 1;
                       });
                     },
                     decoration: InputDecoration(
@@ -286,6 +289,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     onTap: () {
                       setState(() {
                         _searchQuery = '';
+                        _currentPage = 1;
                       });
                     },
                     child: Padding(
@@ -505,6 +509,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       onTap: () {
         setState(() {
           _selectedTab = text;
+          _currentPage = 1;
         });
       },
       child: Container(
@@ -613,9 +618,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 80),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
               'assets/placeholder_workers.svg',
@@ -717,6 +724,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildAttendanceTable(List<Map<String, dynamic>> records) {
+    final totalPages = (records.isEmpty) ? 1 : (records.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= records.length ? 0 : (_currentPage - 1) * _itemsPerPage;
+    final paginatedRecords = records.isEmpty ? <Map<String, dynamic>>[] : records.sublist(
+      safeStartIndex,
+      (safeStartIndex + _itemsPerPage) > records.length ? records.length : (safeStartIndex + _itemsPerPage),
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -741,8 +755,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Table Rows
-          ...List.generate(records.length, (index) {
-            final doc = records[index];
+          ...List.generate(paginatedRecords.length, (index) {
+            final doc = paginatedRecords[index];
             final name = (doc['name'] ?? '').toString();
             final email = (doc['email'] ?? '').toString();
             final role = (doc['role'] ?? '').toString();
@@ -861,7 +875,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ],
                   ),
                 ),
-                if (index < records.length - 1)
+                if (index < paginatedRecords.length - 1)
                   const Divider(height: 1, color: Color(0xFFEEEEEE)),
               ],
             );
@@ -873,7 +887,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black),
+                GestureDetector(
+                  onTap: _currentPage > 1
+                      ? () => setState(() => _currentPage--)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -883,16 +906,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     color: primaryBlue,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    '1',
-                    style: TextStyle(
+                  child: Text(
+                    '$_currentPage',
+                    style: const TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black),
+                GestureDetector(
+                  onTap: _currentPage < totalPages
+                      ? () => setState(() => _currentPage++)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
               ],
             ),
           ),

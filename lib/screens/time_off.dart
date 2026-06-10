@@ -39,6 +39,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   String _selectedTab = 'All';
   List<Map<String, dynamic>> _timeoffDocs = [];
   bool _isLoading = true;
+  int _currentPage = 1;
+  static const int _itemsPerPage = 5;
 
   @override
   void initState() {
@@ -206,6 +208,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 onChanged: (val) {
                   setState(() {
                     _searchQuery = val;
+                    _currentPage = 1;
                   });
                 },
                 decoration: InputDecoration(
@@ -225,6 +228,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 onTap: () {
                   setState(() {
                     _searchQuery = '';
+                    _currentPage = 1;
                   });
                 },
                 child: Padding(
@@ -265,6 +269,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       onTap: () {
         setState(() {
           _selectedTab = text;
+          _currentPage = 1;
         });
       },
       child: Container(
@@ -288,6 +293,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> workers) {
+    final totalPages = (workers.isEmpty) ? 1 : (workers.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= workers.length ? 0 : (_currentPage - 1) * _itemsPerPage;
+    final paginatedWorkers = workers.isEmpty ? <Map<String, dynamic>>[] : workers.sublist(
+      safeStartIndex,
+      (safeStartIndex + _itemsPerPage) > workers.length ? workers.length : (safeStartIndex + _itemsPerPage),
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -357,10 +369,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: workers.length,
+            itemCount: paginatedWorkers.length,
             separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
-              final doc = workers[index];
+              final doc = paginatedWorkers[index];
               final name = (doc['name'] ?? '').toString();
               final email = (doc['email'] ?? '').toString();
               final position = (doc['position'] ?? '').toString();
@@ -476,7 +488,16 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black),
+                GestureDetector(
+                  onTap: _currentPage > 1
+                      ? () => setState(() => _currentPage--)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -486,10 +507,22 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     color: const Color(0xFF0247C4),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('1', style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold)),
+                  child: Text(
+                    '$_currentPage',
+                    style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black),
+                GestureDetector(
+                  onTap: _currentPage < totalPages
+                      ? () => setState(() => _currentPage++)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
               ],
             ),
           )
@@ -501,9 +534,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   Widget _buildEmptyState() {
     return Center(
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 80),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
               'assets/placeholder_workers.svg',
