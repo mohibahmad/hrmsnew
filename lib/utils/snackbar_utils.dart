@@ -111,7 +111,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                   gradient: LinearGradient(
                     colors: widget.isError
                         ? [const Color(0xFFFF416C), const Color(0xFFFF4B2B)]
-                        : [const Color(0xFF11998E), const Color(0xFF38EF7D)],
+                        : [const Color(0xFF0247C4), const Color(0xFF4A7FE0)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -120,7 +120,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     BoxShadow(
                       color: (widget.isError
                               ? const Color(0xFFFF4B2B)
-                              : const Color(0xFF38EF7D))
+                              : const Color(0xFF0247C4))
                           .withValues(alpha: 0.35),
                       blurRadius: 15,
                       offset: const Offset(0, 6),

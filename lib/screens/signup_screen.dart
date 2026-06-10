@@ -290,38 +290,47 @@ class _SignupScreenState extends State<SignupScreen> {
         style: OutlinedButton.styleFrom(
           backgroundColor: backgroundColor ?? Colors.white,
           foregroundColor: textColor ?? const Color(0xFF0F172A),
+          disabledForegroundColor: (textColor ?? const Color(0xFF0F172A)).withValues(alpha: 0.6),
+          disabledBackgroundColor: backgroundColor ?? Colors.white,
           side: border ?? BorderSide(color: Colors.grey.shade200),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
           elevation: 0,
         ),
-        child: isLoading
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    textColor ?? const Color(0xFF0F172A),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isLoading)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      textColor ?? const Color(0xFF0F172A),
+                    ),
                   ),
                 ),
               )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  icon,
-                  const SizedBox(width: 12),
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ],
+            else
+              icon,
+            const SizedBox(width: 12),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+                color: isLoading
+                    ? (textColor ?? const Color(0xFF0F172A)).withValues(alpha: 0.6)
+                    : null,
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -660,8 +669,8 @@ class _SignupScreenState extends State<SignupScreen> {
             top: 50,
             right: 40,
             child: Container(
-              width: 50,
-              height: 50,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: Color(0xFFFFFFFF),
                 shape: BoxShape.circle,
@@ -676,8 +685,8 @@ class _SignupScreenState extends State<SignupScreen> {
               child: Center(
                 child: Image.asset(
                   'assets/langauge_icon.png',
-                  width: 35,
-                  height: 35,
+                  width: 22,
+                  height: 22,
                   color: const Color(0xFF0247C4),
                 ),
               ),
