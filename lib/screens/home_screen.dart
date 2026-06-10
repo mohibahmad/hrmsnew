@@ -2376,67 +2376,74 @@ class LeaveTypesPieChart extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Center(
-              child: SizedBox(
-                width: 380,
-                height: 260,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeInOutCubic,
-                      builder: (context, animValue, child) {
-                        return PieChart(
-                          PieChartData(
-                            sectionsSpace: 0.0,
-                            centerSpaceRadius: 0,
-                            startDegreeOffset: 0,
-                            sections: [
-                              PieChartSectionData(
-                                color: const Color(0xFF97FFA9),
-                                value: 30 * animValue,
-                                radius: 85,
-                                showTitle: false,
-                              ),
-                              PieChartSectionData(
-                                color: const Color(0xFF84A9FF),
-                                value: 50 * animValue,
-                                radius: 85,
-                                showTitle: false,
-                              ),
-                              PieChartSectionData(
-                                color: const Color(0xFFFF4A5E),
-                                value: 20 * animValue,
-                                radius: 85,
-                                showTitle: false,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    CustomPaint(
-                      size: const Size(380, 260),
-                      painter: CalloutLinesPainter(),
-                    ),
-                    const Positioned(
-                      top: 36,
-                      left: 65,
-                      child: _ChartLabel('50%'),
-                    ),
-                    const Positioned(
-                      bottom: 43,
-                      left: 110,
-                      child: _ChartLabel('30%'),
-                    ),
-                    const Positioned(
-                      top: 36,
-                      right: 65,
-                      child: _ChartLabel('20%'),
-                    ),
-                  ],
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 1000),
+              curve: Curves.easeInOutCubic,
+              builder: (context, animValue, child) {
+                return Opacity(
+                  opacity: animValue,
+                  child: Transform.scale(
+                    scale: animValue,
+                    child: child,
+                  ),
+                );
+              },
+              child: Center(
+                child: SizedBox(
+                  width: 380,
+                  height: 260,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PieChart(
+                        PieChartData(
+                          sectionsSpace: 0.0,
+                          centerSpaceRadius: 0,
+                          startDegreeOffset: 0,
+                          sections: [
+                            PieChartSectionData(
+                              color: const Color(0xFF97FFA9),
+                              value: 30,
+                              radius: 85,
+                              showTitle: false,
+                            ),
+                            PieChartSectionData(
+                              color: const Color(0xFF84A9FF),
+                              value: 50,
+                              radius: 85,
+                              showTitle: false,
+                            ),
+                            PieChartSectionData(
+                              color: const Color(0xFFFF4A5E),
+                              value: 20,
+                              radius: 85,
+                              showTitle: false,
+                            ),
+                          ],
+                        ),
+                      ),
+                      CustomPaint(
+                        size: const Size(380, 260),
+                        painter: CalloutLinesPainter(),
+                      ),
+                      const Positioned(
+                        top: 36,
+                        left: 65,
+                        child: _ChartLabel('50%'),
+                      ),
+                      const Positioned(
+                        bottom: 43,
+                        left: 110,
+                        child: _ChartLabel('30%'),
+                      ),
+                      const Positioned(
+                        top: 36,
+                        right: 65,
+                        child: _ChartLabel('20%'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
