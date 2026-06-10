@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
+import '../services/dummy_data.dart';
 import 'workers.dart';
 import 'pricing_screen.dart';
 import 'attendance_screen.dart';
@@ -31,13 +33,66 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
 
+  int _totalWorkersCount = 0;
+  double _totalExpensesSum = 0.0;
+  double _totalSalarySum = 0.0;
+
   @override
   void initState() {
     super.initState();
     _selectedIndex = 0;
+    _loadDashboardData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPremiumAndShowDialog();
     });
+  }
+
+  void _loadDashboardData() {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        _totalWorkersCount = DummyData.workers.length;
+        _totalExpensesSum = DummyData.expenses.fold(0.0, (sum, e) => sum + ((e['amount'] ?? 0.0) as num).toDouble());
+        _totalSalarySum = DummyData.payroll.fold(0.0, (sum, p) {
+          final salaryStr = (p['salary'] ?? '').toString().replaceAll('\$', '').replaceAll(',', '').trim();
+          final salaryVal = double.tryParse(salaryStr) ?? 0.0;
+          return sum + salaryVal;
+        });
+      });
+    } else {
+      final firestore = FirestoreService();
+      
+      firestore.workersStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _totalWorkersCount = snap.docs.length;
+          });
+        }
+      });
+
+      firestore.expensesStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _totalExpensesSum = snap.docs.fold(0.0, (sum, doc) {
+              final data = doc.data() as Map<String, dynamic>?;
+              return sum + ((data?['amount'] ?? 0.0) as num).toDouble();
+            });
+          });
+        }
+      });
+
+      firestore.payrollStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _totalSalarySum = snap.docs.fold(0.0, (sum, doc) {
+              final data = doc.data() as Map<String, dynamic>?;
+              final salaryStr = (data?['salary'] ?? '').toString().replaceAll('\$', '').replaceAll(',', '').trim();
+              return sum + (double.tryParse(salaryStr) ?? 0.0);
+            });
+          });
+        }
+      });
+    }
   }
 
   Future<void> _checkPremiumAndShowDialog() async {
@@ -196,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
+              horizontal: 40.0,
               vertical: 24.0,
             ),
             child: Column(
@@ -217,12 +272,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(child: TotalWorkersCard()),
+                      Expanded(child: TotalWorkersCard(count: _totalWorkersCount)),
                       const SizedBox(width: 10),
                       Expanded(
                         child: SparklineCard(
                           title: 'Total Salary',
-                          amount: '\$2.4M',
+                          amount: '\$${NumberFormat.compact().format(_totalSalarySum)}',
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF8BB1F3),
                         ),
@@ -231,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: SparklineCard(
                           title: 'Expenses',
-                          amount: '\$12,000',
+                          amount: '\$${NumberFormat.compact().format(_totalExpensesSum)}',
                           period: _selectedPeriod,
                           lineColor: const Color(0xFFAFE0FE),
                         ),
@@ -447,7 +502,7 @@ class ProfileInlineHeader extends StatelessWidget {
 
     return Container(
       height: 94,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
@@ -817,7 +872,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 15,
-            color: Colors.black87,
+            color: Colors.black,
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -1667,7 +1722,7 @@ class TopHeader extends StatelessWidget {
 
     return Container(
       height: 94,
-      padding: const EdgeInsets.symmetric(horizontal: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
@@ -1691,8 +1746,8 @@ class TopHeader extends StatelessWidget {
               Text(
                 'Welcome $name',
                 style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
                   color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
@@ -1739,7 +1794,8 @@ class TopHeader extends StatelessWidget {
 }
 
 class TotalWorkersCard extends StatelessWidget {
-  const TotalWorkersCard({super.key});
+  final int count;
+  const TotalWorkersCard({super.key, required this.count});
 
   @override
   Widget build(BuildContext context) {
@@ -1773,8 +1829,8 @@ class TotalWorkersCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Text(
-                  '420',
+                Text(
+                  '$count',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -1902,7 +1958,7 @@ class TotalWorkersCard extends StatelessWidget {
               subtitle,
               style: const TextStyle(
                 fontSize: 10,
-                color: Colors.black54,
+                color: Colors.black,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -2052,7 +2108,7 @@ class SparklineCard extends StatelessWidget {
                       period,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: Colors.black,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -2311,8 +2367,8 @@ class AttendanceLineChart extends StatelessWidget {
                       borderData: FlBorderData(
                         show: true,
                         border: const Border(
-                          bottom: BorderSide(color: Colors.black54, width: 1),
-                          left: BorderSide(color: Colors.black54, width: 1),
+                          bottom: BorderSide(color: Colors.black, width: 1),
+                          left: BorderSide(color: Colors.black, width: 1),
                         ),
                       ),
                       lineBarsData: [
@@ -2692,7 +2748,7 @@ class HolidayCard extends StatelessWidget {
     final Color inactiveLeftBg = const Color(0xFFE2E4E4); // Darker grey left
     final Color inactiveRightBg = const Color(0xFFF1F1F1); // Lighter grey right
     final Color inactiveTextColor = Color(0xFF000000);
-    final Color inactiveSubTextColor = Colors.black87;
+    final Color inactiveSubTextColor = Colors.black;
     final Color inactiveBadgeBg = const Color(0xFF4C84E0); // Blue badge
 
     // Assign chosen colors

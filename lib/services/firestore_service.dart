@@ -6,13 +6,13 @@ class FirestoreService {
 
   String? get _uid => AuthService().currentUser?.uid;
 
-  DocumentReference get _userDoc => _db.collection('users').doc(_uid);
+  DocumentReference get _userDoc => _db.collection('hrms_user').doc(_uid);
 
-  CollectionReference get _workers => _userDoc.collection('workers');
-  CollectionReference get _expenses => _userDoc.collection('expenses');
-  CollectionReference get _attendance => _userDoc.collection('attendance');
-  CollectionReference get _payroll => _userDoc.collection('payroll');
-  CollectionReference get _timeoff => _userDoc.collection('timeoff');
+  CollectionReference get _workers => _userDoc.collection('hrms_workers');
+  CollectionReference get _expenses => _userDoc.collection('hrms_expenses');
+  CollectionReference get _attendance => _userDoc.collection('hrms_attendance');
+  CollectionReference get _payroll => _userDoc.collection('hrms_payroll');
+  CollectionReference get _timeoff => _userDoc.collection('hrms_timeoff');
 
   Future<void> createUserProfile({
     required String username,
@@ -124,7 +124,7 @@ class FirestoreService {
     required String displayName,
     required String email,
   }) async {
-    final docRef = _db.collection('users').doc(uid);
+    final docRef = _db.collection('hrms_user').doc(uid);
     final userSnap = await docRef.get();
 
     if (userSnap.exists) {

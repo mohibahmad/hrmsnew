@@ -39,7 +39,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF0247C4),
               onPrimary: Color(0xFFFFFFFF),
-              onSurface: Colors.black87,
+              onSurface: Colors.black,
             ),
           ),
           child: child!,
@@ -334,7 +334,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             child: DropdownButton<String>(
               isExpanded: true,
               value: value,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.black87),
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
               items: const [
                 DropdownMenuItem(value: 'Annual Leave', child: Text('Annual Leave')),
                 DropdownMenuItem(value: 'Sick Leave', child: Text('Sick Leave')),
@@ -386,7 +386,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   value,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: Colors.black,
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -413,7 +413,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.chevron_left, size: 20, color: Colors.black87),
+              const Icon(Icons.chevron_left, size: 20, color: Colors.black),
               const SizedBox(width: 32),
               Text(
                 monthYear,
@@ -424,7 +424,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
               ),
               const SizedBox(width: 32),
-              const Icon(Icons.chevron_right, size: 20, color: Colors.black87),
+              const Icon(Icons.chevron_right, size: 20, color: Colors.black),
             ],
           ),
           const SizedBox(height: 16),
@@ -517,7 +517,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         child: Text(
           day,
           style: TextStyle(
-            color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
+            color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             fontFamily: 'SF Pro Display',
@@ -561,7 +561,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   decoration: const InputDecoration.collapsed(
                     hintText: 'Please enter your notes',
                     hintStyle: TextStyle(
-                      color: Colors.black38,
+                      color: Colors.black,
                       fontSize: 14,
                       fontFamily: 'SF Pro Display',
                     ),
@@ -579,7 +579,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             child: Column(
               children: [
                 _buildSummaryRow('Available Annual Leave Days', '-1', Colors.red),
-                _buildSummaryRow('Requested Days', '$_requestedDays', Colors.black87),
+                _buildSummaryRow('Requested Days', '$_requestedDays', Colors.black),
                 _buildSummaryRow('Remaining Days', '${-1 - _requestedDays}', Colors.red),
               ],
             ),

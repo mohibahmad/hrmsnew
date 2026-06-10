@@ -28,7 +28,7 @@ class AddNewWorkerScreen extends StatefulWidget {
 }
 
 class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
-  final Color textDark = const Color(0xFF111111);
+  final Color textDark = const Color(0xFF000000);
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
   // Controllers
@@ -202,7 +202,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               const Text(
                                 'Fill in the worker details to get started.',
                                 style: TextStyle(
-                                  color: Colors.black87,
+                                  color: Colors.black,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w400,
                                   fontFamily: 'SF Pro Display',
@@ -475,7 +475,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                             'Upload a profile image\nPNG, JPG or PDF',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              color: Colors.black38,
+                                              color: Colors.black,
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,
                                               fontFamily: 'SF Pro Display',

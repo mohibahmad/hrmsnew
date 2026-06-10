@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
+
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -29,19 +30,27 @@ class _PayrollScreenState extends State<PayrollScreen> {
   @override
   void initState() {
     super.initState();
-    _payrollDocs = DummyData.payroll;
-    _isLoading = false;
+    _payrollDocs = [];
+    _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       FirestoreService().payrollStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _payrollDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+            _isLoading = false;
           });
         }
       }, onError: (e) {
-        // Keep using dummy data on error
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       });
+    } else {
+      _payrollDocs = DummyData.payroll;
+      _isLoading = false;
     }
   }
 
@@ -54,7 +63,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           _buildHeader(),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -65,7 +74,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Colors.black,
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -214,7 +223,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: Text(
                 filter,
                 style: TextStyle(
-                  color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
+                  color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontFamily: 'SF Pro Display',
                 ),
@@ -310,7 +319,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return const TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.bold,
-      color: Colors.black87,
+      color: Colors.black,
       fontFamily: 'SF Pro Display',
     );
   }
@@ -351,7 +360,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       (doc['email'] ?? '').toString(),
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.black87,
+                        color: Colors.black,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -366,7 +375,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               (doc['position'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
-                color: Colors.black87,
+                color: Colors.black,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -377,7 +386,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               (doc['contact'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
-                color: Colors.black87,
+                color: Colors.black,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -743,7 +752,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   title,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: Colors.black,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
                   ),
@@ -845,7 +854,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        const Icon(Icons.chevron_left, color: Colors.black54),
+        const Icon(Icons.chevron_left, color: Colors.black),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -856,7 +865,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           child: const Text('1', style: TextStyle(color: Color(0xFFFFFFFF))),
         ),
         const SizedBox(width: 8),
-        const Icon(Icons.chevron_right, color: Colors.black54),
+        const Icon(Icons.chevron_right, color: Colors.black),
       ],
     );
   }

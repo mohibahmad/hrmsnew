@@ -398,7 +398,7 @@ class DashboardWorkerList extends StatefulWidget {
 class _DashboardWorkerListState extends State<DashboardWorkerList> {
   final Color actionBtnBlue = const Color(0xFF0E53C5);
   final Color buttonColor = const Color(0xFF0C51C1);
-  final Color textDark = const Color(0xFF111111);
+  final Color textDark = const Color(0xFF000000);
   String _searchQuery = '';
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
@@ -406,19 +406,27 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   @override
   void initState() {
     super.initState();
-    _allWorkers = DummyData.workers;
-    _isLoading = false;
+    _allWorkers = [];
+    _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       FirestoreService().workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _allWorkers = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+            _isLoading = false;
           });
         }
       }, onError: (e) {
-        // Keep using dummy data on error
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       });
+    } else {
+      _allWorkers = DummyData.workers;
+      _isLoading = false;
     }
   }
 
@@ -816,7 +824,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       email,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.black87,
+                        color: Colors.black,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -1015,7 +1023,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       child: Text(
         label,
         style: TextStyle(
-          color: isActive ? Color(0xFFFFFFFF) : Colors.black87,
+          color: isActive ? Color(0xFFFFFFFF) : Colors.black,
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
           fontSize: 14,
           fontFamily: 'SF Pro Display',
@@ -1038,12 +1046,28 @@ class AddNewWorkerFlow extends StatefulWidget {
 }
 
 class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
-  int _activeTabIndex = 0; // 0: Worker Detail, 1: Experience, 2: Documentation
+  int _activeTabIndex = 0;
+  final _nameController = TextEditingController();
+  final _fatherNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _nationalIdController = TextEditingController();
+  final _religionController = TextEditingController();
+  final _dobController = TextEditingController();
+  final _genderController = TextEditingController();
+  final _addressController = TextEditingController();
 
   Future<void> _saveWorker() async {
     await FirestoreService().addWorker({
-      'name': 'New Worker',
-      'email': 'worker@email.com',
+      'name': _nameController.text.isNotEmpty ? _nameController.text : 'New Worker',
+      'fatherName': _fatherNameController.text,
+      'email': _emailController.text.isNotEmpty ? _emailController.text : 'worker@email.com',
+      'phone': _phoneController.text,
+      'nationalId': _nationalIdController.text,
+      'religion': _religionController.text,
+      'dob': _dobController.text,
+      'gender': _genderController.text,
+      'address': _addressController.text,
       'type1': 'Full-Time',
       'position': 'Employee',
       'type2': 'On-Site',
@@ -1051,6 +1075,20 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (mounted) {
       widget.onBack?.call();
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _fatherNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _nationalIdController.dispose();
+    _religionController.dispose();
+    _dobController.dispose();
+    _genderController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
   @override
@@ -1107,7 +1145,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         Text(
                           'Fill in the worker details to get started.',
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: Colors.black,
                             fontSize: 13,
                             fontWeight: FontWeight.w400,
                             fontFamily: 'SF Pro Display',
@@ -1441,7 +1479,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           'Upload a profile image\nPNG, JPG or PDF',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.black38,
+                            color: Colors.black,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             fontFamily: 'SF Pro Display',
@@ -1700,7 +1738,7 @@ class ExperienceFormSection extends StatelessWidget {
                                   fontSize: 11,
                                   color: isSelected
                                       ? Color(0xFFFFFFFF)
-                                      : Colors.black87,
+                                      : Colors.black,
                                   fontWeight: isSelected
                                       ? FontWeight.bold
                                       : FontWeight.normal,
@@ -2182,6 +2220,7 @@ Widget _buildInputField(
   IconData? suffixIcon,
   bool isDropdown = false,
   bool isTextArea = false,
+  TextEditingController? controller,
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2206,6 +2245,7 @@ Widget _buildInputField(
         alignment: isTextArea ? Alignment.topLeft : Alignment.center,
         child: TextField(
           maxLines: isTextArea ? 4 : 1,
+          controller: controller,
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF000000),
@@ -2638,7 +2678,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: Colors.black,
                     fontWeight: FontWeight.w600, // Semi-bold for the label
                     fontFamily: 'SF Pro Display',
                   ),

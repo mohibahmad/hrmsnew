@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 import 'home_screen.dart';
 import '../utils/logout_dialog.dart';
 
@@ -27,104 +29,78 @@ class WorkersAttendanceScreen extends StatefulWidget {
 class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
+  List<Map<String, dynamic>> _workers = [];
+  List<Map<String, dynamic>> _todayAttendance = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  final FirestoreService _firestore = FirestoreService();
 
-  List<Map<String, dynamic>> _getWorkerData() {
-    return [
-      {
-        "name": "Olivia Vance",
-        "email": "oliva23abs@gmail.com",
-        "role": "Web Developer",
-        "status": "*****",
-      },
-      {
-        "name": "Sophia Smith",
-        "email": "sophia.smith@gmail.com",
-        "role": "Marketing",
-        "status": "*****",
-      },
-      {
-        "name": "Liam Vance",
-        "email": "liam.vance@gmail.com",
-        "role": "Designer",
-        "status": "*****",
-      },
-      {
-        "name": "Jackson Miller",
-        "email": "jackson@gmail.com",
-        "role": "Engineering",
-        "status": "Present",
-      },
-      {
-        "name": "Amelia Gray",
-        "email": "amelia123@gmail.com",
-        "role": "Sales",
-        "status": "Absent",
-      },
-      {
-        "name": "Olivia Vance",
-        "email": "oliva23abs@gmail.com",
-        "role": "Designer",
-        "status": "Leave",
-      },
-      {
-        "name": "Ava Martinez",
-        "email": "ava@gmail.com",
-        "role": "Designer",
-        "status": "Present",
-      },
-      {
-        "name": "Lucas Johnson",
-        "email": "lucas@gmail.com",
-        "role": "Engineering",
-        "status": "Present",
-      },
-    ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  List<Map<String, dynamic>> _getTodayData() {
-    return [
-      {"name": "Amelia Gray", "status": "Present", "type": null, "desc": null},
-      {
-        "name": "Liam Vance",
-        "status": "Absent",
-        "type": "Sick Leave",
-        "desc":
-            "Taking medical rest as per physician's advice due to food poisoning.",
-      },
-      {
-        "name": "Sophia Smith",
-        "status": "Leave",
-        "type": "Casual Leave",
-        "desc": "Family emergency to attend. Will resume duty tomorrow.",
-      },
-      {"name": "Olivia Vance", "status": "Present", "type": null, "desc": null},
-      {"name": "Ava Martinez", "status": "Present", "type": null, "desc": null},
-      {
-        "name": "Lucas Johnson",
-        "status": "Present",
-        "type": null,
-        "desc": null,
-      },
-      {
-        "name": "Jackson Miller",
-        "status": "Leave",
-        "type": "Casual Leave",
-        "desc": null,
-      },
-    ];
+  Future<void> _loadData() async {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        _workers = DummyData.attendance;
+        _todayAttendance = DummyData.attendance;
+        _isLoading = false;
+      });
+      return;
+    }
+    _firestore.workersStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _workers = snapshot.docs
+              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+              .toList();
+          _isLoading = false;
+        });
+      }
+    }, onError: (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    });
+    _firestore.attendanceStream.listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _todayAttendance = snapshot.docs
+              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+              .toList();
+          _isLoading = false;
+        });
+      }
+    }, onError: (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  List<Map<String, dynamic>> get _filteredWorkers {
+    return _workers.where((worker) {
+      final name = (worker["name"] ?? "").toString().toLowerCase();
+      final role = (worker["role"] ?? "").toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      final matchesSearch = name.contains(query) || role.contains(query);
+      if (_selectedStatusFilter == 'All') return matchesSearch;
+      return matchesSearch && (worker["status"] ?? "") == _selectedStatusFilter;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredWorkers = _getWorkerData().where((worker) {
-      final name = worker["name"].toString().toLowerCase();
-      final role = worker["role"].toString().toLowerCase();
-      final query = _searchQuery.toLowerCase();
-      final matchesSearch = name.contains(query) || role.contains(query);
-      
-      if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch && worker["status"] == _selectedStatusFilter;
-    }).toList();
+    final filteredWorkers = _filteredWorkers;
 
     return Scaffold(
       backgroundColor: bgGray,
@@ -147,7 +123,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 _buildHeader(context),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -243,12 +219,29 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                     child: Column(
-                                      children: _getTodayData()
-                                          .map(
-                                            (att) =>
-                                                TodayAttendanceItem(data: att),
-                                          )
-                                          .toList(),
+                                      children: _todayAttendance.isEmpty
+                                          ? [
+                                              Padding(
+                                                padding: const EdgeInsets.all(40.0),
+                                                child: Center(
+                                                  child: Text(
+                                                    "No Attendance Records",
+                                                    style: TextStyle(
+                                                      color: Color(0xFF000000),
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w500,
+                                                      fontFamily: 'SF Pro Display',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ]
+                                          : _todayAttendance
+                                              .map(
+                                                (att) =>
+                                                    TodayAttendanceItem(data: att),
+                                              )
+                                              .toList(),
                                     ),
                                   ),
                                 ],
@@ -275,7 +268,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
     return Container(
       height: 94,
-      padding: const EdgeInsets.only(left: 32, right: 32, top: 24, bottom: 24),
+      padding: const EdgeInsets.only(left: 40, right: 40, top: 24, bottom: 24),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
@@ -605,7 +598,7 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                         ],
                       ),
                       const SizedBox(height: 16),
-                      const Text('Reason (Required)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87, fontFamily: 'SF Pro Display')),
+                      const Text('Reason (Required)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black, fontFamily: 'SF Pro Display')),
                       const SizedBox(height: 8),
                       Container(
                         height: 100,

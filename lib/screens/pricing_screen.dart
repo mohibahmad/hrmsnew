@@ -206,7 +206,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   'Subscription automatically renew unless canceled before the\nend of the current period. You won\'t be change if you\ncancel during the trial period.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.black54,
+                                    color: Colors.black,
                                     fontSize: 11,
                                     height: 1.3,
                                     fontWeight: FontWeight.w400,

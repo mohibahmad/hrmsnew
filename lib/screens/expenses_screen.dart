@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+
 import '../utils/snackbar_utils.dart';
 
 class ExpensesScreen extends StatefulWidget {
@@ -29,19 +30,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   void initState() {
     super.initState();
-    _expensesDocs = DummyData.expenses;
-    _isLoading = false;
+    _expensesDocs = [];
+    _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       FirestoreService().expensesStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _expensesDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+            _isLoading = false;
           });
         }
       }, onError: (e) {
-        // Keep using dummy data on error
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       });
+    } else {
+      _expensesDocs = DummyData.expenses;
+      _isLoading = false;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAddExpenseModal(context);
@@ -107,7 +116,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         IconButton(
                           icon: const Icon(
                             Icons.close,
-                            color: Colors.black87,
+                            color: Colors.black,
                             size: 20,
                           ),
                           onPressed: () => Navigator.of(context).pop(),
@@ -229,7 +238,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   ),
                                   style: const TextStyle(
                                     fontSize: 14,
-                                    color: Colors.black87,
+                                    color: Colors.black,
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
@@ -289,7 +298,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             decoration: const InputDecoration.collapsed(hintText: ''),
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: Colors.black,
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
             ),
@@ -311,7 +320,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
-              Icon(Icons.chevron_left, size: 16, color: Colors.black87),
+              Icon(Icons.chevron_left, size: 16, color: Colors.black),
               SizedBox(width: 16),
               Text(
                 'MAY 2025',
@@ -322,7 +331,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
               ),
               SizedBox(width: 16),
-              Icon(Icons.chevron_right, size: 16, color: Colors.black87),
+              Icon(Icons.chevron_right, size: 16, color: Colors.black),
             ],
           ),
           const SizedBox(height: 12),
@@ -421,7 +430,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: Text(
             day,
             style: TextStyle(
-              color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
+              color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               fontFamily: 'SF Pro Display',
@@ -465,8 +474,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  // ================= MAIN CONTENT =================
-
+ 
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
@@ -490,16 +498,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   fontFamily: 'SF Pro Display',
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                'Manage workforce expenses and company disbursements.',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+             
             ],
           ),
           const Spacer(),
@@ -820,7 +819,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black54),
+                const Icon(Icons.chevron_left, color: Colors.black),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -840,7 +839,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black54),
+                const Icon(Icons.chevron_right, color: Colors.black),
               ],
             ),
           ),
@@ -935,7 +934,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Widget _buildActionMenu(String docId) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.black87),
+      icon: const Icon(Icons.more_vert, color: Colors.black),
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       elevation: 4,

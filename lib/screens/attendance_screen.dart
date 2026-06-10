@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+
 import 'workers_attendance_screen.dart';
 
 // --- STYLING CONSTANTS (Curated HSL/Hex Harmonious Palette) ---
@@ -62,19 +63,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    _attendanceDocs = DummyData.attendance;
-    _isLoading = false;
+    _attendanceDocs = [];
+    _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       FirestoreService().attendanceStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _attendanceDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+            _isLoading = false;
           });
         }
       }, onError: (e) {
-        // Keep using dummy data on error
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       });
+    } else {
+      _attendanceDocs = DummyData.attendance;
+      _isLoading = false;
     }
   }
 
@@ -197,15 +206,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ),
               SizedBox(height: 4),
-              Text(
-                'Track and manage workforce daily attendance logs.',
-                style: TextStyle(
-                  color: textMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              
             ],
           ),
           const Spacer(),
@@ -656,7 +657,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       items: [
         const PopupMenuItem(value: 'preview', child: Row(
           children: [
-            Icon(Icons.visibility, size: 18, color: Colors.black87),
+            Icon(Icons.visibility, size: 18, color: Colors.black),
             SizedBox(width: 8),
             Text('Preview', style: TextStyle(fontSize: 14)),
           ],
@@ -830,7 +831,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           _tapPosition = details;
                         },
                         onTap: () => _showRowMenu(context, doc),
-                        child: const Icon(Icons.more_vert, color: Colors.black87, size: 24),
+                        child: const Icon(Icons.more_vert, color: Colors.black, size: 24),
                       ),
                     ],
                   ),
@@ -847,7 +848,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black54),
+                const Icon(Icons.chevron_left, color: Colors.black),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -863,7 +864,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black54),
+                const Icon(Icons.chevron_right, color: Colors.black),
               ],
             ),
           ),
@@ -1124,17 +1125,17 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const Text(
                   'Days',
-                  style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -1283,7 +1284,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontSize: 13,
-                color: Colors.black87,
+                color: Colors.black,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,

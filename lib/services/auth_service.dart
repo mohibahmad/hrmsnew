@@ -47,14 +47,6 @@ class AuthService {
     final credential = await _auth.signInAnonymously();
     if (credential.user != null) {
       await credential.user!.updateDisplayName(displayName).catchError((_) {});
-      FirestoreService()
-          .seedDummyDataForUser(
-            uid: credential.user!.uid,
-            displayName: displayName,
-            email:
-                '${displayName.toLowerCase().replaceAll(' ', '.')}@hrms-demo.com',
-          )
-          .catchError((_) {});
     }
     await PreferencesService.setLoggedIn(true);
     return credential;
@@ -62,17 +54,12 @@ class AuthService {
 
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
-    if (useDemoAuth) {
-      return await signInAnonymously(displayName: 'Google Demo User');
-    }
     try {
-      // google_sign_in v7: use the singleton instance and the `authenticate`
-      // method. It throws on user cancel, so we let the caller handle that.
+      await GoogleSignIn.instance.initialize();
       final GoogleSignInAccount googleUser = await GoogleSignIn.instance
           .authenticate();
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.idToken,
         idToken: googleAuth.idToken,
       );
       final userCredential = await _auth.signInWithCredential(credential);
@@ -80,82 +67,61 @@ class AuthService {
         final name =
             googleUser.displayName ?? userCredential.user!.email ?? 'User';
         await userCredential.user!.updateDisplayName(name);
-        // Seed dummy data so the screens have content after Google sign-in
-        await FirestoreService().seedDummyDataForUser(
-          uid: userCredential.user!.uid,
-          displayName: name,
-          email:
-              userCredential.user!.email ??
-              '${name.toLowerCase().replaceAll(' ', '.')}@google-demo.com',
-        );
+        
+        // Ensure user profile is created in Firestore
+        final firestore = FirestoreService();
+        final profile = await firestore.getUserProfile();
+        if (profile == null) {
+          await firestore.createUserProfile(
+            username: name,
+            email: userCredential.user!.email ?? '',
+            phone: '',
+          );
+        }
       }
       await PreferencesService.setLoggedIn(true);
       return userCredential;
     } on GoogleSignInException catch (e) {
-      // User explicitly cancelled — return null so login screen stays put.
-      if (e.code == GoogleSignInExceptionCode.canceled) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
         return null;
       }
       rethrow;
-    } catch (e) {
-      // Real auth not configured in this environment — fall back to
-      // anonymous demo sign-in so the rest of the app remains usable.
-      final fallbackCredential = await signInAnonymously(
-        displayName: 'Google Demo User',
-      );
-      return fallbackCredential;
     }
   }
 
   /// Sign in with Apple
-  // Future<UserCredential?> signInWithApple() async {
-  //   if (useDemoAuth || useDemoAppleAuth) {
-  //     return null;
-  //   }
-  //   try {
-  //     final appleCredential = await SignInWithApple.getAppleIDCredential(
-  //       scopes: [
-  //         AppleIDAuthorizationScopes.email,
-  //         AppleIDAuthorizationScopes.fullName,
-  //       ],
-  //     );
-  //     final AuthCredential credential = OAuthProvider('apple.com').credential(
-  //       idToken: appleCredential.identityToken,
-  //       rawNonce: appleCredential.state,
-  //     );
-  //     final userCredential = await _auth.signInWithCredential(credential);
-  //     if (userCredential.user != null) {
-  //       final name = appleCredential.givenName != null
-  //           ? '${appleCredential.givenName} ${appleCredential.familyName ?? ''}'
-  //                 .trim()
-  //           : (userCredential.user!.email ?? 'User');
-  //       await userCredential.user!.updateDisplayName(name);
-  //       // Seed dummy data so the screens have content after Apple sign-in
-  //       await FirestoreService().seedDummyDataForUser(
-  //         uid: userCredential.user!.uid,
-  //         displayName: name,
-  //         email:
-  //             userCredential.user!.email ??
-  //             '${name.toLowerCase().replaceAll(' ', '.')}@apple-demo.com',
-  //       );
-  //     }
-  //     await PreferencesService.setLoggedIn(true);
-  //     return userCredential;
-  //   } on SignInWithAppleAuthorizationException catch (e) {
-  //     // User explicitly cancelled — return null so login screen stays put.
-  //     if (e.code == AuthorizationErrorCode.canceled) {
-  //       return null;
-  //     }
-  //     rethrow;
-  //   } catch (e) {
-  //     // Real auth not configured in this environment — fall back to
-  //     // anonymous demo sign-in so the rest of the app remains usable.
-  //     final fallbackCredential = await signInAnonymously(
-  //       displayName: 'Apple Demo User',
-  //     );
-  //     return fallbackCredential;
-  //   }
-  // }
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      final appleProvider = OAuthProvider('apple.com');
+      appleProvider.setCustomParameters({'locale': 'en'});
+      appleProvider.addScope('email');
+      appleProvider.addScope('name');
+
+      final userCredential = await _auth.signInWithProvider(appleProvider);
+      if (userCredential.user != null) {
+        final name = userCredential.user!.displayName ?? 'Apple User';
+        
+        // Ensure user profile is created in Firestore
+        final firestore = FirestoreService();
+        final profile = await firestore.getUserProfile();
+        if (profile == null) {
+          await firestore.createUserProfile(
+            username: name,
+            email: userCredential.user!.email ?? '',
+            phone: '',
+          );
+        }
+      }
+      await PreferencesService.setLoggedIn(true);
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
+        return null;
+      }
+      rethrow;
+    }
+  }
 
   /// Sign out
   Future<void> signOut() async {

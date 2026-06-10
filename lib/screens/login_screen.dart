@@ -66,29 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await GoogleSignIn.instance.initialize();
-
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
-          .authenticate();
-
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithCredential(credential);
-
-      if (mounted) {
-        final name = userCredential.user?.displayName ?? 'Google User';
-        if (name == 'Google Demo User') {
-          FlashySnackBar.show(
-            context,
-            message: 'Signed in via Google Demo Mode (Development Fallback).',
-            isError: false,
-          );
-        }
+      final userCredential = await _authService.signInWithGoogle();
+      if (userCredential != null && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -122,14 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final appleProvider = OAuthProvider('apple.com');
-      appleProvider.setCustomParameters({'locale': 'en'});
-      appleProvider.addScope('email');
-      appleProvider.addScope('name');
-
-      await FirebaseAuth.instance.signInWithProvider(appleProvider);
-
-      if (mounted) {
+      final userCredential = await _authService.signInWithApple();
+      if (userCredential != null && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -382,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF334155),
+                                  color: Color(0xFF000000),
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
@@ -572,8 +545,8 @@ class _LoginScreenState extends State<LoginScreen> {
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           backgroundColor: backgroundColor ?? Colors.white,
-          foregroundColor: textColor ?? const Color(0xFF0F172A),
-          disabledForegroundColor: (textColor ?? const Color(0xFF0F172A)).withValues(alpha: 0.6),
+          foregroundColor: textColor ?? const Color(0xFF000000),
+          disabledForegroundColor: (textColor ?? const Color(0xFF000000)).withValues(alpha: 0.6),
           disabledBackgroundColor: backgroundColor ?? Colors.white,
           side: border ?? BorderSide(color: Colors.grey.shade200),
           shape: RoundedRectangleBorder(
@@ -593,7 +566,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      textColor ?? const Color(0xFF0F172A),
+                      textColor ?? const Color(0xFF000000),
                     ),
                   ),
                 ),
@@ -608,7 +581,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
                 color: isLoading
-                    ? (textColor ?? const Color(0xFF0F172A)).withValues(alpha: 0.6)
+                    ? (textColor ?? const Color(0xFF000000)).withValues(alpha: 0.6)
                     : null,
               ),
             ),
@@ -798,7 +771,7 @@ class _LoginScreenState extends State<LoginScreen> {
         isLoading: _isGoogleLoading,
         onPressed: _anyLoading ? null : _handleGoogleLogin,
         backgroundColor: Colors.white,
-        textColor: const Color(0xFF0F172A),
+        textColor: const Color(0xFF000000),
       ),
       const SizedBox(height: 8),
 

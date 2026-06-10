@@ -122,7 +122,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.black87),
+                          icon: const Icon(Icons.close, color: Colors.black),
                           onPressed: () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -304,7 +304,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             decoration: const InputDecoration.collapsed(hintText: ''),
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.black87,
+              color: Colors.black,
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
             ),
@@ -434,15 +434,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 ),
               ),
               SizedBox(height: 4),
-              Text(
-                'Manage workforce equipment inventory and loaned items.',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+            
             ],
           ),
           const Spacer(),
@@ -604,7 +596,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black54),
+                const Icon(Icons.chevron_left, color: Colors.black),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -624,7 +616,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black54),
+                const Icon(Icons.chevron_right, color: Colors.black),
               ],
             ),
           ),

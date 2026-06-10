@@ -122,7 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: const Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF000000),
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'SF Pro Display',
@@ -409,8 +409,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Setting',
                 style: TextStyle(
                   color: Color(0xFF000000),
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
                   fontFamily: 'SF Pro Display',
                   height: 1.0,
                   letterSpacing: 0,

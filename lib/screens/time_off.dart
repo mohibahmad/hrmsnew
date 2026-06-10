@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+
 import 'assign_time_off.dart';
 
 class Worker {
@@ -42,19 +43,27 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   @override
   void initState() {
     super.initState();
-    _timeoffDocs = DummyData.timeoff;
-    _isLoading = false;
+    _timeoffDocs = [];
+    _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       FirestoreService().timeoffStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _timeoffDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+            _isLoading = false;
           });
         }
       }, onError: (e) {
-        // Keep using dummy data on error
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       });
+    } else {
+      _timeoffDocs = DummyData.timeoff;
+      _isLoading = false;
     }
   }
 
@@ -143,15 +152,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 ),
               ),
               SizedBox(height: 4),
-              Text(
-                'Manage workforce time off and leave requests.',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+              
             ],
           ),
           const Spacer(),
@@ -475,7 +476,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const Icon(Icons.chevron_left, color: Colors.black54),
+                const Icon(Icons.chevron_left, color: Colors.black),
                 const SizedBox(width: 8),
                 Container(
                   width: 28,
@@ -488,7 +489,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   child: const Text('1', style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black54),
+                const Icon(Icons.chevron_right, color: Colors.black),
               ],
             ),
           )

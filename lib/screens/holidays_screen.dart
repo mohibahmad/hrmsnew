@@ -75,7 +75,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                         IconButton(
                           icon: const Icon(
                             Icons.close,
-                            color: Colors.black87,
+                            color: Colors.black,
                             size: 20,
                           ),
                           onPressed: () => Navigator.of(context).pop(),
@@ -169,7 +169,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                         ),
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: Colors.black,
                           fontWeight: FontWeight.w500,
                           fontFamily: 'SF Pro Display',
                         ),
@@ -199,7 +199,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.chevron_left, size: 20, color: Colors.black87),
+            Icon(Icons.chevron_left, size: 20, color: Colors.black),
             SizedBox(width: 32),
             Text(
               'MAY 2025',
@@ -210,7 +210,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               ),
             ),
             SizedBox(width: 32),
-            Icon(Icons.chevron_right, size: 20, color: Colors.black87),
+            Icon(Icons.chevron_right, size: 20, color: Colors.black),
           ],
         ),
         const SizedBox(height: 16),
@@ -308,7 +308,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           child: Text(
             day,
             style: TextStyle(
-              color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
+              color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               fontFamily: 'SF Pro Display',
@@ -372,15 +372,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 ),
               ),
               SizedBox(height: 4),
-              Text(
-                'Manage workforce holidays calendar and active days off.',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
+             
             ],
           ),
           const Spacer(),
