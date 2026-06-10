@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show showCupertinoModalPopup, CupertinoDatePicker, CupertinoDatePickerMode, CupertinoButton;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
@@ -176,18 +177,76 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'Date Loaned',
                       formatDate(loanedDate),
                       const Color(0xFF0247C4),
-                      () async {
-                        final picked = await showDatePicker(
+                      () {
+                        showDialog(
                           context: context,
-                          initialDate: loanedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
+                          barrierColor: Colors.black.withValues(alpha: 0.3),
+                          builder: (BuildContext context) {
+                            DateTime tempDate = loanedDate;
+                            return Dialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              backgroundColor: Colors.white,
+                              child: Container(
+                                width: 320,
+                                height: 320,
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      'Select Date',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child: CupertinoDatePicker(
+                                        mode: CupertinoDatePickerMode.date,
+                                        initialDateTime: tempDate,
+                                        minimumYear: 2020,
+                                        maximumYear: 2030,
+                                        onDateTimeChanged: (DateTime picked) {
+                                          tempDate = picked;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display')),
+                                          onPressed: () => Navigator.of(context).pop(),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF0247C4),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          child: const Text('OK', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro Display')),
+                                          onPressed: () {
+                                            setModalState(() {
+                                              loanedDate = tempDate;
+                                            });
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         );
-                        if (picked != null) {
-                          setModalState(() {
-                            loanedDate = picked;
-                          });
-                        }
                       },
                     ),
                     const SizedBox(height: 16),
@@ -226,18 +285,76 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         'Returned Date',
                         formatDate(returnedDate),
                         Colors.red,
-                        () async {
-                          final picked = await showDatePicker(
+                        () {
+                          showDialog(
                             context: context,
-                            initialDate: returnedDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
+                            barrierColor: Colors.black.withValues(alpha: 0.3),
+                            builder: (BuildContext context) {
+                              DateTime tempDate = returnedDate;
+                              return Dialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                backgroundColor: Colors.white,
+                                child: Container(
+                                  width: 320,
+                                  height: 320,
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    children: [
+                                      const Text(
+                                        'Select Date',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Expanded(
+                                        child: CupertinoDatePicker(
+                                          mode: CupertinoDatePickerMode.date,
+                                          initialDateTime: tempDate,
+                                          minimumYear: 2020,
+                                          maximumYear: 2030,
+                                          onDateTimeChanged: (DateTime picked) {
+                                            tempDate = picked;
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          TextButton(
+                                            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display')),
+                                            onPressed: () => Navigator.of(context).pop(),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF0247C4),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                            child: const Text('OK', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro Display')),
+                                            onPressed: () {
+                                              setModalState(() {
+                                                returnedDate = tempDate;
+                                              });
+                                              Navigator.of(context).pop();
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
-                          if (picked != null) {
-                            setModalState(() {
-                              returnedDate = picked;
-                            });
-                          }
                         },
                       ),
                     ],
