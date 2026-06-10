@@ -9,11 +9,13 @@ import 'login_screen.dart';
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
+  final bool isGuest;
 
   const SettingsScreen({
     super.key,
     required this.onLogout,
     required this.onProfileTap,
+    this.isGuest = false,
   });
 
   @override
@@ -352,13 +354,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'assets/changepassword.svg',
                     'Change your password to keep your account secure.',
                     'Reset Password',
-                    onTap: () => _resetPassword(context),
+                    onTap: widget.isGuest ? null : () => _resetPassword(context),
+                    disabled: widget.isGuest,
                   ),
                   _buildActionSettingItem(
                     'assets/permenantly_delete.svg',
                     'Permanently remove your profile and account data securely.',
                     'Delete Profile',
-                    onTap: () => _deleteAccount(context),
+                    onTap: widget.isGuest ? null : () => _deleteAccount(context),
+                    disabled: widget.isGuest,
                   ),
                   _buildLanguageItem(),
                   _buildSimpleSettingItem('assets/share.svg', 'Share App'),
@@ -368,11 +372,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: () => launchUrl(Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')),
                   ),
                   _buildSimpleSettingItem('assets/privacy_policy.svg', 'Privacy Policy'),
-                  _buildSimpleSettingItem(
-                    'assets/signout.svg',
-                    'Sign out',
-                    onTap: widget.onLogout,
-                  ),
+                  if (!widget.isGuest)
+                    _buildSimpleSettingItem(
+                      'assets/signout.svg',
+                      'Sign out',
+                      onTap: widget.onLogout,
+                    ),
                 ],
               ),
             ),
@@ -436,7 +441,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildActionSettingItem(String iconPath, String text, String buttonText, {VoidCallback? onTap}) {
+  Widget _buildActionSettingItem(String iconPath, String text, String buttonText, {VoidCallback? onTap, bool disabled = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -450,15 +455,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               iconPath,
               width: 24,
               height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFF000000), BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
-                color: Color(0xFF000000),
+                color: disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
                 height: 1.0,
@@ -467,19 +475,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           GestureDetector(
-            onTap: onTap,
+            onTap: disabled ? null : onTap,
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F3F5),
+                color: disabled ? const Color(0xFFE0E0E0) : const Color(0xFFF1F3F5),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 buttonText,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
-                  color: Color(0xFF000000),
+                  color: disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
                   fontWeight: FontWeight.w500,
                   fontFamily: 'SF Pro Display',
                   height: 1.0,

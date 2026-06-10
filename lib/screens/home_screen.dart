@@ -15,6 +15,7 @@ import 'holidays_screen.dart';
 import 'expenses_screen.dart';
 import 'settings_screen.dart';
 import '../utils/logout_dialog.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,7 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _checkPremiumAndShowDialog() async {
     final isPremium = await PreferencesService.isPremium();
-    if (!isPremium && mounted) {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (!isPremium && !isGuest && mounted) {
       await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -60,6 +62,16 @@ class _HomeScreenState extends State<HomeScreen> {
     showLogoutDialog(context);
   }
 
+  void _handleBackToLogin() async {
+    await AuthService().signOut();
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   void _openProfile() {
     setState(() => _showProfile = true);
   }
@@ -73,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SidebarWidget(
             selectedIndex: _showProfile ? -1 : _selectedIndex,
             selectedSubIndex: _selectedSubIndex,
+            isGuest: AuthService().currentUser?.isAnonymous ?? false,
             onItemSelected: (index) => setState(() {
               _selectedIndex = index;
               _showProfile = false;
@@ -82,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _selectedSubIndex = subIndex;
               _showAssignTimeOff = false;
             }),
+            onBackToLogin: _handleBackToLogin,
           ),
           Expanded(
             child: _showProfile
@@ -102,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? SettingsScreen(
                                             onLogout: _handleLogout,
                                             onProfileTap: _openProfile,
+                                            isGuest: AuthService().currentUser?.isAnonymous ?? false,
                                           )
                                         : _buildDashboardView())))),
           ),
@@ -1132,15 +1147,19 @@ class ProfilePreviewDialog extends StatelessWidget {
 class SidebarWidget extends StatefulWidget {
   final int selectedIndex;
   final int selectedSubIndex;
+  final bool isGuest;
   final ValueChanged<int> onItemSelected;
   final ValueChanged<int>? onSubItemSelected;
+  final VoidCallback? onBackToLogin;
 
   const SidebarWidget({
     super.key,
     required this.selectedIndex,
     this.selectedSubIndex = 0,
+    this.isGuest = false,
     required this.onItemSelected,
     this.onSubItemSelected,
+    this.onBackToLogin,
   });
 
   @override
@@ -1187,7 +1206,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
       color: const Color(0xFF0247C4),
       child: Column(
         children: [
-          GestureDetector(
+          if (!widget.isGuest)
+            GestureDetector(
             onTap: () {
               showDialog(
                 context: context,
@@ -1340,6 +1360,44 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               ),
             ),
           ),
+          if (widget.isGuest)
+            Container(
+              height: 42,
+              margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFFFFFFFF).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: GestureDetector(
+                onTap: widget.onBackToLogin,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.arrow_back,
+                        color: Color(0xFFFFFFFF),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Back to login',
+                        style: TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

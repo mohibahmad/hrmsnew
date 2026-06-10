@@ -159,7 +159,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Continuing as Guest User.',
+          title: 'Success',
+          message: 'Continuing as Guest User',
           isError: false,
         );
         Navigator.of(context).pushReplacement(

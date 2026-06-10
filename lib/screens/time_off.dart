@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import 'assign_time_off.dart';
@@ -43,15 +44,18 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     super.initState();
     _timeoffDocs = DummyData.timeoff;
     _isLoading = false;
-    FirestoreService().timeoffStream.listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _timeoffDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-        });
-      }
-    }, onError: (e) {
-      // Keep using dummy data on error
-    });
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (!isGuest) {
+      FirestoreService().timeoffStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _timeoffDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+          });
+        }
+      }, onError: (e) {
+        // Keep using dummy data on error
+      });
+    }
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {

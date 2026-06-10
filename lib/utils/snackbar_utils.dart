@@ -76,9 +76,10 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
       begin: const Offset(0, -1.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
     _controller.forward();
   }
 
@@ -118,10 +119,11 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: (widget.isError
-                              ? const Color(0xFFFF4B2B)
-                              : const Color(0xFF0247C4))
-                          .withValues(alpha: 0.35),
+                      color:
+                          (widget.isError
+                                  ? const Color(0xFFFF4B2B)
+                                  : const Color(0xFF0247C4))
+                              .withValues(alpha: 0.35),
                       blurRadius: 15,
                       offset: const Offset(0, 6),
                     ),
@@ -131,7 +133,10 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     width: 1.5,
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -159,6 +164,8 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                             widget.title ??
                                 (widget.isError ? 'Error' : 'Success'),
                             softWrap: true,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 14,
@@ -170,6 +177,8 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                           Text(
                             widget.message,
                             softWrap: true,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 13,
@@ -180,16 +189,13 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 32),
+                    const Spacer(),
                     GestureDetector(
                       onTap: _dismiss,
-                      child: const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: Colors.white70,
-                          size: 26,
-                        ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white70,
+                        size: 26,
                       ),
                     ),
                   ],

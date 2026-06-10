@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
@@ -30,15 +31,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
     super.initState();
     _payrollDocs = DummyData.payroll;
     _isLoading = false;
-    FirestoreService().payrollStream.listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _payrollDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-        });
-      }
-    }, onError: (e) {
-      // Keep using dummy data on error
-    });
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (!isGuest) {
+      FirestoreService().payrollStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _payrollDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
+          });
+        }
+      }, onError: (e) {
+        // Keep using dummy data on error
+      });
+    }
   }
 
   @override
