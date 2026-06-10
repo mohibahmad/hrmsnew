@@ -71,6 +71,7 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
+        if (await _handleDeletedAccountIfNeeded()) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -118,6 +119,7 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final userCredential = await _authService.signInWithApple();
       if (userCredential != null && mounted) {
+        if (await _handleDeletedAccountIfNeeded()) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -247,6 +249,28 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  Future<bool> _handleDeletedAccountIfNeeded() async {
+    final email = _authService.currentUser?.email;
+    if (email == null) return false;
+
+    try {
+      final isDeleted = await FirestoreService().isUserDeletedByEmail(email);
+      if (isDeleted) {
+        await _authService.signOut();
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'Account Deleted, please contact realmappsrs12@gmail.com',
+            isError: true,
+          );
+        }
+        return true;
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
   Widget _buildSocialButton({
     required String text,
     required Widget icon,
@@ -258,7 +282,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 44,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
@@ -317,7 +341,7 @@ class _SignupScreenState extends State<SignupScreen> {
       Center(
         child: SvgPicture.asset(
           'assets/HR_dark.svg',
-          height: 66,
+          height: 58,
           fit: BoxFit.contain,
         ),
       ),
@@ -435,7 +459,7 @@ class _SignupScreenState extends State<SignupScreen> {
       const SizedBox(height: 16),
       SizedBox(
         width: double.infinity,
-        height: 48,
+        height: 44,
         child: ElevatedButton(
           onPressed: _anyLoading ? null : _handleSignUp,
           style: ElevatedButton.styleFrom(
@@ -684,7 +708,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 40,
-                          vertical: 16,
+                          vertical: 10,
                         ),
                         decoration: cardDecoration,
                         child: SingleChildScrollView(

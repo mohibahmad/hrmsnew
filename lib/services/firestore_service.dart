@@ -25,6 +25,13 @@ class FirestoreService {
       'phone': phone,
       'createdAt': FieldValue.serverTimestamp(),
     });
+    if (_uid != null) {
+      await seedDummyDataForUser(
+        uid: _uid!,
+        displayName: username,
+        email: email,
+      );
+    }
   }
 
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
@@ -32,7 +39,16 @@ class FirestoreService {
   }
 
   Future<void> deleteUserData() async {
-    await _userDoc.delete();
+    if (_uid == null) return;
+    await _userDoc.set({
+      'isDeleted': true,
+      'deletedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<bool> isCurrentUserDeleted() async {
+    final profile = await getUserProfile();
+    return profile?['isDeleted'] == true;
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {
@@ -151,11 +167,11 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    final workersColl = docRef.collection('workers');
-    final attendanceColl = docRef.collection('attendance');
-    final expensesColl = docRef.collection('expenses');
-    final payrollColl = docRef.collection('payroll');
-    final timeoffColl = docRef.collection('timeoff');
+    final workersColl = docRef.collection('hrms_workers');
+    final attendanceColl = docRef.collection('hrms_attendance');
+    final expensesColl = docRef.collection('hrms_expenses');
+    final payrollColl = docRef.collection('hrms_payroll');
+    final timeoffColl = docRef.collection('hrms_timeoff');
 
     // 1. Seed Workers (batch)
     final dummyWorkers = [
@@ -197,7 +213,10 @@ class FirestoreService {
     ];
 
     for (var w in dummyWorkers) {
-      batch.set(workersColl.doc(), {...w, 'createdAt': FieldValue.serverTimestamp()});
+      batch.set(workersColl.doc(), {
+        ...w,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
 
     // 2. Seed Attendance (matches workers list)
@@ -392,5 +411,25 @@ class FirestoreService {
     for (var t in dummyTimeoff) {
       await timeoffColl.add({...t, 'createdAt': FieldValue.serverTimestamp()});
     }
+  }
+
+  Future<bool> isUserDeletedByEmail(String email) async {
+    final emailVariants = {
+      email.trim(),
+      email.toLowerCase().trim(),
+    }.where((value) => value.isNotEmpty).toList();
+
+    for (final emailToCheck in emailVariants) {
+      final snapshot = await _db
+          .collection('hrms_user')
+          .where('email', isEqualTo: emailToCheck)
+          .where('isDeleted', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) return true;
+    }
+
+    return false;
   }
 }

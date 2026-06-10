@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/snackbar_utils.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -146,7 +147,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                              color: const Color(
+                                0xFFEF4444,
+                              ).withValues(alpha: 0.2),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -177,29 +180,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        // Step 1: Mark current user's profile as deleted in hrms_user
         await FirestoreService().deleteUserData();
-        await user.delete();
+
+        // Step 2: Try to delete Firebase Auth user (may fail with requires-recent-login)
+        String? deleteError;
+        try {
+          await user.delete();
+        } on FirebaseAuthException catch (e) {
+          deleteError = e.code;
+        } catch (_) {}
+
+        // Step 3: Always sign out and navigate to login
         await AuthService().signOut();
 
         if (context.mounted) {
+          String message = 'Account deleted';
+          if (deleteError == 'requires-recent-login') {
+            message =
+                'Signed out for security. Please sign in again to fully delete your account.';
+          }
+          FlashySnackBar.show(
+            context,
+            message: message,
+            title: 'Account Deleted',
+            isError: true,
+          );
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
             (route) => false,
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account permanently deleted.')),
           );
         }
       }
     } catch (e) {
       if (context.mounted) {
-        String message = 'Failed to delete account. $e';
-        if (e is FirebaseAuthException && e.code == 'requires-recent-login') {
-          message = 'Please sign out and sign back in to delete your account for security reasons.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete account. $e')));
       }
     }
   }
@@ -207,11 +224,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showLanguageModal(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Color(0xFF000000).withValues(alpha: 0.05), // Very light transparent bg
+      barrierColor: Color(
+        0xFF000000,
+      ).withValues(alpha: 0.05), // Very light transparent bg
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final allLanguages = ['United State', 'Chinese', 'French', 'German', 'Russian', 'Italian', 'UK'];
+            final allLanguages = [
+              'United State',
+              'Chinese',
+              'French',
+              'German',
+              'Russian',
+              'Italian',
+              'UK',
+            ];
             return Align(
               alignment: Alignment.centerRight,
               child: Padding(
@@ -220,7 +247,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: Colors.transparent,
                   child: Container(
                     width: 320,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(8),
@@ -230,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Color(0xFF000000).withValues(alpha: 0.1),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
-                        )
+                        ),
                       ],
                     ),
                     child: Column(
@@ -256,21 +286,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 _selectedLanguage = lang;
                               });
                               setState(() {});
-                              Future.delayed(const Duration(milliseconds: 150), () {
-                                if (context.mounted) {
-                                  Navigator.pop(context);
-                                }
-                              });
+                              Future.delayed(
+                                const Duration(milliseconds: 150),
+                                () {
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                },
+                              );
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               margin: const EdgeInsets.only(bottom: 4),
                               decoration: BoxDecoration(
-                                color: isSel ? const Color(0xFFF1F3F5) : Colors.transparent,
+                                color: isSel
+                                    ? const Color(0xFFF1F3F5)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     lang,
@@ -282,7 +321,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                   if (isSel)
-                                    const Icon(Icons.check, color: Color(0xFF0247C4), size: 16),
+                                    const Icon(
+                                      Icons.check,
+                                      color: Color(0xFF0247C4),
+                                      size: 16,
+                                    ),
                                 ],
                               ),
                             ),
@@ -316,14 +359,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'assets/changepassword.svg',
                     'Change your password to keep your account secure.',
                     'Reset Password',
-                    onTap: widget.isGuest ? null : () => _resetPassword(context),
+                    onTap: widget.isGuest
+                        ? null
+                        : () => _resetPassword(context),
                     disabled: widget.isGuest,
                   ),
                   _buildActionSettingItem(
                     'assets/permenantly_delete.svg',
                     'Permanently remove your profile and account data securely.',
                     'Delete Profile',
-                    onTap: widget.isGuest ? null : () => _deleteAccount(context),
+                    onTap: widget.isGuest
+                        ? null
+                        : () => _deleteAccount(context),
                     disabled: widget.isGuest,
                   ),
                   _buildLanguageItem(),
@@ -331,9 +378,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
                     'Terms & Condition',
-                    onTap: () => launchUrl(Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')),
+                    onTap: () => launchUrl(
+                      Uri.parse(
+                        'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                      ),
+                    ),
                   ),
-                  _buildSimpleSettingItem('assets/privacy_policy.svg', 'Privacy Policy'),
+                  _buildSimpleSettingItem(
+                    'assets/privacy_policy.svg',
+                    'Privacy Policy',
+                  ),
                   if (!widget.isGuest)
                     _buildSimpleSettingItem(
                       'assets/signout.svg',
@@ -357,9 +411,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         children: [
@@ -406,32 +458,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildActionSettingItem(String iconPath, String text, String buttonText, {VoidCallback? onTap, bool disabled = false}) {
+  Widget _buildActionSettingItem(
+    String iconPath,
+    String text,
+    String buttonText, {
+    VoidCallback? onTap,
+    bool disabled = false,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        decoration: BoxDecoration(
-          color: Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            SvgPicture.asset(
-              iconPath,
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(
-                disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
+      decoration: BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          SvgPicture.asset(
+            iconPath,
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(
+              disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
+              BlendMode.srcIn,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
               text,
               style: TextStyle(
                 fontSize: 18,
-                color: disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
+                color: disabled
+                    ? const Color(0xFFAAAAAA)
+                    : const Color(0xFF000000),
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
                 height: 1.0,
@@ -445,14 +505,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: disabled ? const Color(0xFFE0E0E0) : const Color(0xFFF1F3F5),
+                color: disabled
+                    ? const Color(0xFFE0E0E0)
+                    : const Color(0xFFF1F3F5),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 buttonText,
                 style: TextStyle(
                   fontSize: 18,
-                  color: disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
+                  color: disabled
+                      ? const Color(0xFFAAAAAA)
+                      : const Color(0xFF000000),
                   fontWeight: FontWeight.w500,
                   fontFamily: 'SF Pro Display',
                   height: 1.0,
@@ -460,7 +524,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -482,7 +546,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'assets/lanuguage.svg',
               width: 24,
               height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFF000000), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 16),
             const Text(
@@ -509,14 +576,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_drop_down, color: Color(0xFF000000), size: 28),
+            const Icon(
+              Icons.arrow_drop_down,
+              color: Color(0xFF000000),
+              size: 28,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSimpleSettingItem(String iconPath, String text, {VoidCallback? onTap}) {
+  Widget _buildSimpleSettingItem(
+    String iconPath,
+    String text, {
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -533,7 +608,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               iconPath,
               width: 24,
               height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFF000000), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 16),
             Text(

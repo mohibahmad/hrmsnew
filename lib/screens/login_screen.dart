@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
+import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'signup_screen.dart';
 
@@ -68,6 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
+        if (await _handleDeletedAccountIfNeeded()) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -103,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithApple();
       if (userCredential != null && mounted) {
+        if (await _handleDeletedAccountIfNeeded()) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -161,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (mounted) {
+        if (await _handleDeletedAccountIfNeeded()) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -220,313 +225,26 @@ class _LoginScreenState extends State<LoginScreen> {
     FlashySnackBar.show(context, message: message, isError: true);
   }
 
-  Future<void> _showForgotPasswordDialog() async {
-    final emailController = TextEditingController(text: _emailController.text);
-    final formKey = GlobalKey<FormState>();
-    bool isSending = false;
+  Future<bool> _handleDeletedAccountIfNeeded() async {
+    final email = _authService.currentUser?.email;
+    if (email == null) return false;
 
-    await showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> sendReset() async {
-              if (!formKey.currentState!.validate()) return;
-              setDialogState(() => isSending = true);
-              try {
-                await _authService.resetPassword(emailController.text.trim());
-                if (context.mounted) {
-                  Navigator.of(dialogContext).pop();
-                  FlashySnackBar.show(
-                    context,
-                    message: 'Password reset email sent. Check your inbox.',
-                    title: 'Success',
-                    isError: false,
-                  );
-                }
-              } on FirebaseAuthException catch (e) {
-                setDialogState(() => isSending = false);
-                String message;
-                switch (e.code) {
-                  case 'user-not-found':
-                    message = 'No user found for this email.';
-                    break;
-                  case 'invalid-email':
-                    message = 'Invalid email address.';
-                    break;
-                  case 'network-request-failed':
-                  case 'network-error':
-                  case 'unavailable':
-                    message = 'Network error. Please check your connection.';
-                    break;
-                  default:
-                    if (e.message != null &&
-                        e.message!.toLowerCase().contains('network')) {
-                      message = 'Network error. Please check your connection.';
-                    } else {
-                      message = 'Failed to send reset email.';
-                    }
-                }
-                if (context.mounted) {
-                  FlashySnackBar.show(context, message: message, isError: true);
-                }
-              }
-            }
+    try {
+      final isDeleted = await FirestoreService().isUserDeletedByEmail(email);
+      if (isDeleted) {
+        await _authService.signOut();
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'Account Deleted, please contact realmappsrs12@gmail.com',
+            isError: true,
+          );
+        }
+        return true;
+      }
+    } catch (_) {}
 
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-              alignment: Alignment.center,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 300),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x14000000),
-                        blurRadius: 32,
-                        offset: Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Header
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF2FF),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.lock_reset_rounded,
-                                  color: Color(0xFF0044C9),
-                                  size: 28,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Reset Password',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'SF Pro Display',
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Enter your email and we\'ll send a secure link to reset your password.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF64748B),
-                                  fontFamily: 'SF Pro Display',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Body
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Email Address',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontFamily: 'SF Pro Display',
-                                  color: Color(0xFF000000),
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'you@example.com',
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey.shade400,
-                                    fontSize: 14,
-                                  ),
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 14,
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFF0044C9),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  errorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFFF1014),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  focusedErrorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFFF1014),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  errorStyle: const TextStyle(
-                                    color: Color(0xFFFF1014),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Email is required';
-                                  }
-                                  if (!RegExp(
-                                    r'^[^@]+@[^@]+\.[^@]+',
-                                  ).hasMatch(value.trim())) {
-                                    return 'Please enter a valid email';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Footer
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(28, 16, 28, 24),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: 44,
-                                  child: TextButton(
-                                    onPressed: isSending
-                                        ? null
-                                        : () =>
-                                              Navigator.of(dialogContext).pop(),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: const Color(0xFF334155),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Cancel',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 2,
-                                child: SizedBox(
-                                  height: 44,
-                                  child: ElevatedButton(
-                                    onPressed: isSending ? null : sendReset,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0044C9),
-                                      foregroundColor: Color(0xFFFFFFFF),
-                                      disabledBackgroundColor: const Color(
-                                        0xFF0044C9,
-                                      ).withOpacity(0.6),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: isSending
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                    Color(0xFFFFFFFF),
-                                                  ),
-                                            ),
-                                          )
-                                        : const Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                'Send Reset Link',
-                                                style: TextStyle(
-                                                  color: Color(0xFFFFFFFF),
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                              SizedBox(width: 6),
-                                              Icon(
-                                                Icons.arrow_forward_rounded,
-                                                size: 16,
-                                                color: Color(0xFFFFFFFF),
-                                              ),
-                                            ],
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-    emailController.dispose();
+    return false;
   }
 
   Widget _buildSocialButton({
@@ -540,13 +258,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 44,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           backgroundColor: backgroundColor ?? Colors.white,
           foregroundColor: textColor ?? const Color(0xFF000000),
-          disabledForegroundColor: (textColor ?? const Color(0xFF000000)).withValues(alpha: 0.6),
+          disabledForegroundColor: (textColor ?? const Color(0xFF000000))
+              .withValues(alpha: 0.6),
           disabledBackgroundColor: backgroundColor ?? Colors.white,
           side: border ?? BorderSide(color: Colors.grey.shade200),
           shape: RoundedRectangleBorder(
@@ -581,7 +300,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
                 color: isLoading
-                    ? (textColor ?? const Color(0xFF000000)).withValues(alpha: 0.6)
+                    ? (textColor ?? const Color(0xFF000000)).withValues(
+                        alpha: 0.6,
+                      )
                     : null,
               ),
             ),
@@ -596,7 +317,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Center(
         child: SvgPicture.asset(
           'assets/HR_dark.svg',
-          height: 66,
+          height: 58,
           fit: BoxFit.contain,
         ),
       ),
@@ -691,7 +412,15 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 8),
       GestureDetector(
-        onTap: _anyLoading ? null : _showForgotPasswordDialog,
+        onTap: _anyLoading
+            ? null
+            : () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordScreen(),
+                  ),
+                );
+              },
         behavior: HitTestBehavior.opaque,
         child: const Padding(
           padding: EdgeInsets.symmetric(vertical: 4),
@@ -709,13 +438,15 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 12),
       SizedBox(
         width: double.infinity,
-        height: 48,
+        height: 44,
         child: ElevatedButton(
           onPressed: _anyLoading ? null : _handleLogin,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
             foregroundColor: Color(0xFFFFFFFF),
-            disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+            disabledBackgroundColor: const Color(
+              0xFF0044C9,
+            ).withValues(alpha: 0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -809,7 +540,7 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withOpacity(0.4),
+          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
           width: 1.5,
         ),
       ),
@@ -958,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 40,
-                          vertical: 16,
+                          vertical: 10,
                         ),
                         decoration: cardDecoration,
                         child: SingleChildScrollView(

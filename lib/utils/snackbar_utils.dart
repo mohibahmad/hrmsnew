@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 class FlashySnackBar {
   static OverlayEntry? _currentEntry;
+  static String? _lastMessageKey;
+  static DateTime? _lastMessageTime;
+
+  static const Duration _duplicateWindow = Duration(milliseconds: 700);
 
   static void show(
     BuildContext context, {
@@ -9,6 +13,18 @@ class FlashySnackBar {
     String? title,
     bool isError = false,
   }) {
+    final messageKey = '$isError:$title:$message';
+    final now = DateTime.now();
+    final isDuplicate =
+        _lastMessageKey == messageKey &&
+        _lastMessageTime != null &&
+        now.difference(_lastMessageTime!) < _duplicateWindow;
+
+    if (isDuplicate) return;
+
+    _lastMessageKey = messageKey;
+    _lastMessageTime = now;
+
     if (_currentEntry != null && _currentEntry!.mounted) {
       _currentEntry!.remove();
     }
@@ -107,7 +123,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
             child: GestureDetector(
               onTap: _dismiss,
               child: Container(
-                width: 380,
+                constraints: const BoxConstraints(maxWidth: 360),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: widget.isError
@@ -164,8 +180,8 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                             widget.title ??
                                 (widget.isError ? 'Error' : 'Success'),
                             softWrap: true,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            overflow: TextOverflow.visible,
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 14,
@@ -177,8 +193,8 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                           Text(
                             widget.message,
                             softWrap: true,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
+                            overflow: TextOverflow.visible,
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 13,
@@ -189,7 +205,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                         ],
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 12),
                     GestureDetector(
                       onTap: _dismiss,
                       child: const Icon(

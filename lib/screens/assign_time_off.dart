@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/logout_dialog.dart';
 
@@ -304,7 +305,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
                 elevation: 0,
               ),
-              onPressed: () {
+              onPressed: () async {
+                final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                if (!isGuest) {
+                  try {
+                    await FirestoreService().addTimeOffRecord({
+                      'name': 'John Smith',
+                      'email': 'john.smith@stark.com',
+                      'position': 'Senior Web Developer',
+                      'contact': '+1 555-0101',
+                      'action': _timeOffType,
+                    });
+                  } catch (e) {
+                    debugPrint('Error saving time off record: $e');
+                  }
+                }
+                
                 // Show assign success confirmation
                 FlashySnackBar.show(
                   context,
