@@ -1918,14 +1918,25 @@ class RoundedDonutChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(130, 130),
-      painter: _DonutChartPainter(),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1000),
+      curve: Curves.easeInOutCubic,
+      builder: (context, value, child) {
+        return CustomPaint(
+          size: const Size(130, 130),
+          painter: _DonutChartPainter(progress: value),
+        );
+      },
     );
   }
 }
 
 class _DonutChartPainter extends CustomPainter {
+  final double progress;
+
+  _DonutChartPainter({this.progress = 1});
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
@@ -1957,7 +1968,7 @@ class _DonutChartPainter extends CustomPainter {
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
-      redSweep,
+      redSweep * progress,
       false,
       redPaint,
     );
@@ -1965,15 +1976,16 @@ class _DonutChartPainter extends CustomPainter {
     // Draw Blue second (overlaps red caps)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      startAngle + redSweep,
-      blueSweep,
+      startAngle + redSweep * progress,
+      blueSweep * progress,
       false,
       bluePaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DonutChartPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class SparklineCard extends StatelessWidget {
@@ -2051,45 +2063,74 @@ class SparklineCard extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               height: 130,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(show: false),
-                  borderData: FlBorderData(show: false),
-                  minY: 0,
-                  maxY: 10,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 3),
-                        FlSpot(1, 6),
-                        FlSpot(2, 4),
-                        FlSpot(3, 4),
-                        FlSpot(4, 7),
-                        FlSpot(5, 5),
-                        FlSpot(6, 6),
-                        FlSpot(7, 2),
-                        FlSpot(8, 7),
-                      ],
-                      isCurved: true,
-                      color: lineColor,
-                      barWidth: 1,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          colors: [
-                            lineColor.withValues(alpha: 0.3),
-                            Colors.transparent,
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeInOutCubic,
+                builder: (context, animValue, child) {
+                  const spots = [
+                    FlSpot(0, 3),
+                    FlSpot(1, 6),
+                    FlSpot(2, 4),
+                    FlSpot(3, 4),
+                    FlSpot(4, 7),
+                    FlSpot(5, 5),
+                    FlSpot(6, 6),
+                    FlSpot(7, 2),
+                    FlSpot(8, 7),
+                  ];
+                  return LineChart(
+                    LineChartData(
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (spot) => const Color(0xFF2C3E50),
+                          tooltipRoundedRadius: 8,
+                          getTooltipItems: (spots) {
+                            return spots.map((spot) {
+                              return LineTooltipItem(
+                                spot.y.toStringAsFixed(0),
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              );
+                            }).toList();
+                          },
                         ),
                       ),
+                      gridData: FlGridData(show: false),
+                      titlesData: FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      minY: 0,
+                      maxY: 10,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots
+                              .map((s) => FlSpot(s.x, s.y * animValue))
+                              .toList(),
+                          isCurved: true,
+                          color: lineColor,
+                          barWidth: 1,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                lineColor.withValues(alpha: 0.3),
+                                Colors.transparent,
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -2126,152 +2167,181 @@ class AttendanceLineChart extends StatelessWidget {
             const SizedBox(height: 30),
             SizedBox(
               height: 300,
-              child: LineChart(
-                LineChartData(
-                  minX: 0,
-                  maxX: 6,
-                  minY: 0,
-                  maxY: 7,
-                  gridData: FlGridData(
-                    show: true,
-                    drawHorizontalLine: false,
-                    drawVerticalLine: true,
-                    getDrawingVerticalLine: (value) =>
-                        FlLine(color: Colors.black12, strokeWidth: 1),
-                  ),
-                  titlesData: FlTitlesData(
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          const style = TextStyle(
-                            color: Color(0xFF155ED5),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
-                          );
-                          String text;
-                          switch (value.toInt()) {
-                            case 0:
-                              text = '0';
-                              break;
-                            case 1:
-                              text = '20';
-                              break;
-                            case 2:
-                              text = '40';
-                              break;
-                            case 3:
-                              text = '60';
-                              break;
-                            case 4:
-                              text = '80';
-                              break;
-                            case 5:
-                              text = '100';
-                              break;
-                            case 6:
-                              text = '120';
-                              break;
-                            case 7:
-                              text = '140';
-                              break;
-                            default:
-                              return Container();
-                          }
-                          return Text(text, style: style);
-                        },
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeInOutCubic,
+                builder: (context, animValue, child) {
+                  const spots = [
+                    FlSpot(0, 0),
+                    FlSpot(1, 0.4),
+                    FlSpot(2, 1.8),
+                    FlSpot(3, 2.8),
+                    FlSpot(4, 2.4),
+                    FlSpot(5, 5),
+                    FlSpot(6, 7),
+                  ];
+                  return LineChart(
+                    LineChartData(
+                      minX: 0,
+                      maxX: 6,
+                      minY: 0,
+                      maxY: 7,
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (spot) => const Color(0xFF2C3E50),
+                          tooltipRoundedRadius: 8,
+                          getTooltipItems: (spots) {
+                            return spots.map((spot) {
+                              return LineTooltipItem(
+                                spot.y.toStringAsFixed(0),
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
                       ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const style = TextStyle(
-                            color: Color(0xFF155ED5),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
-                          );
-                          String text;
-                          switch (value.toInt()) {
-                            case 0:
-                              text = 'JAN';
-                              break;
-                            case 1:
-                              text = 'FEB';
-                              break;
-                            case 2:
-                              text = 'MAR';
-                              break;
-                            case 3:
-                              text = 'APR';
-                              break;
-                            case 4:
-                              text = 'MAY';
-                              break;
-                            case 5:
-                              text = 'JUN';
-                              break;
-                            case 6:
-                              text = 'JUL';
-                              break;
-                            default:
-                              return Container();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 10.0),
-                            child: Text(text, style: style),
-                          );
-                        },
+                      gridData: FlGridData(
+                        show: true,
+                        drawHorizontalLine: false,
+                        drawVerticalLine: true,
+                        getDrawingVerticalLine: (value) =>
+                            FlLine(color: Colors.black12, strokeWidth: 1),
                       ),
-                    ),
-                  ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: const Border(
-                      bottom: BorderSide(color: Colors.black54, width: 1),
-                      left: BorderSide(color: Colors.black54, width: 1),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 0),
-                        FlSpot(1, 0.4),
-                        FlSpot(2, 1.8),
-                        FlSpot(3, 2.8),
-                        FlSpot(4, 2.4),
-                        FlSpot(5, 5),
-                        FlSpot(6, 7),
+                      titlesData: FlTitlesData(
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              const style = TextStyle(
+                                color: Color(0xFF155ED5),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'SF Pro Display',
+                              );
+                              String text;
+                              switch (value.toInt()) {
+                                case 0:
+                                  text = '0';
+                                  break;
+                                case 1:
+                                  text = '20';
+                                  break;
+                                case 2:
+                                  text = '40';
+                                  break;
+                                case 3:
+                                  text = '60';
+                                  break;
+                                case 4:
+                                  text = '80';
+                                  break;
+                                case 5:
+                                  text = '100';
+                                  break;
+                                case 6:
+                                  text = '120';
+                                  break;
+                                case 7:
+                                  text = '140';
+                                  break;
+                                default:
+                                  return Container();
+                              }
+                              return Text(text, style: style);
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              const style = TextStyle(
+                                color: Color(0xFF155ED5),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'SF Pro Display',
+                              );
+                              String text;
+                              switch (value.toInt()) {
+                                case 0:
+                                  text = 'JAN';
+                                  break;
+                                case 1:
+                                  text = 'FEB';
+                                  break;
+                                case 2:
+                                  text = 'MAR';
+                                  break;
+                                case 3:
+                                  text = 'APR';
+                                  break;
+                                case 4:
+                                  text = 'MAY';
+                                  break;
+                                case 5:
+                                  text = 'JUN';
+                                  break;
+                                case 6:
+                                  text = 'JUL';
+                                  break;
+                                default:
+                                  return Container();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 10.0),
+                                child: Text(text, style: style),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: const Border(
+                          bottom: BorderSide(color: Colors.black54, width: 1),
+                          left: BorderSide(color: Colors.black54, width: 1),
+                        ),
+                      ),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots
+                              .map((s) => FlSpot(s.x, s.y * animValue))
+                              .toList(),
+                          isCurved: false,
+                          color: const Color(0xFF23447F),
+                          barWidth: 2,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              return FlDotCirclePainter(
+                                radius: 4,
+                                color: const Color(0xFF23447F),
+                                strokeWidth: 0,
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: const Color(0xFFDFE6FA),
+                          ),
+                        ),
                       ],
-                      isCurved: false,
-                      color: const Color(0xFF23447F),
-                      barWidth: 2,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          return FlDotCirclePainter(
-                            radius: 4,
-                            color: const Color(0xFF23447F),
-                            strokeWidth: 0,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: const Color(0xFFDFE6FA),
-                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -2313,32 +2383,39 @@ class LeaveTypesPieChart extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    PieChart(
-                      PieChartData(
-                        sectionsSpace: 0.0,
-                        centerSpaceRadius: 0,
-                        startDegreeOffset: 0,
-                        sections: [
-                          PieChartSectionData(
-                            color: const Color(0xFF97FFA9),
-                            value: 30,
-                            radius: 85,
-                            showTitle: false,
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 1000),
+                      curve: Curves.easeInOutCubic,
+                      builder: (context, animValue, child) {
+                        return PieChart(
+                          PieChartData(
+                            sectionsSpace: 0.0,
+                            centerSpaceRadius: 0,
+                            startDegreeOffset: 0,
+                            sections: [
+                              PieChartSectionData(
+                                color: const Color(0xFF97FFA9),
+                                value: 30 * animValue,
+                                radius: 85,
+                                showTitle: false,
+                              ),
+                              PieChartSectionData(
+                                color: const Color(0xFF84A9FF),
+                                value: 50 * animValue,
+                                radius: 85,
+                                showTitle: false,
+                              ),
+                              PieChartSectionData(
+                                color: const Color(0xFFFF4A5E),
+                                value: 20 * animValue,
+                                radius: 85,
+                                showTitle: false,
+                              ),
+                            ],
                           ),
-                          PieChartSectionData(
-                            color: const Color(0xFF84A9FF),
-                            value: 50,
-                            radius: 85,
-                            showTitle: false,
-                          ),
-                          PieChartSectionData(
-                            color: const Color(0xFFFF4A5E),
-                            value: 20,
-                            radius: 85,
-                            showTitle: false,
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                     CustomPaint(
                       size: const Size(380, 260),
