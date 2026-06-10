@@ -297,13 +297,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             ),
           ),
           const Spacer(),
-          SvgPicture.asset(
-            'assets/notification_icon.svg',
-            height: 24,
-            width: 24,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF000000),
-              BlendMode.srcIn,
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: SvgPicture.asset(
+              'assets/notification_icon.svg',
+              height: 24,
+              width: 24,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
           ),
           const SizedBox(width: 24),

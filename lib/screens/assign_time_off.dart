@@ -6,7 +6,12 @@ import '../utils/logout_dialog.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
-  const AssignTimeOffScreen({super.key, required this.onBack});
+  final VoidCallback? onNotificationTap;
+  const AssignTimeOffScreen({
+    super.key,
+    required this.onBack,
+    this.onNotificationTap,
+  });
 
   @override
   State<AssignTimeOffScreen> createState() => _AssignTimeOffScreenState();
@@ -145,13 +150,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             ),
           ),
           const Spacer(),
-          SvgPicture.asset(
-            'assets/notification_icon.svg',
-            height: 24,
-            width: 24,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF000000),
-              BlendMode.srcIn,
+          GestureDetector(
+            onTap: widget.onNotificationTap,
+            child: SvgPicture.asset(
+              'assets/notification_icon.svg',
+              height: 24,
+              width: 24,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
           ),
           const SizedBox(width: 24),

@@ -131,6 +131,15 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _showProfile = true);
   }
 
+  void _navigateToAttendance() {
+    setState(() {
+      _selectedIndex = 2;
+      _selectedSubIndex = 0;
+      _showProfile = false;
+      _showAssignTimeOff = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? WorkersScreen(
                           onLogout: _handleLogout,
                           onProfileTap: _openProfile,
+                          onNotificationTap: _navigateToAttendance,
                         )
                       : (_selectedIndex == 2
                             ? _buildWorkforceView()
@@ -166,12 +176,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ? ExpensesScreen(
                                       onLogout: _handleLogout,
                                       onProfileTap: _openProfile,
+                                      onNotificationTap: _navigateToAttendance,
                                     )
                                   : (_selectedIndex == 4
                                         ? SettingsScreen(
                                             onLogout: _handleLogout,
                                             onProfileTap: _openProfile,
                                             isGuest: AuthService().currentUser?.isAnonymous ?? false,
+                                            onNotificationTap: _navigateToAttendance,
                                           )
                                         : _buildDashboardView())))),
           ),
@@ -184,12 +196,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_showAssignTimeOff) {
       return AssignTimeOffScreen(
         onBack: () => setState(() => _showAssignTimeOff = false),
+        onNotificationTap: _navigateToAttendance,
       );
     }
     if (_selectedSubIndex == 0) {
       return AttendanceScreen(
         onLogout: _handleLogout,
         onProfileTap: _openProfile,
+        onNotificationTap: _navigateToAttendance,
       );
     } else if (_selectedSubIndex == 1) {
       return PayrollScreen(
@@ -200,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _showAssignTimeOff = true;
           });
         },
+        onNotificationTap: _navigateToAttendance,
       );
     } else if (_selectedSubIndex == 2) {
       return TimeOffScreen(
@@ -210,13 +225,19 @@ class _HomeScreenState extends State<HomeScreen> {
             _showAssignTimeOff = true;
           });
         },
+        onNotificationTap: _navigateToAttendance,
       );
     } else if (_selectedSubIndex == 3) {
-      return AssetsScreen(onLogout: _handleLogout, onProfileTap: _openProfile);
+      return AssetsScreen(
+        onLogout: _handleLogout,
+        onProfileTap: _openProfile,
+        onNotificationTap: _navigateToAttendance,
+      );
     } else if (_selectedSubIndex == 4) {
       return HolidaysScreen(
         onLogout: _handleLogout,
         onProfileTap: _openProfile,
+        onNotificationTap: _navigateToAttendance,
       );
     } else {
       final subItems = [
@@ -247,7 +268,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDashboardView() {
     return Column(
       children: [
-        TopHeader(onProfileTap: _openProfile),
+        TopHeader(
+          onProfileTap: _openProfile,
+          onNotificationTap: _navigateToAttendance,
+        ),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
@@ -478,7 +502,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildProfileView() {
     return Column(
       children: [
-        ProfileInlineHeader(onLogout: _handleLogout),
+        ProfileInlineHeader(
+          onLogout: _handleLogout,
+          onNotificationTap: _navigateToAttendance,
+        ),
         const Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(horizontal: 40.0, vertical: 30.0),
@@ -492,8 +519,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class ProfileInlineHeader extends StatelessWidget {
   final VoidCallback onLogout;
+  final VoidCallback onNotificationTap;
 
-  const ProfileInlineHeader({super.key, required this.onLogout});
+  const ProfileInlineHeader({
+    super.key,
+    required this.onLogout,
+    required this.onNotificationTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -527,13 +559,16 @@ class ProfileInlineHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          SvgPicture.asset(
-            'assets/notification_icon.svg',
-            height: 24,
-            width: 24,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF000000),
-              BlendMode.srcIn,
+          GestureDetector(
+            onTap: onNotificationTap,
+            child: SvgPicture.asset(
+              'assets/notification_icon.svg',
+              height: 24,
+              width: 24,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
           ),
           const SizedBox(width: 20),
@@ -1713,7 +1748,12 @@ class _SidebarWidgetState extends State<SidebarWidget> {
 
 class TopHeader extends StatelessWidget {
   final VoidCallback onProfileTap;
-  const TopHeader({super.key, required this.onProfileTap});
+  final VoidCallback onNotificationTap;
+  const TopHeader({
+    super.key,
+    required this.onProfileTap,
+    required this.onNotificationTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1767,13 +1807,16 @@ class TopHeader extends StatelessWidget {
           Row(
             children: [
               // Notification bell
-              SvgPicture.asset(
-                'assets/notification_icon.svg',
-                height: 24,
-                width: 24,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF000000),
-                  BlendMode.srcIn,
+              GestureDetector(
+                onTap: onNotificationTap,
+                child: SvgPicture.asset(
+                  'assets/notification_icon.svg',
+                  height: 24,
+                  width: 24,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF000000),
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
               const SizedBox(width: 20),

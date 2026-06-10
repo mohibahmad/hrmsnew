@@ -342,8 +342,14 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 class WorkersScreen extends StatefulWidget {
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onNotificationTap;
 
-  const WorkersScreen({super.key, this.onLogout, this.onProfileTap});
+  const WorkersScreen({
+    super.key,
+    this.onLogout,
+    this.onProfileTap,
+    this.onNotificationTap,
+  });
 
   @override
   State<WorkersScreen> createState() => _WorkersScreenState();
@@ -371,6 +377,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
         },
         onLogout: widget.onLogout,
         onProfileTap: widget.onProfileTap,
+        onNotificationTap: widget.onNotificationTap,
       );
     }
   }
@@ -383,12 +390,14 @@ class DashboardWorkerList extends StatefulWidget {
   final VoidCallback onAddWorker;
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onNotificationTap;
 
   const DashboardWorkerList({
     super.key,
     required this.onAddWorker,
     this.onLogout,
     this.onProfileTap,
+    this.onNotificationTap,
   });
 
   @override
@@ -502,13 +511,16 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               const Spacer(),
               // Notification Bell & Profile Avatar
               if (widget.onProfileTap != null && widget.onLogout != null) ...[
-                SvgPicture.asset(
-                  'assets/notification_icon.svg',
-                  height: 24,
-                  width: 24,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF000000),
-                    BlendMode.srcIn,
+                GestureDetector(
+                  onTap: widget.onNotificationTap,
+                  child: SvgPicture.asset(
+                    'assets/notification_icon.svg',
+                    height: 24,
+                    width: 24,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFF000000),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -522,10 +534,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   ),
                 ),
               ] else ...[
-                const Icon(
-                  Icons.notifications_active,
-                  color: Color(0xFF000000),
-                  size: 28,
+                GestureDetector(
+                  onTap: widget.onNotificationTap,
+                  child: const Icon(
+                    Icons.notifications_active,
+                    color: Color(0xFF000000),
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 24),
                 CircleAvatar(

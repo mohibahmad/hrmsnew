@@ -7,11 +7,13 @@ import '../services/auth_service.dart';
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
+  final VoidCallback? onNotificationTap;
 
   const HolidaysScreen({
     super.key,
     required this.onLogout,
     required this.onProfileTap,
+    this.onNotificationTap,
   });
 
   @override
@@ -388,13 +390,16 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ],
           ),
           const Spacer(),
-          SvgPicture.asset(
-            'assets/notification_icon.svg',
-            height: 24,
-            width: 24,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF000000),
-              BlendMode.srcIn,
+          GestureDetector(
+            onTap: widget.onNotificationTap,
+            child: SvgPicture.asset(
+              'assets/notification_icon.svg',
+              height: 24,
+              width: 24,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
           ),
           const SizedBox(width: 20),
