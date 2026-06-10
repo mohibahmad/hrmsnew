@@ -701,6 +701,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
               'assets/placeholder_workers.svg',
               width: 120,
               height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -709,15 +713,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF0247C4),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Try adjusting your search query or add a new asset.",
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
             ),

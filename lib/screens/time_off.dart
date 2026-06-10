@@ -509,6 +509,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               'assets/placeholder_workers.svg',
               width: 120,
               height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -517,15 +521,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 color: Color(0xFF0247C4),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Try adjusting your filters or search query.",
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
             ),

@@ -67,20 +67,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().attendanceStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _attendanceDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+      FirestoreService().attendanceStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _attendanceDocs = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } else {
       _attendanceDocs = DummyData.attendance;
       _isLoading = false;
@@ -206,7 +211,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ),
               SizedBox(height: 4),
-              
             ],
           ),
           const Spacer(),
@@ -259,37 +263,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: TextField(
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Search by workers name",
-                        hintStyle: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 14,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
+                  child: TextField(
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search by workers name",
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 14,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey[400],
                       ),
                     ),
                   ),
-                  if (_searchQuery.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
-                      ),
-                    ),
-                ],
+              ],
             ),
           ),
         ),
@@ -613,23 +621,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               'assets/placeholder_workers.svg',
               width: 120,
               height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
               "No Attendance Records",
               style: TextStyle(
-                color: primaryBlue,
+                color: Color(0xFF0247C4),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Try adjusting your filters or search query.",
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -643,7 +646,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   void _showRowMenu(BuildContext context, Map<String, dynamic> doc) {
     if (_tapPosition == null) return;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
 
     final docId = doc['id'] as String;
@@ -651,24 +655,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     showMenu<String>(
       context: context,
       position: RelativeRect.fromRect(
-        Rect.fromLTWH(_tapPosition!.globalPosition.dx, _tapPosition!.globalPosition.dy, 0, 0),
+        Rect.fromLTWH(
+          _tapPosition!.globalPosition.dx,
+          _tapPosition!.globalPosition.dy,
+          0,
+          0,
+        ),
         Offset.zero & overlay.size,
       ),
       items: [
-        const PopupMenuItem(value: 'preview', child: Row(
-          children: [
-            Icon(Icons.visibility, size: 18, color: Colors.black),
-            SizedBox(width: 8),
-            Text('Preview', style: TextStyle(fontSize: 14)),
-          ],
-        )),
-        PopupMenuItem(value: 'delete', child: Row(
-          children: [
-            Icon(Icons.delete_outline, size: 18, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Delete', style: TextStyle(fontSize: 14, color: Colors.red)),
-          ],
-        )),
+        const PopupMenuItem(
+          value: 'preview',
+          child: Row(
+            children: [
+              Icon(Icons.visibility, size: 18, color: Colors.black),
+              SizedBox(width: 8),
+              Text('Preview', style: TextStyle(fontSize: 14)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Delete', style: TextStyle(fontSize: 14, color: Colors.red)),
+            ],
+          ),
+        ),
       ],
     ).then((value) {
       if (value == 'preview') {
@@ -732,12 +747,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             final email = (doc['email'] ?? '').toString();
             final role = (doc['role'] ?? '').toString();
             final status = (doc['status'] ?? '').toString();
-            final attendanceType = (doc['attendanceType'] ?? 'Remote').toString();
+            final attendanceType = (doc['attendanceType'] ?? 'Remote')
+                .toString();
             final workType = (doc['workType'] ?? 'Full Time').toString();
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -797,7 +816,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           style: TextStyle(
                             color: status == 'Present'
                                 ? greenPresent
-                                : (status == 'Absent' ? redAbsent : orangeLeave),
+                                : (status == 'Absent'
+                                      ? redAbsent
+                                      : orangeLeave),
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
@@ -831,7 +852,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           _tapPosition = details;
                         },
                         onTap: () => _showRowMenu(context, doc),
-                        child: const Icon(Icons.more_vert, color: Colors.black, size: 24),
+                        child: const Icon(
+                          Icons.more_vert,
+                          color: Colors.black,
+                          size: 24,
+                        ),
                       ),
                     ],
                   ),
@@ -860,7 +885,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   child: const Text(
                     '1',
-                    style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -892,13 +920,13 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
   const WorkerAttendancePreviewCard({super.key, required this.record});
 
   static const Color primaryBlue = Color(0xFF0A51D0);
-  
+
   static const Color lightGreenBg = Color(0xFFE4F9E8);
   static const Color darkGreen = Color(0xFF00C853);
-  
+
   static const Color lightRedBg = Color(0xFFFCE9EA);
   static const Color darkRed = Color(0xFFFF1717);
-  
+
   static const Color lightOrangeBg = Color(0xFFFEF0E2);
   static const Color darkOrange = Color(0xFFFF8A00);
 
@@ -940,7 +968,11 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.close, color: Color(0xFFFFFFFF), size: 20),
+                icon: const Icon(
+                  Icons.close,
+                  color: Color(0xFFFFFFFF),
+                  size: 20,
+                ),
                 onPressed: () => Navigator.of(context).pop(),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -990,7 +1022,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1005,7 +1037,10 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(20),
@@ -1020,35 +1055,51 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    
+
                     Row(
                       children: [
-                        const Icon(Icons.email_outlined, color: Color(0xFFFFFFFF), size: 14),
+                        const Icon(
+                          Icons.email_outlined,
+                          color: Color(0xFFFFFFFF),
+                          size: 14,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             record.email,
-                            style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    
+
                     Row(
                       children: [
-                        const Icon(Icons.phone, color: Color(0xFFFFFFFF), size: 14),
+                        const Icon(
+                          Icons.phone,
+                          color: Color(0xFFFFFFFF),
+                          size: 14,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '123 5434567',
-                          style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 13, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -1125,21 +1176,33 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const Text(
                   'Days',
-                  style: TextStyle(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -1151,12 +1214,18 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       height: 32,
       child: Stack(
         children: [
-          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Icon(Icons.person, color: color, size: 28),
+          ),
           Positioned(
             bottom: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(color: Color(0xFFFFFFFF), shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFFFF),
+                shape: BoxShape.circle,
+              ),
               padding: const EdgeInsets.all(1),
               child: Icon(Icons.check_circle, color: color, size: 14),
             ),
@@ -1172,12 +1241,18 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       height: 32,
       child: Stack(
         children: [
-          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Icon(Icons.person, color: color, size: 28),
+          ),
           Positioned(
             bottom: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(color: Color(0xFFFFFFFF), shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFFFF),
+                shape: BoxShape.circle,
+              ),
               padding: const EdgeInsets.all(1),
               child: Icon(Icons.cancel, color: color, size: 14),
             ),
@@ -1193,12 +1268,18 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       height: 32,
       child: Stack(
         children: [
-          Align(alignment: Alignment.topLeft, child: Icon(Icons.person, color: color, size: 28)),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Icon(Icons.person, color: color, size: 28),
+          ),
           Positioned(
             bottom: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(color: Color(0xFFFFFFFF), shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFFFF),
+                shape: BoxShape.circle,
+              ),
               padding: const EdgeInsets.all(1),
               child: Icon(Icons.work, color: color, size: 10),
             ),
@@ -1215,34 +1296,46 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 214,
-            child: _buildDetailCard(
-              title: 'Attendance',
-              rows: [
-                _buildDetailRow('Total Working Days', '132 Days', Color(0xFF000000)),
-                _buildDetailRow('Total Presents', '112 Days', darkGreen),
-                _buildDetailRow('Total Absents', '8 Days', darkRed),
-                _buildDetailRow('Total Leaves', '12 Days', darkOrange),
-                _buildDetailRow('Attendance %', '8.5%', primaryBlue),
-              ],
+          children: [
+            SizedBox(
+              width: 214,
+              child: _buildDetailCard(
+                title: 'Attendance',
+                rows: [
+                  _buildDetailRow(
+                    'Total Working Days',
+                    '132 Days',
+                    Color(0xFF000000),
+                  ),
+                  _buildDetailRow('Total Presents', '112 Days', darkGreen),
+                  _buildDetailRow('Total Absents', '8 Days', darkRed),
+                  _buildDetailRow('Total Leaves', '12 Days', darkOrange),
+                  _buildDetailRow('Attendance %', '8.5%', primaryBlue),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 214,
-            child: _buildDetailCard(
-              title: 'Worker Information',
-              rows: [
-                _buildDetailRow('Position', record.role, Color(0xFF000000)),
-                _buildDetailRow('Work Type', record.workType, Color(0xFF000000)),
-                _buildDetailRow('Attendance Type', record.attendanceType, Color(0xFF000000)),
-              ],
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 214,
+              child: _buildDetailCard(
+                title: 'Worker Information',
+                rows: [
+                  _buildDetailRow('Position', record.role, Color(0xFF000000)),
+                  _buildDetailRow(
+                    'Work Type',
+                    record.workType,
+                    Color(0xFF000000),
+                  ),
+                  _buildDetailRow(
+                    'Attendance Type',
+                    record.attendanceType,
+                    Color(0xFF000000),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

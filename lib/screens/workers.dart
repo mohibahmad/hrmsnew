@@ -712,6 +712,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             'assets/placeholder_workers.svg',
                             width: 120,
                             height: 100,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFCBCBCB),
+                              BlendMode.srcIn,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           const Text(
