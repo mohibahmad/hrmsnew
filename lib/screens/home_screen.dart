@@ -18,6 +18,7 @@ import 'expenses_screen.dart';
 import 'settings_screen.dart';
 import '../utils/logout_dialog.dart';
 import 'login_screen.dart';
+import '../services/dummy_data.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,10 +53,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
-        _totalWorkersCount = 0;
-        _totalExpensesSum = 0.0;
-        _totalSalarySum = 0.0;
-        _holidays = [];
+        _totalWorkersCount = DummyData.workers.length;
+        _totalExpensesSum = DummyData.expenses.fold(0.0, (sum, item) {
+          return sum + ((item['amount'] ?? 0.0) as num).toDouble();
+        });
+        _totalSalarySum = DummyData.payroll.fold(0.0, (sum, item) {
+          final salaryStr = (item['salary'] ?? '')
+              .toString()
+              .replaceAll('\$', '')
+              .replaceAll(',', '')
+              .trim();
+          return sum + (double.tryParse(salaryStr) ?? 0.0);
+        });
+        _holidays = (DummyData.holidays['May'] ?? []).cast<Map<String, dynamic>>();
       });
     } else {
       final firestore = FirestoreService();
