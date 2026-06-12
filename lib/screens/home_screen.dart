@@ -65,7 +65,8 @@ class _HomeScreenState extends State<HomeScreen> {
               .trim();
           return sum + (double.tryParse(salaryStr) ?? 0.0);
         });
-        _holidays = (DummyData.holidays['May'] ?? []).cast<Map<String, dynamic>>();
+        _holidays = (DummyData.holidays['May'] ?? [])
+            .cast<Map<String, dynamic>>();
       });
     } else {
       final firestore = FirestoreService();
@@ -1933,7 +1934,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 Text(
                                   '60%',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF000000),
                                     fontFamily: 'SF Pro Display',
@@ -1942,7 +1943,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 Text(
                                   'Male',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w500,
                                     color: Color(0xFF64748B),
                                     fontFamily: 'SF Pro Display',
@@ -1950,23 +1951,23 @@ class TotalWorkersCard extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 2),
                             Transform.rotate(
                               angle: 0.35,
                               child: Container(
-                                width: 1.2,
-                                height: 42,
+                                width: 1,
+                                height: 22,
                                 color: const Color(0xFF64748B),
                               ),
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 2),
                             Column(
                               mainAxisSize: MainAxisSize.min,
                               children: const [
                                 Text(
                                   '40%',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF000000),
                                     fontFamily: 'SF Pro Display',
@@ -1975,7 +1976,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 Text(
                                   'Female',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w500,
                                     color: Color(0xFF64748B),
                                     fontFamily: 'SF Pro Display',
