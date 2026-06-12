@@ -72,8 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final firestore = FirestoreService();
 
       setState(() {
-        _holidays = (DummyData.holidays['May'] ?? [])
-            .cast<Map<String, dynamic>>();
+        _holidays = [];
       });
 
       firestore.workersStream.listen((snap) {
