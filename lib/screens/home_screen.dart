@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } else {
       final firestore = FirestoreService();
-      
+
       firestore.workersStream.listen((snap) {
         if (mounted) {
           setState(() {
@@ -84,7 +84,11 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _totalSalarySum = snap.docs.fold(0.0, (sum, doc) {
               final data = doc.data() as Map<String, dynamic>?;
-              final salaryStr = (data?['salary'] ?? '').toString().replaceAll('\$', '').replaceAll(',', '').trim();
+              final salaryStr = (data?['salary'] ?? '')
+                  .toString()
+                  .replaceAll('\$', '')
+                  .replaceAll(',', '')
+                  .trim();
               return sum + (double.tryParse(salaryStr) ?? 0.0);
             });
           });
@@ -180,8 +184,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? SettingsScreen(
                                             onLogout: _handleLogout,
                                             onProfileTap: _openProfile,
-                                            isGuest: AuthService().currentUser?.isAnonymous ?? false,
-                                            onNotificationTap: _navigateToAttendance,
+                                            isGuest:
+                                                AuthService()
+                                                    .currentUser
+                                                    ?.isAnonymous ??
+                                                false,
+                                            onNotificationTap:
+                                                _navigateToAttendance,
                                           )
                                         : _buildDashboardView())))),
           ),
@@ -294,12 +303,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: TotalWorkersCard(count: _totalWorkersCount)),
+                      Expanded(
+                        child: TotalWorkersCard(count: _totalWorkersCount),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: SparklineCard(
                           title: 'Total Salary',
-                          amount: '\$${NumberFormat.compact().format(_totalSalarySum)}',
+                          amount:
+                              '\$${NumberFormat.compact().format(_totalSalarySum)}',
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF8BB1F3),
                         ),
@@ -308,7 +320,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: SparklineCard(
                           title: 'Expenses',
-                          amount: '\$${NumberFormat.compact().format(_totalExpensesSum)}',
+                          amount:
+                              '\$${NumberFormat.compact().format(_totalExpensesSum)}',
                           period: _selectedPeriod,
                           lineColor: const Color(0xFFAFE0FE),
                         ),
@@ -357,11 +370,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: AttendanceLineChart(period: _selectedPeriod, isEmpty: _totalWorkersCount == 0),
+                        child: AttendanceLineChart(
+                          period: _selectedPeriod,
+                          isEmpty: _totalWorkersCount == 0,
+                        ),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
-                        child: LeaveTypesPieChart(period: _selectedPeriod, isEmpty: _totalWorkersCount == 0),
+                        child: LeaveTypesPieChart(
+                          period: _selectedPeriod,
+                          isEmpty: _totalWorkersCount == 0,
+                        ),
                       ),
                     ],
                   ),
@@ -428,66 +447,73 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Overview',
-                        style: TextStyle(
-                          color: Color(0xFF000000),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ==========================================
-                      // HOLIDAYS GRID
-                      // ==========================================
-                      if (_holidays.isEmpty)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 40),
-                            child: Text(
-                              'No holidays yet',
+                  child: _holidays.isNotEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Overview',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF9CA3AF),
+                                color: Color(0xFF000000),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
                                 fontFamily: 'SF Pro Display',
                               ),
                             ),
-                          ),
-                        )
-                      else
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            double spacing = 10.0;
-                            double itemWidth =
-                                (constraints.maxWidth - (spacing * 4)) / 5;
+                            const SizedBox(height: 24),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                double spacing = 10.0;
+                                double itemWidth =
+                                    (constraints.maxWidth - (spacing * 4)) / 5;
 
-                            return Wrap(
-                              spacing: spacing,
-                              runSpacing: spacing,
-                              children: _holidays.map((h) {
-                                final isActive = h['isEnabled'] == true;
-                                return SizedBox(
-                                  width: itemWidth,
-                                  child: HolidayCard(
-                                    day: '${h['day'] ?? ''}',
-                                    month: '',
-                                    remainingDays: '',
-                                    dayOfWeek: '',
-                                    holidayName: h['name'] ?? '',
-                                    isActive: isActive,
-                                  ),
+                                return Wrap(
+                                  spacing: spacing,
+                                  runSpacing: spacing,
+                                  children: _holidays.map((h) {
+                                    final isActive = h['isEnabled'] == true;
+                                    return SizedBox(
+                                      width: itemWidth,
+                                      child: HolidayCard(
+                                        day: '${h['day'] ?? ''}',
+                                        month: '',
+                                        remainingDays: '',
+                                        dayOfWeek: '',
+                                        holidayName: h['name'] ?? '',
+                                        isActive: isActive,
+                                      ),
+                                    );
+                                  }).toList(),
                                 );
-                              }).toList(),
-                            );
-                          },
+                              },
+                            ),
+                          ],
+                        )
+                      : Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/holidays_icon.svg',
+                                  height: 50,
+                                  width: 50,
+                                  color: const Color(0xFF9CA3AF),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No holidays yet',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF9CA3AF),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -1060,10 +1086,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Color(0xFFFFFFFF),
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Color(0xFFFFFFFF),
-                          width: 2,
-                        ),
+                        border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                       ),
                       padding: const EdgeInsets.all(8),
                       child: ClipOval(
@@ -1296,135 +1319,138 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         children: [
           if (!widget.isGuest)
             GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-                builder: (context) => const SubscriptionDialog(),
-              );
-            },
-            child: Container(
-              width: 220,
-              height: 181,
-              margin: const EdgeInsets.only(top: 29, left: 19, right: 19),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
-                image: const DecorationImage(
-                  image: AssetImage('assets/premium_bg.png'),
-                  fit: BoxFit.cover,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+                  builder: (context) => const SubscriptionDialog(),
+                );
+              },
+              child: Container(
+                width: 220,
+                height: 181,
+                margin: const EdgeInsets.only(top: 29, left: 19, right: 19),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/premium_bg.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0xFFFFFFFF),
+                      blurRadius: 3.0,
+                      spreadRadius: 0.0,
+                    ),
+                  ],
                 ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0xFFFFFFFF),
-                    blurRadius: 3.0,
-                    spreadRadius: 0.0,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Image.asset(
-                        'assets/premium_icon.png',
-                        width: 28,
-                        height: 28,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Upgrade Pro',
-                        style: TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
-                          height: 1.0,
-                          letterSpacing: 0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/premium_icon.png',
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.contain,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  _buildCheckText('Unlock All Features'),
-                  _buildCheckText('No Commitment'),
-                  _buildCheckText('Cancel Anytime'),
-                  const SizedBox(height: 4),
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.centerRight,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        height: 40,
-                        padding: const EdgeInsets.only(left: 14, right: 46),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF000000),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Get to Pro',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'SF Pro',
-                                height: 1.1,
-                                letterSpacing: 0,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Subscribe Now',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'SF Pro',
-                                height: 1.1,
-                                letterSpacing: 0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        top: -6,
-                        bottom: -6,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: const BoxDecoration(
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Upgrade Pro',
+                          style: TextStyle(
                             color: Color(0xFFFFFFFF),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Image.asset(
-                            "assets/right_back_arrow.png",
-                            width: 16,
-                            height: 16,
-                            fit: BoxFit.contain,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                            height: 1.0,
+                            letterSpacing: 0,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    _buildCheckText('Unlock All Features'),
+                    _buildCheckText('No Commitment'),
+                    _buildCheckText('Cancel Anytime'),
+                    const SizedBox(height: 4),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.centerRight,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 40,
+                          padding: const EdgeInsets.only(left: 14, right: 46),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF000000),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Color(0xFFFFFFFF),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Get to Pro',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'SF Pro',
+                                  height: 1.1,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Subscribe Now',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'SF Pro',
+                                  height: 1.1,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          top: -6,
+                          bottom: -6,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFFFFF),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Image.asset(
+                              "assets/right_back_arrow.png",
+                              width: 16,
+                              height: 16,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 20),
           Expanded(
             child: SingleChildScrollView(
@@ -1978,10 +2004,7 @@ class TotalWorkersCard extends StatelessWidget {
                       'assets/total_workers.svg',
                       height: 40,
                       width: 40,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF9CA3AF),
-                        BlendMode.srcIn,
-                      ),
+                      color: const Color(0xFF9CA3AF),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -2208,7 +2231,8 @@ class SparklineCard extends StatelessWidget {
                           LineChartData(
                             lineTouchData: LineTouchData(
                               touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (spot) => const Color(0xFF2C3E50),
+                                getTooltipColor: (spot) =>
+                                    const Color(0xFF2C3E50),
                                 tooltipRoundedRadius: 8,
                                 getTooltipItems: (spots) {
                                   return spots.map((spot) {
@@ -2270,10 +2294,7 @@ class SparklineCard extends StatelessWidget {
                           : 'assets/total_expense.svg',
                       height: 40,
                       width: 40,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF9CA3AF),
-                        BlendMode.srcIn,
-                      ),
+                      color: const Color(0xFF9CA3AF),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -2298,7 +2319,11 @@ class AttendanceLineChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
 
-  const AttendanceLineChart({super.key, required this.period, this.isEmpty = false});
+  const AttendanceLineChart({
+    super.key,
+    required this.period,
+    this.isEmpty = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2308,214 +2333,229 @@ class AttendanceLineChart extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              period,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 30),
-            if (isEmpty)
-              const SizedBox(
-                height: 300,
-                child: Center(
-                  child: Text(
-                    'No attendance data yet',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF9CA3AF),
+        child: !isEmpty
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    period,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                ),
-              )
-            else
-              SizedBox(
-              height: 300,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 1000),
-                curve: Curves.easeInOutCubic,
-                builder: (context, animValue, child) {
-                  const spots = [
-                    FlSpot(0, 0),
-                    FlSpot(1, 0.4),
-                    FlSpot(2, 1.8),
-                    FlSpot(3, 2.8),
-                    FlSpot(4, 2.4),
-                    FlSpot(5, 5),
-                    FlSpot(6, 7),
-                  ];
-                  return LineChart(
-                    LineChartData(
-                      minX: 0,
-                      maxX: 6,
-                      minY: 0,
-                      maxY: 7,
-                      lineTouchData: LineTouchData(
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (spot) => const Color(0xFF2C3E50),
-                          tooltipRoundedRadius: 8,
-                          getTooltipItems: (spots) {
-                            return spots.map((spot) {
-                              return LineTooltipItem(
-                                spot.y.toStringAsFixed(0),
-                                const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  fontFamily: 'SF Pro Display',
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    height: 300,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 1000),
+                      curve: Curves.easeInOutCubic,
+                      builder: (context, animValue, child) {
+                        const spots = [
+                          FlSpot(0, 0),
+                          FlSpot(1, 0.4),
+                          FlSpot(2, 1.8),
+                          FlSpot(3, 2.8),
+                          FlSpot(4, 2.4),
+                          FlSpot(5, 5),
+                          FlSpot(6, 7),
+                        ];
+                        return LineChart(
+                          LineChartData(
+                            minX: 0,
+                            maxX: 6,
+                            minY: 0,
+                            maxY: 7,
+                            lineTouchData: LineTouchData(
+                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipColor: (spot) =>
+                                    const Color(0xFF2C3E50),
+                                tooltipRoundedRadius: 8,
+                                getTooltipItems: (spots) {
+                                  return spots.map((spot) {
+                                    return LineTooltipItem(
+                                      spot.y.toStringAsFixed(0),
+                                      const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              ),
+                            ),
+                            gridData: FlGridData(
+                              show: true,
+                              drawHorizontalLine: false,
+                              drawVerticalLine: true,
+                              getDrawingVerticalLine: (value) =>
+                                  FlLine(color: Colors.black12, strokeWidth: 1),
+                            ),
+                            titlesData: FlTitlesData(
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 40,
+                                  getTitlesWidget: (value, meta) {
+                                    const style = TextStyle(
+                                      color: Color(0xFF155ED5),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'SF Pro Display',
+                                    );
+                                    String text;
+                                    switch (value.toInt()) {
+                                      case 0:
+                                        text = '0';
+                                        break;
+                                      case 1:
+                                        text = '20';
+                                        break;
+                                      case 2:
+                                        text = '40';
+                                        break;
+                                      case 3:
+                                        text = '60';
+                                        break;
+                                      case 4:
+                                        text = '80';
+                                        break;
+                                      case 5:
+                                        text = '100';
+                                        break;
+                                      case 6:
+                                        text = '120';
+                                        break;
+                                      case 7:
+                                        text = '140';
+                                        break;
+                                      default:
+                                        return Container();
+                                    }
+                                    return Text(text, style: style);
+                                  },
                                 ),
-                              );
-                            }).toList();
-                          },
-                        ),
-                      ),
-                      gridData: FlGridData(
-                        show: true,
-                        drawHorizontalLine: false,
-                        drawVerticalLine: true,
-                        getDrawingVerticalLine: (value) =>
-                            FlLine(color: Colors.black12, strokeWidth: 1),
-                      ),
-                      titlesData: FlTitlesData(
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              const style = TextStyle(
-                                color: Color(0xFF155ED5),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
-                              );
-                              String text;
-                              switch (value.toInt()) {
-                                case 0:
-                                  text = '0';
-                                  break;
-                                case 1:
-                                  text = '20';
-                                  break;
-                                case 2:
-                                  text = '40';
-                                  break;
-                                case 3:
-                                  text = '60';
-                                  break;
-                                case 4:
-                                  text = '80';
-                                  break;
-                                case 5:
-                                  text = '100';
-                                  break;
-                                case 6:
-                                  text = '120';
-                                  break;
-                                case 7:
-                                  text = '140';
-                                  break;
-                                default:
-                                  return Container();
-                              }
-                              return Text(text, style: style);
-                            },
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              const style = TextStyle(
-                                color: Color(0xFF155ED5),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
-                              );
-                              String text;
-                              switch (value.toInt()) {
-                                case 0:
-                                  text = 'JAN';
-                                  break;
-                                case 1:
-                                  text = 'FEB';
-                                  break;
-                                case 2:
-                                  text = 'MAR';
-                                  break;
-                                case 3:
-                                  text = 'APR';
-                                  break;
-                                case 4:
-                                  text = 'MAY';
-                                  break;
-                                case 5:
-                                  text = 'JUN';
-                                  break;
-                                case 6:
-                                  text = 'JUL';
-                                  break;
-                                default:
-                                  return Container();
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 10.0),
-                                child: Text(text, style: style),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(
-                        show: true,
-                        border: const Border(
-                          bottom: BorderSide(color: Colors.black, width: 1),
-                          left: BorderSide(color: Colors.black, width: 1),
-                        ),
-                      ),
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: spots
-                              .map((s) => FlSpot(s.x, s.y * animValue))
-                              .toList(),
-                          isCurved: false,
-                          color: const Color(0xFF23447F),
-                          barWidth: 2,
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, percent, barData, index) {
-                              return FlDotCirclePainter(
-                                radius: 4,
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    const style = TextStyle(
+                                      color: Color(0xFF155ED5),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'SF Pro Display',
+                                    );
+                                    String text;
+                                    switch (value.toInt()) {
+                                      case 0:
+                                        text = 'JAN';
+                                        break;
+                                      case 1:
+                                        text = 'FEB';
+                                        break;
+                                      case 2:
+                                        text = 'MAR';
+                                        break;
+                                      case 3:
+                                        text = 'APR';
+                                        break;
+                                      case 4:
+                                        text = 'MAY';
+                                        break;
+                                      case 5:
+                                        text = 'JUN';
+                                        break;
+                                      case 6:
+                                        text = 'JUL';
+                                        break;
+                                      default:
+                                        return Container();
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 10.0),
+                                      child: Text(text, style: style),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(
+                              show: true,
+                              border: const Border(
+                                bottom: BorderSide(
+                                  color: Colors.black,
+                                  width: 1,
+                                ),
+                                left: BorderSide(color: Colors.black, width: 1),
+                              ),
+                            ),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: spots
+                                    .map((s) => FlSpot(s.x, s.y * animValue))
+                                    .toList(),
+                                isCurved: false,
                                 color: const Color(0xFF23447F),
-                                strokeWidth: 0,
-                              );
-                            },
+                                barWidth: 2,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter:
+                                      (spot, percent, barData, index) {
+                                        return FlDotCirclePainter(
+                                          radius: 4,
+                                          color: const Color(0xFF23447F),
+                                          strokeWidth: 0,
+                                        );
+                                      },
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: const Color(0xFFDFE6FA),
+                                ),
+                              ),
+                            ],
                           ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: const Color(0xFFDFE6FA),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                ],
+              )
+            : SizedBox(
+                height: 430,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/present_grey.svg',
+                        height: 50,
+                        width: 50,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No attendance data yet',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF9CA3AF),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -2525,7 +2565,11 @@ class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
 
-  const LeaveTypesPieChart({super.key, required this.period, this.isEmpty = false});
+  const LeaveTypesPieChart({
+    super.key,
+    required this.period,
+    this.isEmpty = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2535,143 +2579,149 @@ class LeaveTypesPieChart extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              period,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (isEmpty)
-              const SizedBox(
-                height: 300,
-                child: Center(
-                  child: Text(
-                    'No leave data yet',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF9CA3AF),
+        child: !isEmpty
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    period,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                ),
-              )
-            else ...[
-              TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 1000),
-              curve: Curves.easeInOutCubic,
-              builder: (context, animValue, child) {
-                return Opacity(
-                  opacity: animValue,
-                  child: Transform.scale(
-                    scale: animValue,
-                    child: child,
-                  ),
-                );
-              },
-              child: Center(
-                child: SizedBox(
-                  width: 380,
-                  height: 260,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          sectionsSpace: 0.0,
-                          centerSpaceRadius: 0,
-                          startDegreeOffset: 0,
-                          sections: [
-                            PieChartSectionData(
-                              color: const Color(0xFF97FFA9),
-                              value: 30,
-                              radius: 85,
-                              showTitle: false,
+                  const SizedBox(height: 20),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 1000),
+                    curve: Curves.easeInOutCubic,
+                    builder: (context, animValue, child) {
+                      return Opacity(
+                        opacity: animValue,
+                        child: Transform.scale(scale: animValue, child: child),
+                      );
+                    },
+                    child: Center(
+                      child: SizedBox(
+                        width: 380,
+                        height: 260,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            PieChart(
+                              PieChartData(
+                                sectionsSpace: 0.0,
+                                centerSpaceRadius: 0,
+                                startDegreeOffset: 0,
+                                sections: [
+                                  PieChartSectionData(
+                                    color: const Color(0xFF97FFA9),
+                                    value: 30,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                                  PieChartSectionData(
+                                    color: const Color(0xFF84A9FF),
+                                    value: 50,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                                  PieChartSectionData(
+                                    color: const Color(0xFFFF4A5E),
+                                    value: 20,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                                ],
+                              ),
                             ),
-                            PieChartSectionData(
-                              color: const Color(0xFF84A9FF),
-                              value: 50,
-                              radius: 85,
-                              showTitle: false,
+                            CustomPaint(
+                              size: const Size(380, 260),
+                              painter: CalloutLinesPainter(),
                             ),
-                            PieChartSectionData(
-                              color: const Color(0xFFFF4A5E),
-                              value: 20,
-                              radius: 85,
-                              showTitle: false,
+                            const Positioned(
+                              top: 36,
+                              left: 65,
+                              child: _ChartLabel('50%'),
+                            ),
+                            const Positioned(
+                              bottom: 43,
+                              left: 110,
+                              child: _ChartLabel('30%'),
+                            ),
+                            const Positioned(
+                              top: 36,
+                              right: 65,
+                              child: _ChartLabel('20%'),
                             ),
                           ],
                         ),
                       ),
-                      CustomPaint(
-                        size: const Size(380, 260),
-                        painter: CalloutLinesPainter(),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLegendItem(
+                                const Color(0xFF84A9FF),
+                                'Casual Leave: 50%',
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildLegendItem(
+                                const Color(0xFFFF4A5E),
+                                'Sick Leave: 20%',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLegendItem(
+                                const Color(0xFF97FFA9),
+                                'Medical Leave: 30%',
+                              ),
+                            ),
+                            const Expanded(child: SizedBox()),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : SizedBox(
+                height: 430,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/leave_grey.svg',
+                        height: 50,
+                        width: 50,
                       ),
-                      const Positioned(
-                        top: 36,
-                        left: 65,
-                        child: _ChartLabel('50%'),
-                      ),
-                      const Positioned(
-                        bottom: 43,
-                        left: 110,
-                        child: _ChartLabel('30%'),
-                      ),
-                      const Positioned(
-                        top: 36,
-                        right: 65,
-                        child: _ChartLabel('20%'),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No leave data yet',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF9CA3AF),
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildLegendItem(
-                          const Color(0xFF84A9FF),
-                          'Casual Leave: 50%',
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildLegendItem(
-                          const Color(0xFFFF4A5E),
-                          'Sick Leave: 20%',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildLegendItem(
-                          const Color(0xFF97FFA9),
-                          'Medical Leave: 30%',
-                        ),
-                      ),
-                      const Expanded(child: SizedBox()),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -2804,7 +2854,11 @@ class PeriodFilterDropdown extends StatelessWidget {
                 ),
                 child: isSelected
                     ? const Center(
-                        child: Icon(Icons.check, size: 12, color: Color(0xFFFFFFFF)),
+                        child: Icon(
+                          Icons.check,
+                          size: 12,
+                          color: Color(0xFFFFFFFF),
+                        ),
                       )
                     : null,
               ),
@@ -2833,7 +2887,10 @@ class PeriodFilterDropdown extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(selectedPeriod, style: const TextStyle(color: Color(0xFFFFFFFF))),
+            Text(
+              selectedPeriod,
+              style: const TextStyle(color: Color(0xFFFFFFFF)),
+            ),
             const SizedBox(width: 8),
             const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
           ],
