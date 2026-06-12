@@ -162,13 +162,18 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                         color: Color(0xFFFFFFFF).withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        widget.isError
-                            ? Icons.error_outline
-                            : Icons.check_circle_outline,
-                        color: Color(0xFFFFFFFF),
-                        size: 22,
-                      ),
+                      child: widget.isError
+                          ? const Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFFFFFFF),
+                              size: 22,
+                            )
+                          : Image.asset(
+                              'assets/sucess.png',
+                              width: 22,
+                              height: 22,
+                              color: const Color(0xFFFFFFFF),
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Flexible(

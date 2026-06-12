@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
@@ -196,26 +197,39 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             minimumSize: const Size(0, 32),
                           ),
                           onPressed: () {
-                            final double? amt = double.tryParse(
-                              amountController.text,
-                            );
-                            if (categoryController.text.isNotEmpty &&
-                                amt != null) {
-                              final dateStr =
-                                  '${selectedDay.toString().padLeft(2, '0')}/05/2025';
-                              FirestoreService().addExpense({
-                                'name': 'Ali Ahmad',
-                                'date': dateStr,
-                                'category': categoryController.text,
-                                'amount': amt,
-                              });
-                              Navigator.of(context).pop();
+                            if (categoryController.text.trim().isEmpty) {
                               FlashySnackBar.show(
                                 context,
-                                message:
-                                    'Successfully added expense "${categoryController.text}"',
+                                message: 'Please enter a category',
+                                isError: true,
                               );
+                              return;
                             }
+                            final double? amt = double.tryParse(
+                              amountController.text.trim(),
+                            );
+                            if (amt == null) {
+                              FlashySnackBar.show(
+                                context,
+                                message: 'Please enter a valid numeric amount',
+                                isError: true,
+                              );
+                              return;
+                            }
+                            final dateStr =
+                                '${selectedDay.toString().padLeft(2, '0')}/05/2025';
+                            FirestoreService().addExpense({
+                              'name': 'Ali Ahmad',
+                              'date': dateStr,
+                              'category': categoryController.text,
+                              'amount': amt,
+                            });
+                            Navigator.of(context).pop();
+                            FlashySnackBar.show(
+                              context,
+                              message:
+                                  'Successfully added expense "${categoryController.text}"',
+                            );
                           },
                           child: const Text(
                             'Save',
@@ -346,6 +360,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
+            inputFormatters: (keyboardType == const TextInputType.numberWithOptions(decimal: true) ||
+                              keyboardType == TextInputType.number ||
+                              label.toLowerCase().contains('amount'))
+                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
+                : null,
             decoration: const InputDecoration.collapsed(hintText: ''),
             style: const TextStyle(
               fontSize: 14,
@@ -774,87 +793,104 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildTodayDropdown() {
+    final List<String> options = [
+      'Week',
+      'Month',
+      '3 Month',
+      '6 Month',
+      'Yearly',
+    ];
+
     return PopupMenuButton<String>(
-      offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Color(0xFFCCCCCC), width: 1),
-      ),
-      color: const Color(0xFFFFFFFF),
-      elevation: 4,
       onSelected: (value) {
         setState(() {
           _selectedPeriod = value;
           _currentPage = 1;
         });
       },
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      color: const Color(0xFFFFFFFF),
+      elevation: 8,
+      tooltip: '',
+      itemBuilder: (context) => options.map((option) {
+        final isSelected = option == _selectedPeriod;
+        return PopupMenuItem<String>(
+          value: option,
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF0B51C1)
+                        : Colors.grey.shade400,
+                    width: 1.5,
+                  ),
+                ),
+                child: isSelected
+                    ? Center(
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF0B51C1),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                option,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isSelected
+                      ? const Color(0xFF0B51C1)
+                      : Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        width: 140,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF0247C4),
-          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFF0B51C1),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _selectedPeriod,
+              _selectedPeriod == 'Week' ? 'Today' : _selectedPeriod,
               style: const TextStyle(
                 color: Color(0xFFFFFFFF),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            const SizedBox(width: 8),
             const Icon(
               Icons.arrow_drop_down,
               color: Color(0xFFFFFFFF),
-              size: 20,
             ),
           ],
         ),
-      ),
-      itemBuilder: (context) => [
-        _buildPopupItem('Week', isSelected: _selectedPeriod == 'Week'),
-        _buildPopupItem('Month', isSelected: _selectedPeriod == 'Month'),
-        _buildPopupItem('3 Month', isSelected: _selectedPeriod == '3 Month'),
-        _buildPopupItem('6 Month', isSelected: _selectedPeriod == '6 Month'),
-        _buildPopupItem('Yearly', isSelected: _selectedPeriod == 'Yearly'),
-      ],
-    );
-  }
-
-  PopupMenuItem<String> _buildPopupItem(
-    String text, {
-    bool isSelected = false,
-  }) {
-    return PopupMenuItem<String>(
-      value: text,
-      height: 40,
-      child: Row(
-        children: [
-          Icon(
-            isSelected
-                ? Icons.radio_button_checked
-                : Icons.radio_button_unchecked,
-            color: isSelected
-                ? const Color(0xFF0247C4)
-                : const Color(0xFFCCCCCC),
-            size: 18,
-          ),
-          const SizedBox(width: 12),
-          Text(
-            text,
-            style: TextStyle(
-              color: isSelected
-                  ? const Color(0xFF0247C4)
-                  : const Color(0xFFCCCCCC),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ],
       ),
     );
   }

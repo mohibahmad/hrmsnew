@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -560,9 +561,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 const SizedBox(width: 24),
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: const AssetImage(
-                    'assets/profileimage.png',
-                  ),
+                  backgroundImage: const AssetImage('assets/profileimage.png'),
                 ),
               ],
             ],
@@ -2324,6 +2323,10 @@ Widget _buildInputField(
   bool isTextArea = false,
   TextEditingController? controller,
 }) {
+  final isAmount = label.toLowerCase().contains('amount');
+  final isLeaves = label.toLowerCase().contains('leaves');
+  final isNumeric = isAmount || isLeaves;
+
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -2348,6 +2351,18 @@ Widget _buildInputField(
         child: TextField(
           maxLines: isTextArea ? 4 : 1,
           controller: controller,
+          keyboardType: isNumeric
+              ? (isAmount
+                    ? const TextInputType.numberWithOptions(decimal: true)
+                    : TextInputType.number)
+              : null,
+          inputFormatters: isNumeric
+              ? [
+                  FilteringTextInputFormatter.allow(
+                    isAmount ? RegExp(r'^\d*\.?\d*') : RegExp(r'^\d*'),
+                  ),
+                ]
+              : null,
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF000000),
@@ -2517,13 +2532,13 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         children: [
                           // Avatar with White Border
                           Container(
-                            width: 100,
-                            height: 100,
+                            width: 140,
+                            height: 140,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Color(0xFFFFFFFF),
-                                width: 2.5,
+                                color: const Color(0xFFFFFFFF),
+                                width: 2.0,
                               ),
                               image: const DecorationImage(
                                 image: AssetImage('assets/boy.png'),

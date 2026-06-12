@@ -71,6 +71,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       final firestore = FirestoreService();
 
+      setState(() {
+        _holidays = (DummyData.holidays['May'] ?? [])
+            .cast<Map<String, dynamic>>();
+      });
+
       firestore.workersStream.listen((snap) {
         if (mounted) {
           setState(() {
@@ -486,10 +491,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     return SizedBox(
                                       width: itemWidth,
                                       child: HolidayCard(
-                                        day: '${h['day'] ?? ''}',
-                                        month: '',
-                                        remainingDays: '',
-                                        dayOfWeek: '',
+                                        day: h['day'] != null ? '${h['day']}'.padLeft(2, '0') : '',
+                                        month: h['month'] ?? 'May',
+                                        remainingDays: h['remainingDays'] ?? '',
+                                        dayOfWeek: h['dayOfWeek'] ?? '',
                                         holidayName: h['name'] ?? '',
                                         isActive: isActive,
                                       ),
@@ -2834,41 +2839,42 @@ class PeriodFilterDropdown extends StatelessWidget {
       onSelected: onChanged,
       offset: const Offset(0, 48),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: Colors.grey.shade300),
       ),
-      color: Color(0xFFFFFFFF),
+      color: const Color(0xFFFFFFFF),
       elevation: 8,
       tooltip: '',
       itemBuilder: (context) => _options.map((option) {
         final isSelected = option == selectedPeriod;
         return PopupMenuItem<String>(
           value: option,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 18,
-                height: 18,
+                width: 12,
+                height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF155ED5)
-                        : const Color(0xFFCBD5E1),
-                    width: 2,
+                        ? const Color(0xFF0B51C1)
+                        : Colors.grey.shade400,
+                    width: 1.5,
                   ),
-                  color: isSelected
-                      ? const Color(0xFF155ED5)
-                      : Colors.transparent,
                 ),
                 child: isSelected
-                    ? const Center(
-                        child: Icon(
-                          Icons.check,
-                          size: 12,
-                          color: Color(0xFFFFFFFF),
+                    ? Center(
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF0B51C1),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       )
                     : null,
@@ -2877,11 +2883,11 @@ class PeriodFilterDropdown extends StatelessWidget {
               Text(
                 option,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: isSelected
-                      ? const Color(0xFF000000)
-                      : const Color(0xFF94A3B8),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      ? const Color(0xFF0B51C1)
+                      : Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -2890,19 +2896,24 @@ class PeriodFilterDropdown extends StatelessWidget {
         );
       }).toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        width: 140,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF155ED5),
+          color: const Color(0xFF0B51C1),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              selectedPeriod,
-              style: const TextStyle(color: Color(0xFFFFFFFF)),
+              selectedPeriod == 'Week' ? 'Today' : selectedPeriod,
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
-            const SizedBox(width: 8),
             const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
           ],
         ),
