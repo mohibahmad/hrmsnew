@@ -41,21 +41,27 @@ class _SplashScreenState extends State<SplashScreen>
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => destination,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return ScaleTransition(
-              scale: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutBack,
-              ),
-              child: FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: animation,
-                  curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-                ),
+            final slideAnimation = Tween<Offset>(
+              begin: const Offset(0, 0.08),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            );
+
+            final fadeAnimation = CurvedAnimation(
+              parent: animation,
+              curve: const Interval(0.0, 0.75, curve: Curves.easeIn),
+            );
+
+            return FadeTransition(
+              opacity: fadeAnimation,
+              child: SlideTransition(
+                position: slideAnimation,
                 child: child,
               ),
             );
           },
-          transitionDuration: const Duration(milliseconds: 700),
+          transitionDuration: const Duration(milliseconds: 600),
         ),
       );
     });

@@ -566,14 +566,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SvgPicture.asset(
-                'assets/boy.png',
+              Image.asset(
+                'assets/placeholdemptystate.png',
                 width: 120,
                 height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+                color: const Color(0xFFCBCBCB),
               ),
               const SizedBox(height: 16),
               const Text(

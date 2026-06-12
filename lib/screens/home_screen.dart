@@ -120,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await showDialog<bool>(
         context: context,
         barrierDismissible: false,
+        barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
         builder: (_) => const SubscriptionDialog(),
       );
     }
