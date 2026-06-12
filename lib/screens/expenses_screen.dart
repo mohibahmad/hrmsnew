@@ -913,7 +913,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
-    final double tableHeight = (MediaQuery.of(context).size.height - 410).clamp(495.0, 1200.0);
+    final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(495.0, 1200.0);
 
     return Container(
       height: tableHeight,

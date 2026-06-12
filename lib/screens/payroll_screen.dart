@@ -271,7 +271,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildTable() {
-    final double tableHeight = (MediaQuery.of(context).size.height - 330).clamp(440.0, 1200.0);
+    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(440.0, 1200.0);
 
     return Container(
       height: tableHeight,

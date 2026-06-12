@@ -744,7 +744,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
-    final double tableHeight = (MediaQuery.of(context).size.height - 466).clamp(
+    final double tableHeight = (MediaQuery.of(context).size.height - 465).clamp(
       480.0,
       1200.0,
     );

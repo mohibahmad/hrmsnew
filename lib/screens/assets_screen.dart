@@ -772,7 +772,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
-    final double tableHeight = (MediaQuery.of(context).size.height - 280).clamp(495.0, 1200.0);
+    final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(495.0, 1200.0);
 
     return Container(
       height: tableHeight,

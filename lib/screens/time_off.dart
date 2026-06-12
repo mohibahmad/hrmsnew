@@ -326,7 +326,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
-    final double tableHeight = (MediaQuery.of(context).size.height - 340).clamp(
+    final double tableHeight = (MediaQuery.of(context).size.height - 339).clamp(
       495.0,
       1200.0,
     );
