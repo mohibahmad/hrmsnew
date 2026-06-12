@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
+import 'dummy_data.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -197,43 +198,11 @@ class FirestoreService {
     final timeoffColl = docRef.collection('hrms_timeoff');
 
     // 1. Seed Workers (batch)
-    final dummyWorkers = [
-      {
-        'name': 'John Smith',
-        'email': 'john.smith@stark.com',
-        'type1': 'Full-Time',
-        'position': 'Senior Web Developer',
-        'type2': 'Remote',
-      },
-      {
-        'name': 'Michael Johnson',
-        'email': 'michael.johnson@stark.com',
-        'type1': 'Full-Time',
-        'position': 'UI/UX Designer',
-        'type2': 'On-Site',
-      },
-      {
-        'name': 'Robert Wilson',
-        'email': 'robert.wilson@stark.com',
-        'type1': 'Contract',
-        'position': 'DevOps Engineer',
-        'type2': 'On-Site',
-      },
-      {
-        'name': 'Emily Davis',
-        'email': 'emily.davis@stark.com',
-        'type1': 'Full-Time',
-        'position': 'Product Manager',
-        'type2': 'On-Site',
-      },
-      {
-        'name': 'David Brown',
-        'email': 'david.brown@stark.com',
-        'type1': 'Part-Time',
-        'position': 'Marketing Specialist',
-        'type2': 'Remote',
-      },
-    ];
+    final dummyWorkers = DummyData.workers.map((w) {
+      final copy = Map<String, dynamic>.from(w);
+      copy.remove('id');
+      return copy;
+    }).toList();
 
     for (var w in dummyWorkers) {
       batch.set(workersColl.doc(), {
@@ -242,49 +211,12 @@ class FirestoreService {
       });
     }
 
-    // 2. Seed Attendance (matches workers list)
-    final dummyAttendance = [
-      {
-        'name': 'John Smith',
-        'email': 'john.smith@stark.com',
-        'role': 'Senior Web Developer',
-        'status': 'Present',
-        'attendanceType': 'Remote',
-        'workType': 'Full Time',
-      },
-      {
-        'name': 'Michael Johnson',
-        'email': 'michael.johnson@stark.com',
-        'role': 'UI/UX Designer',
-        'status': 'Present',
-        'attendanceType': 'On-Site',
-        'workType': 'Full Time',
-      },
-      {
-        'name': 'Robert Wilson',
-        'email': 'robert.wilson@stark.com',
-        'role': 'DevOps Engineer',
-        'status': 'Absent',
-        'attendanceType': 'On-Site',
-        'workType': 'Contract',
-      },
-      {
-        'name': 'Emily Davis',
-        'email': 'emily.davis@stark.com',
-        'role': 'Product Manager',
-        'status': 'Present',
-        'attendanceType': 'On-Site',
-        'workType': 'Full Time',
-      },
-      {
-        'name': 'David Brown',
-        'email': 'david.brown@stark.com',
-        'role': 'Marketing Specialist',
-        'status': 'Leave',
-        'attendanceType': 'Remote',
-        'workType': 'Part Time',
-      },
-    ];
+    // 2. Seed Attendance
+    final dummyAttendance = DummyData.attendance.map((a) {
+      final copy = Map<String, dynamic>.from(a);
+      copy.remove('id');
+      return copy;
+    }).toList();
 
     for (var a in dummyAttendance) {
       await attendanceColl.add({
@@ -293,143 +225,34 @@ class FirestoreService {
       });
     }
 
-    // 3. Seed Expenses (matches workers list)
-    final dummyExpenses = [
-      {
-        'name': 'John Smith',
-        'date': '05/06/2026',
-        'category': 'Client Dinner',
-        'amount': 124.50,
-      },
-      {
-        'name': 'Michael Johnson',
-        'date': '04/06/2026',
-        'category': 'Figma Subscription',
-        'amount': 45.00,
-      },
-      {
-        'name': 'Emily Davis',
-        'date': '02/06/2026',
-        'category': 'Office Keyboard',
-        'amount': 89.99,
-      },
-      {
-        'name': 'Robert Wilson',
-        'date': '01/06/2026',
-        'category': 'AWS Cloud Hosting',
-        'amount': 250.00,
-      },
-      {
-        'name': 'David Brown',
-        'date': '28/05/2026',
-        'category': 'Google Ads Campaign',
-        'amount': 500.00,
-      },
-    ];
+    // 3. Seed Expenses
+    final dummyExpenses = DummyData.expenses.map((e) {
+      final copy = Map<String, dynamic>.from(e);
+      copy.remove('id');
+      return copy;
+    }).toList();
 
     for (var e in dummyExpenses) {
       await expensesColl.add({...e, 'createdAt': FieldValue.serverTimestamp()});
     }
 
-    // 4. Seed Payroll (matches workers list)
-    final dummyPayroll = [
-      {
-        'name': 'John Smith',
-        'email': 'john.smith@stark.com',
-        'position': 'Senior Web Developer',
-        'contact': '+1 555-0101',
-        'status': 'Active',
-        'totalWorkDays': '240',
-        'absents': '04',
-        'leaves': '08',
-        'overtimeDays': '12',
-        'salary': '\$ 95,000',
-      },
-      {
-        'name': 'Michael Johnson',
-        'email': 'michael.johnson@stark.com',
-        'position': 'UI/UX Designer',
-        'contact': '+1 555-0102',
-        'status': 'Active',
-        'totalWorkDays': '230',
-        'absents': '02',
-        'leaves': '06',
-        'overtimeDays': '05',
-        'salary': '\$ 75,000',
-      },
-      {
-        'name': 'Robert Wilson',
-        'email': 'robert.wilson@stark.com',
-        'position': 'DevOps Engineer',
-        'contact': '+1 555-0103',
-        'status': 'Active',
-        'totalWorkDays': '120',
-        'absents': '01',
-        'leaves': '02',
-        'overtimeDays': '00',
-        'salary': '\$ 85,000',
-      },
-      {
-        'name': 'Emily Davis',
-        'email': 'emily.davis@stark.com',
-        'position': 'Product Manager',
-        'contact': '+1 555-0104',
-        'status': 'Active',
-        'totalWorkDays': '250',
-        'absents': '01',
-        'leaves': '10',
-        'overtimeDays': '15',
-        'salary': '\$ 110,000',
-      },
-      {
-        'name': 'David Brown',
-        'email': 'david.brown@stark.com',
-        'position': 'Marketing Specialist',
-        'contact': '+1 555-0105',
-        'status': 'Active',
-        'totalWorkDays': '180',
-        'absents': '05',
-        'leaves': '12',
-        'overtimeDays': '02',
-        'salary': '\$ 60,000',
-      },
-    ];
+    // 4. Seed Payroll
+    final dummyPayroll = DummyData.payroll.map((p) {
+      final copy = Map<String, dynamic>.from(p);
+      copy.remove('id');
+      return copy;
+    }).toList();
 
     for (var p in dummyPayroll) {
       await payrollColl.add({...p, 'createdAt': FieldValue.serverTimestamp()});
     }
 
-    // 5. Seed Time Off requests (matches workers list)
-    final dummyTimeoff = [
-      {
-        'name': 'John Smith',
-        'email': 'john.smith@stark.com',
-        'position': 'Senior Web Developer',
-        'contact': '+1 555-0101',
-        'action': 'Annual Leave',
-      },
-      {
-        'name': 'Michael Johnson',
-        'email': 'michael.johnson@stark.com',
-        'position': 'UI/UX Designer',
-        'contact': '+1 555-0102',
-        'action': 'Sick Leave',
-      },
-      {
-        'name': 'Robert Wilson',
-        'email': 'robert.wilson@stark.com',
-        'position': 'DevOps Engineer',
-        'contact': '+1 555-0103',
-        'action': 'Casual Leave',
-      },
-      {
-        'name': 'David Brown',
-        'email': 'david.brown@stark.com',
-        'position': 'Marketing Specialist',
-        'contact': '+1 555-0105',
-        'action': 'Maternity Leave',
-      },
-    ];
+    // 5. Seed Time Off requests
+    final dummyTimeoff = DummyData.timeoff.map((t) {
+      final copy = Map<String, dynamic>.from(t);
+      copy.remove('id');
+      return copy;
+    }).toList();
 
     for (var t in dummyTimeoff) {
       await timeoffColl.add({...t, 'createdAt': FieldValue.serverTimestamp()});

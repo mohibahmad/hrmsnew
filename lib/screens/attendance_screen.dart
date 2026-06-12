@@ -236,9 +236,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage(
-                'assets/profileimage.png',
-              ),
+              backgroundImage: const AssetImage('assets/profileimage.png'),
             ),
           ),
         ],
@@ -746,7 +744,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
+    final double tableHeight = (MediaQuery.of(context).size.height - 450).clamp(
+      480.0,
+      1200.0,
+    );
+
     return Container(
+      height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
@@ -770,18 +774,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Table Rows
-          ...List.generate(paginatedRecords.length, (index) {
-            final doc = paginatedRecords[index];
-            final name = (doc['name'] ?? '').toString();
-            final email = (doc['email'] ?? '').toString();
-            final role = (doc['role'] ?? '').toString();
-            final status = (doc['status'] ?? '').toString();
-            final attendanceType = (doc['attendanceType'] ?? 'Remote')
-                .toString();
-            final workType = (doc['workType'] ?? 'Full Time').toString();
-            return Column(
-              children: [
-                Padding(
+          Expanded(
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: paginatedRecords.length,
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              itemBuilder: (context, index) {
+                final doc = paginatedRecords[index];
+                final name = (doc['name'] ?? '').toString();
+                final email = (doc['email'] ?? '').toString();
+                final role = (doc['role'] ?? '').toString();
+                final status = (doc['status'] ?? '').toString();
+                final attendanceType = (doc['attendanceType'] ?? 'Remote')
+                    .toString();
+                final workType = (doc['workType'] ?? 'Full Time').toString();
+
+                return Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 14,
@@ -795,7 +805,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             CircleAvatar(
                               radius: 18,
                               backgroundImage: const AssetImage(
-                'assets/profileimage.png',
+                                'assets/profileimage.png',
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -889,16 +899,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                     ],
                   ),
-                ),
-                if (index < paginatedRecords.length - 1)
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
-              ],
-            );
-          }),
-          const SizedBox(height: 16),
+                );
+              },
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
-            padding: const EdgeInsets.only(right: 24, bottom: 16),
+            padding: const EdgeInsets.only(right: 24, bottom: 16, top: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

@@ -191,9 +191,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage(
-                'assets/profileimage.png',
-              ),
+              backgroundImage: const AssetImage('assets/profileimage.png'),
             ),
           ),
         ],
@@ -328,7 +326,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
+    final double tableHeight = (MediaQuery.of(context).size.height - 340).clamp(
+      495.0,
+      1200.0,
+    );
+
     return Container(
+      height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
@@ -394,130 +398,132 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedWorkers.length,
-            separatorBuilder: (context, index) =>
-                const Divider(height: 1, color: Color(0xFFEEEEEE)),
-            itemBuilder: (context, index) {
-              final doc = paginatedWorkers[index];
-              final name = (doc['name'] ?? '').toString();
-              final email = (doc['email'] ?? '').toString();
-              final position = (doc['position'] ?? '').toString();
-              final contact = (doc['contact'] ?? '').toString();
-              final action = (doc['action'] ?? 'Payroll Data').toString();
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                child: Row(
-                  children: [
-                    // Worker Name with Avatar
-                    Expanded(
-                      flex: 3,
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundImage: AssetImage(
-                              index % 2 == 0
-                                  ? 'assets/profileimage.png'
-                                  : 'assets/boy.png',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: Color(0xFF000000),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                                Text(
-                                  email,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Position
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        position,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    // Contact
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        contact,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    // Time Off Action
-                    Expanded(
-                      flex: 2,
-                      child: GestureDetector(
-                        onTap: () {
-                          if (widget.onAssignTimeOff != null) {
-                            widget.onAssignTimeOff!();
-                          } else {
-                            // Fallback if rendered as standalone
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => AssignTimeOffScreen(
-                                  onBack: () => Navigator.of(context).pop(),
-                                ),
+          Expanded(
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: paginatedWorkers.length,
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              itemBuilder: (context, index) {
+                final doc = paginatedWorkers[index];
+                final name = (doc['name'] ?? '').toString();
+                final email = (doc['email'] ?? '').toString();
+                final position = (doc['position'] ?? '').toString();
+                final contact = (doc['contact'] ?? '').toString();
+                final action = (doc['action'] ?? 'Payroll Data').toString();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      // Worker Name with Avatar
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundImage: AssetImage(
+                                index % 2 == 0
+                                    ? 'assets/profileimage.png'
+                                    : 'assets/boy.png',
                               ),
-                            );
-                          }
-                        },
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Text(
-                            action,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF0247C4),
-                              fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Color(0xFF000000),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                  Text(
+                                    email,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Position
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          position,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      // Contact
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          contact,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      // Time Off Action
+                      Expanded(
+                        flex: 2,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (widget.onAssignTimeOff != null) {
+                              widget.onAssignTimeOff!();
+                            } else {
+                              // Fallback if rendered as standalone
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => AssignTimeOffScreen(
+                                    onBack: () => Navigator.of(context).pop(),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: Text(
+                              action,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF0247C4),
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

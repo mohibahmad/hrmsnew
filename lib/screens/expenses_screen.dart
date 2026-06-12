@@ -913,7 +913,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
+    final double tableHeight = (MediaQuery.of(context).size.height - 410).clamp(495.0, 1200.0);
+
     return Container(
+      height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
@@ -935,17 +938,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedExpenses.length,
-            separatorBuilder: (context, index) =>
-                const Divider(height: 1, color: Color(0xFFEEEEEE)),
-            itemBuilder: (context, index) {
-              return _buildDataRow(paginatedExpenses[index], index);
-            },
+          Expanded(
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: paginatedExpenses.length,
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              itemBuilder: (context, index) {
+                return _buildDataRow(paginatedExpenses[index], index);
+              },
+            ),
           ),
-          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

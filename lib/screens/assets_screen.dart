@@ -645,9 +645,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage(
-                'assets/profileimage.png',
-              ),
+              backgroundImage: const AssetImage('assets/profileimage.png'),
             ),
           ),
         ],
@@ -774,7 +772,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
+    final double tableHeight = (MediaQuery.of(context).size.height - 280).clamp(495.0, 1200.0);
+
     return Container(
+      height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
@@ -797,17 +798,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Table Rows
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedAssets.length,
-            separatorBuilder: (context, index) =>
-                const Divider(height: 1, color: Color(0xFFEEEEEE)),
-            itemBuilder: (context, index) {
-              return _buildDataRow(paginatedAssets[index], index);
-            },
+          Expanded(
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: paginatedAssets.length,
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              itemBuilder: (context, index) {
+                return _buildDataRow(paginatedAssets[index], index);
+              },
+            ),
           ),
-          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
