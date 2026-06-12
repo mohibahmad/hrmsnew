@@ -12,9 +12,17 @@ class Worker {
   final String position;
   final String contact;
   final String action;
-  final bool isMaleAvatar; // Used to mock the specific placeholder illustrations
+  final bool
+  isMaleAvatar; // Used to mock the specific placeholder illustrations
 
-  Worker(this.name, this.email, this.position, this.contact, this.action, this.isMaleAvatar);
+  Worker(
+    this.name,
+    this.email,
+    this.position,
+    this.contact,
+    this.action,
+    this.isMaleAvatar,
+  );
 }
 
 class TimeOffScreen extends StatefulWidget {
@@ -51,20 +59,25 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().timeoffStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _timeoffDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+      FirestoreService().timeoffStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _timeoffDocs = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } else {
       _timeoffDocs = DummyData.timeoff;
       _isLoading = false;
@@ -78,10 +91,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       final email = (doc['email'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
 
-      final matchesSearch = name.contains(query) ||
+      final matchesSearch =
+          name.contains(query) ||
           position.contains(query) ||
           email.contains(query);
-      
+
       if (!matchesSearch) return false;
       if (_selectedTab == 'All') return true;
       if (_selectedTab == 'Management') {
@@ -120,7 +134,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   const SizedBox(height: 16),
                   _buildFilterTabs(),
                   const SizedBox(height: 24),
-                  isDataEmpty || filtered.isEmpty ? _buildEmptyState() : _buildDataTable(filtered),
+                  isDataEmpty || filtered.isEmpty
+                      ? _buildEmptyState()
+                      : _buildDataTable(filtered),
                 ],
               ),
             ),
@@ -136,9 +152,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         children: [
@@ -156,7 +170,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 ),
               ),
               SizedBox(height: 4),
-              
             ],
           ),
           const Spacer(),
@@ -178,7 +191,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage(
+                'assets/profile_placeholder.png',
+              ),
             ),
           ),
         ],
@@ -209,41 +224,41 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-              child: TextField(
-                onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val;
-                    _currentPage = 1;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: "Search by workers name",
-                  hintStyle: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 14,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  border: InputBorder.none,
-                  isDense: true,
+            child: TextField(
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                  _currentPage = 1;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Search by workers name",
+                hintStyle: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontFamily: 'SF Pro Display',
                 ),
+                border: InputBorder.none,
+                isDense: true,
               ),
             ),
-            if (_searchQuery.isNotEmpty)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _searchQuery = '';
-                    _currentPage = 1;
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
-                ),
+          ),
+          if (_searchQuery.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _searchQuery = '';
+                  _currentPage = 1;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
               ),
-          ],
-        ),
-      );
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFilterTabs() {
@@ -298,12 +313,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> workers) {
-    final totalPages = (workers.isEmpty) ? 1 : (workers.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= workers.length ? 0 : (_currentPage - 1) * _itemsPerPage;
-    final paginatedWorkers = workers.isEmpty ? <Map<String, dynamic>>[] : workers.sublist(
-      safeStartIndex,
-      (safeStartIndex + _itemsPerPage) > workers.length ? workers.length : (safeStartIndex + _itemsPerPage),
-    );
+    final totalPages = (workers.isEmpty)
+        ? 1
+        : (workers.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= workers.length
+        ? 0
+        : (_currentPage - 1) * _itemsPerPage;
+    final paginatedWorkers = workers.isEmpty
+        ? <Map<String, dynamic>>[]
+        : workers.sublist(
+            safeStartIndex,
+            (safeStartIndex + _itemsPerPage) > workers.length
+                ? workers.length
+                : (safeStartIndex + _itemsPerPage),
+          );
 
     return Container(
       decoration: BoxDecoration(
@@ -375,7 +398,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: paginatedWorkers.length,
-            separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFEEEEEE)),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
               final doc = paginatedWorkers[index];
               final name = (doc['name'] ?? '').toString();
@@ -384,7 +408,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               final contact = (doc['contact'] ?? '').toString();
               final action = (doc['action'] ?? 'Payroll Data').toString();
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 child: Row(
                   children: [
                     // Worker Name with Avatar
@@ -392,9 +419,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       flex: 3,
                       child: Row(
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 18,
-                            backgroundImage: AssetImage('assets/profile_placeholder.png'),
+                            backgroundImage: AssetImage(
+                              index % 2 == 0
+                                  ? 'assets/profile_placeholder.png'
+                                  : 'assets/boy.png',
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -500,7 +531,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_left,
-                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage > 1
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -514,7 +547,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   ),
                   child: Text(
                     '$_currentPage',
-                    style: const TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -525,12 +561,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_right,
-                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage < totalPages
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -546,7 +584,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-              'assets/placeholder_workers.svg',
+              'assets/boy.png',
               width: 120,
               height: 100,
               colorFilter: const ColorFilter.mode(

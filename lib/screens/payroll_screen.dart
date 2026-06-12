@@ -136,7 +136,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage(
+                'assets/profile_placeholder.png',
+              ),
             ),
           ),
         ],
@@ -312,7 +314,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SvgPicture.asset(
-                        'assets/placeholder_workers.svg',
+                        'assets/boy.png',
                         width: 120,
                         height: 100,
                         colorFilter: const ColorFilter.mode(
@@ -343,7 +345,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 12),
                 itemBuilder: (context, index) =>
-                    _buildEmployeeRow(_currentPageItems[index]),
+                    _buildEmployeeRow(_currentPageItems[index], index),
               ),
             ),
           const SizedBox(height: 16),
@@ -362,7 +364,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  Widget _buildEmployeeRow(Map<String, dynamic> doc) {
+  Widget _buildEmployeeRow(Map<String, dynamic> doc, int index) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -377,8 +379,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: const AssetImage(
-                    'assets/profile_placeholder.png',
+                  backgroundImage: AssetImage(
+                    index % 2 == 0
+                        ? 'assets/profile_placeholder.png'
+                        : 'assets/boy.png',
                   ),
                 ),
                 const SizedBox(width: 12),

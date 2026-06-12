@@ -51,40 +51,46 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       });
       return;
     }
-    _firestore.workersStream.listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _workers = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
-          _isLoading = false;
-        });
-      }
-    }, onError: (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      }
-    });
-    _firestore.attendanceStream.listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _todayAttendance = snapshot.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
-          _isLoading = false;
-        });
-      }
-    }, onError: (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      }
-    });
+    _firestore.workersStream.listen(
+      (snapshot) {
+        if (mounted) {
+          setState(() {
+            _workers = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = e.toString();
+            _isLoading = false;
+          });
+        }
+      },
+    );
+    _firestore.attendanceStream.listen(
+      (snapshot) {
+        if (mounted) {
+          setState(() {
+            _todayAttendance = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = e.toString();
+            _isLoading = false;
+          });
+        }
+      },
+    );
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
@@ -222,26 +228,31 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       children: _todayAttendance.isEmpty
                                           ? [
                                               Padding(
-                                                padding: const EdgeInsets.all(40.0),
+                                                padding: const EdgeInsets.all(
+                                                  40.0,
+                                                ),
                                                 child: Center(
                                                   child: Text(
                                                     "No Attendance Records",
                                                     style: TextStyle(
                                                       color: Color(0xFF000000),
                                                       fontSize: 15,
-                                                      fontWeight: FontWeight.w500,
-                                                      fontFamily: 'SF Pro Display',
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      fontFamily:
+                                                          'SF Pro Display',
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                             ]
                                           : _todayAttendance
-                                              .map(
-                                                (att) =>
-                                                    TodayAttendanceItem(data: att),
-                                              )
-                                              .toList(),
+                                                .map(
+                                                  (att) => TodayAttendanceItem(
+                                                    data: att,
+                                                  ),
+                                                )
+                                                .toList(),
                                     ),
                                   ),
                                 ],
@@ -426,7 +437,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       _searchQuery = '';
                     });
                   },
-                  child: const Icon(Icons.close, size: 18, color: Color(0xFF000000)),
+                  child: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: Color(0xFF000000),
+                  ),
                 )
               : null,
           border: InputBorder.none,
@@ -475,7 +490,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 }
 
-void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) {
+void _showMarkAttendanceDialog(
+  BuildContext context,
+  Map<String, dynamic> data,
+) {
   final name = data["name"] ?? "";
   final email = data["email"] ?? "";
   showDialog(
@@ -494,7 +512,11 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
               boxShadow: [
-                BoxShadow(color: Color(0xFF000000).withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
+                BoxShadow(
+                  color: Color(0xFF000000).withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
               ],
             ),
             child: Column(
@@ -504,16 +526,19 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                 Container(
                   height: 40,
                   width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF004FDE),
-                  ),
+                  decoration: const BoxDecoration(color: Color(0xFF004FDE)),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         'Mark Attendance',
-                        style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Display'),
+                        style: TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
                     ],
                   ),
@@ -531,9 +556,12 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                         height: 140,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Color(0xFFFFFFFF), width: 2),
+                          border: Border.all(
+                            color: Color(0xFFFFFFFF),
+                            width: 2,
+                          ),
                           image: const DecorationImage(
-                            image: AssetImage('assets/profile_placeholder.png'),
+                            image: AssetImage('assets/boy.png'),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -559,12 +587,20 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                               const SizedBox(height: 20),
                               Row(
                                 children: [
-                                  const Icon(Icons.email, color: Color(0xFFFFFFFF), size: 16),
+                                  const Icon(
+                                    Icons.email,
+                                    color: Color(0xFFFFFFFF),
+                                    size: 16,
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       email,
-                                      style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontFamily: 'SF Pro Display'),
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 14,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -573,9 +609,20 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                               const SizedBox(height: 10),
                               const Row(
                                 children: [
-                                  Icon(Icons.phone, color: Color(0xFFFFFFFF), size: 16),
+                                  Icon(
+                                    Icons.phone,
+                                    color: Color(0xFFFFFFFF),
+                                    size: 16,
+                                  ),
                                   SizedBox(width: 10),
-                                  Text('123 5434567', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontFamily: 'SF Pro Display')),
+                                  Text(
+                                    '123 5434567',
+                                    style: TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontSize: 14,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -593,19 +640,49 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                     children: [
                       Row(
                         children: [
-                          Expanded(child: _buildToggleChip('Present', 'assets/present.svg', const Color(0xFF00C853), isSelected: true)),
+                          Expanded(
+                            child: _buildToggleChip(
+                              'Present',
+                              'assets/present.svg',
+                              const Color(0xFF00C853),
+                              isSelected: true,
+                            ),
+                          ),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildToggleChip('Absent', 'assets/absent.svg', const Color(0xFFF44336))),
+                          Expanded(
+                            child: _buildToggleChip(
+                              'Absent',
+                              'assets/absent.svg',
+                              const Color(0xFFF44336),
+                            ),
+                          ),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildToggleChip('Leave', 'assets/leave.svg', const Color(0xFFFF9800))),
+                          Expanded(
+                            child: _buildToggleChip(
+                              'Leave',
+                              'assets/leave.svg',
+                              const Color(0xFFFF9800),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      const Text('Reason (Required)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black, fontFamily: 'SF Pro Display')),
+                      const Text(
+                        'Reason (Required)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Container(
                         height: 100,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.grey.shade300),
                           borderRadius: BorderRadius.circular(4),
@@ -614,7 +691,11 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                           maxLines: null,
                           decoration: InputDecoration.collapsed(
                             hintText: 'Enter reason......',
-                            hintStyle: TextStyle(color: Colors.black38, fontSize: 13, fontFamily: 'SF Pro Display'),
+                            hintStyle: TextStyle(
+                              color: Colors.black38,
+                              fontSize: 13,
+                              fontFamily: 'SF Pro Display',
+                            ),
                           ),
                         ),
                       ),
@@ -626,26 +707,52 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(color: Colors.grey.shade300),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
                               minimumSize: const Size(0, 40),
                             ),
-                            child: const Text('Cancel', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton(
                             onPressed: () => Navigator.pop(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0F52BA),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
                               minimumSize: const Size(0, 40),
                               elevation: 0,
                             ),
-                            child: const Text('Save', style: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                            child: const Text(
+                              'Save',
+                              style: TextStyle(
+                                color: Color(0xFFFFFFFF),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -658,22 +765,25 @@ void _showMarkAttendanceDialog(BuildContext context, Map<String, dynamic> data) 
   );
 }
 
-Widget _buildToggleChip(String label, String svgAsset, Color iconColor, {bool isSelected = false}) {
+Widget _buildToggleChip(
+  String label,
+  String svgAsset,
+  Color iconColor, {
+  bool isSelected = false,
+}) {
   return Container(
     padding: const EdgeInsets.symmetric(vertical: 10),
     decoration: BoxDecoration(
       color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200),
+      border: Border.all(
+        color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200,
+      ),
     ),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SvgPicture.asset(
-          svgAsset,
-          height: 18,
-          width: 18,
-        ),
+        SvgPicture.asset(svgAsset, height: 18, width: 18),
         const SizedBox(width: 6),
         Text(
           label,
@@ -707,7 +817,7 @@ class WorkerListItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundImage: const AssetImage('assets/profile_placeholder.png'),
+            backgroundImage: const AssetImage('assets/boy.png'),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -774,7 +884,10 @@ class WorkerListItem extends StatelessWidget {
               'assets/edit_icon.svg',
               height: 20,
               width: 20,
-              colorFilter: const ColorFilter.mode(Color(0xFF000000), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ],
@@ -804,9 +917,7 @@ class TodayAttendanceItem extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundImage: const AssetImage(
-                  'assets/profile_placeholder.png',
-                ),
+                backgroundImage: const AssetImage('assets/boy.png'),
               ),
               const SizedBox(width: 12),
               Expanded(

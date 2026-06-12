@@ -39,20 +39,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().expensesStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _expensesDocs = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+      FirestoreService().expensesStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _expensesDocs = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } else {
       _expensesDocs = DummyData.expenses;
       _isLoading = false;
@@ -85,8 +90,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
       final now = DateTime.now();
       // Cap at June 10, 2026 if today is earlier, to ensure dummy data shows up correctly
-      final refDate = now.isBefore(DateTime(2026, 6, 10)) ? DateTime(2026, 6, 10) : now;
-      
+      final refDate = now.isBefore(DateTime(2026, 6, 10))
+          ? DateTime(2026, 6, 10)
+          : now;
+
       final diff = refDate.difference(date).inDays;
       if (diff < 0) {
         // Future/newly added date, keep visible
@@ -114,7 +121,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final dateStr = (doc['date'] ?? '').toString();
-      
+
       final matchesSearch = name.contains(query) || category.contains(query);
       final matchesPeriod = _isDateWithinPeriod(dateStr, _selectedPeriod);
       return matchesSearch && matchesPeriod;
@@ -205,7 +212,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
-                                message: 'Successfully added expense "${categoryController.text}"',
+                                message:
+                                    'Successfully added expense "${categoryController.text}"',
                               );
                             }
                           },
@@ -517,7 +525,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
- 
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
@@ -541,7 +548,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   fontFamily: 'SF Pro Display',
                 ),
               ),
-             
             ],
           ),
           const Spacer(),
@@ -562,7 +568,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage(
+                'assets/profile_placeholder.png',
+              ),
             ),
           ),
         ],
@@ -624,7 +632,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey[400],
+                      ),
                     ),
                   ),
               ],
@@ -646,7 +658,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             'assets/add_expense.svg',
             width: 18,
             height: 18,
-            colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFFFFFFF),
+              BlendMode.srcIn,
+            ),
           ),
           label: const Text(
             'Add Expenses',
@@ -791,7 +806,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF), size: 20),
+            const Icon(
+              Icons.arrow_drop_down,
+              color: Color(0xFFFFFFFF),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -818,14 +837,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             isSelected
                 ? Icons.radio_button_checked
                 : Icons.radio_button_unchecked,
-            color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFCCCCCC),
+            color: isSelected
+                ? const Color(0xFF0247C4)
+                : const Color(0xFFCCCCCC),
             size: 18,
           ),
           const SizedBox(width: 12),
           Text(
             text,
             style: TextStyle(
-              color: isSelected ? const Color(0xFF0247C4) : const Color(0xFFCCCCCC),
+              color: isSelected
+                  ? const Color(0xFF0247C4)
+                  : const Color(0xFFCCCCCC),
               fontSize: 14,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
@@ -839,12 +862,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   // ================= FILLED STATE (LIST) =================
 
   Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
-    final totalPages = (expenses.isEmpty) ? 1 : (expenses.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= expenses.length ? 0 : (_currentPage - 1) * _itemsPerPage;
-    final paginatedExpenses = expenses.isEmpty ? <Map<String, dynamic>>[] : expenses.sublist(
-      safeStartIndex,
-      (safeStartIndex + _itemsPerPage) > expenses.length ? expenses.length : (safeStartIndex + _itemsPerPage),
-    );
+    final totalPages = (expenses.isEmpty)
+        ? 1
+        : (expenses.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= expenses.length
+        ? 0
+        : (_currentPage - 1) * _itemsPerPage;
+    final paginatedExpenses = expenses.isEmpty
+        ? <Map<String, dynamic>>[]
+        : expenses.sublist(
+            safeStartIndex,
+            (safeStartIndex + _itemsPerPage) > expenses.length
+                ? expenses.length
+                : (safeStartIndex + _itemsPerPage),
+          );
 
     return Container(
       decoration: BoxDecoration(
@@ -875,7 +906,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             separatorBuilder: (context, index) =>
                 const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
-              return _buildDataRow(paginatedExpenses[index]);
+              return _buildDataRow(paginatedExpenses[index], index);
             },
           ),
           const SizedBox(height: 16),
@@ -892,7 +923,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_left,
-                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage > 1
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -921,7 +954,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_right,
-                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage < totalPages
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
               ],
@@ -944,7 +979,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDataRow(Map<String, dynamic> doc) {
+  Widget _buildDataRow(Map<String, dynamic> doc, int index) {
     final name = (doc['name'] ?? '').toString();
     final date = (doc['date'] ?? '').toString();
     final category = (doc['category'] ?? '').toString();
@@ -959,9 +994,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             flex: 3,
             child: Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 18,
-                  backgroundImage: AssetImage('assets/profile_placeholder.png'),
+                  backgroundImage: AssetImage(
+                    index % 2 == 0
+                        ? 'assets/profile_placeholder.png'
+                        : 'assets/boy.png',
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -1098,7 +1137,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SvgPicture.asset(
-                'assets/placeholder_workers.svg',
+                'assets/boy.png',
                 width: 120,
                 height: 100,
                 colorFilter: const ColorFilter.mode(

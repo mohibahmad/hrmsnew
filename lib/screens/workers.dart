@@ -58,139 +58,146 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 // Upgrade Pro Card
                 if (!(AuthService().currentUser?.isAnonymous ?? false))
                   GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      barrierColor: const Color(
-                        0xFF0247C4,
-                      ).withValues(alpha: 0.5),
-                      builder: (context) => const SubscriptionDialog(),
-                    );
-                  },
-                  child: Container(
-                    width: 252,
-                    height: 218,
-                    margin: const EdgeInsets.only(top: 29, left: 19, right: 19),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/premium_bg.png'),
-                        fit: BoxFit.cover,
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        barrierColor: const Color(
+                          0xFF0247C4,
+                        ).withValues(alpha: 0.5),
+                        builder: (context) => const SubscriptionDialog(),
+                      );
+                    },
+                    child: Container(
+                      width: 252,
+                      height: 218,
+                      margin: const EdgeInsets.only(
+                        top: 29,
+                        left: 19,
+                        right: 19,
                       ),
-                      boxShadow: const [
-                        BoxShadow(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
                           color: Color(0xFFFFFFFF),
-                          blurRadius: 0.5,
-                          spreadRadius: 0.0,
+                          width: 1.0,
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/premium_icon.png',
-                              width: 28,
-                              height: 28,
-                              fit: BoxFit.contain,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Upgrade Pro',
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ],
+                        image: const DecorationImage(
+                          image: AssetImage('assets/premium_bg.png'),
+                          fit: BoxFit.cover,
                         ),
-                        const SizedBox(height: 10),
-                        _buildCheckItem('Unlock All Features'),
-                        _buildCheckItem('No Commitment'),
-                        _buildCheckItem('Cancel Anytime'),
-                        const SizedBox(height: 10),
-                        Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.centerRight,
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              height: 46,
-                              padding: const EdgeInsets.only(
-                                left: 16,
-                                right: 52,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0xFFFFFFFF),
+                            blurRadius: 0.5,
+                            spreadRadius: 0.0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Image.asset(
+                                'assets/premium_icon.png',
+                                width: 28,
+                                height: 28,
+                                fit: BoxFit.contain,
                               ),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF000000),
-                                borderRadius: BorderRadius.circular(23),
-                                border: Border.all(
+                              const SizedBox(width: 10),
+                              const Text(
+                                'Upgrade Pro',
+                                style: TextStyle(
                                   color: Color(0xFFFFFFFF),
-                                  width: 1.0,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'SF Pro Display',
                                 ),
                               ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Get to Pro',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'SF Pro',
-                                      height: 1.1,
-                                    ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          _buildCheckItem('Unlock All Features'),
+                          _buildCheckItem('No Commitment'),
+                          _buildCheckItem('Cancel Anytime'),
+                          const SizedBox(height: 10),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.centerRight,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 46,
+                                padding: const EdgeInsets.only(
+                                  left: 16,
+                                  right: 52,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF000000),
+                                  borderRadius: BorderRadius.circular(23),
+                                  border: Border.all(
+                                    color: Color(0xFFFFFFFF),
+                                    width: 1.0,
                                   ),
-                                  Text(
-                                    'Subscribe Now',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'SF Pro',
-                                      height: 1.1,
+                                ),
+                                child: const Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Get to Pro',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro',
+                                        height: 1.1,
+                                      ),
                                     ),
+                                    Text(
+                                      'Subscribe Now',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro',
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                top: -3,
+                                bottom: -3,
+                                child: Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFFFFFFF),
+                                    shape: BoxShape.circle,
                                   ),
-                                ],
-                              ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: -3,
-                              bottom: -3,
-                              child: Container(
-                                width: 52,
-                                height: 52,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFFFFFF),
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Image.asset(
-                                  "assets/right_back_arrow.png",
-                                  width: 20,
-                                  height: 20,
-                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                  child: Image.asset(
+                                    "assets/right_back_arrow.png",
+                                    width: 20,
+                                    height: 20,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 20),
 
                 // Navigation Menu
@@ -421,20 +428,25 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().workersStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _allWorkers = snapshot.docs.map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id}).toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+      FirestoreService().workersStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _allWorkers = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } else {
       _allWorkers = DummyData.workers;
       _isLoading = false;
@@ -455,7 +467,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     if (startIndex >= filtered.length) return [];
     final endIndex = startIndex + _itemsPerPage;
-    return filtered.sublist(startIndex, endIndex > filtered.length ? filtered.length : endIndex);
+    return filtered.sublist(
+      startIndex,
+      endIndex > filtered.length ? filtered.length : endIndex,
+    );
   }
 
   int get _totalPages {
@@ -529,7 +544,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   child: CircleAvatar(
                     radius: 20,
                     backgroundImage: const AssetImage(
-                      'assets/profileimage.png',
+                      'assets/profile_placeholder.png',
                     ),
                   ),
                 ),
@@ -545,7 +560,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 const SizedBox(width: 24),
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: const AssetImage('assets/profileimage.png'),
+                  backgroundImage: const AssetImage(
+                    'assets/profile_placeholder.png',
+                  ),
                 ),
               ],
             ],
@@ -744,7 +761,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SvgPicture.asset(
-                            'assets/placeholder_workers.svg',
+                            'assets/boy.png',
                             width: 120,
                             height: 100,
                             colorFilter: const ColorFilter.mode(
@@ -767,7 +784,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     ),
                   )
                 else
-                  ..._currentPageItems.map((doc) {
+                  ..._currentPageItems.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final doc = entry.value;
                     final name = (doc['name'] ?? '').toString();
                     final email = (doc['email'] ?? '').toString();
                     final type1 = (doc['type1'] ?? '').toString();
@@ -780,6 +799,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       position,
                       type2,
                       doc['id'] as String,
+                      index,
                     );
                   }),
 
@@ -796,7 +816,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       child: Icon(
                         Icons.keyboard_arrow_left,
                         size: 20,
-                        color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                        color: _currentPage > 1
+                            ? Colors.black
+                            : Colors.grey.shade400,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -827,7 +849,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       child: Icon(
                         Icons.keyboard_arrow_right,
                         size: 20,
-                        color: _currentPage < _totalPages ? Colors.black : Colors.grey.shade400,
+                        color: _currentPage < _totalPages
+                            ? Colors.black
+                            : Colors.grey.shade400,
                       ),
                     ),
                   ],
@@ -847,6 +871,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     String position,
     String type2,
     String docId,
+    int index,
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -863,8 +888,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: const AssetImage(
-                    'assets/profile_placeholder.png',
+                  backgroundImage: AssetImage(
+                    index % 2 == 0
+                        ? 'assets/profile_placeholder.png'
+                        : 'assets/boy.png',
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -962,7 +989,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.remove_red_eye, size: 16, color: Color(0xFF000000)),
+                      Icon(
+                        Icons.remove_red_eye,
+                        size: 16,
+                        color: Color(0xFF000000),
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Preview',
@@ -1118,9 +1149,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   Future<void> _saveWorker() async {
     await FirestoreService().addWorker({
-      'name': _nameController.text.isNotEmpty ? _nameController.text : 'New Worker',
+      'name': _nameController.text.isNotEmpty
+          ? _nameController.text
+          : 'New Worker',
       'fatherName': _fatherNameController.text,
-      'email': _emailController.text.isNotEmpty ? _emailController.text : 'worker@email.com',
+      'email': _emailController.text.isNotEmpty
+          ? _emailController.text
+          : 'worker@email.com',
       'phone': _phoneController.text,
       'nationalId': _nationalIdController.text,
       'religion': _religionController.text,
@@ -1378,7 +1413,11 @@ class WorkerDetailFormSection extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 18, color: Color(0xFF000000)),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 18,
+                      color: Color(0xFF000000),
+                    ),
                   ],
                 ),
               ),
@@ -1627,7 +1666,11 @@ class ExperienceFormSection extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, size: 18, color: Color(0xFF000000)),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 18,
+                      color: Color(0xFF000000),
+                    ),
                   ],
                 ),
               ),
@@ -2483,9 +2526,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 width: 2.5,
                               ),
                               image: const DecorationImage(
-                                image: AssetImage(
-                                  'assets/profile_placeholder.png',
-                                ),
+                                image: AssetImage('assets/boy.png'),
                                 fit: BoxFit.cover,
                               ),
                             ),

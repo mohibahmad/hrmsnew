@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show showCupertinoModalPopup, CupertinoDatePicker, CupertinoDatePickerMode, CupertinoButton;
+import 'package:flutter/cupertino.dart'
+    show
+        showCupertinoModalPopup,
+        CupertinoDatePicker,
+        CupertinoDatePickerMode,
+        CupertinoButton;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
@@ -34,11 +39,46 @@ class _AssetsScreenState extends State<AssetsScreen> {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _assets = [
-        AssetData('Olivia Vance', 'Web Developer', 'Laptop', '01/12/2022', '01/12/2022', true),
-        AssetData('Sophia Smith', 'Graphic Designer', 'Mouse', '01/12/2022', 'In use', false),
-        AssetData('Amelia Gray', 'Engineering', 'Keyboard', '01/12/2022', '01/12/2022', true),
-        AssetData('Olivia Vance', 'Graphic Designer', 'Mac', '01/12/2022', 'In use', false),
-        AssetData('Lucas Johnson', 'Web Developer', 'Table', '01/12/2022', 'In use', false),
+        AssetData(
+          'Olivia Vance',
+          'Web Developer',
+          'Laptop',
+          '01/12/2022',
+          '01/12/2022',
+          true,
+        ),
+        AssetData(
+          'Sophia Smith',
+          'Graphic Designer',
+          'Mouse',
+          '01/12/2022',
+          'In use',
+          false,
+        ),
+        AssetData(
+          'Amelia Gray',
+          'Engineering',
+          'Keyboard',
+          '01/12/2022',
+          '01/12/2022',
+          true,
+        ),
+        AssetData(
+          'Olivia Vance',
+          'Graphic Designer',
+          'Mac',
+          '01/12/2022',
+          'In use',
+          false,
+        ),
+        AssetData(
+          'Lucas Johnson',
+          'Web Developer',
+          'Table',
+          '01/12/2022',
+          'In use',
+          false,
+        ),
       ];
     } else {
       _assets = [];
@@ -148,7 +188,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
-                                message: 'Successfully added asset for ${nameController.text}',
+                                message:
+                                    'Successfully added asset for ${nameController.text}',
                               );
                             }
                           },
@@ -166,11 +207,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     const SizedBox(height: 24),
 
                     // Form Fields
-                    _buildModalTextField('Worker Name', nameController, 'Ali Ahmad'),
+                    _buildModalTextField(
+                      'Worker Name',
+                      nameController,
+                      'Ali Ahmad',
+                    ),
                     const SizedBox(height: 16),
-                    _buildModalTextField('Asset Type', typeController, 'Laptop'),
+                    _buildModalTextField(
+                      'Asset Type',
+                      typeController,
+                      'Laptop',
+                    ),
                     const SizedBox(height: 16),
-                    _buildModalTextField('Position', positionController, 'Graphic Designer'),
+                    _buildModalTextField(
+                      'Position',
+                      positionController,
+                      'Graphic Designer',
+                    ),
                     const SizedBox(height: 16),
 
                     // Date Picker for Loaned Date
@@ -222,18 +275,34 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
                                         TextButton(
-                                          child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display')),
-                                          onPressed: () => Navigator.of(context).pop(),
+                                          child: const Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
                                         ),
                                         const SizedBox(width: 8),
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF0247C4),
+                                            backgroundColor: const Color(
+                                              0xFF0247C4,
+                                            ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(4),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                             ),
                                           ),
-                                          child: const Text('OK', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro Display')),
+                                          child: const Text(
+                                            'OK',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
                                           onPressed: () {
                                             setModalState(() {
                                               loanedDate = tempDate;
@@ -327,21 +396,38 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       ),
                                       const SizedBox(height: 12),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           TextButton(
-                                            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display')),
-                                            onPressed: () => Navigator.of(context).pop(),
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(),
                                           ),
                                           const SizedBox(width: 8),
                                           ElevatedButton(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF0247C4),
+                                              backgroundColor: const Color(
+                                                0xFF0247C4,
+                                              ),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(4),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
                                               ),
                                             ),
-                                            child: const Text('OK', style: TextStyle(color: Colors.white, fontFamily: 'SF Pro Display')),
+                                            child: const Text(
+                                              'OK',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
                                             onPressed: () {
                                               setModalState(() {
                                                 returnedDate = tempDate;
@@ -370,7 +456,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Widget _buildModalTextField(String label, TextEditingController controller, String hintText) {
+  Widget _buildModalTextField(
+    String label,
+    TextEditingController controller,
+    String hintText,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -534,7 +624,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 ),
               ),
               SizedBox(height: 4),
-            
             ],
           ),
           const Spacer(),
@@ -556,7 +645,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage(
+                'assets/profile_placeholder.png',
+              ),
             ),
           ),
         ],
@@ -619,7 +710,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                      child: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey[400],
+                      ),
                     ),
                   ),
               ],
@@ -642,7 +737,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
             'assets/add asset.svg',
             width: 20,
             height: 20,
-            colorFilter: const ColorFilter.mode(Color(0xFFFFFFFF), BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFFFFFFF),
+              BlendMode.srcIn,
+            ),
           ),
           label: const Text(
             'Add Asset',
@@ -661,12 +759,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
   // ================= DATA TABLE (FILLED STATE) =================
 
   Widget _buildDataTable(List<AssetData> assets) {
-    final totalPages = (assets.isEmpty) ? 1 : (assets.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= assets.length ? 0 : (_currentPage - 1) * _itemsPerPage;
-    final paginatedAssets = assets.isEmpty ? <AssetData>[] : assets.sublist(
-      safeStartIndex,
-      (safeStartIndex + _itemsPerPage) > assets.length ? assets.length : (safeStartIndex + _itemsPerPage),
-    );
+    final totalPages = (assets.isEmpty)
+        ? 1
+        : (assets.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= assets.length
+        ? 0
+        : (_currentPage - 1) * _itemsPerPage;
+    final paginatedAssets = assets.isEmpty
+        ? <AssetData>[]
+        : assets.sublist(
+            safeStartIndex,
+            (safeStartIndex + _itemsPerPage) > assets.length
+                ? assets.length
+                : (safeStartIndex + _itemsPerPage),
+          );
 
     return Container(
       decoration: BoxDecoration(
@@ -698,7 +804,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             separatorBuilder: (context, index) =>
                 const Divider(height: 1, color: Color(0xFFEEEEEE)),
             itemBuilder: (context, index) {
-              return _buildDataRow(paginatedAssets[index]);
+              return _buildDataRow(paginatedAssets[index], index);
             },
           ),
           const SizedBox(height: 16),
@@ -715,7 +821,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_left,
-                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage > 1
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -744,7 +852,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_right,
-                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage < totalPages
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
               ],
@@ -767,7 +877,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  Widget _buildDataRow(AssetData data) {
+  Widget _buildDataRow(AssetData data, int index) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       child: Row(
@@ -777,9 +887,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 3,
             child: Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 18,
-                  backgroundImage: AssetImage('assets/profile_placeholder.png'),
+                  backgroundImage: AssetImage(
+                    index % 2 == 0
+                        ? 'assets/profile_placeholder.png'
+                        : 'assets/boy.png',
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(

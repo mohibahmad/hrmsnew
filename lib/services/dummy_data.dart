@@ -230,4 +230,19 @@ class DummyData {
       'action': 'Maternity Leave',
     },
   ];
+
+  static final Map<String, List<Map<String, dynamic>>> holidays = {
+    'May': [
+      {'day': 1, 'name': 'Labour Day', 'isEnabled': false},
+      {'day': 6, 'name': 'Memorial Day', 'isEnabled': true},
+      {'day': 14, 'name': 'Mother\'s Day', 'isEnabled': false},
+      {'day': 26, 'name': 'Victoria Day', 'isEnabled': true},
+    ],
+    'Feb': [
+      {'day': 1, 'name': 'Groundhog Day', 'isEnabled': false},
+      {'day': 6, 'name': 'Super Bowl', 'isEnabled': true},
+      {'day': 14, 'name': 'Valentine\'s Day', 'isEnabled': true},
+      {'day': 26, 'name': 'Presidents\' Day', 'isEnabled': true},
+    ],
+  };
 }

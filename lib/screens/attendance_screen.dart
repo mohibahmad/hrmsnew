@@ -236,7 +236,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage(
+                'assets/profile_placeholder.png',
+              ),
             ),
           ),
         ],
@@ -630,7 +632,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-              'assets/placeholder_workers.svg',
+              'assets/boy.png',
               width: 120,
               height: 100,
               colorFilter: const ColorFilter.mode(
@@ -729,12 +731,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildAttendanceTable(List<Map<String, dynamic>> records) {
-    final totalPages = (records.isEmpty) ? 1 : (records.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= records.length ? 0 : (_currentPage - 1) * _itemsPerPage;
-    final paginatedRecords = records.isEmpty ? <Map<String, dynamic>>[] : records.sublist(
-      safeStartIndex,
-      (safeStartIndex + _itemsPerPage) > records.length ? records.length : (safeStartIndex + _itemsPerPage),
-    );
+    final totalPages = (records.isEmpty)
+        ? 1
+        : (records.length / _itemsPerPage).ceil();
+    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= records.length
+        ? 0
+        : (_currentPage - 1) * _itemsPerPage;
+    final paginatedRecords = records.isEmpty
+        ? <Map<String, dynamic>>[]
+        : records.sublist(
+            safeStartIndex,
+            (safeStartIndex + _itemsPerPage) > records.length
+                ? records.length
+                : (safeStartIndex + _itemsPerPage),
+          );
 
     return Container(
       decoration: BoxDecoration(
@@ -899,7 +909,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_left,
-                    color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage > 1
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -927,7 +939,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Icon(
                     Icons.chevron_right,
-                    color: _currentPage < totalPages ? Colors.black : Colors.grey.shade400,
+                    color: _currentPage < totalPages
+                        ? Colors.black
+                        : Colors.grey.shade400,
                   ),
                 ),
               ],
@@ -1053,7 +1067,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                   image: const DecorationImage(
-                    image: AssetImage('assets/profile_placeholder.png'),
+                    image: AssetImage('assets/boy.png'),
                     fit: BoxFit.cover,
                   ),
                 ),

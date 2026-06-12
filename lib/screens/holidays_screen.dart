@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
+import '../services/dummy_data.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -30,20 +31,16 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     super.initState();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      _holidaysByMonth = {
-        'May': [
-          HolidayItem(1, 'Labour Day', false),
-          HolidayItem(6, 'Memorial Day', true),
-          HolidayItem(14, 'Mother\'s Day', false),
-          HolidayItem(26, 'Victoria Day', true),
-        ],
-        'Feb': [
-          HolidayItem(1, 'Groundhog Day', false),
-          HolidayItem(6, 'Super Bowl', true),
-          HolidayItem(14, 'Valentine\'s Day', true),
-          HolidayItem(26, 'Presidents\' Day', true),
-        ],
-      };
+      _holidaysByMonth = DummyData.holidays.map((month, list) {
+        return MapEntry(
+          month,
+          list.map((h) => HolidayItem(
+            h['day'] as int,
+            h['name'] as String,
+            h['isEnabled'] as bool,
+          )).toList(),
+        );
+      });
     } else {
       _holidaysByMonth = {};
     }
@@ -386,7 +383,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 ),
               ),
               SizedBox(height: 4),
-             
             ],
           ),
           const Spacer(),
@@ -407,7 +403,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage(
+                'assets/profile_placeholder.png',
+              ),
             ),
           ),
         ],
@@ -569,7 +567,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SvgPicture.asset(
-                'assets/placeholder_workers.svg',
+                'assets/boy.png',
                 width: 120,
                 height: 100,
                 colorFilter: const ColorFilter.mode(
