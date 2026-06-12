@@ -646,7 +646,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: CircleAvatar(
               radius: 19,
               backgroundImage: const AssetImage(
-                'assets/profile_placeholder.png',
+                'assets/profileimage.png',
               ),
             ),
           ),
@@ -891,7 +891,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   radius: 18,
                   backgroundImage: AssetImage(
                     index % 2 == 0
-                        ? 'assets/profile_placeholder.png'
+                        ? 'assets/profileimage.png'
                         : 'assets/boy.png',
                   ),
                 ),

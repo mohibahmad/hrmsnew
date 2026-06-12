@@ -544,7 +544,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   child: CircleAvatar(
                     radius: 20,
                     backgroundImage: const AssetImage(
-                      'assets/profile_placeholder.png',
+                      'assets/profileimage.png',
                     ),
                   ),
                 ),
@@ -561,7 +561,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 CircleAvatar(
                   radius: 20,
                   backgroundImage: const AssetImage(
-                    'assets/profile_placeholder.png',
+                    'assets/profileimage.png',
                   ),
                 ),
               ],
@@ -890,7 +890,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   radius: 18,
                   backgroundImage: AssetImage(
                     index % 2 == 0
-                        ? 'assets/profile_placeholder.png'
+                        ? 'assets/profileimage.png'
                         : 'assets/boy.png',
                   ),
                 ),

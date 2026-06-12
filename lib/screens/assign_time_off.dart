@@ -320,7 +320,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     debugPrint('Error saving time off record: $e');
                   }
                 }
-                
+
                 // Show assign success confirmation
                 FlashySnackBar.show(
                   context,

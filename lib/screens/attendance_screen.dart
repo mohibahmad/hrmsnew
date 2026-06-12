@@ -237,7 +237,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: CircleAvatar(
               radius: 19,
               backgroundImage: const AssetImage(
-                'assets/profile_placeholder.png',
+                'assets/profileimage.png',
               ),
             ),
           ),
@@ -795,7 +795,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             CircleAvatar(
                               radius: 18,
                               backgroundImage: const AssetImage(
-                                'assets/profile_placeholder.png',
+                'assets/profileimage.png',
                               ),
                             ),
                             const SizedBox(width: 12),

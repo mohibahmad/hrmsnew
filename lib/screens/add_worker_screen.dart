@@ -450,7 +450,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Image.asset(
-                                            'assets/profile_placeholder.png',
+                                            'assets/profileimage.png',
                                             height: 64,
                                             width: 64,
                                             fit: BoxFit.cover,

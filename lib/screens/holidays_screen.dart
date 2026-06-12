@@ -404,7 +404,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             child: CircleAvatar(
               radius: 19,
               backgroundImage: const AssetImage(
-                'assets/profile_placeholder.png',
+                'assets/profileimage.png',
               ),
             ),
           ),

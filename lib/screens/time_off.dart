@@ -192,7 +192,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             child: CircleAvatar(
               radius: 19,
               backgroundImage: const AssetImage(
-                'assets/profile_placeholder.png',
+                'assets/profileimage.png',
               ),
             ),
           ),
@@ -423,7 +423,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             radius: 18,
                             backgroundImage: AssetImage(
                               index % 2 == 0
-                                  ? 'assets/profile_placeholder.png'
+                                  ? 'assets/profileimage.png'
                                   : 'assets/boy.png',
                             ),
                           ),
