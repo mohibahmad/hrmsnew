@@ -9,6 +9,23 @@ import 'screens/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Suppress the annoying HardwareKeyboard assertion on macOS that happens when
+  // the app loses focus while a key is pressed (e.g. CMD+M or CMD+Tab).
+  final originalOnError = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (details.exception is AssertionError) {
+      final errorStr = details.exception.toString();
+      if (errorStr.contains('!_pressedKeys.containsKey(event.physicalKey)')) {
+        return; // Suppress this specific assertion
+      }
+    }
+    if (originalOnError != null) {
+      originalOnError(details);
+    } else {
+      FlutterError.presentError(details);
+    }
+  };
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

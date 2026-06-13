@@ -91,7 +91,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         },
       );
     } else {
-      _attendanceDocs = DummyData.attendance;
+      _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
       _isLoading = false;
     }
   }
@@ -574,6 +574,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         setState(() {
           _selectedTimeframe = text;
           _isTimeframeDropdownOpen = false;
+          _currentPage = 1;
+          final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+          if (isGuest) {
+            _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance)..shuffle();
+          }
         });
       },
       child: Container(

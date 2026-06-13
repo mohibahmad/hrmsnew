@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 import 'login_screen.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -30,149 +32,182 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _resetPassword(BuildContext context) async {
     final email = AuthService().currentUser?.email;
-    if (email != null) {
+    if (email != null && email.isNotEmpty) {
       try {
         await AuthService().resetPassword(email);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Password reset email sent to $email')),
+          FlashySnackBar.show(
+            context,
+            message: 'Password reset email sent to $email',
           );
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send reset email: $e')),
+          FlashySnackBar.show(
+            context,
+            message: 'Failed to send reset email: $e',
+            isError: true,
           );
         }
+      }
+    } else {
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'No email found for this account.',
+          isError: true,
+        );
       }
     }
   }
 
   Future<void> _deleteAccount(BuildContext context) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showGeneralDialog<bool>(
       context: context,
-      barrierColor: const Color(0xFF000000).withValues(alpha: 0.4),
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 380,
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF000000).withValues(alpha: 0.15),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
+      barrierDismissible: true,
+      barrierLabel: 'DeleteAccountDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFEE2E2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.warning_rounded,
-                    color: Color(0xFFEF4444),
-                    size: 36,
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  width: 380,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withValues(alpha: 0.15),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Delete Account?',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Are you sure you want to permanently delete your profile and all data? This action cannot be undone.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w400,
-                  fontFamily: 'SF Pro Display',
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context, false),
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFEE2E2),
+                          shape: BoxShape.circle,
                         ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: Color(0xFF000000),
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
+                        child: const Center(
+                          child: Icon(
+                            Icons.warning_rounded,
+                            color: Color(0xFFEF4444),
+                            size: 36,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context, true),
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFFEF4444,
-                              ).withValues(alpha: 0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Delete Account?',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Are you sure you want to permanently delete your profile and all data? This action cannot be undone.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context, false),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Color(0xFF000000),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                        child: const Text(
-                          'Delete Account',
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
                           ),
-                        ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context, true),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  'Delete Account',
+                                  style: TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     if (confirm != true) return;
@@ -219,6 +254,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ).showSnackBar(SnackBar(content: Text('Failed to delete account. $e')));
       }
     }
+  }
+
+  void _shareApp() {
+    final String appLink = 'https://hrms.example.com/download';
+    final String text =
+        'Manage your workforce efficiently with our new HRMS App!\nDownload here: $appLink';
+    Share.share(text);
   }
 
   void _showLanguageModal(BuildContext context) {
@@ -374,7 +416,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     disabled: widget.isGuest,
                   ),
                   _buildLanguageItem(),
-                  _buildSimpleSettingItem('assets/share.svg', 'Share App'),
+                  _buildSimpleSettingItem(
+                    'assets/share.svg',
+                    'Share App',
+                    onTap: _shareApp,
+                  ),
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
                     'Terms & Condition',
@@ -488,7 +534,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 color: disabled
                     ? const Color(0xFFAAAAAA)
                     : const Color(0xFF000000),
@@ -513,7 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 buttonText,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   color: disabled
                       ? const Color(0xFFAAAAAA)
                       : const Color(0xFF000000),
@@ -555,7 +601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text(
               'Language',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 color: Color(0xFF000000),
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
@@ -567,7 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               _selectedLanguage,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 color: Color(0xFF000000),
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
@@ -617,7 +663,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               text,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 color: Color(0xFF000000),
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',

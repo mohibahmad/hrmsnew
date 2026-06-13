@@ -54,17 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isGuest) {
       setState(() {
         _totalWorkersCount = DummyData.workers.length;
-        _totalExpensesSum = DummyData.expenses.fold(0.0, (sum, item) {
-          return sum + ((item['amount'] ?? 0.0) as num).toDouble();
-        });
-        _totalSalarySum = DummyData.payroll.fold(0.0, (sum, item) {
-          final salaryStr = (item['salary'] ?? '')
-              .toString()
-              .replaceAll('\$', '')
-              .replaceAll(',', '')
-              .trim();
-          return sum + (double.tryParse(salaryStr) ?? 0.0);
-        });
+        _recalculateDummyTotals(_selectedPeriod);
         _holidays = (DummyData.holidays['May'] ?? [])
             .cast<Map<String, dynamic>>();
       });
@@ -128,7 +118,29 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        _recalculateDummyTotals(period);
+      }
     });
+  }
+
+  void _recalculateDummyTotals(String period) {
+    double scale = 1.0;
+    if (period == 'Week') scale = 0.05;
+    else if (period == 'Month') scale = 0.2;
+    else if (period == '3 Month') scale = 0.5;
+    else if (period == '6 Month') scale = 0.75;
+    else if (period == 'Yearly') scale = 1.0;
+
+    _totalExpensesSum = DummyData.expenses.fold(0.0, (sum, item) {
+      return sum + ((item['amount'] ?? 0.0) as num).toDouble();
+    }) * scale;
+    
+    _totalSalarySum = DummyData.payroll.fold(0.0, (sum, item) {
+      final salaryStr = (item['salary'] ?? '').toString().replaceAll('\$', '').replaceAll(',', '').trim();
+      return sum + (double.tryParse(salaryStr) ?? 0.0);
+    }) * scale;
   }
 
   void _handleLogout() {
@@ -2232,16 +2244,17 @@ class SparklineCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.easeInOutCubic,
                       builder: (context, animValue, child) {
-                        const spots = [
-                          FlSpot(0, 3),
-                          FlSpot(1, 6),
-                          FlSpot(2, 4),
-                          FlSpot(3, 4),
-                          FlSpot(4, 7),
-                          FlSpot(5, 5),
-                          FlSpot(6, 6),
-                          FlSpot(7, 2),
-                          FlSpot(8, 7),
+                        final double m = period == 'Week' ? 0.3 : period == 'Month' ? 0.6 : period == '3 Month' ? 0.8 : period == '6 Month' ? 0.9 : 1.0;
+                        final spots = [
+                          FlSpot(0, 3 * m),
+                          FlSpot(1, 6 * m),
+                          FlSpot(2, 4 * m),
+                          FlSpot(3, 4 * m),
+                          FlSpot(4, 7 * m),
+                          FlSpot(5, 5 * m),
+                          FlSpot(6, 6 * m),
+                          FlSpot(7, 2 * m),
+                          FlSpot(8, 7 * m),
                         ];
                         return LineChart(
                           LineChartData(
@@ -2369,14 +2382,15 @@ class AttendanceLineChart extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeInOutCubic,
                       builder: (context, animValue, child) {
-                        const spots = [
+                        final double m = period == 'Week' ? 0.4 : period == 'Month' ? 0.6 : period == '3 Month' ? 0.8 : period == '6 Month' ? 0.9 : 1.0;
+                        final spots = [
                           FlSpot(0, 0),
-                          FlSpot(1, 0.4),
-                          FlSpot(2, 1.8),
-                          FlSpot(3, 2.8),
-                          FlSpot(4, 2.4),
-                          FlSpot(5, 5),
-                          FlSpot(6, 7),
+                          FlSpot(1, 0.4 * m),
+                          FlSpot(2, 1.8 * m),
+                          FlSpot(3, 2.8 * m),
+                          FlSpot(4, 2.4 * m),
+                          FlSpot(5, 5 * m),
+                          FlSpot(6, 7 * m),
                         ];
                         return LineChart(
                           LineChartData(
@@ -2630,26 +2644,35 @@ class LeaveTypesPieChart extends StatelessWidget {
                                 sectionsSpace: 0.0,
                                 centerSpaceRadius: 0,
                                 startDegreeOffset: 0,
-                                sections: [
-                                  PieChartSectionData(
-                                    color: const Color(0xFF97FFA9),
-                                    value: 30,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    color: const Color(0xFF84A9FF),
-                                    value: 50,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    color: const Color(0xFFFF4A5E),
-                                    value: 20,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                ],
+                                sections: () {
+                                  final double m = period == 'Week' ? 0.5 : period == 'Month' ? 0.8 : period == '3 Month' ? 1.0 : period == '6 Month' ? 1.2 : 1.5;
+                                  return [
+                                    PieChartSectionData(
+                                      color: const Color(0xFF97FFA9),
+                                      value: 30 * m,
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      color: const Color(0xFFFFCC00),
+                                      value: 20 * m,
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      color: const Color(0xFFFF5252),
+                                      value: 15 * (2.0 - m), // Inverse to create variance
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      color: const Color(0xFFE8E8E8),
+                                      value: 35,
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                  ];
+                                }(),
                               ),
                             ),
                             CustomPaint(

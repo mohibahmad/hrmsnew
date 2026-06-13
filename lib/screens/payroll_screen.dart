@@ -136,9 +136,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage(
-                'assets/profileimage.png',
-              ),
+              backgroundImage: const AssetImage('assets/profileimage.png'),
             ),
           ),
         ],
@@ -271,7 +269,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildTable() {
-    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(440.0, 1200.0);
+    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
+      440.0,
+      1200.0,
+    );
 
     return Container(
       height: tableHeight,

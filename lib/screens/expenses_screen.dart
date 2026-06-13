@@ -60,8 +60,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         },
       );
     } else {
-      _expensesDocs = DummyData.expenses;
+      _expensesDocs = DummyData.expenses.map((e) => Map<String, dynamic>.from(e)).toList();
       _isLoading = false;
+      _adjustDummyDatesForPeriod(_selectedPeriod);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAddExpenseModal(context);
@@ -114,6 +115,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       }
     } catch (_) {}
     return true;
+  }
+
+  void _adjustDummyDatesForPeriod(String period) {
+    if (_expensesDocs.isEmpty) return;
+    
+    final now = DateTime.now();
+    int maxDays = 7;
+    if (period == 'Week') maxDays = 7;
+    else if (period == 'Month') maxDays = 30;
+    else if (period == '3 Month') maxDays = 90;
+    else if (period == '6 Month') maxDays = 180;
+    else if (period == 'Yearly') maxDays = 365;
+
+    for (int i = 0; i < _expensesDocs.length; i++) {
+      int daysAgo = (i * maxDays / _expensesDocs.length).floor();
+      final newDate = now.subtract(Duration(days: daysAgo));
+      final dayStr = newDate.day.toString().padLeft(2, '0');
+      final monthStr = newDate.month.toString().padLeft(2, '0');
+      final yearStr = newDate.year.toString();
+      _expensesDocs[i]['date'] = '$dayStr/$monthStr/$yearStr';
+    }
   }
 
   List<Map<String, dynamic>> get _filteredExpenses {
@@ -806,6 +828,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         setState(() {
           _selectedPeriod = value;
           _currentPage = 1;
+          final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+          if (isGuest) {
+            _adjustDummyDatesForPeriod(value);
+          }
         });
       },
       offset: const Offset(0, 48),
