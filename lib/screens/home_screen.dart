@@ -2670,36 +2670,27 @@ class LeaveTypesPieChart extends StatelessWidget {
                               PieChartData(
                                 sectionsSpace: 0.0,
                                 centerSpaceRadius: 0,
-                                startDegreeOffset: 0,
-                                sections: () {
-                                  final double m = period == 'Week' ? 0.5 : period == 'Month' ? 0.8 : period == '3 Month' ? 1.0 : period == '6 Month' ? 1.2 : 1.5;
-                                  return [
-                                    PieChartSectionData(
-                                      color: const Color(0xFF97FFA9),
-                                      value: 30 * m,
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
-                                    PieChartSectionData(
-                                      color: const Color(0xFFFFCC00),
-                                      value: 20 * m,
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
-                                    PieChartSectionData(
-                                      color: const Color(0xFFFF5252),
-                                      value: 15 * (2.0 - m), // Inverse to create variance
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
-                                    PieChartSectionData(
-                                      color: const Color(0xFFE8E8E8),
-                                      value: 35,
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
-                                  ];
-                                }(),
+                                startDegreeOffset: 90, // Draw from 6 o'clock (Left half)
+                                sections: [
+                                  PieChartSectionData(
+                                    color: const Color(0xFF84A9FF), // Casual Leave (50%)
+                                    value: 50,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                                  PieChartSectionData(
+                                    color: const Color(0xFFFF4A5E), // Sick Leave (20%)
+                                    value: 20,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                                  PieChartSectionData(
+                                    color: const Color(0xFF97FFA9), // Medical Leave (30%)
+                                    value: 30,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                                ],
                               ),
                             ),
                             CustomPaint(

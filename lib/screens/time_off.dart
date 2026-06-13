@@ -273,7 +273,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

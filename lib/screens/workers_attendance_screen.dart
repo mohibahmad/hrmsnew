@@ -410,53 +410,62 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   Widget _buildSearchBar() {
     return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
-      child: TextField(
-        onChanged: (val) {
-          setState(() {
-            _searchQuery = val;
-          });
-        },
-        decoration: InputDecoration(
-          hintText: "Search by workers name / position",
-          hintStyle: TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 14,
-            fontFamily: 'SF Pro Display',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/search icon.svg',
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFBDBDBD),
+              BlendMode.srcIn,
+            ),
           ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.all(14),
-            child: SvgPicture.asset(
-              'assets/search icon.svg',
-              height: 20,
-              width: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Search by workers name / position",
+                hintStyle: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontFamily: 'SF Pro Display',
+                ),
+                border: InputBorder.none,
+                isDense: true,
               ),
             ),
           ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                  child: const Icon(
-                    Icons.close,
-                    size: 18,
-                    color: Color(0xFF000000),
-                  ),
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 16),
-        ),
+          if (_searchQuery.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _searchQuery = '';
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(
+                  Icons.close,
+                  size: 18,
+                  color: Colors.grey[400],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

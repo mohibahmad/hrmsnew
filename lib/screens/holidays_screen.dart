@@ -7,7 +7,6 @@ import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
 
-
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -45,50 +44,53 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       _holidaysByMonth = DummyData.holidays.map((month, list) {
         return MapEntry(
           month,
-          list.map((h) => HolidayItem(
-            h['day'] as int,
-            h['name'] as String,
-            h['isEnabled'] as bool,
-            month: month,
-          )).toList(),
+          list
+              .map(
+                (h) => HolidayItem(
+                  h['day'] as int,
+                  h['name'] as String,
+                  h['isEnabled'] as bool,
+                  month: month,
+                ),
+              )
+              .toList(),
         );
       });
     } else {
       _isLoading = true;
-      _holidaysSub = FirestoreService().holidaysStream.listen((snapshot) {
-        if (mounted) {
-          final tempMap = <String, List<HolidayItem>>{};
-          for (final doc in snapshot.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final month = data['month'] ?? 'May';
-            final day = (data['day'] ?? 1) as int;
-            final name = data['name'] ?? '';
-            final isEnabled = data['isEnabled'] ?? true;
-            final id = doc.id;
+      _holidaysSub = FirestoreService().holidaysStream.listen(
+        (snapshot) {
+          if (mounted) {
+            final tempMap = <String, List<HolidayItem>>{};
+            for (final doc in snapshot.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final month = data['month'] ?? 'May';
+              final day = (data['day'] ?? 1) as int;
+              final name = data['name'] ?? '';
+              final isEnabled = data['isEnabled'] ?? true;
+              final id = doc.id;
 
-            if (!tempMap.containsKey(month)) {
-              tempMap[month] = [];
+              if (!tempMap.containsKey(month)) {
+                tempMap[month] = [];
+              }
+              tempMap[month]!.add(
+                HolidayItem(day, name, isEnabled, id: id, month: month),
+              );
             }
-            tempMap[month]!.add(HolidayItem(
-              day,
-              name,
-              isEnabled,
-              id: id,
-              month: month,
-            ));
+            setState(() {
+              _holidaysByMonth = tempMap;
+              _isLoading = false;
+            });
           }
-          setState(() {
-            _holidaysByMonth = tempMap;
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     }
     // Automatically show the dialog after the screen renders to match the mockup
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -166,7 +168,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                 'name': holidayNameController.text,
                                 'isEnabled': true,
                               };
-                              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                              final isGuest =
+                                  AuthService().currentUser?.isAnonymous ??
+                                  false;
                               if (isGuest) {
                                 setState(() {
                                   if (!_holidaysByMonth.containsKey(
@@ -410,9 +414,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           padding: EdgeInsets.all(40.0),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      : (isDataEmpty || _holidaysByMonth.values.every((l) => l.isEmpty)
-                          ? _buildEmptyState()
-                          : _buildFilledState()),
+                      : (isDataEmpty ||
+                                _holidaysByMonth.values.every((l) => l.isEmpty)
+                            ? _buildEmptyState()
+                            : _buildFilledState()),
                 ],
               ),
             ),
@@ -468,9 +473,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage(
-                'assets/profileimage.png',
-              ),
+              backgroundImage: const AssetImage('assets/profileimage.png'),
             ),
           ),
         ],
@@ -614,7 +617,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 });
                 final isGuest = AuthService().currentUser?.isAnonymous ?? false;
                 if (!isGuest && item.id != null) {
-                  await FirestoreService().updateHoliday(item.id!, {'isEnabled': value});
+                  await FirestoreService().updateHoliday(item.id!, {
+                    'isEnabled': value,
+                  });
                 }
               },
             ),
@@ -639,8 +644,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       ),
     );
   }
-
-  // ================= EMPTY STATE =================
 
   Widget _buildEmptyState() {
     return Padding(
@@ -683,5 +686,11 @@ class HolidayItem {
   final String name;
   bool isEnabled;
 
-  HolidayItem(this.day, this.name, this.isEnabled, {this.id, required this.month});
+  HolidayItem(
+    this.day,
+    this.name,
+    this.isEnabled, {
+    this.id,
+    required this.month,
+  });
 }

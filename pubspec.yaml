@@ -147,6 +147,10 @@ flutter:
     - assets/boy.png
     - assets/placeholdemptystate.png
     - assets/sucess.png
+    - assets/google_icon.svg
+    - assets/apple_icon.svg
+    - assets/guest_icon.svg
+
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

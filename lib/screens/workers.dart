@@ -430,6 +430,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   final Color buttonColor = const Color(0xFF0C51C1);
   final Color textDark = const Color(0xFF000000);
   String _searchQuery = '';
+  String _selectedFilter = 'All';
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
   int _currentPage = 1;
@@ -474,12 +475,39 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     }
   }
 
+  bool _matchesFilter(String position, String filter) {
+    if (filter == 'All') return true;
+    final pos = position.toLowerCase();
+    final f = filter.toLowerCase();
+    if (f == 'designer') {
+      return pos.contains('designer');
+    } else if (f == 'developer') {
+      return pos.contains('developer');
+    } else if (f == 'engineering') {
+      return pos.contains('engineer') ||
+          pos.contains('architect') ||
+          pos.contains('analyst') ||
+          pos.contains('scientist');
+    } else if (f == 'sales') {
+      return pos.contains('sales') || pos.contains('marketing');
+    } else if (f == 'management') {
+      return pos.contains('manager') ||
+          pos.contains('writer') ||
+          pos.contains('hr');
+    }
+    return false;
+  }
+
   List<Map<String, dynamic>> get _filteredWorkers {
     return _allWorkers.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      return name.contains(query) || position.contains(query);
+
+      final matchesSearch = name.contains(query) || position.contains(query);
+      final matchesFilter = _matchesFilter(position, _selectedFilter);
+
+      return matchesSearch && matchesFilter;
     }).toList();
   }
 
@@ -683,18 +711,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 Container(
                   width: 550,
                   height: 50,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFEEEEEE)),
                   ),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _buildFilterTab('All', isActive: true),
+                        _buildFilterTab('All'),
                         _buildFilterTab('Designer'),
                         _buildFilterTab('Developer'),
                         _buildFilterTab('Engineering'),
@@ -707,61 +735,62 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 const SizedBox(height: 22),
 
                 // Table Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+                if (!_isLoading && _filteredWorkers.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: const [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'Worker Name',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'Work Type',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'Position',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'Work Type',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 24),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: const [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'Worker Name',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'Work Type',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'Position',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'Work Type',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 24),
-                    ],
-                  ),
-                ),
 
                 // List Items
                 if (_isLoading)
@@ -775,29 +804,25 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       double dynamicHeight =
                           MediaQuery.of(context).size.height - 320;
                       if (dynamicHeight < 300) dynamicHeight = 300;
-                      return Container(
+                      return SizedBox(
                         width: double.infinity,
                         height: dynamicHeight,
-                        decoration: BoxDecoration(
-                          color: Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFEEEEEE)),
-                        ),
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Image.asset(
-                                'assets/placeholdemptystate.png',
+                              SvgPicture.asset(
+                                'assets/placeholder_workers.svg',
                                 width: 120,
                                 height: 100,
-                                color: const Color(0xFFCBCBCB),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
-                                "Add Workers to get started",
-                                style: TextStyle(
+                              Text(
+                                _allWorkers.isEmpty
+                                    ? "Add workers found"
+                                    : "No workers found",
+                                style: const TextStyle(
                                   color: Color(0xFF0247C4),
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -1113,23 +1138,32 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     );
   }
 
-  Widget _buildFilterTab(String label, {bool isActive = false}) {
-    return Container(
-      height: 38,
-      margin: const EdgeInsets.only(right: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isActive ? buttonColor : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isActive ? Color(0xFFFFFFFF) : Colors.black,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          fontSize: 14,
-          fontFamily: 'SF Pro Display',
+  Widget _buildFilterTab(String label) {
+    final bool isActive = _selectedFilter == label;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = label;
+          _currentPage = 1;
+        });
+      },
+      child: Container(
+        height: 38,
+        margin: const EdgeInsets.only(right: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? buttonColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Color(0xFFFFFFFF) : Colors.black,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+            fontFamily: 'SF Pro Display',
+          ),
         ),
       ),
     );
