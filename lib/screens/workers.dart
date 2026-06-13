@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -1200,6 +1203,26 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _type1Controller = TextEditingController();
   final _type2Controller = TextEditingController();
 
+  // Upload states
+  Uint8List? _profileImageBytes;
+  String? _profileImageName;
+  String? _existingProfileImageUrl;
+
+  Uint8List? _frontIdBytes;
+  String? _frontIdName;
+  String? _existingFrontIdUrl;
+
+  Uint8List? _backIdBytes;
+  String? _backIdName;
+  String? _existingBackIdUrl;
+
+  Uint8List? _cvBytes;
+  String? _cvName;
+  String? _existingCvUrl;
+  bool _isCvUploaded = false;
+
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
@@ -1222,10 +1245,156 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           .toString();
       _type1Controller.text = (widget.workerToEdit!['type1'] ?? '').toString();
       _type2Controller.text = (widget.workerToEdit!['type2'] ?? '').toString();
+
+      _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
+      _existingFrontIdUrl = widget.workerToEdit!['frontId']?.toString();
+      _existingBackIdUrl = widget.workerToEdit!['backId']?.toString();
+      _existingCvUrl = widget.workerToEdit!['cv']?.toString();
+      if (_existingCvUrl != null && _existingCvUrl!.isNotEmpty) {
+        _isCvUploaded = true;
+        _cvName = _existingCvUrl!.split('/').last;
+      }
+    }
+  }
+
+  Future<String?> _uploadToStorage(String folder, String fileName, Uint8List fileBytes) async {
+    try {
+      final ref = FirebaseStorage.instance.ref().child('hrms_documents/$folder/${DateTime.now().millisecondsSinceEpoch}_$fileName');
+      final uploadTask = ref.putData(fileBytes);
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Firebase Storage upload failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        Uint8List? bytes = file.bytes;
+        if (bytes == null && file.path != null) {
+          bytes = io.File(file.path!).readAsBytesSync();
+        }
+        setState(() {
+          _profileImageBytes = bytes;
+          _profileImageName = file.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking profile image: $e');
+    }
+  }
+
+  Future<void> _pickFrontId() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        Uint8List? bytes = file.bytes;
+        if (bytes == null && file.path != null) {
+          bytes = io.File(file.path!).readAsBytesSync();
+        }
+        setState(() {
+          _frontIdBytes = bytes;
+          _frontIdName = file.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking front ID: $e');
+    }
+  }
+
+  Future<void> _pickBackId() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        Uint8List? bytes = file.bytes;
+        if (bytes == null && file.path != null) {
+          bytes = io.File(file.path!).readAsBytesSync();
+        }
+        setState(() {
+          _backIdBytes = bytes;
+          _backIdName = file.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking back ID: $e');
+    }
+  }
+
+  Future<void> _pickCv() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        Uint8List? bytes = file.bytes;
+        if (bytes == null && file.path != null) {
+          bytes = io.File(file.path!).readAsBytesSync();
+        }
+        setState(() {
+          _cvBytes = bytes;
+          _cvName = file.name;
+          _isCvUploaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking CV: $e');
     }
   }
 
   Future<void> _saveWorker() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    String? profileImageUrl = _existingProfileImageUrl;
+    String? frontIdUrl = _existingFrontIdUrl;
+    String? backIdUrl = _existingBackIdUrl;
+    String? cvUrl = _existingCvUrl;
+
+    if (_profileImageBytes != null) {
+      profileImageUrl = await _uploadToStorage('profile_images', _profileImageName ?? 'profile.jpg', _profileImageBytes!);
+      profileImageUrl ??= 'mock://profile_images/$_profileImageName';
+    }
+
+    if (_frontIdBytes != null) {
+      frontIdUrl = await _uploadToStorage('id_cards', _frontIdName ?? 'front.jpg', _frontIdBytes!);
+      frontIdUrl ??= 'mock://id_cards/$_frontIdName';
+    }
+
+    if (_backIdBytes != null) {
+      backIdUrl = await _uploadToStorage('id_cards', _backIdName ?? 'back.jpg', _backIdBytes!);
+      backIdUrl ??= 'mock://id_cards/$_backIdName';
+    }
+
+    if (_cvBytes != null) {
+      cvUrl = await _uploadToStorage('cvs', _cvName ?? 'cv.pdf', _cvBytes!);
+      cvUrl ??= 'mock://cvs/$_cvName';
+    }
+
     final data = {
       'name': _nameController.text.isNotEmpty
           ? _nameController.text
@@ -1249,13 +1418,25 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       'type2': _type2Controller.text.isNotEmpty
           ? _type2Controller.text
           : 'On-Site',
+      'profileImage': profileImageUrl,
+      'frontId': frontIdUrl,
+      'backId': backIdUrl,
+      'cv': cvUrl,
     };
 
-    if (widget.workerToEdit != null) {
-      await FirestoreService().updateWorker(widget.workerToEdit!['id'], data);
-    } else {
-      await FirestoreService().addWorker(data);
+    try {
+      if (widget.workerToEdit != null) {
+        await FirestoreService().updateWorker(widget.workerToEdit!['id'], data);
+      } else {
+        await FirestoreService().addWorker(data);
+      }
+    } catch (e) {
+      debugPrint('Error saving worker: $e');
     }
+
+    setState(() {
+      _isSaving = false;
+    });
 
     if (mounted) {
       widget.onBack?.call();
@@ -1345,24 +1526,33 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                 ),
                 // Save Button (Blue state based on image 2)
                 GestureDetector(
-                  onTap: _saveWorker,
+                  onTap: _isSaving ? null : _saveWorker,
                   child: Container(
                     height: 44,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0B50C3),
+                      color: _isSaving ? Colors.grey : const Color(0xFF0B50C3),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     alignment: Alignment.center,
-                    child: const Text(
-                      'Save',
-                      style: TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Save',
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -1412,6 +1602,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       dobController: _dobController,
                       genderController: _genderController,
                       addressController: _addressController,
+                      profileImageBytes: _profileImageBytes,
+                      profileImageName: _profileImageName,
+                      existingProfileImageUrl: _existingProfileImageUrl,
+                      onUploadProfileTap: _pickProfileImage,
                       onNextStep: () => setState(() => _activeTabIndex = 1),
                     ),
                   if (_activeTabIndex == 1)
@@ -1421,7 +1615,30 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       type2Controller: _type2Controller,
                       onNextStep: () => setState(() => _activeTabIndex = 2),
                     ),
-                  if (_activeTabIndex == 2) const DocumentationSection(),
+                  if (_activeTabIndex == 2)
+                    DocumentationSection(
+                      frontIdBytes: _frontIdBytes,
+                      frontIdName: _frontIdName,
+                      existingFrontIdUrl: _existingFrontIdUrl,
+                      onUploadFrontTap: _pickFrontId,
+                      backIdBytes: _backIdBytes,
+                      backIdName: _backIdName,
+                      existingBackIdUrl: _existingBackIdUrl,
+                      onUploadBackTap: _pickBackId,
+                      cvBytes: _cvBytes,
+                      cvName: _cvName,
+                      existingCvUrl: _existingCvUrl,
+                      isCvUploaded: _isCvUploaded,
+                      onUploadCvTap: _pickCv,
+                      onDeleteCvTap: () {
+                        setState(() {
+                          _cvBytes = null;
+                          _cvName = null;
+                          _existingCvUrl = null;
+                          _isCvUploaded = false;
+                        });
+                      },
+                    ),
                 ],
               ),
             ),
@@ -1483,6 +1700,10 @@ class WorkerDetailFormSection extends StatelessWidget {
   final TextEditingController genderController;
   final TextEditingController addressController;
   final VoidCallback? onNextStep;
+  final Uint8List? profileImageBytes;
+  final String? profileImageName;
+  final String? existingProfileImageUrl;
+  final VoidCallback? onUploadProfileTap;
 
   const WorkerDetailFormSection({
     super.key,
@@ -1496,6 +1717,10 @@ class WorkerDetailFormSection extends StatelessWidget {
     required this.genderController,
     required this.addressController,
     this.onNextStep,
+    this.profileImageBytes,
+    this.profileImageName,
+    this.existingProfileImageUrl,
+    this.onUploadProfileTap,
   });
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
@@ -1679,50 +1904,88 @@ class WorkerDetailFormSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    height: 280,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF000000).withValues(alpha: 0.01),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SvgPicture.asset(
-                          'assets/Upload_profile.svg',
-                          height: 64,
-                          width: 64,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Upload Profile',
-                          style: TextStyle(
-                            color: Color(0xFF000000),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            fontFamily: 'SF Pro Display',
+                  GestureDetector(
+                    onTap: onUploadProfileTap,
+                    child: Container(
+                      height: 280,
+                      width: double.infinity,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF000000).withValues(alpha: 0.01),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Upload a profile image\nPNG, JPG or PDF',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: profileImageBytes != null
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.memory(
+                                  profileImageBytes!,
+                                  fit: BoxFit.cover,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    color: Colors.black54,
+                                    child: Text(
+                                      profileImageName ?? 'Profile Image',
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : existingProfileImageUrl != null && existingProfileImageUrl!.startsWith('http')
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.network(
+                                      existingProfileImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => _buildUploadPlaceholder(),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : _buildUploadPlaceholder(),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -1749,6 +2012,40 @@ class WorkerDetailFormSection extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUploadPlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SvgPicture.asset(
+          'assets/Upload_profile.svg',
+          height: 64,
+          width: 64,
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Upload Profile',
+          style: TextStyle(
+            color: Color(0xFF000000),
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Tap to upload a profile image\nPNG or JPG',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.black54,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'SF Pro Display',
+          ),
         ),
       ],
     );
@@ -2194,15 +2491,41 @@ class ExperienceFormSection extends StatelessWidget {
 // ==========================================
 // DOCUMENTATION SECTION (IMAGE 2)
 // ==========================================
-class DocumentationSection extends StatefulWidget {
-  const DocumentationSection({super.key});
+class DocumentationSection extends StatelessWidget {
+  final Uint8List? frontIdBytes;
+  final String? frontIdName;
+  final String? existingFrontIdUrl;
+  final VoidCallback? onUploadFrontTap;
 
-  @override
-  State<DocumentationSection> createState() => _DocumentationSectionState();
-}
+  final Uint8List? backIdBytes;
+  final String? backIdName;
+  final String? existingBackIdUrl;
+  final VoidCallback? onUploadBackTap;
 
-class _DocumentationSectionState extends State<DocumentationSection> {
-  bool _isCvUploaded = false;
+  final Uint8List? cvBytes;
+  final String? cvName;
+  final String? existingCvUrl;
+  final bool isCvUploaded;
+  final VoidCallback? onUploadCvTap;
+  final VoidCallback? onDeleteCvTap;
+
+  const DocumentationSection({
+    super.key,
+    this.frontIdBytes,
+    this.frontIdName,
+    this.existingFrontIdUrl,
+    this.onUploadFrontTap,
+    this.backIdBytes,
+    this.backIdName,
+    this.existingBackIdUrl,
+    this.onUploadBackTap,
+    this.cvBytes,
+    this.cvName,
+    this.existingCvUrl,
+    this.isCvUploaded = false,
+    this.onUploadCvTap,
+    this.onDeleteCvTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2256,7 +2579,13 @@ class _DocumentationSectionState extends State<DocumentationSection> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildUploadBox('Upload front side ID Card'),
+                        _buildIdUploadBox(
+                          label: 'Upload front side ID Card',
+                          bytes: frontIdBytes,
+                          fileName: frontIdName,
+                          existingUrl: existingFrontIdUrl,
+                          onTap: onUploadFrontTap,
+                        ),
                         const SizedBox(height: 24),
                         const Text(
                           'Upload Back Side:',
@@ -2267,7 +2596,13 @@ class _DocumentationSectionState extends State<DocumentationSection> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildUploadBox('Upload back side ID Card'),
+                        _buildIdUploadBox(
+                          label: 'Upload back side ID Card',
+                          bytes: backIdBytes,
+                          fileName: backIdName,
+                          existingUrl: existingBackIdUrl,
+                          onTap: onUploadBackTap,
+                        ),
                       ],
                     ),
                   ),
@@ -2290,7 +2625,7 @@ class _DocumentationSectionState extends State<DocumentationSection> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _isCvUploaded ? _buildCvPreview() : _buildCvUpload(),
+                  isCvUploaded ? _buildCvPreview() : _buildCvUpload(),
                 ],
               ),
             ),
@@ -2300,14 +2635,117 @@ class _DocumentationSectionState extends State<DocumentationSection> {
     );
   }
 
+  Widget _buildIdUploadBox({
+    required String label,
+    Uint8List? bytes,
+    String? fileName,
+    String? existingUrl,
+    VoidCallback? onTap,
+  }) {
+    final bool hasFile = bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: hasFile ? const Color(0xFF0B50C3).withValues(alpha: 0.5) : Colors.grey.shade200,
+            width: hasFile ? 2 : 1,
+          ),
+        ),
+        child: hasFile
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (bytes != null)
+                    Image.memory(bytes, fit: BoxFit.cover)
+                  else if (existingUrl != null && existingUrl.startsWith('http'))
+                    Image.network(
+                      existingUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => _buildIdPlaceholder(label, hasFile),
+                    )
+                  else
+                    _buildIdPlaceholder(label, hasFile),
+                  Positioned(
+                    bottom: 0, left: 0, right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      color: Colors.black54,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              fileName ?? 'File uploaded',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.edit, color: Colors.white70, size: 12),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : _buildIdPlaceholder(label, false),
+      ),
+    );
+  }
+
+  Widget _buildIdPlaceholder(String label, bool hasFile) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.badge,
+          size: 48,
+          color: hasFile ? const Color(0xFF0B50C3) : Colors.grey.shade400,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey.shade400,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Tap to select file',
+          style: TextStyle(
+            color: Colors.grey.shade300,
+            fontSize: 12,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCvUpload() {
     return _buildCvContainer(
       overlay: GestureDetector(
-        onTap: () => setState(() => _isCvUploaded = true),
+        onTap: onUploadCvTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: Color(0xFF000000),
+            color: const Color(0xFF000000),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -2337,57 +2775,98 @@ class _DocumentationSectionState extends State<DocumentationSection> {
 
   Widget _buildCvPreview() {
     return _buildCvContainer(
-      overlay: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      overlay: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: Color(0xFF000000),
-              borderRadius: BorderRadius.circular(8),
+          if (cvName != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B50C3).withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.description, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 200),
+                      child: Text(
+                        cvName!,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Row(
-              children: [
-                const Text(
-                  'Edit',
-                  style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    fontFamily: 'SF Pro Display',
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: onUploadCvTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF000000),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Edit',
+                        style: TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SvgPicture.asset('assets/edit_icon.svg', height: 18, width: 18),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                SvgPicture.asset('assets/edit_icon.svg', height: 18, width: 18),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: Color(0xFF000000),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Text(
-                  'Delete',
-                  style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    fontFamily: 'SF Pro Display',
+              ),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: onDeleteCvTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF000000),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SvgPicture.asset(
+                        'assets/delete_icon.svg',
+                        height: 18,
+                        width: 18,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                SvgPicture.asset(
-                  'assets/delete_icon.svg',
-                  height: 18,
-                  width: 18,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -2428,36 +2907,8 @@ class _DocumentationSectionState extends State<DocumentationSection> {
               ],
             ),
           ),
-          Container(color: Color(0xFFFFFFFF).withValues(alpha: 0.5)),
+          Container(color: const Color(0xFFFFFFFF).withValues(alpha: 0.5)),
           overlay,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUploadBox(String text) {
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.badge, size: 48, color: Colors.grey.shade400),
-          const SizedBox(height: 12),
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
         ],
       ),
     );
@@ -2529,7 +2980,9 @@ Widget _buildInputField(
             ),
             border: InputBorder.none,
             isDense: true,
-            contentPadding: isTextArea ? const EdgeInsets.only(top: 14) : null,
+            contentPadding: isTextArea
+                ? const EdgeInsets.only(top: 14)
+                : EdgeInsets.zero,
             suffixIcon: isDropdown
                 ? Icon(
                     Icons.arrow_drop_down,
