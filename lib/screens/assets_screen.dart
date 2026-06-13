@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'
     show
@@ -35,6 +36,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   List<AssetData> _assets = [];
   bool _isLoading = false;
+  StreamSubscription? _assetsSub;
+
+  @override
+  void dispose() {
+    _assetsSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -85,7 +93,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       ];
     } else {
       _isLoading = true;
-      FirestoreService().assetsStream.listen((snapshot) {
+      _assetsSub = FirestoreService().assetsStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _assets = snapshot.docs.map((doc) {

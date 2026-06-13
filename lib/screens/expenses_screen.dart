@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -32,6 +33,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _selectedPeriod = 'Week';
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
+  StreamSubscription? _expensesSub;
+
+  @override
+  void dispose() {
+    _expensesSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -40,7 +48,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().expensesStream.listen(
+      _expensesSub = FirestoreService().expensesStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {

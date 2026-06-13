@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
@@ -29,6 +30,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 4;
+  StreamSubscription? _payrollSub;
+
+  @override
+  void dispose() {
+    _payrollSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -37,7 +45,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().payrollStream.listen(
+      _payrollSub = FirestoreService().payrollStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {

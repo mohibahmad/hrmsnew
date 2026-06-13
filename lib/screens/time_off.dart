@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
@@ -51,6 +52,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
+  StreamSubscription? _timeoffSub;
+
+  @override
+  void dispose() {
+    _timeoffSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -59,7 +67,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().timeoffStream.listen(
+      _timeoffSub = FirestoreService().timeoffStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {

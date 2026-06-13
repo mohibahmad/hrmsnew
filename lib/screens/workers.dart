@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -433,6 +434,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
+  StreamSubscription? _workersSub;
+
+  @override
+  void dispose() {
+    _workersSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -441,7 +449,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      FirestoreService().workersStream.listen(
+      _workersSub = FirestoreService().workersStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -500,7 +508,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- Top Header ---
         Container(
           height: 94,
           padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -765,7 +772,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 else if (_filteredWorkers.isEmpty)
                   Builder(
                     builder: (context) {
-                      double dynamicHeight = MediaQuery.of(context).size.height - 320;
+                      double dynamicHeight =
+                          MediaQuery.of(context).size.height - 320;
                       if (dynamicHeight < 300) dynamicHeight = 300;
                       return Container(
                         width: double.infinity,
@@ -800,7 +808,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           ),
                         ),
                       );
-                    }
+                    },
                   )
                 else
                   ..._currentPageItems.asMap().entries.map((entry) {
