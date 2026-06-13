@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
@@ -34,6 +35,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   final FirestoreService _firestore = FirestoreService();
+  StreamSubscription? _workersSub;
+  StreamSubscription? _attendanceSub;
+
+  @override
+  void dispose() {
+    _workersSub?.cancel();
+    _attendanceSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -51,7 +61,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       });
       return;
     }
-    _firestore.workersStream.listen(
+    _workersSub = _firestore.workersStream.listen(
       (snapshot) {
         if (mounted) {
           setState(() {
@@ -71,7 +81,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         }
       },
     );
-    _firestore.attendanceStream.listen(
+    _attendanceSub = _firestore.attendanceStream.listen(
       (snapshot) {
         if (mounted) {
           setState(() {

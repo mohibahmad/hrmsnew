@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -28,6 +29,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
   bool _isLoading = false;
+  StreamSubscription? _holidaysSub;
+
+  @override
+  void dispose() {
+    _holidaysSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -47,7 +55,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       });
     } else {
       _isLoading = true;
-      FirestoreService().holidaysStream.listen((snapshot) {
+      _holidaysSub = FirestoreService().holidaysStream.listen((snapshot) {
         if (mounted) {
           final tempMap = <String, List<HolidayItem>>{};
           for (final doc in snapshot.docs) {

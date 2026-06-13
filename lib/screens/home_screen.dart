@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -38,6 +39,19 @@ class _HomeScreenState extends State<HomeScreen> {
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
   List<Map<String, dynamic>> _holidays = [];
+  StreamSubscription? _holidaysSub;
+  StreamSubscription? _workersSub;
+  StreamSubscription? _expensesSub;
+  StreamSubscription? _payrollSub;
+
+  @override
+  void dispose() {
+    _holidaysSub?.cancel();
+    _workersSub?.cancel();
+    _expensesSub?.cancel();
+    _payrollSub?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -65,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _holidays = [];
       });
 
-      firestore.holidaysStream.listen((snap) {
+      _holidaysSub = firestore.holidaysStream.listen((snap) {
         if (mounted) {
           setState(() {
             _holidays = snap.docs.map((d) {
@@ -78,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      firestore.workersStream.listen((snap) {
+      _workersSub = firestore.workersStream.listen((snap) {
         if (mounted) {
           setState(() {
             _totalWorkersCount = snap.docs.length;
@@ -86,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      firestore.expensesStream.listen((snap) {
+      _expensesSub = firestore.expensesStream.listen((snap) {
         if (mounted) {
           setState(() {
             _totalExpensesSum = snap.docs.fold(0.0, (sum, doc) {
@@ -97,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      firestore.payrollStream.listen((snap) {
+      _payrollSub = firestore.payrollStream.listen((snap) {
         if (mounted) {
           setState(() {
             _totalSalarySum = snap.docs.fold(0.0, (sum, doc) {
