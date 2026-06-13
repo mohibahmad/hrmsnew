@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
+import '../services/firestore_service.dart';
+
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -25,6 +27,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   bool isDataEmpty = false;
 
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -38,11 +41,46 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             h['day'] as int,
             h['name'] as String,
             h['isEnabled'] as bool,
+            month: month,
           )).toList(),
         );
       });
     } else {
-      _holidaysByMonth = {};
+      _isLoading = true;
+      FirestoreService().holidaysStream.listen((snapshot) {
+        if (mounted) {
+          final tempMap = <String, List<HolidayItem>>{};
+          for (final doc in snapshot.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final month = data['month'] ?? 'May';
+            final day = (data['day'] ?? 1) as int;
+            final name = data['name'] ?? '';
+            final isEnabled = data['isEnabled'] ?? true;
+            final id = doc.id;
+
+            if (!tempMap.containsKey(month)) {
+              tempMap[month] = [];
+            }
+            tempMap[month]!.add(HolidayItem(
+              day,
+              name,
+              isEnabled,
+              id: id,
+              month: month,
+            ));
+          }
+          setState(() {
+            _holidaysByMonth = tempMap;
+            _isLoading = false;
+          });
+        }
+      }, onError: (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      });
     }
     // Automatically show the dialog after the screen renders to match the mockup
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -110,23 +148,37 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             ),
                             minimumSize: const Size(0, 32),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             if (holidayNameController.text.isNotEmpty) {
-                              setState(() {
-                                if (!_holidaysByMonth.containsKey(
-                                  selectedMonth,
-                                )) {
-                                  _holidaysByMonth[selectedMonth] = [];
-                                }
-                                _holidaysByMonth[selectedMonth]!.insert(
-                                  0,
-                                  HolidayItem(
-                                    selectedDay,
-                                    holidayNameController.text,
-                                    true,
-                                  ),
-                                );
-                              });
+                              final holidayMap = {
+                                'day': selectedDay,
+                                'month': selectedMonth,
+                                'remainingDays': '05',
+                                'dayOfWeek': 'Monday',
+                                'name': holidayNameController.text,
+                                'isEnabled': true,
+                              };
+                              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                              if (isGuest) {
+                                setState(() {
+                                  if (!_holidaysByMonth.containsKey(
+                                    selectedMonth,
+                                  )) {
+                                    _holidaysByMonth[selectedMonth] = [];
+                                  }
+                                  _holidaysByMonth[selectedMonth]!.insert(
+                                    0,
+                                    HolidayItem(
+                                      selectedDay,
+                                      holidayNameController.text,
+                                      true,
+                                      month: selectedMonth,
+                                    ),
+                                  );
+                                });
+                              } else {
+                                await FirestoreService().addHoliday(holidayMap);
+                              }
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
@@ -345,9 +397,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 children: [
                   _buildTopActionRow(context),
                   const SizedBox(height: 24),
-                  isDataEmpty || _holidaysByMonth.values.every((l) => l.isEmpty)
-                      ? _buildEmptyState()
-                      : _buildFilledState(),
+                  _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : (isDataEmpty || _holidaysByMonth.values.every((l) => l.isEmpty)
+                          ? _buildEmptyState()
+                          : _buildFilledState()),
                 ],
               ),
             ),
@@ -543,12 +600,32 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               value: item.isEnabled,
               activeTrackColor: const Color(0xFF0247C4),
               inactiveTrackColor: Colors.grey.shade300,
-              onChanged: (bool value) {
+              onChanged: (bool value) async {
                 setState(() {
                   item.isEnabled = value;
                 });
+                final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                if (!isGuest && item.id != null) {
+                  await FirestoreService().updateHoliday(item.id!, {'isEnabled': value});
+                }
               },
             ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () async {
+              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                setState(() {
+                  _holidaysByMonth[item.month]?.remove(item);
+                });
+              } else if (item.id != null) {
+                await FirestoreService().deleteHoliday(item.id!);
+              }
+            },
           ),
         ],
       ),
@@ -592,9 +669,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
 // Data Model for Holiday Items
 class HolidayItem {
+  final String? id;
+  final String month;
   final int day;
   final String name;
   bool isEnabled;
 
-  HolidayItem(this.day, this.name, this.isEnabled);
+  HolidayItem(this.day, this.name, this.isEnabled, {this.id, required this.month});
 }

@@ -18,6 +18,8 @@ class FirestoreService {
   CollectionReference get _attendance => _userDoc.collection('hrms_attendance');
   CollectionReference get _payroll => _userDoc.collection('hrms_payroll');
   CollectionReference get _timeoff => _userDoc.collection('hrms_timeoff');
+  CollectionReference get _assets => _userDoc.collection('hrms_assets');
+  CollectionReference get _holidays => _userDoc.collection('hrms_holidays');
 
   Future<void> createUserProfile({
     required String username,
@@ -59,6 +61,8 @@ class FirestoreService {
       'hrms_attendance',
       'hrms_payroll',
       'hrms_timeoff',
+      'hrms_assets',
+      'hrms_holidays',
     ]) {
       final snapshot = await _userDoc.collection(collectionName).get();
       for (final doc in snapshot.docs) {
@@ -158,6 +162,43 @@ class FirestoreService {
 
   Stream<QuerySnapshot> get timeoffStream =>
       _timeoff.orderBy('createdAt', descending: true).snapshots();
+
+  // --- Assets CRUD ---
+  Future<String> addAsset(Map<String, dynamic> asset) async {
+    final docRef = await _assets.add({
+      ...asset,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
+  }
+
+  Future<void> deleteAsset(String id) async {
+    await _assets.doc(id).delete();
+  }
+
+  Stream<QuerySnapshot> get assetsStream =>
+      _assets.orderBy('createdAt', descending: true).snapshots();
+
+  // --- Holidays CRUD ---
+  Future<String> addHoliday(Map<String, dynamic> holiday) async {
+    final docRef = await _holidays.add({
+      ...holiday,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
+  }
+
+  Future<void> updateHoliday(String id, Map<String, dynamic> data) async {
+    await _holidays.doc(id).update(data);
+  }
+
+  Future<void> deleteHoliday(String id) async {
+    await _holidays.doc(id).delete();
+  }
+
+  Stream<QuerySnapshot> get holidaysStream =>
+      _holidays.orderBy('createdAt', descending: true).snapshots();
+
 
   Future<void> seedDummyDataForUser({
     required String uid,

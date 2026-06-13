@@ -365,14 +365,17 @@ class WorkersScreen extends StatefulWidget {
 
 class _WorkersScreenState extends State<WorkersScreen> {
   bool _isAddingWorker = false;
+  Map<String, dynamic>? _workerToEdit;
 
   @override
   Widget build(BuildContext context) {
     if (_isAddingWorker) {
       return AddNewWorkerFlow(
+        workerToEdit: _workerToEdit,
         onBack: () {
           setState(() {
             _isAddingWorker = false;
+            _workerToEdit = null;
           });
         },
       );
@@ -381,6 +384,13 @@ class _WorkersScreenState extends State<WorkersScreen> {
         onAddWorker: () {
           setState(() {
             _isAddingWorker = true;
+            _workerToEdit = null;
+          });
+        },
+        onEditWorker: (worker) {
+          setState(() {
+            _isAddingWorker = true;
+            _workerToEdit = worker;
           });
         },
         onLogout: widget.onLogout,
@@ -396,6 +406,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
 // ==========================================
 class DashboardWorkerList extends StatefulWidget {
   final VoidCallback onAddWorker;
+  final ValueChanged<Map<String, dynamic>>? onEditWorker;
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
   final VoidCallback? onNotificationTap;
@@ -403,6 +414,7 @@ class DashboardWorkerList extends StatefulWidget {
   const DashboardWorkerList({
     super.key,
     required this.onAddWorker,
+    this.onEditWorker,
     this.onLogout,
     this.onProfileTap,
     this.onNotificationTap,
@@ -751,52 +763,48 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else if (_filteredWorkers.isEmpty)
-                  Center(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 80),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/placeholdemptystate.png',
-                            width: 120,
-                            height: 100,
-                            color: const Color(0xFFCBCBCB),
+                  Builder(
+                    builder: (context) {
+                      double dynamicHeight = MediaQuery.of(context).size.height - 320;
+                      if (dynamicHeight < 300) dynamicHeight = 300;
+                      return Container(
+                        width: double.infinity,
+                        height: dynamicHeight,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFEEEEEE)),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/placeholdemptystate.png',
+                                width: 120,
+                                height: 100,
+                                color: const Color(0xFFCBCBCB),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                "Add Workers to get started",
+                                style: TextStyle(
+                                  color: Color(0xFF0247C4),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            "Add Workers to get started",
-                            style: TextStyle(
-                              color: Color(0xFF0247C4),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    }
                   )
                 else
                   ..._currentPageItems.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final doc = entry.value;
-                    final name = (doc['name'] ?? '').toString();
-                    final email = (doc['email'] ?? '').toString();
-                    final type1 = (doc['type1'] ?? '').toString();
-                    final position = (doc['position'] ?? '').toString();
-                    final type2 = (doc['type2'] ?? '').toString();
-                    return _buildListItem(
-                      name,
-                      email,
-                      type1,
-                      position,
-                      type2,
-                      doc['id'] as String,
-                      index,
-                    );
+                    return _buildListItem(entry.value, entry.key);
                   }),
 
                 // Pagination
@@ -860,15 +868,14 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     );
   }
 
-  Widget _buildListItem(
-    String name,
-    String email,
-    String type1,
-    String position,
-    String type2,
-    String docId,
-    int index,
-  ) {
+  Widget _buildListItem(Map<String, dynamic> worker, int index) {
+    final name = (worker['name'] ?? '').toString();
+    final email = (worker['email'] ?? '').toString();
+    final type1 = (worker['type1'] ?? '').toString();
+    final position = (worker['position'] ?? '').toString();
+    final type2 = (worker['type2'] ?? '').toString();
+    final docId = worker['id'] as String;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -975,6 +982,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       attendanceType: type2,
                     ),
                   );
+                } else if (value == 'edit') {
+                  widget.onEditWorker?.call(worker);
                 } else if (value == 'delete') {
                   _deleteWorker(docId);
                 }
@@ -1124,8 +1133,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 // ==========================================
 class AddNewWorkerFlow extends StatefulWidget {
   final VoidCallback? onBack;
+  final Map<String, dynamic>? workerToEdit;
 
-  const AddNewWorkerFlow({super.key, this.onBack});
+  const AddNewWorkerFlow({super.key, this.onBack, this.workerToEdit});
 
   @override
   State<AddNewWorkerFlow> createState() => _AddNewWorkerFlowState();
@@ -1142,9 +1152,37 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _dobController = TextEditingController();
   final _genderController = TextEditingController();
   final _addressController = TextEditingController();
+  final _positionController = TextEditingController();
+  final _type1Controller = TextEditingController();
+  final _type2Controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.workerToEdit != null) {
+      _nameController.text = (widget.workerToEdit!['name'] ?? '').toString();
+      _fatherNameController.text = (widget.workerToEdit!['fatherName'] ?? '')
+          .toString();
+      _emailController.text = (widget.workerToEdit!['email'] ?? '').toString();
+      _phoneController.text = (widget.workerToEdit!['phone'] ?? '').toString();
+      _nationalIdController.text = (widget.workerToEdit!['nationalId'] ?? '')
+          .toString();
+      _religionController.text = (widget.workerToEdit!['religion'] ?? '')
+          .toString();
+      _dobController.text = (widget.workerToEdit!['dob'] ?? '').toString();
+      _genderController.text = (widget.workerToEdit!['gender'] ?? '')
+          .toString();
+      _addressController.text = (widget.workerToEdit!['address'] ?? '')
+          .toString();
+      _positionController.text = (widget.workerToEdit!['position'] ?? '')
+          .toString();
+      _type1Controller.text = (widget.workerToEdit!['type1'] ?? '').toString();
+      _type2Controller.text = (widget.workerToEdit!['type2'] ?? '').toString();
+    }
+  }
 
   Future<void> _saveWorker() async {
-    await FirestoreService().addWorker({
+    final data = {
       'name': _nameController.text.isNotEmpty
           ? _nameController.text
           : 'New Worker',
@@ -1158,10 +1196,23 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       'dob': _dobController.text,
       'gender': _genderController.text,
       'address': _addressController.text,
-      'type1': 'Full-Time',
-      'position': 'Employee',
-      'type2': 'On-Site',
-    });
+      'type1': _type1Controller.text.isNotEmpty
+          ? _type1Controller.text
+          : 'Full-Time',
+      'position': _positionController.text.isNotEmpty
+          ? _positionController.text
+          : 'Employee',
+      'type2': _type2Controller.text.isNotEmpty
+          ? _type2Controller.text
+          : 'On-Site',
+    };
+
+    if (widget.workerToEdit != null) {
+      await FirestoreService().updateWorker(widget.workerToEdit!['id'], data);
+    } else {
+      await FirestoreService().addWorker(data);
+    }
+
     if (mounted) {
       widget.onBack?.call();
     }
@@ -1178,6 +1229,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _dobController.dispose();
     _genderController.dispose();
     _addressController.dispose();
+    _positionController.dispose();
+    _type1Controller.dispose();
+    _type2Controller.dispose();
     super.dispose();
   }
 
@@ -1305,10 +1359,22 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   // Switch Content based on active tab
                   if (_activeTabIndex == 0)
                     WorkerDetailFormSection(
+                      nameController: _nameController,
+                      fatherNameController: _fatherNameController,
+                      emailController: _emailController,
+                      phoneController: _phoneController,
+                      nationalIdController: _nationalIdController,
+                      religionController: _religionController,
+                      dobController: _dobController,
+                      genderController: _genderController,
+                      addressController: _addressController,
                       onNextStep: () => setState(() => _activeTabIndex = 1),
                     ),
                   if (_activeTabIndex == 1)
                     ExperienceFormSection(
+                      positionController: _positionController,
+                      type1Controller: _type1Controller,
+                      type2Controller: _type2Controller,
                       onNextStep: () => setState(() => _activeTabIndex = 2),
                     ),
                   if (_activeTabIndex == 2) const DocumentationSection(),
@@ -1363,9 +1429,30 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 // WORKER DETAIL FORM SECTION
 // ==========================================
 class WorkerDetailFormSection extends StatelessWidget {
-  const WorkerDetailFormSection({super.key, this.onNextStep});
-
+  final TextEditingController nameController;
+  final TextEditingController fatherNameController;
+  final TextEditingController emailController;
+  final TextEditingController phoneController;
+  final TextEditingController nationalIdController;
+  final TextEditingController religionController;
+  final TextEditingController dobController;
+  final TextEditingController genderController;
+  final TextEditingController addressController;
   final VoidCallback? onNextStep;
+
+  const WorkerDetailFormSection({
+    super.key,
+    required this.nameController,
+    required this.fatherNameController,
+    required this.emailController,
+    required this.phoneController,
+    required this.nationalIdController,
+    required this.religionController,
+    required this.dobController,
+    required this.genderController,
+    required this.addressController,
+    this.onNextStep,
+  });
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
@@ -1443,6 +1530,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'Worker Name:',
                             'Enter your name',
+                            controller: nameController,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1450,6 +1538,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'Worker Father/Husband Name:',
                             'Enter your name',
+                            controller: fatherNameController,
                           ),
                         ),
                       ],
@@ -1461,11 +1550,16 @@ class WorkerDetailFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'Worker E-mail:',
                             'Enter your email',
+                            controller: emailController,
                           ),
                         ),
                         const SizedBox(width: 24),
                         Expanded(
-                          child: _buildInputField('Contact no:', '0000000000'),
+                          child: _buildInputField(
+                            'Contact no:',
+                            '0000000000',
+                            controller: phoneController,
+                          ),
                         ),
                       ],
                     ),
@@ -1476,6 +1570,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'National ID:',
                             'Enter your national id',
+                            controller: nationalIdController,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1483,6 +1578,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'Professed Religion:',
                             'Enter your religion',
+                            controller: religionController,
                           ),
                         ),
                       ],
@@ -1495,6 +1591,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             'Worker Date of Birth:',
                             '00/00/0000',
                             suffixIcon: Icons.calendar_month,
+                            controller: dobController,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1503,6 +1600,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             'Gender:',
                             'Male',
                             isDropdown: true,
+                            controller: genderController,
                           ),
                         ),
                       ],
@@ -1512,6 +1610,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                       'Worker Address:',
                       'Enter your address',
                       isTextArea: true,
+                      controller: addressController,
                     ),
                   ],
                 ),
@@ -1616,9 +1715,18 @@ class WorkerDetailFormSection extends StatelessWidget {
 // EXPERIENCE SECTION (IMAGE 1 + CUSTOM LEAVE)
 // ==========================================
 class ExperienceFormSection extends StatelessWidget {
-  const ExperienceFormSection({super.key, this.onNextStep});
-
+  final TextEditingController positionController;
+  final TextEditingController type1Controller;
+  final TextEditingController type2Controller;
   final VoidCallback? onNextStep;
+
+  const ExperienceFormSection({
+    super.key,
+    required this.positionController,
+    required this.type1Controller,
+    required this.type2Controller,
+    this.onNextStep,
+  });
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
@@ -1697,6 +1805,7 @@ class ExperienceFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'Job Position:',
                             'Enter your level',
+                            controller: positionController,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1717,6 +1826,7 @@ class ExperienceFormSection extends StatelessWidget {
                             'Work Type:',
                             'Enter your work type',
                             isDropdown: true,
+                            controller: type1Controller,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1737,6 +1847,7 @@ class ExperienceFormSection extends StatelessWidget {
                             'Attendance Type:',
                             'Enter your attendance type',
                             isDropdown: true,
+                            controller: type2Controller,
                           ),
                         ),
                         const SizedBox(width: 24),

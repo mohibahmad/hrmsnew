@@ -8,6 +8,8 @@ import 'package:flutter/cupertino.dart'
 import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -32,6 +34,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   static const int _itemsPerPage = 5;
 
   List<AssetData> _assets = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -81,7 +84,32 @@ class _AssetsScreenState extends State<AssetsScreen> {
         ),
       ];
     } else {
-      _assets = [];
+      _isLoading = true;
+      FirestoreService().assetsStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _assets = snapshot.docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return AssetData(
+                data['name'] ?? '',
+                data['position'] ?? '',
+                data['type'] ?? '',
+                data['dateLoaned'] ?? '',
+                data['dateReturned'] ?? '',
+                data['isReturned'] ?? false,
+                id: doc.id,
+              );
+            }).toList();
+            _isLoading = false;
+          });
+        }
+      }, onError: (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      });
     }
     // Automatically show the dialog after the screen renders to match the mockup
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -166,25 +194,40 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             ),
                             minimumSize: const Size(0, 36),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             if (nameController.text.isNotEmpty &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
-                              setState(() {
-                                _assets.insert(
-                                  0,
-                                  AssetData(
-                                    nameController.text,
-                                    positionController.text,
-                                    typeController.text,
-                                    formatDate(loanedDate),
-                                    isReturned
-                                        ? formatDate(returnedDate)
-                                        : 'In use',
-                                    isReturned,
-                                  ),
-                                );
-                              });
+                              final assetMap = {
+                                'name': nameController.text,
+                                'position': positionController.text,
+                                'type': typeController.text,
+                                'dateLoaned': formatDate(loanedDate),
+                                'dateReturned': isReturned
+                                    ? formatDate(returnedDate)
+                                    : 'In use',
+                                'isReturned': isReturned,
+                              };
+                              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                              if (isGuest) {
+                                setState(() {
+                                  _assets.insert(
+                                    0,
+                                    AssetData(
+                                      nameController.text,
+                                      positionController.text,
+                                      typeController.text,
+                                      formatDate(loanedDate),
+                                      isReturned
+                                          ? formatDate(returnedDate)
+                                          : 'In use',
+                                      isReturned,
+                                    ),
+                                  );
+                                });
+                              } else {
+                                await FirestoreService().addAsset(assetMap);
+                              }
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
@@ -586,9 +629,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  isDataEmpty || filtered.isEmpty
-                      ? _buildEmptyState()
-                      : _buildDataTable(filtered),
+                  _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : (isDataEmpty || filtered.isEmpty
+                          ? _buildEmptyState()
+                          : _buildDataTable(filtered)),
                 ],
               ),
             ),
@@ -793,6 +841,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 Expanded(flex: 2, child: _tableHeader('Type')),
                 Expanded(flex: 2, child: _tableHeader('Date Loaned')),
                 Expanded(flex: 2, child: _tableHeader('Date Returned')),
+                const SizedBox(width: 24),
               ],
             ),
           ),
@@ -958,6 +1007,36 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
             ),
           ),
+          PopupMenuButton<String>(
+            tooltip: 'Actions',
+            icon: const Icon(Icons.more_vert, size: 20, color: Colors.black),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onSelected: (val) {
+              if (val == 'delete') {
+                final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                if (isGuest) {
+                  setState(() {
+                    _assets.remove(data);
+                  });
+                } else if (data.id != null) {
+                  FirestoreService().deleteAsset(data.id!);
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 16, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete', style: TextStyle(color: Colors.red, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1002,6 +1081,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
 // Data Model for Assets
 class AssetData {
+  final String? id;
   final String name;
   final String position;
   final String type;
@@ -1015,6 +1095,7 @@ class AssetData {
     this.type,
     this.dateLoaned,
     this.dateReturned,
-    this.isReturned,
-  );
+    this.isReturned, {
+    this.id,
+  });
 }

@@ -76,7 +76,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 30),
                   const Text(
                     'Pay Roll List',
                     style: TextStyle(
@@ -89,7 +89,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   const SizedBox(height: 16),
                   _buildFilterTabs(),
                   const SizedBox(height: 24),
-                  _buildTable(),
+                  _filteredEmployees.isEmpty
+                      ? _buildEmptyState()
+                      : _buildTable(),
                 ],
               ),
             ),
@@ -146,43 +148,60 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Widget _buildSearchBar() {
     return Container(
+      height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
-      child: TextField(
-        onChanged: (val) {
-          setState(() {
-            _searchQuery = val;
-            _currentPage = 1;
-          });
-        },
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          icon: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SvgPicture.asset(
-              'assets/search icon.svg',
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/search icon.svg',
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFBDBDBD),
+              BlendMode.srcIn,
             ),
           ),
-          hintText: 'Search by workers',
-          hintStyle: const TextStyle(color: Colors.grey),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _searchQuery = '';
-                      _currentPage = 1;
-                    });
-                  },
-                  child: const Icon(Icons.close, size: 18, color: Colors.grey),
-                )
-              : null,
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                  _currentPage = 1;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Search by workers name",
+                hintStyle: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontFamily: 'SF Pro Display',
+                ),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
+          ),
+          if (_searchQuery.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _searchQuery = '';
+                  _currentPage = 1;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -268,6 +287,39 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
+  Widget _buildEmptyState() {
+    double dynamicHeight = MediaQuery.of(context).size.height - 450;
+    if (dynamicHeight < 300) dynamicHeight = 300;
+    return Container(
+      width: double.infinity,
+      height: dynamicHeight,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/placeholdemptystate.png',
+              width: 120,
+              height: 100,
+              color: const Color(0xFFCBCBCB),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "No Payroll Records",
+              style: TextStyle(
+                color: Color(0xFF0247C4),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTable() {
     final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
       440.0,
@@ -307,47 +359,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          if (_filteredEmployees.isEmpty)
-            Expanded(
-              child: Center(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/placeholdemptystate.png',
-                        width: 120,
-                        height: 100,
-                        color: const Color(0xFFCBCBCB),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No Payroll Records',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0247C4),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: _currentPageItems.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _buildEmployeeRow(_currentPageItems[index], index),
-              ),
+          Expanded(
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: _currentPageItems.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: 12),
+              itemBuilder: (context, index) =>
+                  _buildEmployeeRow(_currentPageItems[index], index),
             ),
+          ),
           const SizedBox(height: 16),
           _buildPagination(),
         ],

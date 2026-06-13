@@ -65,6 +65,19 @@ class _HomeScreenState extends State<HomeScreen> {
         _holidays = [];
       });
 
+      firestore.holidaysStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _holidays = snap.docs.map((d) {
+              return {
+                ...d.data() as Map<String, dynamic>,
+                'id': d.id,
+              };
+            }).toList();
+          });
+        }
+      });
+
       firestore.workersStream.listen((snap) {
         if (mounted) {
           setState(() {

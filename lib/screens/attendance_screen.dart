@@ -577,7 +577,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _currentPage = 1;
           final isGuest = AuthService().currentUser?.isAnonymous ?? false;
           if (isGuest) {
-            _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance)..shuffle();
+            _attendanceDocs = List<Map<String, dynamic>>.from(
+              DummyData.attendance,
+            )..shuffle();
           }
         });
       },
@@ -626,10 +628,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 80),
+    double dynamicHeight = MediaQuery.of(context).size.height - 520;
+    if (dynamicHeight < 300) dynamicHeight = 300;
+    return Container(
+      width: double.infinity,
+      height: dynamicHeight,
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
