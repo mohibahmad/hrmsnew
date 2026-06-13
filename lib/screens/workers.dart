@@ -841,58 +841,60 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   }),
 
                 // Pagination
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: _currentPage > 1
-                          ? () => setState(() => _currentPage--)
-                          : null,
-                      behavior: HitTestBehavior.opaque,
-                      child: Icon(
-                        Icons.keyboard_arrow_left,
-                        size: 20,
-                        color: _currentPage > 1
-                            ? Colors.black
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: actionBtnBlue,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '$_currentPage',
-                        style: const TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
+                if (_filteredWorkers.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: _currentPage > 1
+                            ? () => setState(() => _currentPage--)
+                            : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Icon(
+                          Icons.keyboard_arrow_left,
+                          size: 20,
+                          color: _currentPage > 1
+                              ? Colors.black
+                              : Colors.grey.shade400,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _currentPage < _totalPages
-                          ? () => setState(() => _currentPage++)
-                          : null,
-                      behavior: HitTestBehavior.opaque,
-                      child: Icon(
-                        Icons.keyboard_arrow_right,
-                        size: 20,
-                        color: _currentPage < _totalPages
-                            ? Colors.black
-                            : Colors.grey.shade400,
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: actionBtnBlue,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '$_currentPage',
+                          style: const TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: _currentPage < _totalPages
+                            ? () => setState(() => _currentPage++)
+                            : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Icon(
+                          Icons.keyboard_arrow_right,
+                          size: 20,
+                          color: _currentPage < _totalPages
+                              ? Colors.black
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
