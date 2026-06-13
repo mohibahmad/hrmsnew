@@ -395,7 +395,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               label.toLowerCase().contains('amount'))
                 ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
                 : null,
-            decoration: const InputDecoration.collapsed(hintText: ''),
+            decoration: InputDecoration(
+              hintText: '',
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
             style: const TextStyle(
               fontSize: 14,
               color: Colors.black,
@@ -668,6 +673,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ),
                       border: InputBorder.none,
                       isDense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
