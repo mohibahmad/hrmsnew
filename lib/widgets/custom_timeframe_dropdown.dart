@@ -66,8 +66,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                     color: const Color(0xFFFCFCFC),
                     border: Border.all(color: Colors.grey.shade300, width: 1.5),
                     borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(8),
+                      bottomLeft: Radius.circular(6),
+                      bottomRight: Radius.circular(6),
                     ),
                   ),
                   child: Column(
@@ -81,7 +81,9 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
                           color: Colors.transparent,
                           child: Row(
                             children: [
@@ -110,7 +112,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                       )
                                     : null,
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               Text(
                                 option,
                                 style: TextStyle(
@@ -165,15 +167,15 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       child: GestureDetector(
         onTap: _toggleDropdown,
         child: Container(
-          width: 130,
+          width: 115,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF0247C4), // Exact button blue
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(8),
-              topRight: const Radius.circular(8),
-              bottomLeft: Radius.circular(_isOpen ? 0 : 8),
-              bottomRight: Radius.circular(_isOpen ? 0 : 8),
+              topLeft: const Radius.circular(6),
+              topRight: const Radius.circular(6),
+              bottomLeft: Radius.circular(_isOpen ? 0 : 6),
+              bottomRight: Radius.circular(_isOpen ? 0 : 6),
             ),
           ),
           child: Row(

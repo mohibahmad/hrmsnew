@@ -286,7 +286,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             }
                             final dateStr =
                                 '${selectedDay.toString().padLeft(2, '0')}/05/2025';
-                            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                            final isGuest =
+                                AuthService().currentUser?.isAnonymous ?? false;
                             final expenseMap = {
                               'name': 'Ali Ahmad',
                               'date': dateStr,
@@ -294,7 +295,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               'amount': amt,
                             };
                             if (isGuest) {
-                              final newId = 'dummy_e${DateTime.now().millisecondsSinceEpoch}';
+                              final newId =
+                                  'dummy_e${DateTime.now().millisecondsSinceEpoch}';
                               setState(() {
                                 _expensesDocs.insert(0, {
                                   ...expenseMap,
