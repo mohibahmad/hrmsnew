@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
+import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
 import '../utils/delete_dialog.dart';
 
@@ -61,7 +62,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _searchQuery = '';
   String _selectedTab = 'All';
   String _selectedTimeframe = 'Week';
-  bool _isTimeframeDropdownOpen = false;
   List<Map<String, dynamic>> _attendanceDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
@@ -197,10 +197,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
 
                       // Right side timeframe dropdown popup (anchored or expanded)
-                      if (_isTimeframeDropdownOpen) ...[
-                        const SizedBox(width: 20),
-                        _buildTimeframeDropdown(),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 40),
@@ -485,45 +481,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
 
         // Right Dropdown Header
-        GestureDetector(
-          onTap: () {
+        CustomTimeframeDropdown(
+          selectedPeriod: _selectedTimeframe,
+          onChanged: (value) {
             setState(() {
-              _isTimeframeDropdownOpen = !_isTimeframeDropdownOpen;
+              _selectedTimeframe = value;
+              _currentPage = 1;
+              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                _attendanceDocs = List<Map<String, dynamic>>.from(
+                  DummyData.attendance,
+                )..shuffle();
+              }
             });
           },
-          child: Container(
-            width: 140,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: primaryBlue,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(6),
-                topRight: const Radius.circular(6),
-                bottomLeft: Radius.circular(_isTimeframeDropdownOpen ? 0 : 6),
-                bottomRight: Radius.circular(_isTimeframeDropdownOpen ? 0 : 6),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _selectedTimeframe == 'Week' ? 'Today' : _selectedTimeframe,
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontWeight: FontWeight.w500,
-                    fontSize: 15,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                Icon(
-                  _isTimeframeDropdownOpen
-                      ? Icons.arrow_drop_up
-                      : Icons.arrow_drop_down,
-                  color: Color(0xFFFFFFFF),
-                ),
-              ],
-            ),
-          ),
         ),
       ],
     );
@@ -552,97 +523,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             fontSize: 14,
             fontFamily: 'SF Pro Display',
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimeframeDropdown() {
-    return Container(
-      width: 140,
-      decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(6),
-          bottomRight: Radius.circular(6),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFF000000).withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildRadioItem("Week"),
-          _buildRadioItem("Month"),
-          _buildRadioItem("3 Month"),
-          _buildRadioItem("6 Month"),
-          _buildRadioItem("Yearly"),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRadioItem(String text) {
-    final bool isActive = _selectedTimeframe == text;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTimeframe = text;
-          _isTimeframeDropdownOpen = false;
-          _currentPage = 1;
-          final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-          if (isGuest) {
-            _attendanceDocs = List<Map<String, dynamic>>.from(
-              DummyData.attendance,
-            )..shuffle();
-          }
-        });
-      },
-      child: Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isActive ? primaryBlue : Colors.grey.shade400,
-                  width: 1.5,
-                ),
-              ),
-              child: isActive
-                  ? Center(
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: primaryBlue,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                color: isActive ? primaryBlue : Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -753,7 +633,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
       if (!confirmed) return;
 
-      await FirestoreService().deleteAttendanceRecord(docId);
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        setState(() {
+          _attendanceDocs.removeWhere((a) => a['id'] == docId);
+          DummyData.attendance.removeWhere((a) => a['id'] == docId);
+        });
+      } else {
+        await FirestoreService().deleteAttendanceRecord(docId);
+      }
     }
   }
 

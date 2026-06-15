@@ -20,6 +20,7 @@ import 'settings_screen.dart';
 import '../utils/logout_dialog.dart';
 import 'login_screen.dart';
 import '../services/dummy_data.dart';
+import '../widgets/custom_timeframe_dropdown.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -435,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
-                          PeriodFilterDropdown(
+                          CustomTimeframeDropdown(
                             selectedPeriod: _selectedPeriod,
                             onChanged: _handlePeriodChanged,
                           ),
@@ -482,29 +483,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    // Yearly Dropdown Button
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0B4CC1), // Exact button blue
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        children: const [
-                          Text(
-                            'Yearly',
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
-                        ],
-                      ),
+                    // Period Dropdown Button
+                    CustomTimeframeDropdown(
+                      selectedPeriod: _selectedPeriod,
+                      onChanged: _handlePeriodChanged,
                     ),
                   ],
                 ),
@@ -2878,112 +2860,6 @@ class CalloutLinesPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class PeriodFilterDropdown extends StatelessWidget {
-  final String selectedPeriod;
-  final ValueChanged<String> onChanged;
-
-  const PeriodFilterDropdown({
-    super.key,
-    required this.selectedPeriod,
-    required this.onChanged,
-  });
-
-  static const List<String> _options = [
-    'Week',
-    'Month',
-    '3 Month',
-    '6 Month',
-    'Yearly',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      onSelected: onChanged,
-      offset: const Offset(0, 48),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      color: const Color(0xFFFFFFFF),
-      elevation: 8,
-      tooltip: '',
-      itemBuilder: (context) => _options.map((option) {
-        final isSelected = option == selectedPeriod;
-        return PopupMenuItem<String>(
-          value: option,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF0B51C1)
-                        : Colors.grey.shade400,
-                    width: 1.5,
-                  ),
-                ),
-                child: isSelected
-                    ? Center(
-                        child: Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF0B51C1),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                option,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isSelected
-                      ? const Color(0xFF0B51C1)
-                      : Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-      child: Container(
-        width: 140,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B51C1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              selectedPeriod == 'Week' ? 'Today' : selectedPeriod,
-              style: const TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ==========================================
 // REUSABLE CUSTOM HOLIDAY CARD WIDGET

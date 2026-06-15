@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
+import '../widgets/custom_timeframe_dropdown.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
 
@@ -189,7 +190,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     if (!confirmed) return;
 
-    await FirestoreService().deleteExpense(docId);
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        _expensesDocs.removeWhere((e) => e['id'] == docId);
+        DummyData.expenses.removeWhere((e) => e['id'] == docId);
+      });
+    } else {
+      await FirestoreService().deleteExpense(docId);
+    }
   }
 
   void _showAddExpenseModal(BuildContext context) {
@@ -874,16 +883,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildTodayDropdown() {
-    final List<String> options = [
-      'Week',
-      'Month',
-      '3 Month',
-      '6 Month',
-      'Yearly',
-    ];
-
-    return PopupMenuButton<String>(
-      onSelected: (value) {
+    return CustomTimeframeDropdown(
+      selectedPeriod: _selectedPeriod,
+      onChanged: (value) {
         setState(() {
           _selectedPeriod = value;
           _currentPage = 1;
@@ -893,87 +895,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           }
         });
       },
-      offset: const Offset(0, 48),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      color: const Color(0xFFFFFFFF),
-      elevation: 8,
-      tooltip: '',
-      itemBuilder: (context) => options.map((option) {
-        final isSelected = option == _selectedPeriod;
-        return PopupMenuItem<String>(
-          value: option,
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF0B51C1)
-                        : Colors.grey.shade400,
-                    width: 1.5,
-                  ),
-                ),
-                child: isSelected
-                    ? Center(
-                        child: Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF0B51C1),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                option,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isSelected
-                      ? const Color(0xFF0B51C1)
-                      : Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-      child: Container(
-        width: 140,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B51C1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _selectedPeriod == 'Week' ? 'Today' : _selectedPeriod,
-              style: const TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
-          ],
-        ),
-      ),
     );
   }
 

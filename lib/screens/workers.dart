@@ -551,7 +551,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     );
     if (!confirmed) return;
 
-    await FirestoreService().deleteWorker(docId);
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        _allWorkers.removeWhere((w) => w['id'] == docId);
+        DummyData.workers.removeWhere((w) => w['id'] == docId);
+      });
+    } else {
+      await FirestoreService().deleteWorker(docId);
+    }
   }
 
   @override
