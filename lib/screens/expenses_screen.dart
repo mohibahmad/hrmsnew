@@ -1141,76 +1141,79 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildActionMenu(String docId) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.black),
-      offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Color(0xFFCBCBCB)),
+    return SizedBox(
+      width: 48,
+      child: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, color: Colors.black),
+        offset: const Offset(0, 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Color(0xFFCBCBCB)),
+        ),
+        color: const Color(0xFFFBFBFC),
+        elevation: 4,
+        onSelected: (value) {
+          if (value == 'delete') {
+            _deleteExpense(docId);
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'edit',
+            height: 36,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF0247C4),
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Edit Expense',
+                  style: TextStyle(
+                    color: Color(0xFF0247C4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'delete',
+            height: 36,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/delete_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.red,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      color: const Color(0xFFFBFBFC),
-      elevation: 4,
-      onSelected: (value) {
-        if (value == 'delete') {
-          _deleteExpense(docId);
-        }
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'edit',
-          height: 36,
-          child: Row(
-            children: [
-              SvgPicture.asset(
-                'assets/edit_icon.svg',
-                width: 16,
-                height: 16,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF0247C4),
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Edit Expense',
-                style: TextStyle(
-                  color: Color(0xFF0247C4),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'delete',
-          height: 36,
-          child: Row(
-            children: [
-              SvgPicture.asset(
-                'assets/delete_icon.svg',
-                width: 16,
-                height: 16,
-                colorFilter: const ColorFilter.mode(
-                  Colors.red,
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Delete',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

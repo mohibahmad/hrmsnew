@@ -708,7 +708,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 Expanded(flex: 2, child: _tableHeader('Status')),
                 Expanded(flex: 2, child: _tableHeader('Work Type')),
                 Expanded(flex: 2, child: _tableHeader('Position')),
-                const SizedBox(width: 24),
+                const SizedBox(width: 48),
               ],
             ),
           ),
@@ -826,15 +826,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                         ),
                       ),
-                      GestureDetector(
-                        onTapDown: (details) {
-                          _tapPosition = details;
-                        },
-                        onTap: () => _showRowMenu(context, doc),
-                        child: const Icon(
-                          Icons.more_vert,
-                          color: Colors.black,
-                          size: 24,
+                      SizedBox(
+                        width: 48,
+                        child: GestureDetector(
+                          onTapDown: (details) {
+                            _tapPosition = details;
+                          },
+                          onTap: () => _showRowMenu(context, doc),
+                          child: const Icon(
+                            Icons.more_vert,
+                            color: Colors.black,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ],

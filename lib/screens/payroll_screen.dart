@@ -362,7 +362,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('Time Off', style: _headerStyle()),
+                  child: Text('Payroll Data', style: _headerStyle()),
                 ),
               ],
             ),

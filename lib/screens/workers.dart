@@ -815,7 +815,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            'Attendance Type',
+                            'Work Type',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
@@ -969,26 +969,32 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        fontFamily: 'SF Pro Display',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
-                    ),
-                    Text(
-                      email,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black,
-                        fontFamily: 'SF Pro Display',
+                      Text(
+                        email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
