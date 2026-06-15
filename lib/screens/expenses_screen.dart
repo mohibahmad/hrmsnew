@@ -207,7 +207,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final descriptionController = TextEditingController(
       text: 'Client meeting dinner',
     );
-    int selectedDay = 1;
+    int selectedDay = DateTime.now().day;
+    DateTime calendarDate = DateTime.now();
 
     showDialog(
       context: context,
@@ -285,7 +286,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               return;
                             }
                             final dateStr =
-                                '${selectedDay.toString().padLeft(2, '0')}/05/2025';
+                                '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
                             final isGuest =
                                 AuthService().currentUser?.isAnonymous ?? false;
                             final expenseMap = {
@@ -399,9 +400,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _buildModalCalendar(selectedDay, (day) {
+                          child: _buildModalCalendar(calendarDate, selectedDay, (day) {
                             setModalState(() {
                               selectedDay = day;
+                            });
+                          }, (newDate) {
+                            setModalState(() {
+                              calendarDate = newDate;
+                              int daysInNewMonth = DateTime(newDate.year, newDate.month + 1, 0).day;
+                              if (selectedDay > daysInNewMonth) {
+                                selectedDay = daysInNewMonth;
+                              }
                             });
                           }),
                         ),
@@ -471,7 +480,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildModalCalendar(int selectedDay, ValueChanged<int> onDaySelected) {
+  Widget _buildModalCalendar(
+    DateTime calendarDate,
+    int selectedDay,
+    ValueChanged<int> onDaySelected,
+    ValueChanged<DateTime> onMonthChanged,
+  ) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    String monthYearStr = '${months[calendarDate.month - 1].toUpperCase()} ${calendarDate.year}';
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
@@ -482,19 +502,29 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.chevron_left, size: 16, color: Colors.black),
-              SizedBox(width: 16),
+            children: [
+              GestureDetector(
+                onTap: () {
+                  onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1));
+                },
+                child: const Icon(Icons.chevron_left, size: 16, color: Colors.black),
+              ),
+              const SizedBox(width: 16),
               Text(
-                'MAY 2025',
-                style: TextStyle(
+                monthYearStr,
+                style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                   fontFamily: 'SF Pro Display',
                 ),
               ),
-              SizedBox(width: 16),
-              Icon(Icons.chevron_right, size: 16, color: Colors.black),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () {
+                  onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1));
+                },
+                child: const Icon(Icons.chevron_right, size: 16, color: Colors.black),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -516,7 +546,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          _buildDaysGrid(selectedDay, onDaySelected),
+          _buildDaysGrid(calendarDate, selectedDay, onDaySelected),
         ],
       ),
     );
@@ -542,16 +572,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDaysGrid(int selectedDay, ValueChanged<int> onDaySelected) {
+  Widget _buildDaysGrid(DateTime calendarDate, int selectedDay, ValueChanged<int> onDaySelected) {
     List<Widget> rows = [];
+    int daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+    int firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+
     int currentDay = 1;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
       List<Widget> rowChildren = [];
       for (int j = 0; j < 7; j++) {
-        if (i == 0 && j == 0) {
+        int index = i * 7 + j;
+        if (index < startOffset) {
           rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
-        } else if (currentDay <= 31) {
+        } else if (currentDay <= daysInMonth) {
           final day = currentDay;
           rowChildren.add(
             Expanded(
@@ -569,7 +604,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         if (j < 6) rowChildren.add(const SizedBox(width: 4));
       }
       rows.add(Row(children: rowChildren));
-      if (i < 4) rows.add(const SizedBox(height: 4));
+      if (currentDay > daysInMonth) break;
+      if (i < 5) rows.add(const SizedBox(height: 4));
     }
     return Column(children: rows);
   }
@@ -938,10 +974,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Row(
               children: [
                 Expanded(flex: 3, child: _tableHeader('Worker Name')),
-                Expanded(flex: 2, child: _tableHeader('Position')),
-                Expanded(flex: 2, child: _tableHeader('Category')),
-                Expanded(flex: 2, child: _tableHeader('Date')),
+                Expanded(flex: 3, child: _tableHeader('Date')),
+                Expanded(flex: 3, child: _tableHeader('Expense Category')),
                 Expanded(flex: 2, child: _tableHeader('Amount')),
+                const SizedBox(width: 48), // Spacer to match action menu width
               ],
             ),
           ),

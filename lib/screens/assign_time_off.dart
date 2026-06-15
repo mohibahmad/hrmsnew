@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -20,10 +21,27 @@ class AssignTimeOffScreen extends StatefulWidget {
 }
 
 class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
+  bool _isLoading = false;
   String _timeOffType = 'Annual Leave';
-  DateTime _startDate = DateTime(2025, 1, 1);
-  DateTime _endDate = DateTime(2025, 1, 10);
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now().add(const Duration(days: 9));
+  late DateTime _calendarMonth;
   final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+  }
+
+  // Helper to get month name
+  String _getMonthName(int month) {
+    const months = [
+      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+    ];
+    return months[month - 1];
+  }
 
   // Helper to format date as DD/MM/YYYY
   String _formatDate(DateTime date) {
@@ -35,43 +53,70 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final initialDate = isStartDate ? _startDate : _endDate;
-    final DateTime? picked = await showDatePicker(
+    DateTime tempPickedDate = initialDate;
+
+    await showDialog(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0247C4),
-              onPrimary: Color(0xFFFFFFFF),
-              onSurface: Colors.black,
-            ),
+      builder: (BuildContext builder) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: child!,
+          child: Container(
+            width: 320,
+            height: 300,
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  CupertinoButton(
+                    child: const Text('Done', style: TextStyle(color: Color(0xFF0247C4))),
+                    onPressed: () {
+                      setState(() {
+                        if (isStartDate) {
+                          _startDate = tempPickedDate;
+                          if (_endDate.isBefore(_startDate)) {
+                            _endDate = _startDate.add(const Duration(days: 9));
+                          }
+                        } else {
+                          _endDate = tempPickedDate;
+                          if (_endDate.isBefore(_startDate)) {
+                            _startDate = _endDate.subtract(const Duration(days: 9));
+                            if (_startDate.isBefore(DateTime(2020))) {
+                              _startDate = DateTime(2020);
+                            }
+                          }
+                        }
+                      });
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: initialDate,
+                  minimumDate: DateTime(2020),
+                  maximumDate: DateTime(2030),
+                  onDateTimeChanged: (DateTime newDate) {
+                    tempPickedDate = newDate;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
         );
       },
     );
-
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _startDate = picked;
-          if (_endDate.isBefore(_startDate)) {
-            _endDate = _startDate.add(const Duration(days: 9));
-          }
-        } else {
-          _endDate = picked;
-          if (_endDate.isBefore(_startDate)) {
-            _startDate = _endDate.subtract(const Duration(days: 9));
-            if (_startDate.isBefore(DateTime(2020))) {
-              _startDate = DateTime(2020);
-            }
-          }
-        }
-      });
-    }
   }
 
   int get _requestedDays {
@@ -252,14 +297,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           _buildTopForm(),
           const SizedBox(height: 32),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildCalendar('MAY 2025', selectedDay: 1)),
+              Expanded(child: _buildCalendar(_calendarMonth)),
               const SizedBox(width: 24),
-              Expanded(child: _buildCalendar('MAY 2025', selectedDay: 1)),
+              Expanded(child: _buildCalendar(DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1))),
             ],
           ),
           const SizedBox(height: 32),
           _buildNotesAndSummary(),
+          const SizedBox(height: 32),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildSaveButton(),
+          ),
         ],
       ),
     );
@@ -470,7 +521,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   // ==== CALENDARS ====
 
-  Widget _buildCalendar(String monthYear, {int selectedDay = 1}) {
+  Widget _buildCalendar(DateTime monthDate) {
+    String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}';
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
@@ -482,7 +534,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month - 1, 1);
+                  });
+                },
+                child: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              ),
               const SizedBox(width: 32),
               Text(
                 monthYear,
@@ -493,13 +552,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
               ),
               const SizedBox(width: 32),
-              const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
+                  });
+                },
+                child: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           _buildWeekdayRow(),
           const SizedBox(height: 12),
-          _buildDaysGrid(selectedDay),
+          _buildDaysGrid(monthDate),
         ],
       ),
     );
@@ -546,22 +612,35 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildDaysGrid(int selectedDay) {
+  Widget _buildDaysGrid(DateTime monthDate) {
     List<Widget> rows = [];
+    int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    int firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
+    int startIndex = firstWeekday == 7 ? 0 : firstWeekday;
+
     int currentDay = 1;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
       List<Widget> rowChildren = [];
       for (int j = 0; j < 7; j++) {
-        // Leave SUN blank on first row based on image layout
-        if (i == 0 && j == 0) {
+        if (i == 0 && j < startIndex) {
           rowChildren.add(Expanded(child: _buildDayCell('')));
-        } else if (currentDay <= 31) {
+        } else if (currentDay <= daysInMonth) {
+          DateTime cellDate = DateTime(monthDate.year, monthDate.month, currentDay);
+          
+          DateTime startStart = DateTime(_startDate.year, _startDate.month, _startDate.day);
+          DateTime endStart = DateTime(_endDate.year, _endDate.month, _endDate.day);
+          
+          bool isSelected = cellDate.isAtSameMomentAs(startStart) || cellDate.isAtSameMomentAs(endStart);
+          bool inRange = cellDate.isAfter(startStart) && cellDate.isBefore(endStart);
+
           rowChildren.add(
             Expanded(
               child: _buildDayCell(
                 '$currentDay',
-                isSelected: currentDay == selectedDay,
+                isSelected: isSelected,
+                inRange: inRange,
+                date: cellDate,
               ),
             ),
           );
@@ -569,36 +648,51 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         } else {
           rowChildren.add(Expanded(child: _buildDayCell('')));
         }
-        if (j < 6)
-          rowChildren.add(const SizedBox(width: 8)); // Space between cells
+        if (j < 6) rowChildren.add(const SizedBox(width: 8)); // Space between cells
       }
       rows.add(Row(children: rowChildren));
-      if (i < 4) rows.add(const SizedBox(height: 8)); // Space between rows
+      if (currentDay > daysInMonth) break;
+      if (i < 5) rows.add(const SizedBox(height: 8)); // Space between rows
     }
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, {bool isSelected = false}) {
+  Widget _buildDayCell(String day, {bool isSelected = false, bool inRange = false, DateTime? date}) {
     if (day.isEmpty) return const SizedBox();
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.red : Colors.transparent,
-          border: Border.all(
-            color: isSelected ? Colors.red : Colors.grey.shade300,
-            width: 1,
+    return GestureDetector(
+      onTap: () {
+        if (date != null) {
+          setState(() {
+            // Simple logic: if click is before start date, update start date
+            // else update end date
+            if (date.isBefore(_startDate)) {
+              _startDate = date;
+            } else {
+              _endDate = date;
+            }
+          });
+        }
+      },
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.red : (inRange ? Colors.red.withValues(alpha: 0.1) : Colors.transparent),
+            border: Border.all(
+              color: isSelected ? Colors.red : (inRange ? Colors.red.withValues(alpha: 0.3) : Colors.grey.shade300),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(4),
           ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          day,
-          style: TextStyle(
-            color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontFamily: 'SF Pro Display',
+          child: Text(
+            day,
+            style: TextStyle(
+              color: isSelected ? const Color(0xFFFFFFFF) : (inRange ? Colors.red : Colors.black),
+              fontSize: 13,
+              fontWeight: isSelected || inRange ? FontWeight.w600 : FontWeight.normal,
+              fontFamily: 'SF Pro Display',
+            ),
           ),
         ),
       ),
@@ -708,5 +802,84 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      height: 40,
+      width: 140,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0247C4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+          ),
+          elevation: 0,
+        ),
+        onPressed: _isLoading ? null : _handleSave,
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                'Save',
+                style: TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _handleSave() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final recordMap = {
+        'type': _timeOffType,
+        'startDate': '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
+        'endDate': '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}',
+        'notes': _notesController.text,
+        'requestedDays': _requestedDays,
+        'status': 'Approved',
+        'workerName': 'Worker', // Default
+        'workerAvatar': 'assets/profileimage.png',
+      };
+
+      if (isGuest) {
+        DummyData.timeoff.insert(0, recordMap);
+      } else {
+        await FirestoreService().addTimeOffRecord(recordMap);
+      }
+
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Successfully assigned time off',
+        );
+        widget.onBack();
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Failed to assign time off',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 }

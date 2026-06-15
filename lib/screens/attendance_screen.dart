@@ -9,6 +9,7 @@ import '../services/dummy_data.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
 import '../utils/delete_dialog.dart';
+import '../utils/snackbar_utils.dart';
 
 // --- STYLING CONSTANTS (Curated HSL/Hex Harmonious Palette) ---
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -994,7 +995,12 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     BlendMode.srcIn,
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  FlashySnackBar.show(
+                    context,
+                    message: 'Share feature coming soon!',
+                  );
+                },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),

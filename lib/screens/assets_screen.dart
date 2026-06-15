@@ -853,7 +853,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 Expanded(flex: 2, child: _tableHeader('Type')),
                 Expanded(flex: 2, child: _tableHeader('Date Loaned')),
                 Expanded(flex: 2, child: _tableHeader('Date Returned')),
-                const SizedBox(width: 24),
               ],
             ),
           ),
@@ -942,134 +941,111 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   Widget _buildDataRow(AssetData data, int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      child: Row(
-        children: [
-          // Name and Avatar (Placeholder image)
-          Expanded(
-            flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundImage: AssetImage(
-                    index % 2 == 0
-                        ? 'assets/profileimage.png'
-                        : 'assets/boy.png',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    data.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              data.position,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              data.type,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              data.dateLoaned,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-          // Date Returned (Colored)
-          Expanded(
-            flex: 2,
-            child: Text(
-              data.dateReturned,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: data.isReturned ? Colors.red : Colors.green,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Actions',
-            icon: const Icon(Icons.more_vert, size: 20, color: Colors.black),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Color(0xFFCBCBCB)),
-            ),
-            color: const Color(0xFFFBFBFC),
-            onSelected: (val) async {
-              if (val == 'delete') {
-                final confirmed = await DeleteDialog.show(
-                  context: context,
-                  title: 'Delete Asset',
-                  content:
-                      'Are you sure you want to delete this asset? This action cannot be undone.',
-                );
-                if (!confirmed) return;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        final confirmed = await DeleteDialog.show(
+          context: context,
+          title: 'Delete Asset',
+          content:
+              'Are you sure you want to delete this asset? This action cannot be undone.',
+        );
+        if (!confirmed) return;
 
-                final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-                if (isGuest) {
-                  setState(() {
-                    _assets.remove(data);
-                  });
-                } else if (data.id != null) {
-                  await FirestoreService().deleteAsset(data.id!);
-                }
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 16, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text(
-                      'Delete',
-                      style: TextStyle(color: Colors.red, fontSize: 13),
+        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+        if (isGuest) {
+          setState(() {
+            _assets.remove(data);
+          });
+        } else {
+          if (data.id != null) {
+            await FirestoreService().deleteAsset(data.id!);
+          }
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        child: Row(
+          children: [
+            // Name and Avatar (Placeholder image)
+            Expanded(
+              flex: 3,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage: AssetImage(
+                      index % 2 == 0
+                          ? 'assets/profileimage.png'
+                          : 'assets/boy.png',
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      data.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                data.position,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                data.type,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                data.dateLoaned,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+            // Date Returned (Colored)
+            Expanded(
+              flex: 2,
+              child: Text(
+                data.dateReturned,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: data.isReturned ? Colors.red : Colors.green,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

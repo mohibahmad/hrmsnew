@@ -162,10 +162,21 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadDashboardData() {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
+      final now = DateTime.now();
+      final currentMonthLong = DateFormat('MMMM').format(now);
+      final currentMonthShort = DateFormat('MMM').format(now);
+      String targetKey = 'May';
+      for (final key in DummyData.holidays.keys) {
+        if (key.toLowerCase() == currentMonthLong.toLowerCase() ||
+            key.toLowerCase() == currentMonthShort.toLowerCase()) {
+          targetKey = key;
+          break;
+        }
+      }
       setState(() {
         _totalWorkersCount = DummyData.workers.length;
         _recalculateDummyTotals(_selectedPeriod);
-        _holidays = (DummyData.holidays['May'] ?? [])
+        _holidays = (DummyData.holidays[targetKey] ?? [])
             .cast<Map<String, dynamic>>();
       });
     } else {

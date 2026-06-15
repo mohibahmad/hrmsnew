@@ -1,4 +1,5 @@
 import 'dart:io' as io;
+import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,6 +57,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   String? _existingCvUrl;
   bool _isCvUploaded = false;
 
+  String? _joiningDate;
+
   bool _isSaving = false;
 
   @override
@@ -90,6 +93,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _isCvUploaded = true;
         _cvName = _existingCvUrl!.split('/').last;
       }
+      _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
     }
   }
 
@@ -272,6 +276,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       'type2': _type2Controller.text.isNotEmpty
           ? _type2Controller.text
           : 'On-Site',
+      'joiningDate': _joiningDate ?? 'January 9, 2026',
       'profileImage': profileImageUrl,
       'frontId': frontIdUrl,
       'backId': backIdUrl,
@@ -290,10 +295,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         if (isGuest) {
           final index = DummyData.workers.indexWhere((w) => w['id'] == editId);
           if (index != -1) {
-            DummyData.workers[index] = {
-              ...data,
-              'id': editId,
-            };
+            DummyData.workers[index] = {...data, 'id': editId};
           }
         } else {
           await FirestoreService().updateWorker(editId, data);
@@ -301,10 +303,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       } else {
         if (isGuest) {
           final newId = 'dummy_${DateTime.now().millisecondsSinceEpoch}';
-          DummyData.workers.insert(0, {
-            ...data,
-            'id': newId,
-          });
+          DummyData.workers.insert(0, {...data, 'id': newId});
         } else {
           await FirestoreService().addWorker(data);
         }
@@ -502,6 +501,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       positionController: _positionController,
                       type1Controller: _type1Controller,
                       type2Controller: _type2Controller,
+                      selectedJoiningDate: _joiningDate,
+                      onJoiningDateChanged: (date) {
+                        setState(() => _joiningDate = date);
+                      },
                       onNextStep: () => setState(() => _activeTabIndex = 2),
                     ),
                   if (_activeTabIndex == 2)
@@ -613,6 +616,61 @@ class WorkerDetailFormSection extends StatelessWidget {
   });
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
+
+  void _showCupertinoDatePicker({
+    required BuildContext context,
+    required DateTime initialDate,
+    required ValueChanged<DateTime> onDateSelected,
+  }) {
+    DateTime tempPickedDate = initialDate;
+    showDialog(
+      context: context,
+      builder: (BuildContext builder) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: 320,
+            height: 300,
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  import_cupertino.CupertinoButton(
+                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  import_cupertino.CupertinoButton(
+                    child: const Text('Done', style: TextStyle(color: Color(0xFF0247C4))),
+                    onPressed: () {
+                      onDateSelected(tempPickedDate);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: import_cupertino.CupertinoDatePicker(
+                  mode: import_cupertino.CupertinoDatePickerMode.date,
+                  initialDateTime: initialDate,
+                  minimumDate: DateTime(1950),
+                  maximumDate: DateTime.now(),
+                  onDateTimeChanged: (DateTime newDate) {
+                    tempPickedDate = newDate;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -745,11 +803,27 @@ class WorkerDetailFormSection extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildInputField(
-                            'Worker Date of Birth:',
-                            '00/00/0000',
-                            suffixIcon: Icons.calendar_month,
-                            controller: dobController,
+                          child: GestureDetector(
+                            onTap: () {
+                              _showCupertinoDatePicker(
+                                context: context,
+                                initialDate: DateTime(1990, 1, 1),
+                                onDateSelected: (date) {
+                                  final day = date.day.toString().padLeft(2, '0');
+                                  final month = date.month.toString().padLeft(2, '0');
+                                  final year = date.year.toString();
+                                  dobController.text = '$day/$month/$year';
+                                },
+                              );
+                            },
+                            child: AbsorbPointer(
+                              child: _buildInputField(
+                                'Worker Date of Birth:',
+                                '00/00/0000',
+                                suffixIcon: Icons.calendar_month,
+                                controller: dobController,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -954,10 +1028,12 @@ class WorkerDetailFormSection extends StatelessWidget {
 // ==========================================
 // EXPERIENCE SECTION (IMAGE 1 + CUSTOM LEAVE)
 // ==========================================
-class ExperienceFormSection extends StatelessWidget {
+class ExperienceFormSection extends StatefulWidget {
   final TextEditingController positionController;
   final TextEditingController type1Controller;
   final TextEditingController type2Controller;
+  final String? selectedJoiningDate;
+  final ValueChanged<String>? onJoiningDateChanged;
   final VoidCallback? onNextStep;
 
   const ExperienceFormSection({
@@ -965,10 +1041,33 @@ class ExperienceFormSection extends StatelessWidget {
     required this.positionController,
     required this.type1Controller,
     required this.type2Controller,
+    this.selectedJoiningDate,
+    this.onJoiningDateChanged,
     this.onNextStep,
   });
 
+  @override
+  State<ExperienceFormSection> createState() => _ExperienceFormSectionState();
+}
+
+class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   final Color formBgGrey = const Color(0xFFF3F5F8);
+  int _selectedDay = 9;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selectedJoiningDate != null) {
+      final parts = widget.selectedJoiningDate!.split(' ');
+      if (parts.length >= 2) {
+        final dayString = parts[1].replaceAll(',', '');
+        final day = int.tryParse(dayString);
+        if (day != null) {
+          _selectedDay = day;
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -989,7 +1088,7 @@ class ExperienceFormSection extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: onNextStep,
+              onTap: widget.onNextStep,
               child: Container(
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1045,7 +1144,7 @@ class ExperienceFormSection extends StatelessWidget {
                           child: _buildInputField(
                             'Job Position:',
                             'Enter your level',
-                            controller: positionController,
+                            controller: widget.positionController,
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -1068,7 +1167,7 @@ class ExperienceFormSection extends StatelessWidget {
                             'Work Type:',
                             'Enter your work type',
                             isDropdown: true,
-                            controller: type1Controller,
+                            controller: widget.type1Controller,
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -1091,7 +1190,7 @@ class ExperienceFormSection extends StatelessWidget {
                             'Attendance Type:',
                             'Enter your attendance type',
                             isDropdown: true,
-                            controller: type2Controller,
+                            controller: widget.type2Controller,
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -1172,31 +1271,38 @@ class ExperienceFormSection extends StatelessWidget {
                           runSpacing: 8,
                           children: List.generate(31, (index) {
                             int day = index + 1;
-                            bool isSelected = day == 9;
-                            return Container(
-                              width: 28,
-                              height: 28,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF0B50C3)
-                                    : Color(0xFFFFFFFF),
-                                border: isSelected
-                                    ? null
-                                    : Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '$day',
-                                style: TextStyle(
-                                  fontSize: 11,
+                            bool isSelected = day == _selectedDay;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedDay = day;
+                                });
+                              },
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Color(0xFFFFFFFF)
-                                      : Colors.black,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  fontFamily: 'SF Pro Display',
+                                      ? const Color(0xFF0B50C3)
+                                      : Color(0xFFFFFFFF),
+                                  border: isSelected
+                                      ? null
+                                      : Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '$day',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isSelected
+                                        ? Color(0xFFFFFFFF)
+                                        : Colors.black,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
                               ),
                             );
@@ -1225,22 +1331,34 @@ class ExperienceFormSection extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0B50C3),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Set',
-                                style: TextStyle(
-                                  color: Color(0xFFFFFFFF),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
+                            GestureDetector(
+                              onTap: () {
+                                final selectedDate =
+                                    'January $_selectedDay, 2026';
+                                widget.onJoiningDateChanged?.call(selectedDate);
+                                FlashySnackBar.show(
+                                  context,
+                                  message: 'Joining date is $selectedDate',
+                                  isError: false,
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0B50C3),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Set',
+                                  style: TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
                               ),
                             ),
@@ -1739,10 +1857,34 @@ class DocumentationSection extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Background: actual uploaded file preview or mock lines
+          // Mock CV lines background
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(height: 16, width: 200, color: Colors.grey.shade300),
+                const SizedBox(height: 8),
+                Container(height: 10, width: 150, color: Colors.grey.shade300),
+                const SizedBox(height: 40),
+                ...List.generate(
+                  8,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      height: 12,
+                      width: double.infinity,
+                      color: Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Show uploaded document preview (PDF icon) if available
           if (cvBytes != null ||
               (existingCvUrl != null && existingCvUrl!.isNotEmpty))
-            // Show uploaded document preview
             GestureDetector(
               onTap: () => _openDocumentPreview(buildContext),
               child: Column(
@@ -1778,40 +1920,8 @@ class DocumentationSection extends StatelessWidget {
                   ),
                 ],
               ),
-            )
-          else
-            // Mock CV lines background
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 16,
-                    width: 200,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 10,
-                    width: 150,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 40),
-                  ...List.generate(
-                    8,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        height: 12,
-                        width: double.infinity,
-                        color: Colors.grey.shade300,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
+
           // Semi-transparent overlay
           Container(color: const Color(0xFFFFFFFF).withValues(alpha: 0.5)),
           // Foreground controls

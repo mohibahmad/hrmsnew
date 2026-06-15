@@ -8,6 +8,7 @@ import '../services/dummy_data.dart';
 import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import '../utils/delete_dialog.dart';
+import '../utils/snackbar_utils.dart';
 
 void main() {
   runApp(const WorkerManagementApp());
@@ -731,7 +732,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     _buildActionButton(
                       svgPath: 'assets/add_bulk_worker.svg',
                       label: 'Add Bulk Workers',
-                      onTap: () {},
+                      onTap: () {
+                        FlashySnackBar.show(
+                          context,
+                          message: 'Bulk add feature coming soon!',
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -809,7 +815,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            'Work Type',
+                            'Attendance Type',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
@@ -817,7 +823,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 24),
+                        SizedBox(width: 48),
                       ],
                     ),
                   ),
@@ -1020,8 +1026,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 8.0),
+          SizedBox(
+            width: 48,
             child: PopupMenuButton<String>(
               tooltip: 'Actions',
               icon: const Icon(Icons.more_vert, size: 24),

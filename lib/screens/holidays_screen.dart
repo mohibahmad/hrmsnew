@@ -27,6 +27,15 @@ class HolidaysScreen extends StatefulWidget {
 class _HolidaysScreenState extends State<HolidaysScreen> {
   bool isDataEmpty = false;
 
+  int _monthToIndex(String monthStr) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final index = months.indexOf(monthStr);
+    return index == -1 ? 1 : index + 1;
+  }
+
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
   bool _isLoading = false;
   StreamSubscription? _holidaysSub;
@@ -82,9 +91,24 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               final month = (data['month'] ?? 'May').toString();
               final day = (data['day'] as num?)?.toInt() ?? 1;
               final name = (data['name'] ?? '').toString();
-              final isEnabled =
+              bool isEnabled =
                   data['isEnabled'] == true || data['isEnabled'] == null;
               final id = doc.id;
+
+              // Auto turn off custom holidays if their date has passed
+              final isCustom = data['isCustom'] == true;
+              final year = (data['year'] as num?)?.toInt();
+              if (isCustom && isEnabled && year != null) {
+                final holidayDate = DateTime(year, _monthToIndex(month), day);
+                final today = DateTime.now();
+                final todayDate = DateTime(today.year, today.month, today.day);
+                
+                if (todayDate.isAfter(holidayDate)) {
+                  isEnabled = false;
+                  // Lazily update firestore in the background
+                  FirestoreService().updateHoliday(id, {'isEnabled': false});
+                }
+              }
 
               if (!tempMap.containsKey(month)) {
                 tempMap[month] = [];
@@ -116,8 +140,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   void _showAddHolidayModal(BuildContext context) {
     final holidayNameController = TextEditingController();
-    int selectedDay = 1;
-    String selectedMonth = 'May';
+    int selectedDay = DateTime.now().day;
+    DateTime calendarDate = DateTime.now();
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const weekdays = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ];
 
     showDialog(
       context: context,
@@ -125,6 +156,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            String selectedMonthName = months[calendarDate.month - 1];
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -176,13 +208,22 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           ),
                           onPressed: () async {
                             if (holidayNameController.text.isNotEmpty) {
+                              final dateObj = DateTime(calendarDate.year, calendarDate.month, selectedDay);
+                              final dayOfWeekName = weekdays[dateObj.weekday - 1];
+                              final remainingDaysVal = dateObj.difference(DateTime.now()).inDays;
+                              final remainingDaysStr = remainingDaysVal > 0 
+                                  ? remainingDaysVal.toString().padLeft(2, '0') 
+                                  : '00';
+
                               final holidayMap = {
                                 'day': selectedDay,
-                                'month': selectedMonth,
-                                'remainingDays': '05',
-                                'dayOfWeek': 'Monday',
+                                'month': selectedMonthName,
+                                'remainingDays': remainingDaysStr,
+                                'dayOfWeek': dayOfWeekName,
                                 'name': holidayNameController.text,
                                 'isEnabled': true,
+                                'isCustom': true,
+                                'year': calendarDate.year,
                               };
                               final isGuest =
                                   AuthService().currentUser?.isAnonymous ??
@@ -190,32 +231,32 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               if (isGuest) {
                                 setState(() {
                                   if (!_holidaysByMonth.containsKey(
-                                    selectedMonth,
+                                    selectedMonthName,
                                   )) {
-                                    _holidaysByMonth[selectedMonth] = [];
+                                    _holidaysByMonth[selectedMonthName] = [];
                                   }
                                   final newItem = HolidayItem(
                                     selectedDay,
                                     holidayNameController.text,
                                     true,
-                                    month: selectedMonth,
+                                    month: selectedMonthName,
                                   );
-                                  _holidaysByMonth[selectedMonth]!.insert(
+                                  _holidaysByMonth[selectedMonthName]!.insert(
                                     0,
                                     newItem,
                                   );
                                   if (!DummyData.holidays.containsKey(
-                                    selectedMonth,
+                                    selectedMonthName,
                                   )) {
-                                    DummyData.holidays[selectedMonth] = [];
+                                    DummyData.holidays[selectedMonthName] = [];
                                   }
-                                  DummyData.holidays[selectedMonth]!.insert(
+                                  DummyData.holidays[selectedMonthName]!.insert(
                                     0,
                                     {
                                       'day': selectedDay,
-                                      'month': selectedMonth,
-                                      'remainingDays': '05',
-                                      'dayOfWeek': 'Monday',
+                                      'month': selectedMonthName,
+                                      'remainingDays': remainingDaysStr,
+                                      'dayOfWeek': dayOfWeekName,
                                       'name': holidayNameController.text,
                                       'isEnabled': true,
                                     },
@@ -287,9 +328,17 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     const SizedBox(height: 24),
 
                     // Calendar Widget inside Modal
-                    _buildModalCalendar(selectedDay, (day) {
+                    _buildModalCalendar(calendarDate, selectedDay, (day) {
                       setModalState(() {
                         selectedDay = day;
+                      });
+                    }, (newDate) {
+                      setModalState(() {
+                        calendarDate = newDate;
+                        int daysInNewMonth = DateTime(newDate.year, newDate.month + 1, 0).day;
+                        if (selectedDay > daysInNewMonth) {
+                          selectedDay = daysInNewMonth;
+                        }
                       });
                     }),
                   ],
@@ -302,24 +351,45 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
-  Widget _buildModalCalendar(int selectedDay, ValueChanged<int> onDaySelected) {
+  Widget _buildModalCalendar(
+    DateTime calendarDate,
+    int selectedDay,
+    ValueChanged<int> onDaySelected,
+    ValueChanged<DateTime> onMonthChanged,
+  ) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    String monthYearStr = '${months[calendarDate.month - 1].toUpperCase()} ${calendarDate.year}';
+
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.chevron_left, size: 20, color: Colors.black),
-            SizedBox(width: 32),
+          children: [
+            GestureDetector(
+              onTap: () {
+                onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1));
+              },
+              child: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+            ),
+            const SizedBox(width: 32),
             Text(
-              'MAY 2025',
-              style: TextStyle(
+              monthYearStr,
+              style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            SizedBox(width: 32),
-            Icon(Icons.chevron_right, size: 20, color: Colors.black),
+            const SizedBox(width: 32),
+            GestureDetector(
+              onTap: () {
+                onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1));
+              },
+              child: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -341,7 +411,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildDaysGrid(selectedDay, onDaySelected),
+        _buildDaysGrid(calendarDate, selectedDay, onDaySelected),
       ],
     );
   }
@@ -366,16 +436,21 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
-  Widget _buildDaysGrid(int selectedDay, ValueChanged<int> onDaySelected) {
+  Widget _buildDaysGrid(DateTime calendarDate, int selectedDay, ValueChanged<int> onDaySelected) {
     List<Widget> rows = [];
+    int daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+    int firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+
     int currentDay = 1;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
       List<Widget> rowChildren = [];
       for (int j = 0; j < 7; j++) {
-        if (i == 0 && j == 0) {
+        int index = i * 7 + j;
+        if (index < startOffset) {
           rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
-        } else if (currentDay <= 31) {
+        } else if (currentDay <= daysInMonth) {
           final day = currentDay;
           rowChildren.add(
             Expanded(
@@ -393,7 +468,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         if (j < 6) rowChildren.add(const SizedBox(width: 6));
       }
       rows.add(Row(children: rowChildren));
-      if (i < 4) rows.add(const SizedBox(height: 6));
+      if (currentDay > daysInMonth) break;
+      if (i < 5) rows.add(const SizedBox(height: 6));
     }
     return Column(children: rows);
   }
