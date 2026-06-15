@@ -7,10 +7,12 @@ import 'package:flutter/cupertino.dart'
         CupertinoDatePickerMode,
         CupertinoButton;
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/delete_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-
+import '../services/dummy_data.dart';
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -49,75 +51,60 @@ class _AssetsScreenState extends State<AssetsScreen> {
     super.initState();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      _assets = [
-        AssetData(
-          'Olivia Vance',
-          'Web Developer',
-          'Laptop',
-          '01/12/2022',
-          '01/12/2022',
-          true,
-        ),
-        AssetData(
-          'Sophia Smith',
-          'Graphic Designer',
-          'Mouse',
-          '01/12/2022',
-          'In use',
-          false,
-        ),
-        AssetData(
-          'Amelia Gray',
-          'Engineering',
-          'Keyboard',
-          '01/12/2022',
-          '01/12/2022',
-          true,
-        ),
-        AssetData(
-          'Olivia Vance',
-          'Graphic Designer',
-          'Mac',
-          '01/12/2022',
-          'In use',
-          false,
-        ),
-        AssetData(
-          'Lucas Johnson',
-          'Web Developer',
-          'Table',
-          '01/12/2022',
-          'In use',
-          false,
-        ),
-      ];
+      _assets = DummyData.assets.map((data) {
+        return AssetData(
+          data['name'] ?? '',
+          data['position'] ?? '',
+          data['type'] ?? '',
+          data['dateLoaned'] ?? '',
+          data['dateReturned'] ?? '',
+          data['isReturned'] ?? false,
+        );
+      }).toList();
     } else {
       _isLoading = true;
-      _assetsSub = FirestoreService().assetsStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _assets = snapshot.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return AssetData(
-                data['name'] ?? '',
-                data['position'] ?? '',
-                data['type'] ?? '',
-                data['dateLoaned'] ?? '',
-                data['dateReturned'] ?? '',
-                data['isReturned'] ?? false,
-                id: doc.id,
-              );
-            }).toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      });
+      _assetsSub = FirestoreService().assetsStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              final sortedDocs = snapshot.docs.toList();
+              sortedDocs.sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aTime = aData['createdAt'];
+                final bTime = bData['createdAt'];
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return -1;
+                if (bTime == null) return 1;
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
+              _assets = sortedDocs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return AssetData(
+                  data['name'] ?? '',
+                  data['position'] ?? '',
+                  data['type'] ?? '',
+                  data['dateLoaned'] ?? '',
+                  data['dateReturned'] ?? '',
+                  data['isReturned'] ?? false,
+                  id: doc.id,
+                );
+              }).toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     }
     // Automatically show the dialog after the screen renders to match the mockup
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -216,8 +203,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                     : 'In use',
                                 'isReturned': isReturned,
                               };
-                              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                              final isGuest =
+                                  AuthService().currentUser?.isAnonymous ??
+                                  false;
                               if (isGuest) {
+                                final newAsset = {
+                                  'name': nameController.text,
+                                  'position': positionController.text,
+                                  'type': typeController.text,
+                                  'dateLoaned': formatDate(loanedDate),
+                                  'dateReturned': isReturned
+                                      ? formatDate(returnedDate)
+                                      : 'In use',
+                                  'isReturned': isReturned,
+                                };
                                 setState(() {
                                   _assets.insert(
                                     0,
@@ -232,10 +231,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       isReturned,
                                     ),
                                   );
+                                  DummyData.assets.insert(0, newAsset);
                                 });
                               } else {
                                 await FirestoreService().addAsset(assetMap);
                               }
+                              if (!context.mounted) return;
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
@@ -643,8 +644,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           child: Center(child: CircularProgressIndicator()),
                         )
                       : (isDataEmpty || filtered.isEmpty
-                          ? _buildEmptyState()
-                          : _buildDataTable(filtered)),
+                            ? _buildEmptyState()
+                            : _buildDataTable(filtered)),
                 ],
               ),
             ),
@@ -828,7 +829,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
-    final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(495.0, 1200.0);
+    final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
+      495.0,
+      1200.0,
+    );
 
     return Container(
       height: tableHeight,
@@ -956,13 +960,17 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  data.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
+                Expanded(
+                  child: Text(
+                    data.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
                   ),
                 ),
               ],
@@ -1020,15 +1028,28 @@ class _AssetsScreenState extends State<AssetsScreen> {
             icon: const Icon(Icons.more_vert, size: 20, color: Colors.black),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            onSelected: (val) {
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Color(0xFFCBCBCB)),
+            ),
+            color: const Color(0xFFFBFBFC),
+            onSelected: (val) async {
               if (val == 'delete') {
+                final confirmed = await DeleteDialog.show(
+                  context: context,
+                  title: 'Delete Asset',
+                  content:
+                      'Are you sure you want to delete this asset? This action cannot be undone.',
+                );
+                if (!confirmed) return;
+
                 final isGuest = AuthService().currentUser?.isAnonymous ?? false;
                 if (isGuest) {
                   setState(() {
                     _assets.remove(data);
                   });
                 } else if (data.id != null) {
-                  FirestoreService().deleteAsset(data.id!);
+                  await FirestoreService().deleteAsset(data.id!);
                 }
               }
             },
@@ -1039,7 +1060,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   children: [
                     Icon(Icons.delete, size: 16, color: Colors.red),
                     SizedBox(width: 8),
-                    Text('Delete', style: TextStyle(color: Colors.red, fontSize: 13)),
+                    Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.red, fontSize: 13),
+                    ),
                   ],
                 ),
               ),

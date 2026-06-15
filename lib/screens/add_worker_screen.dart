@@ -146,7 +146,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           // ================= LEFT SIDEBAR =================
           SidebarWidget(
             selectedIndex: 1,
-            onItemSelected: (index) {
+            onItemSelected: (index, {subIndex}) {
               _safePop();
             },
           ),
@@ -595,7 +595,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               border: InputBorder.none,
               isDense: true,
               contentPadding:
-                  isTextArea ? const EdgeInsets.only(top: 14) : null,
+                  isTextArea ? const EdgeInsets.only(top: 14) : EdgeInsets.zero,
               suffixIcon: suffixIcon != null
                   ? Icon(suffixIcon, color: Colors.grey.shade400, size: 22)
                   : null,

@@ -34,6 +34,101 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedPeriod = 'Yearly';
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
+  final List<bool> _activatedScreens = List.filled(11, false);
+  final Map<int, Widget> _screenCache = {};
+
+  Widget _getScreen(int index) {
+    if (!_activatedScreens[index]) {
+      return const SizedBox.shrink();
+    }
+    return _screenCache.putIfAbsent(index, () {
+      switch (index) {
+        case 1:
+          return WorkersScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 2:
+          return AttendanceScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 3:
+          return PayrollScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onAssignTimeOff: () {
+              setState(() {
+                _showAssignTimeOff = true;
+              });
+            },
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 4:
+          return TimeOffScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onAssignTimeOff: () {
+              setState(() {
+                _showAssignTimeOff = true;
+              });
+            },
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 5:
+          return AssetsScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 6:
+          return HolidaysScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 7:
+          return ExpensesScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 8:
+          return SettingsScreen(
+            onLogout: _handleLogout,
+            onProfileTap: _openProfile,
+            isGuest: AuthService().currentUser?.isAnonymous ?? false,
+            onNotificationTap: _navigateToAttendance,
+          );
+        case 9:
+          return AssignTimeOffScreen(
+            onBack: () => setState(() => _showAssignTimeOff = false),
+            onNotificationTap: _navigateToAttendance,
+          );
+        default:
+          return const SizedBox.shrink();
+      }
+    });
+  }
+
+  int _getStackIndex() {
+    if (_showProfile) return 10;
+    if (_showAssignTimeOff) return 9;
+    if (_selectedIndex == 0) return 0;
+    if (_selectedIndex == 1) return 1;
+    if (_selectedIndex == 2) {
+      if (_selectedSubIndex == 0) return 2;
+      if (_selectedSubIndex == 1) return 3;
+      if (_selectedSubIndex == 2) return 4;
+      if (_selectedSubIndex == 3) return 5;
+      if (_selectedSubIndex == 4) return 6;
+    }
+    if (_selectedIndex == 3) return 7;
+    if (_selectedIndex == 4) return 8;
+    return 0;
+  }
 
   int _totalWorkersCount = 0;
   double _totalExpensesSum = 0.0;
@@ -207,124 +302,54 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedIndex: _showProfile ? -1 : _selectedIndex,
             selectedSubIndex: _selectedSubIndex,
             isGuest: AuthService().currentUser?.isAnonymous ?? false,
-            onItemSelected: (index) => setState(() {
+            onItemSelected: (index, {subIndex}) => setState(() {
               _selectedIndex = index;
+              if (subIndex != null) {
+                _selectedSubIndex = subIndex;
+              }
               _showProfile = false;
-              _showAssignTimeOff = false;
-            }),
-            onSubItemSelected: (subIndex) => setState(() {
-              _selectedSubIndex = subIndex;
               _showAssignTimeOff = false;
             }),
             onBackToLogin: _handleBackToLogin,
           ),
           Expanded(
-            child: _showProfile
-                ? _buildProfileView()
-                : (_selectedIndex == 1
-                      ? WorkersScreen(
-                          onLogout: _handleLogout,
-                          onProfileTap: _openProfile,
-                          onNotificationTap: _navigateToAttendance,
-                        )
-                      : (_selectedIndex == 2
-                            ? _buildWorkforceView()
-                            : (_selectedIndex == 3
-                                  ? ExpensesScreen(
-                                      onLogout: _handleLogout,
-                                      onProfileTap: _openProfile,
-                                      onNotificationTap: _navigateToAttendance,
-                                    )
-                                  : (_selectedIndex == 4
-                                        ? SettingsScreen(
-                                            onLogout: _handleLogout,
-                                            onProfileTap: _openProfile,
-                                            isGuest:
-                                                AuthService()
-                                                    .currentUser
-                                                    ?.isAnonymous ??
-                                                false,
-                                            onNotificationTap:
-                                                _navigateToAttendance,
-                                          )
-                                        : _buildDashboardView())))),
+            child: Builder(
+              builder: (context) {
+                final int stackIndex = _getStackIndex();
+                _activatedScreens[stackIndex] = true;
+                return IndexedStack(
+                  index: stackIndex,
+                  children: [
+                    // 0: Dashboard View
+                    _activatedScreens[0] ? _buildDashboardView() : const SizedBox.shrink(),
+                    // 1: Workers Screen
+                    _getScreen(1),
+                    // 2: Attendance Screen
+                    _getScreen(2),
+                    // 3: Payroll Screen
+                    _getScreen(3),
+                    // 4: Time Off Screen
+                    _getScreen(4),
+                    // 5: Assets Screen
+                    _getScreen(5),
+                    // 6: Holidays Screen
+                    _getScreen(6),
+                    // 7: Expenses Screen
+                    _getScreen(7),
+                    // 8: Settings Screen
+                    _getScreen(8),
+                    // 9: Assign Time Off
+                    _getScreen(9),
+                    // 10: Profile View
+                    _activatedScreens[10] ? _buildProfileView() : const SizedBox.shrink(),
+                  ],
+                );
+              }
+            ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildWorkforceView() {
-    if (_showAssignTimeOff) {
-      return AssignTimeOffScreen(
-        onBack: () => setState(() => _showAssignTimeOff = false),
-        onNotificationTap: _navigateToAttendance,
-      );
-    }
-    if (_selectedSubIndex == 0) {
-      return AttendanceScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _navigateToAttendance,
-      );
-    } else if (_selectedSubIndex == 1) {
-      return PayrollScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onAssignTimeOff: () {
-          setState(() {
-            _showAssignTimeOff = true;
-          });
-        },
-        onNotificationTap: _navigateToAttendance,
-      );
-    } else if (_selectedSubIndex == 2) {
-      return TimeOffScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onAssignTimeOff: () {
-          setState(() {
-            _showAssignTimeOff = true;
-          });
-        },
-        onNotificationTap: _navigateToAttendance,
-      );
-    } else if (_selectedSubIndex == 3) {
-      return AssetsScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _navigateToAttendance,
-      );
-    } else if (_selectedSubIndex == 4) {
-      return HolidaysScreen(
-        onLogout: _handleLogout,
-        onProfileTap: _openProfile,
-        onNotificationTap: _navigateToAttendance,
-      );
-    } else {
-      final subItems = [
-        'Attendance',
-        'Pay Roll',
-        'Time Off',
-        'Assets',
-        'Holidays',
-      ];
-      final name = subItems[_selectedSubIndex];
-      return Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
-        body: Center(
-          child: Text(
-            'Workforce - $name Page under construction',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
-      );
-    }
   }
 
   Widget _buildDashboardView() {
@@ -1314,8 +1339,7 @@ class SidebarWidget extends StatefulWidget {
   final int selectedIndex;
   final int selectedSubIndex;
   final bool isGuest;
-  final ValueChanged<int> onItemSelected;
-  final ValueChanged<int>? onSubItemSelected;
+  final void Function(int index, {int? subIndex}) onItemSelected;
   final VoidCallback? onBackToLogin;
 
   const SidebarWidget({
@@ -1324,7 +1348,6 @@ class SidebarWidget extends StatefulWidget {
     this.selectedSubIndex = 0,
     this.isGuest = false,
     required this.onItemSelected,
-    this.onSubItemSelected,
     this.onBackToLogin,
   });
 
@@ -1601,8 +1624,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         widget.selectedIndex == index &&
                         widget.selectedSubIndex == i,
                     onTap: () {
-                      widget.onSubItemSelected?.call(i);
-                      widget.onItemSelected(index);
+                      widget.onItemSelected(index, subIndex: i);
                     },
                   ),
                 const SizedBox(height: 8),
@@ -1613,7 +1635,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             left: 0,
             top: 11.0,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 50),
               width: 8,
               height: isSelected ? 32 : 0,
               decoration: const BoxDecoration(
@@ -1689,13 +1711,13 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 50),
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Color(0xFFFFFFFF).withValues(alpha: 0.36)
-              : Colors.transparent,
+              ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
+              : const Color(0x00FFFFFF),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1761,14 +1783,14 @@ class _SidebarWidgetState extends State<SidebarWidget> {
       child: Stack(
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 50),
             height: 42,
             margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: isSelected
-                  ? Color(0xFFFFFFFF).withValues(alpha: 0.36)
-                  : Colors.transparent,
+                  ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
+                  : const Color(0x00FFFFFF),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1806,7 +1828,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             bottom: 0,
             child: Center(
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 50),
                 width: 8,
                 height: isSelected ? 32 : 0,
                 decoration: const BoxDecoration(

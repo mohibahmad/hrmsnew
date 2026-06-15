@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/logout_dialog.dart';
 
@@ -307,15 +308,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
               onPressed: () async {
                 final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-                if (!isGuest) {
+                final recordMap = {
+                  'name': 'John Smith',
+                  'email': 'john.smith@stark.com',
+                  'position': 'Senior Web Developer',
+                  'contact': '+1 555-0101',
+                  'action': _timeOffType,
+                };
+                if (isGuest) {
+                  final newId = 'dummy_t${DateTime.now().millisecondsSinceEpoch}';
+                  DummyData.timeoff.insert(0, {
+                    ...recordMap,
+                    'id': newId,
+                  });
+                } else {
                   try {
-                    await FirestoreService().addTimeOffRecord({
-                      'name': 'John Smith',
-                      'email': 'john.smith@stark.com',
-                      'position': 'Senior Web Developer',
-                      'contact': '+1 555-0101',
-                      'action': _timeOffType,
-                    });
+                    await FirestoreService().addTimeOffRecord(recordMap);
                   } catch (e) {
                     debugPrint('Error saving time off record: $e');
                   }

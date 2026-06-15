@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -71,9 +72,21 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         (snapshot) {
           if (mounted) {
             setState(() {
-              _timeoffDocs = snapshot.docs
+              final sortedList = snapshot.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
+              sortedList.sort((a, b) {
+                final aTime = a['createdAt'];
+                final bTime = b['createdAt'];
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return -1;
+                if (bTime == null) return 1;
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
+              _timeoffDocs = sortedList;
               _isLoading = false;
             });
           }

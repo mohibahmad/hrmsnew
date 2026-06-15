@@ -498,15 +498,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data) {
-    final String name = data['name'] ?? 'Mohib Ahmad';
-    final String email = data['email'] ?? 'sarakhan65@gmail.com';
-    final String contact = data['contact'] ?? '123 5434567';
-    final String status = data['status'] ?? 'Active';
-    final String totalWorkDays = data['totalWorkDays'] ?? '224';
-    final String absents = data['absents'] ?? '09';
-    final String leaves = data['leaves'] ?? '05';
-    final String overtimeDays = data['overtimeDays'] ?? '08';
-    final String salary = data['salary'] ?? '\$ 50,000';
+    final String name = (data['name'] ?? 'Mohib Ahmad').toString();
+    final String email = (data['email'] ?? 'sarakhan65@gmail.com').toString();
+    final String contact = (data['contact'] ?? '123 5434567').toString();
+    final String status = (data['status'] ?? 'Active').toString();
+    final String totalWorkDays = (data['totalWorkDays'] ?? '224').toString();
+    final String absents = (data['absents'] ?? '09').toString();
+    final String leaves = (data['leaves'] ?? '05').toString();
+    final String overtimeDays = (data['overtimeDays'] ?? '08').toString();
+    final String salary = (data['salary'] ?? '\$ 50,000').toString();
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;

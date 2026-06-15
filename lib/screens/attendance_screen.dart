@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
 import 'workers_attendance_screen.dart';
+import '../utils/delete_dialog.dart';
 
 // --- STYLING CONSTANTS (Curated HSL/Hex Harmonious Palette) ---
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -83,9 +85,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         (snapshot) {
           if (mounted) {
             setState(() {
-              _attendanceDocs = snapshot.docs
+              final sortedList = snapshot.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
+              sortedList.sort((a, b) {
+                final aTime = a['createdAt'];
+                final bTime = b['createdAt'];
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return -1;
+                if (bTime == null) return 1;
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
+              _attendanceDocs = sortedList;
               _isLoading = false;
             });
           }
@@ -669,7 +683,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   TapDownDetails? _tapPosition;
 
-  void _showRowMenu(BuildContext context, Map<String, dynamic> doc) {
+  Future<void> _showRowMenu(
+    BuildContext context,
+    Map<String, dynamic> doc,
+  ) async {
     if (_tapPosition == null) return;
     final overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox?;
@@ -677,7 +694,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     final docId = doc['id'] as String;
 
-    showMenu<String>(
+    final value = await showMenu<String>(
       context: context,
       position: RelativeRect.fromRect(
         Rect.fromLTWH(
@@ -688,6 +705,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
         Offset.zero & overlay.size,
       ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFFCBCBCB)),
+      ),
+      color: const Color(0xFFFBFBFC),
       items: [
         const PopupMenuItem(
           value: 'preview',
@@ -703,20 +725,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           value: 'delete',
           child: Row(
             children: [
-              Icon(Icons.delete_outline, size: 18, color: Colors.red),
+              SvgPicture.asset(
+                'assets/delete_icon.svg',
+                width: 16,
+                height: 16,
+                colorFilter: const ColorFilter.mode(
+                  Colors.red,
+                  BlendMode.srcIn,
+                ),
+              ),
               SizedBox(width: 8),
-              Text('Delete', style: TextStyle(fontSize: 14, color: Colors.red)),
+              Text('Delete', style: TextStyle(color: Colors.red, fontSize: 13)),
             ],
           ),
         ),
       ],
-    ).then((value) {
-      if (value == 'preview') {
-        _showAttendancePreview(context, doc);
-      } else if (value == 'delete') {
-        FirestoreService().deleteAttendanceRecord(docId);
-      }
-    });
+    );
+
+    if (value == 'preview') {
+      _showAttendancePreview(context, doc);
+    } else if (value == 'delete') {
+      final confirmed = await DeleteDialog.show(
+        context: context,
+        title: 'Delete Attendance Record',
+        content:
+            'Are you sure you want to delete this attendance record? This action cannot be undone.',
+      );
+      if (!confirmed) return;
+
+      await FirestoreService().deleteAttendanceRecord(docId);
+    }
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {

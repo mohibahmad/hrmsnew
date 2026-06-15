@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
 import '../utils/snackbar_utils.dart';
+import '../utils/delete_dialog.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -52,9 +54,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         (snapshot) {
           if (mounted) {
             setState(() {
-              _expensesDocs = snapshot.docs
+              final sortedList = snapshot.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
+              sortedList.sort((a, b) {
+                final aTime = a['createdAt'];
+                final bTime = b['createdAt'];
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return -1;
+                if (bTime == null) return 1;
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
+              _expensesDocs = sortedList;
               _isLoading = false;
             });
           }
@@ -68,7 +82,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         },
       );
     } else {
-      _expensesDocs = DummyData.expenses.map((e) => Map<String, dynamic>.from(e)).toList();
+      _expensesDocs = DummyData.expenses
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
       _isLoading = false;
       _adjustDummyDatesForPeriod(_selectedPeriod);
     }
@@ -127,14 +143,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   void _adjustDummyDatesForPeriod(String period) {
     if (_expensesDocs.isEmpty) return;
-    
+
     final now = DateTime.now();
     int maxDays = 7;
-    if (period == 'Week') maxDays = 7;
-    else if (period == 'Month') maxDays = 30;
-    else if (period == '3 Month') maxDays = 90;
-    else if (period == '6 Month') maxDays = 180;
-    else if (period == 'Yearly') maxDays = 365;
+    if (period == 'Week')
+      maxDays = 7;
+    else if (period == 'Month')
+      maxDays = 30;
+    else if (period == '3 Month')
+      maxDays = 90;
+    else if (period == '6 Month')
+      maxDays = 180;
+    else if (period == 'Yearly')
+      maxDays = 365;
 
     for (int i = 0; i < _expensesDocs.length; i++) {
       int daysAgo = (i * maxDays / _expensesDocs.length).floor();
@@ -160,6 +181,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _deleteExpense(String docId) async {
+    final confirmed = await DeleteDialog.show(
+      context: context,
+      title: 'Delete Expense',
+      content:
+          'Are you sure you want to delete this expense? This action cannot be undone.',
+    );
+    if (!confirmed) return;
+
     await FirestoreService().deleteExpense(docId);
   }
 
@@ -248,12 +277,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             }
                             final dateStr =
                                 '${selectedDay.toString().padLeft(2, '0')}/05/2025';
-                            FirestoreService().addExpense({
+                            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                            final expenseMap = {
                               'name': 'Ali Ahmad',
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
-                            });
+                            };
+                            if (isGuest) {
+                              final newId = 'dummy_e${DateTime.now().millisecondsSinceEpoch}';
+                              setState(() {
+                                _expensesDocs.insert(0, {
+                                  ...expenseMap,
+                                  'id': newId,
+                                });
+                                DummyData.expenses.insert(0, {
+                                  ...expenseMap,
+                                  'id': newId,
+                                });
+                              });
+                            } else {
+                              FirestoreService().addExpense(expenseMap);
+                            }
                             Navigator.of(context).pop();
                             FlashySnackBar.show(
                               context,
@@ -390,9 +435,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
-            inputFormatters: (keyboardType == const TextInputType.numberWithOptions(decimal: true) ||
-                              keyboardType == TextInputType.number ||
-                              label.toLowerCase().contains('amount'))
+            inputFormatters:
+                (keyboardType ==
+                        const TextInputType.numberWithOptions(decimal: true) ||
+                    keyboardType == TextInputType.number ||
+                    label.toLowerCase().contains('amount'))
                 ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
                 : null,
             decoration: InputDecoration(
@@ -622,9 +669,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             onTap: widget.onProfileTap,
             child: CircleAvatar(
               radius: 19,
-              backgroundImage: const AssetImage(
-                'assets/profileimage.png',
-              ),
+              backgroundImage: const AssetImage('assets/profileimage.png'),
             ),
           ),
         ],
@@ -925,10 +970,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            const Icon(
-              Icons.arrow_drop_down,
-              color: Color(0xFFFFFFFF),
-            ),
+            const Icon(Icons.arrow_drop_down, color: Color(0xFFFFFFFF)),
           ],
         ),
       ),
@@ -953,7 +995,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 : (safeStartIndex + _itemsPerPage),
           );
 
-    final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(495.0, 1200.0);
+    final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(
+      495.0,
+      1200.0,
+    );
 
     return Container(
       height: tableHeight,
@@ -1140,7 +1185,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, color: Colors.black),
       offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFFCBCBCB)),
+      ),
+      color: const Color(0xFFFBFBFC),
       elevation: 4,
       onSelected: (value) {
         if (value == 'delete') {

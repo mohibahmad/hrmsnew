@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -85,9 +86,21 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       (snapshot) {
         if (mounted) {
           setState(() {
-            _todayAttendance = snapshot.docs
+            final sortedList = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
+            sortedList.sort((a, b) {
+              final aTime = a['createdAt'];
+              final bTime = b['createdAt'];
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return -1;
+              if (bTime == null) return 1;
+              if (aTime is Timestamp && bTime is Timestamp) {
+                return bTime.compareTo(aTime);
+              }
+              return 0;
+            });
+            _todayAttendance = sortedList;
             _isLoading = false;
           });
         }
@@ -128,7 +141,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           SidebarWidget(
             selectedIndex: 2,
             selectedSubIndex: 0,
-            onItemSelected: (index) {
+            onItemSelected: (index, {subIndex}) {
               Navigator.of(context).pop();
             },
           ),
@@ -845,7 +858,7 @@ class WorkerListItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data["name"],
+                  (data["name"] ?? '').toString(),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -855,7 +868,7 @@ class WorkerListItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  data["email"],
+                  (data["email"] ?? '').toString(),
                   style: const TextStyle(
                     color: textMuted,
                     fontSize: 13,
@@ -879,7 +892,7 @@ class WorkerListItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  data["role"],
+                  (data["role"] ?? data["position"] ?? '').toString(),
                   style: const TextStyle(
                     fontSize: 13,
                     color: textDark,
@@ -894,7 +907,7 @@ class WorkerListItem extends StatelessWidget {
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: StatusPill(status: data["status"]),
+              child: StatusPill(status: (data["status"] ?? '').toString()),
             ),
           ),
           GestureDetector(
@@ -941,7 +954,7 @@ class TodayAttendanceItem extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  data["name"],
+                  (data["name"] ?? '').toString(),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -952,7 +965,7 @@ class TodayAttendanceItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              StatusPill(status: data["status"]),
+              StatusPill(status: (data["status"] ?? '').toString()),
             ],
           ),
           if (data["type"] != null) ...[
@@ -969,7 +982,7 @@ class TodayAttendanceItem extends StatelessWidget {
             if (data["desc"] != null) ...[
               const SizedBox(height: 6),
               Text(
-                data["desc"],
+                (data["desc"] ?? '').toString(),
                 style: const TextStyle(
                   fontSize: 12,
                   color: textMuted,

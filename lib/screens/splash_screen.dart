@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
@@ -28,43 +29,62 @@ class _SplashScreenState extends State<SplashScreen>
     // Start entrance animation
     _animationController.forward();
 
-    // After 3 seconds, navigate based on auth state
-    Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
+    _navigateWhenReady();
+  }
 
-      final user = AuthService().currentUser;
-      final destination = user != null
-          ? const HomeScreen()
-          : const LoginScreen();
+  Future<void> _navigateWhenReady() async {
+    // Keep the splash visible for a minimum time for branding, but base the
+    // navigation decision on the *restored* auth state rather than a fixed
+    // timer. On a cold start (especially on slow networks) Firebase Auth
+    // restores the persisted session asynchronously, so reading `currentUser`
+    // too early would wrongly send a logged-in user to the login screen.
+    final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => destination,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final slideAnimation = Tween<Offset>(
-              begin: const Offset(0, 0.08),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            );
-
-            final fadeAnimation = CurvedAnimation(
-              parent: animation,
-              curve: const Interval(0.0, 0.75, curve: Curves.easeIn),
-            );
-
-            return FadeTransition(
-              opacity: fadeAnimation,
-              child: SlideTransition(
-                position: slideAnimation,
-                child: child,
-              ),
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+    User? user;
+    try {
+      user = await AuthService().authStateChanges.first.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => AuthService().currentUser,
       );
-    });
+    } catch (_) {
+      user = AuthService().currentUser;
+    }
+
+    await minimumSplash;
+
+    if (!mounted) return;
+
+    final destination = user != null
+        ? const HomeScreen()
+        : const LoginScreen();
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => destination,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0, 0.08),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          );
+
+          final fadeAnimation = CurvedAnimation(
+            parent: animation,
+            curve: const Interval(0.0, 0.75, curve: Curves.easeIn),
+          );
+
+          return FadeTransition(
+            opacity: fadeAnimation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 600),
+      ),
+    );
   }
 
   @override

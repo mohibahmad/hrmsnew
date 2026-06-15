@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -62,12 +63,27 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         (snapshot) {
           if (mounted) {
             final tempMap = <String, List<HolidayItem>>{};
-            for (final doc in snapshot.docs) {
+            final sortedDocs = snapshot.docs.toList();
+            sortedDocs.sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              final aTime = aData['createdAt'];
+              final bTime = bData['createdAt'];
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return -1;
+              if (bTime == null) return 1;
+              if (aTime is Timestamp && bTime is Timestamp) {
+                return bTime.compareTo(aTime);
+              }
+              return 0;
+            });
+            for (final doc in sortedDocs) {
               final data = doc.data() as Map<String, dynamic>;
-              final month = data['month'] ?? 'May';
-              final day = (data['day'] ?? 1) as int;
-              final name = data['name'] ?? '';
-              final isEnabled = data['isEnabled'] ?? true;
+              final month = (data['month'] ?? 'May').toString();
+              final day = (data['day'] as num?)?.toInt() ?? 1;
+              final name = (data['name'] ?? '').toString();
+              final isEnabled =
+                  data['isEnabled'] == true || data['isEnabled'] == null;
               final id = doc.id;
 
               if (!tempMap.containsKey(month)) {
@@ -178,19 +194,37 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                   )) {
                                     _holidaysByMonth[selectedMonth] = [];
                                   }
+                                  final newItem = HolidayItem(
+                                    selectedDay,
+                                    holidayNameController.text,
+                                    true,
+                                    month: selectedMonth,
+                                  );
                                   _holidaysByMonth[selectedMonth]!.insert(
                                     0,
-                                    HolidayItem(
-                                      selectedDay,
-                                      holidayNameController.text,
-                                      true,
-                                      month: selectedMonth,
-                                    ),
+                                    newItem,
+                                  );
+                                  if (!DummyData.holidays.containsKey(
+                                    selectedMonth,
+                                  )) {
+                                    DummyData.holidays[selectedMonth] = [];
+                                  }
+                                  DummyData.holidays[selectedMonth]!.insert(
+                                    0,
+                                    {
+                                      'day': selectedDay,
+                                      'month': selectedMonth,
+                                      'remainingDays': '05',
+                                      'dayOfWeek': 'Monday',
+                                      'name': holidayNameController.text,
+                                      'isEnabled': true,
+                                    },
                                   );
                                 });
                               } else {
                                 await FirestoreService().addHoliday(holidayMap);
                               }
+                              if (!context.mounted) return;
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
@@ -623,22 +657,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 }
               },
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () async {
-              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                setState(() {
-                  _holidaysByMonth[item.month]?.remove(item);
-                });
-              } else if (item.id != null) {
-                await FirestoreService().deleteHoliday(item.id!);
-              }
-            },
           ),
         ],
       ),

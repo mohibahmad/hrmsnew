@@ -823,4 +823,48 @@ class DummyData {
       },
     ],
   };
+
+  static final List<Map<String, dynamic>> assets = [
+    {
+      'name': 'Olivia Vance',
+      'position': 'Web Developer',
+      'type': 'Laptop',
+      'dateLoaned': '01/12/2022',
+      'dateReturned': '01/12/2022',
+      'isReturned': true,
+    },
+    {
+      'name': 'Sophia Smith',
+      'position': 'Graphic Designer',
+      'type': 'Mouse',
+      'dateLoaned': '01/12/2022',
+      'dateReturned': 'In use',
+      'isReturned': false,
+    },
+    {
+      'name': 'Amelia Gray',
+      'position': 'Engineering',
+      'type': 'Keyboard',
+      'dateLoaned': '01/12/2022',
+      'dateReturned': '01/12/2022',
+      'isReturned': true,
+    },
+    {
+      'name': 'Olivia Vance',
+      'position': 'Graphic Designer',
+      'type': 'Mac',
+      'dateLoaned': '01/12/2022',
+      'dateReturned': 'In use',
+      'isReturned': false,
+    },
+    {
+      'name': 'Lucas Johnson',
+      'position': 'Web Developer',
+      'type': 'Table',
+      'dateLoaned': '01/12/2022',
+      'dateReturned': 'In use',
+      'isReturned': false,
+    },
+  ];
 }
+

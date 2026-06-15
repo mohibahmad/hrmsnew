@@ -17,7 +17,7 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF7F8FA),
       body: Row(
         children: [
-          SidebarWidget(selectedIndex: -1, onItemSelected: (index) {}),
+          SidebarWidget(selectedIndex: -1, onItemSelected: (index, {subIndex}) {}),
           Expanded(
             child: Column(
               children: [
