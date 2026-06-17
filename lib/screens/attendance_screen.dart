@@ -188,7 +188,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            if (filtered.isEmpty)
+                            if (_isLoading)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 80),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            else if (filtered.isEmpty)
                               _buildEmptyState()
                             else
                               _buildAttendanceTable(filtered),

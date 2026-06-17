@@ -1,11 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'
-    show
-        showCupertinoModalPopup,
-        CupertinoDatePicker,
-        CupertinoDatePickerMode,
-        CupertinoButton;
+    show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/snackbar_utils.dart';

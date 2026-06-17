@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../utils/snackbar_utils.dart';
 
 
 class ProfileTopHeader extends StatelessWidget {
@@ -393,9 +394,11 @@ class _ProfileBodyState extends State<ProfileBody> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        FlashySnackBar.show(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error selecting image: $e')));
+          message: 'Error selecting image: $e',
+          isError: true,
+        );
       }
     }
   }
@@ -466,8 +469,9 @@ class _ProfileBodyState extends State<ProfileBody> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved successfully!')),
+        FlashySnackBar.show(
+          context,
+          message: 'Profile saved successfully!',
         );
       }
     } catch (e) {
@@ -475,9 +479,11 @@ class _ProfileBodyState extends State<ProfileBody> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
+        FlashySnackBar.show(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error saving profile: $e')));
+          message: 'Error saving profile: $e',
+          isError: true,
+        );
       }
     }
   }
@@ -699,25 +705,25 @@ class _ProfileBodyState extends State<ProfileBody> {
           Positioned(
             bottom: 0,
             right: 0,
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: const BoxDecoration(
-                color: Color(0xFF155ED5),
-                shape: BoxShape.circle,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: SvgPicture.asset(
-                  'assets/edit_pencil_profile.svg',
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFFFFFFF),
-                    BlendMode.srcIn,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF155ED5),
+                  shape: BoxShape.circle,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: SvgPicture.asset(
+                    'assets/edit_pencil_profile.svg',
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFFFFFFF),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

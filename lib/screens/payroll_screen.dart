@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
-import '../utils/snackbar_utils.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -98,9 +97,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   const SizedBox(height: 16),
                   _buildFilterTabs(),
                   const SizedBox(height: 24),
-                  _filteredEmployees.isEmpty
-                      ? _buildEmptyState()
-                      : _buildTable(),
+                  _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 80),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : (_filteredEmployees.isEmpty
+                            ? _buildEmptyState()
+                            : _buildTable()),
                 ],
               ),
             ),
@@ -955,207 +959,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
           child: Icon(
             Icons.chevron_right,
             color: _currentPage < total ? Colors.black : Colors.grey.shade400,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ==== ADD PAYROLL DIALOG ====
-
-  void _showAddPayrollDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final positionController = TextEditingController();
-    final salaryController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.7,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.close,
-                              color: Color(0xFF000000),
-                            ),
-                            onPressed: () => Navigator.of(context).pop(),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const Text(
-                            'Assign Payroll',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF000000),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0247C4),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              minimumSize: const Size(0, 32),
-                            ),
-                            onPressed: () async {
-                              if (nameController.text.isNotEmpty &&
-                                  salaryController.text.isNotEmpty) {
-                                final payrollMap = {
-                                  'name': nameController.text,
-                                  'position': positionController.text.isEmpty
-                                      ? 'Employee'
-                                      : positionController.text,
-                                  'salary': '\$ ${salaryController.text}',
-                                  'email': 'assigned@stark.com',
-                                  'contact': '+1 555-0000',
-                                  'status': 'Active',
-                                  'totalWorkDays': '0',
-                                  'absents': '0',
-                                  'leaves': '0',
-                                  'overtimeDays': '0',
-                                };
-
-                                final isGuest =
-                                    AuthService().currentUser?.isAnonymous ??
-                                    false;
-
-                                if (isGuest) {
-                                  setState(() {
-                                    final newRecord = {
-                                      'id': 'dummy_new_${DateTime.now().millisecondsSinceEpoch}',
-                                      ...payrollMap,
-                                    };
-                                    _payrollDocs.insert(0, newRecord);
-                                    DummyData.payroll.insert(0, newRecord);
-                                  });
-                                } else {
-                                  await FirestoreService()
-                                      .addPayrollRecord(payrollMap);
-                                }
-                                if (!context.mounted) return;
-                                Navigator.of(context).pop();
-                                FlashySnackBar.show(
-                                  context,
-                                  message:
-                                      'Successfully assigned payroll to ${nameController.text}',
-                                );
-                              }
-                            },
-                            child: const Text(
-                              'Save',
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Form Fields
-                      _buildModalTextField(
-                        'Worker Name',
-                        nameController,
-                        'e.g. Ali Ahmad',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildModalTextField(
-                        'Position',
-                        positionController,
-                        'e.g. UI/UX Designer',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildModalTextField(
-                        'Basic Salary',
-                        salaryController,
-                        'e.g. 75,000',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildModalTextField(
-    String label,
-    TextEditingController controller,
-    String hintText,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 44,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration.collapsed(
-              hintText: hintText,
-              hintStyle: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
           ),
         ),
       ],

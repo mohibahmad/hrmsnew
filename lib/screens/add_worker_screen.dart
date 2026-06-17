@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
+import '../utils/snackbar_utils.dart';
 
 class WorkerManagementApp extends StatelessWidget {
   const WorkerManagementApp({super.key});
@@ -61,8 +62,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   Future<void> _handleSave() async {
     // Basic validation
     if (nameController.text.isEmpty || contactController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill Name and Contact at least!')),
+      FlashySnackBar.show(
+        context,
+        message: 'Please fill Name and Contact at least!',
+        isError: true,
       );
       return;
     }
@@ -89,22 +92,19 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
 
       // Show Success Message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Worker Added Successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        FlashySnackBar.show(
+          context,
+          message: 'Worker Added Successfully!',
         );
         _clearForm(); // Clear the form after saving
       }
     } catch (e) {
       // Show Error Message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving data: $e'),
-            backgroundColor: Colors.red,
-          ),
+        FlashySnackBar.show(
+          context,
+          message: 'Error saving data: $e',
+          isError: true,
         );
       }
     } finally {

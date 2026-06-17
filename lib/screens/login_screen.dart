@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/error_reporter.dart';
 import '../utils/snackbar_utils.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
@@ -83,11 +84,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         _showErrorSnackBar('Google login failed. Please try again.');
       }
-    } on FirebaseAuthException catch (_) {
+    } on FirebaseAuthException catch (e, st) {
+      ErrorReporter.report(e, st, context: 'googleSignIn');
       if (mounted) {
         _showErrorSnackBar('Google login failed. Please try again.');
       }
-    } catch (_) {
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'googleSignIn');
       if (mounted) {
         _showErrorSnackBar('An unexpected error occurred. Please try again.');
       }
@@ -230,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email == null) return false;
 
     try {
-      final isDeleted = await FirestoreService().isUserDeletedByEmail(email);
+      final isDeleted = await FirestoreService().isCurrentUserDeleted();
       if (isDeleted) {
         await _authService.signOut();
         if (mounted) {
@@ -242,7 +245,9 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return true;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'handleDeletedAccount');
+    }
 
     return false;
   }

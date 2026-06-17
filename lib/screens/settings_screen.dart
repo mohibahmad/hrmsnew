@@ -249,9 +249,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
+        FlashySnackBar.show(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete account. $e')));
+          message: 'Failed to delete account. $e',
+          isError: true,
+        );
       }
     }
   }

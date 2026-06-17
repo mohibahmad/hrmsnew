@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/validators.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
 
@@ -85,6 +86,7 @@ class FirestoreService {
   }
 
   Future<String> addWorker(Map<String, dynamic> worker) async {
+    Validators.validateWorker(worker);
     final docRef = await _workers.add({
       ...worker,
       'createdAt': FieldValue.serverTimestamp(),
@@ -93,6 +95,7 @@ class FirestoreService {
   }
 
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {
+    Validators.validateWorker(data);
     await _workers.doc(id).update(data);
   }
 
@@ -104,6 +107,7 @@ class FirestoreService {
       _workers.orderBy('createdAt', descending: true).snapshots();
 
   Future<String> addExpense(Map<String, dynamic> expense) async {
+    Validators.validateExpense(expense);
     final docRef = await _expenses.add({
       ...expense,
       'createdAt': FieldValue.serverTimestamp(),
@@ -119,6 +123,7 @@ class FirestoreService {
       _expenses.orderBy('createdAt', descending: true).snapshots();
 
   Future<String> addAttendanceRecord(Map<String, dynamic> record) async {
+    Validators.validateAttendance(record);
     final docRef = await _attendance.add({
       ...record,
       'createdAt': FieldValue.serverTimestamp(),
@@ -134,6 +139,7 @@ class FirestoreService {
       _attendance.orderBy('createdAt', descending: true).snapshots();
 
   Future<String> addPayrollRecord(Map<String, dynamic> record) async {
+    Validators.validatePayroll(record);
     final docRef = await _payroll.add({
       ...record,
       'createdAt': FieldValue.serverTimestamp(),
@@ -149,6 +155,7 @@ class FirestoreService {
       _payroll.orderBy('createdAt', descending: true).snapshots();
 
   Future<String> addTimeOffRecord(Map<String, dynamic> record) async {
+    Validators.validateTimeOff(record);
     final docRef = await _timeoff.add({
       ...record,
       'createdAt': FieldValue.serverTimestamp(),
@@ -165,6 +172,7 @@ class FirestoreService {
 
   // --- Assets CRUD ---
   Future<String> addAsset(Map<String, dynamic> asset) async {
+    Validators.validateAsset(asset);
     final docRef = await _assets.add({
       ...asset,
       'createdAt': FieldValue.serverTimestamp(),
@@ -181,6 +189,7 @@ class FirestoreService {
 
   // --- Holidays CRUD ---
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
+    Validators.validateHoliday(holiday);
     final docRef = await _holidays.add({
       ...holiday,
       'createdAt': FieldValue.serverTimestamp(),
@@ -189,6 +198,9 @@ class FirestoreService {
   }
 
   Future<void> updateHoliday(String id, Map<String, dynamic> data) async {
+    // Holiday updates are often partial (e.g. toggling `isEnabled`), so we
+    // only validate the name when the caller actually sets it.
+    if (data.containsKey('name')) Validators.validateHoliday(data);
     await _holidays.doc(id).update(data);
   }
 
@@ -298,25 +310,5 @@ class FirestoreService {
     for (var t in dummyTimeoff) {
       await timeoffColl.add({...t, 'createdAt': FieldValue.serverTimestamp()});
     }
-  }
-
-  Future<bool> isUserDeletedByEmail(String email) async {
-    final emailVariants = {
-      email.trim(),
-      email.toLowerCase().trim(),
-    }.where((value) => value.isNotEmpty).toList();
-
-    for (final emailToCheck in emailVariants) {
-      final snapshot = await _db
-          .collection('hrms_user')
-          .where('email', isEqualTo: emailToCheck)
-          .where('isDeleted', isEqualTo: true)
-          .limit(1)
-          .get();
-
-      if (snapshot.docs.isNotEmpty) return true;
-    }
-
-    return false;
   }
 }

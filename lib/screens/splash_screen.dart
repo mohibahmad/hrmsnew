@@ -40,14 +40,29 @@ class _SplashScreenState extends State<SplashScreen>
     // too early would wrongly send a logged-in user to the login screen.
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
+    // Firebase may be unavailable here: main() tolerates a failed
+    // Firebase.initializeApp(), and in tests Firebase is never initialized.
+    // Any access to FirebaseAuth must therefore be guarded — including the
+    // fallback path — so the splash screen degrades to the login screen
+    // instead of crashing.
     User? user;
     try {
       user = await AuthService().authStateChanges.first.timeout(
         const Duration(seconds: 5),
-        onTimeout: () => AuthService().currentUser,
+        onTimeout: () {
+          try {
+            return AuthService().currentUser;
+          } catch (_) {
+            return null;
+          }
+        },
       );
     } catch (_) {
-      user = AuthService().currentUser;
+      try {
+        user = AuthService().currentUser;
+      } catch (_) {
+        user = null;
+      }
     }
 
     await minimumSplash;

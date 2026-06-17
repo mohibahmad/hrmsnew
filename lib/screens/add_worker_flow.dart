@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import '../utils/validators.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -430,6 +431,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       }
       success = true;
+    } on ValidationException catch (e) {
+      errorMessage = e.message;
     } catch (e) {
       debugPrint('Error saving worker: $e');
       errorMessage = 'Could not save worker. Please try again.';
@@ -450,6 +453,73 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         isError: true,
       );
     }
+  }
+
+  void _validateAndGoToExperience() {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
+
+    // Check required fields
+    if (name.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter worker name.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    if (phone.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter contact number.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    if (email.isNotEmpty &&
+        !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter a valid email address.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _activeTabIndex = 1);
+  }
+
+  void _validateAndGoToDocumentation() {
+    final position = _positionController.text.trim();
+    final salaryAmount = _salaryAmountController.text.trim();
+
+    if (position.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter job position.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    if (salaryAmount.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter salary amount.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _activeTabIndex = 2);
   }
 
   @override
@@ -630,7 +700,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                           _relationshipStatus = status;
                         });
                       },
-                      onNextStep: () => setState(() => _activeTabIndex = 1),
+                      onNextStep: _validateAndGoToExperience,
                     ),
                   if (_activeTabIndex == 1)
                     ExperienceFormSection(
@@ -650,7 +720,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       onJoiningDateChanged: (date) {
                         setState(() => _joiningDate = date);
                       },
-                      onNextStep: () => setState(() => _activeTabIndex = 2),
+                      onNextStep: _validateAndGoToDocumentation,
                       onPrevStep: () => setState(() => _activeTabIndex = 0),
                     ),
                   if (_activeTabIndex == 2)
@@ -1053,83 +1123,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: profileImageBytes != null
-                          ? Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.memory(
-                                  profileImageBytes!,
-                                  fit: BoxFit.cover,
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    color: Colors.black54,
-                                    child: Text(
-                                      profileImageName ?? 'Profile Image',
-                                      textAlign: TextAlign.center,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Icon(
-                                      Icons.edit,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : existingProfileImageUrl != null &&
-                                existingProfileImageUrl!.startsWith('http')
-                          ? Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.network(
-                                  existingProfileImageUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      _buildUploadPlaceholder(),
-                                ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Icon(
-                                      Icons.edit,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : _buildUploadPlaceholder(),
+                      child: _buildProfileContent(),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -1164,6 +1158,46 @@ class WorkerDetailFormSection extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileContent() {
+    final hasImageBytes = profileImageBytes != null;
+    final hasImageUrl = existingProfileImageUrl != null && existingProfileImageUrl!.isNotEmpty;
+
+    if (!hasImageBytes && !hasImageUrl) return _buildUploadPlaceholder();
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (hasImageBytes)
+          Image.memory(profileImageBytes!, fit: BoxFit.cover)
+        else
+          Image.network(
+            existingProfileImageUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildUploadPlaceholder(),
+          ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: Colors.black54,
+            child: Text(
+              profileImageName ?? 'Profile Image',
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
         ),
       ],
     );

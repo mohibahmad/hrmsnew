@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
+import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 import 'home_screen.dart';
@@ -88,7 +89,8 @@ class _SignupScreenState extends State<SignupScreen> {
           isError: true,
         );
       }
-    } on FirebaseAuthException catch (_) {
+    } on FirebaseAuthException catch (e, st) {
+      ErrorReporter.report(e, st, context: 'signupGoogle');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -96,7 +98,8 @@ class _SignupScreenState extends State<SignupScreen> {
           isError: true,
         );
       }
-    } catch (_) {
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'signupGoogle');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -281,7 +284,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (email == null) return false;
 
     try {
-      final isDeleted = await FirestoreService().isUserDeletedByEmail(email);
+      final isDeleted = await FirestoreService().isCurrentUserDeleted();
       if (isDeleted) {
         await _authService.signOut();
         if (mounted) {
@@ -293,7 +296,9 @@ class _SignupScreenState extends State<SignupScreen> {
         }
         return true;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'handleDeletedAccount');
+    }
 
     return false;
   }

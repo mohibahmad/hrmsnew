@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'preferences_service.dart';
 import 'firestore_service.dart';
+import 'error_reporter.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -24,7 +25,9 @@ class AuthService {
   Future<void> _clearSeededDummyDataIfNeeded() async {
     try {
       await FirestoreService().clearDummyDataForCurrentUser();
-    } catch (_) {}
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'clearSeededDummyData');
+    }
   }
 
   Future<UserCredential> signUp({

@@ -705,9 +705,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   const SizedBox(height: 32),
                   _buildListHeader(),
                   const SizedBox(height: 16),
-                  isDataEmpty || filtered.isEmpty
-                      ? _buildEmptyState()
-                      : _buildDataTable(filtered),
+                  _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 80),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : (isDataEmpty || filtered.isEmpty
+                            ? _buildEmptyState()
+                            : _buildDataTable(filtered)),
                 ],
               ),
             ),

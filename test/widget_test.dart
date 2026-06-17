@@ -1,10 +1,18 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hrms/main.dart';
 
+import 'firebase_mock.dart';
+
 void main() {
+  setUpAll(() async {
+    setupFirebaseCoreMocks();
+    await Firebase.initializeApp();
+  });
+
   testWidgets('App launches splash screen', (WidgetTester tester) async {
     // Set simulator viewport size to match target desktop dimensions to prevent layout overflows
     tester.view.physicalSize = const Size(1280, 800);
