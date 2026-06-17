@@ -244,6 +244,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               ...filteredWorkers.map(
                                                 (worker) => WorkerListItem(
                                                   data: worker,
+                                                  onMarkAttendance: () =>
+                                                      _showMarkAttendanceDialog(
+                                                    context,
+                                                    worker,
+                                                  ),
                                                 ),
                                               ),
                                             const SizedBox(height: 8),
@@ -516,321 +521,501 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       ),
     );
   }
-}
+  void _showMarkAttendanceDialog(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    final name = data["name"] ?? "";
+    final email = data["email"] ?? "";
 
-void _showMarkAttendanceDialog(
-  BuildContext context,
-  Map<String, dynamic> data,
-) {
-  final name = data["name"] ?? "";
-  final email = data["email"] ?? "";
-  showDialog(
-    context: context,
-    barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            width: 440,
-            decoration: BoxDecoration(
-              color: Color(0xFFFFFFFF),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0xFF000000).withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // AppBar (Height: 40, Color: #004FDE)
-                Container(
-                  height: 40,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(color: Color(0xFF004FDE)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Mark Attendance',
-                        style: TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
-                        ),
+    // Find if there is an existing today's attendance record for this worker
+    final todayRecord = _todayAttendance.firstWhere(
+      (att) => att['email'] == email,
+      orElse: () => <String, dynamic>{},
+    );
+
+    // Initial values
+    final initialStatus = todayRecord['status'] ?? data['status'] ?? 'Present';
+    final initialReason = todayRecord['desc'] ?? '';
+
+    showDialog(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        String selectedStatus = (initialStatus == 'Present' ||
+                initialStatus == 'Absent' ||
+                initialStatus == 'Leave')
+            ? initialStatus
+            : 'Present';
+        final reasonController = TextEditingController(text: initialReason);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(0)),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  width: 440,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFFFFFF),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF000000).withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                ),
-                // Profile Section (Color: #0247C4)
-                Container(
-                  color: const Color(0xFF0247C4),
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Profile Image: 140x140, circular with 2px border
+                      // AppBar (Height: 40, Color: #004FDE)
                       Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Color(0xFFFFFFFF),
-                            width: 2,
-                          ),
-                          image: const DecorationImage(
-                            image: AssetImage('assets/profile_placeholder.png'),
-                            fit: BoxFit.cover,
-                          ),
+                        height: 40,
+                        width: double.infinity,
+                        decoration:
+                            const BoxDecoration(color: Color(0xFF004FDE)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Mark Attendance',
+                              style: TextStyle(
+                                color: Color(0xFFFFFFFF),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 40),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
+                      // Profile Section (Color: #0247C4)
+                      Container(
+                        color: const Color(0xFF0247C4),
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Profile Image: 140x140, circular with 2px border
+                            Container(
+                              width: 140,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
                                   color: Color(0xFFFFFFFF),
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'SF Pro Display',
-                                  height: 1.0,
+                                  width: 2,
+                                ),
+                                image: const DecorationImage(
+                                  image: AssetImage(
+                                      'assets/profile_placeholder.png'),
+                                  fit: BoxFit.cover,
                                 ),
                               ),
-                              const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.email,
-                                    color: Color(0xFFFFFFFF),
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      email,
+                            ),
+                            const SizedBox(width: 40),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      name,
                                       style: const TextStyle(
                                         color: Color(0xFFFFFFFF),
-                                        fontSize: 14,
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w700,
                                         fontFamily: 'SF Pro Display',
+                                        height: 1.0,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.email,
+                                          color: Color(0xFFFFFFFF),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            email,
+                                            style: const TextStyle(
+                                              color: Color(0xFFFFFFFF),
+                                              fontSize: 14,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.phone,
+                                          color: Color(0xFFFFFFFF),
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          '123 5434567',
+                                          style: TextStyle(
+                                            color: Color(0xFFFFFFFF),
+                                            fontSize: 14,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Body Section
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setDialogState(() {
+                                        selectedStatus = 'Present';
+                                      });
+                                    },
+                                    child: _buildToggleChip(
+                                      'Present',
+                                      'assets/present.svg',
+                                      const Color(0xFF00C853),
+                                      isSelected: selectedStatus == 'Present',
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.phone,
-                                    color: Color(0xFFFFFFFF),
-                                    size: 16,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setDialogState(() {
+                                        selectedStatus = 'Absent';
+                                      });
+                                    },
+                                    child: _buildToggleChip(
+                                      'Absent',
+                                      'assets/absent.svg',
+                                      const Color(0xFFF44336),
+                                      isSelected: selectedStatus == 'Absent',
+                                    ),
                                   ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    '123 5434567',
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setDialogState(() {
+                                        selectedStatus = 'Leave';
+                                      });
+                                    },
+                                    child: _buildToggleChip(
+                                      'Leave',
+                                      'assets/leave.svg',
+                                      const Color(0xFFFF9800),
+                                      isSelected: selectedStatus == 'Leave',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              selectedStatus == 'Present'
+                                  ? 'Reason (Optional)'
+                                  : 'Reason (Required)',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              height: 100,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: TextField(
+                                controller: reasonController,
+                                maxLines: null,
+                                decoration: const InputDecoration.collapsed(
+                                  hintText: 'Enter reason......',
+                                  hintStyle: TextStyle(
+                                    color: Colors.black38,
+                                    fontSize: 13,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                        color: Colors.grey.shade300),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 14,
+                                    ),
+                                    minimumSize: const Size(0, 40),
+                                  ),
+                                  child: const Text(
+                                    'Cancel',
                                     style: TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 14,
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    final reason = reasonController.text.trim();
+                                    if (selectedStatus != 'Present' &&
+                                        reason.isEmpty) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Please enter a reason for Absent/Leave.'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    try {
+                                      final isGuest = AuthService()
+                                              .currentUser
+                                              ?.isAnonymous ??
+                                          false;
+                                      final type = selectedStatus == 'Absent'
+                                          ? (data['type'] ?? 'Absent')
+                                          : (selectedStatus == 'Leave'
+                                              ? (data['type'] ?? 'Sick Leave')
+                                              : null);
+                                      final desc = selectedStatus == 'Present'
+                                          ? (reason.isEmpty ? null : reason)
+                                          : reason;
+
+                                      if (isGuest) {
+                                        final index = DummyData.attendance
+                                            .indexWhere((element) =>
+                                                element['email'] == email);
+                                        if (index != -1) {
+                                          DummyData.attendance[index]
+                                              ['status'] = selectedStatus;
+                                          if (type != null) {
+                                            DummyData.attendance[index]
+                                                ['type'] = type;
+                                          } else {
+                                            DummyData.attendance[index]
+                                                .remove('type');
+                                          }
+                                          if (desc != null && desc.isNotEmpty) {
+                                            DummyData.attendance[index]
+                                                ['desc'] = desc;
+                                          } else {
+                                            DummyData.attendance[index]
+                                                .remove('desc');
+                                          }
+                                        }
+                                        setState(() {});
+                                      } else {
+                                        // 1. Update the worker document in Firestore to update status pill
+                                        final workerId = data['id'];
+                                        if (workerId != null) {
+                                          final Map<String, dynamic>
+                                              updatedWorker =
+                                              Map<String, dynamic>.from(data);
+                                          updatedWorker['status'] =
+                                              selectedStatus;
+                                          updatedWorker.remove('id');
+                                          await _firestore.updateWorker(
+                                              workerId, updatedWorker);
+                                        }
+
+                                        // 2. Add or Update attendance record in today attendance
+                                        if (todayRecord.isNotEmpty &&
+                                            todayRecord['id'] != null) {
+                                          await _firestore
+                                              .updateAttendanceRecord(
+                                                  todayRecord['id'], {
+                                            'name': name,
+                                            'email': email,
+                                            'role': data['role'] ??
+                                                data['position'] ??
+                                                '',
+                                            'status': selectedStatus,
+                                            'attendanceType':
+                                                data['type2'] ?? 'Remote',
+                                            'workType':
+                                                data['type1'] ?? 'Full Time',
+                                            'type': type,
+                                            'desc': desc,
+                                          });
+                                        } else {
+                                          await _firestore.addAttendanceRecord({
+                                            'name': name,
+                                            'email': email,
+                                            'role': data['role'] ??
+                                                data['position'] ??
+                                                '',
+                                            'status': selectedStatus,
+                                            'attendanceType':
+                                                data['type2'] ?? 'Remote',
+                                            'workType':
+                                                data['type1'] ?? 'Full Time',
+                                            'type': type,
+                                            'desc': desc,
+                                          });
+                                        }
+                                      }
+
+                                      if (!context.mounted) return;
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Attendance updated successfully for $name.'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Failed to update attendance: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0F52BA),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 14,
+                                    ),
+                                    minimumSize: const Size(0, 40),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    'Save',
+                                    style: TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Body Section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildToggleChip(
-                              'Present',
-                              'assets/present.svg',
-                              const Color(0xFF00C853),
-                              isSelected: true,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildToggleChip(
-                              'Absent',
-                              'assets/absent.svg',
-                              const Color(0xFFF44336),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildToggleChip(
-                              'Leave',
-                              'assets/leave.svg',
-                              const Color(0xFFFF9800),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Reason (Required)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 100,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const TextField(
-                          maxLines: null,
-                          decoration: InputDecoration.collapsed(
-                            hintText: 'Enter reason......',
-                            hintStyle: TextStyle(
-                              color: Colors.black38,
-                              fontSize: 13,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey.shade300),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              minimumSize: const Size(0, 40),
-                            ),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0F52BA),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              minimumSize: const Size(0, 40),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              'Save',
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildToggleChip(
+    String label,
+    String svgAsset,
+    Color iconColor, {
+    bool isSelected = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.asset(svgAsset, height: 18, width: 18),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'SF Pro Display',
             ),
           ),
-        ),
-      );
-    },
-  );
-}
-
-Widget _buildToggleChip(
-  String label,
-  String svgAsset,
-  Color iconColor, {
-  bool isSelected = false,
-}) {
-  return Container(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    decoration: BoxDecoration(
-      color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(
-        color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200,
+        ],
       ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SvgPicture.asset(svgAsset, height: 18, width: 18),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
 
 class WorkerListItem extends StatelessWidget {
   final Map<String, dynamic> data;
+  final VoidCallback onMarkAttendance;
 
-  const WorkerListItem({super.key, required this.data});
+  const WorkerListItem({
+    super.key,
+    required this.data,
+    required this.onMarkAttendance,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -920,7 +1105,7 @@ class WorkerListItem extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => _showMarkAttendanceDialog(context, data),
+            onTap: onMarkAttendance,
             child: SvgPicture.asset(
               'assets/edit_icon.svg',
               height: 20,
@@ -1020,15 +1205,16 @@ class StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bgColor;
     Color textColor = Color(0xFFFFFFFF);
+    final displayStatus = (status.isEmpty || status == "*****") ? "*****" : status;
 
-    if (status == "*****") {
+    if (displayStatus == "*****") {
       bgColor = pillGray;
       textColor = textDark;
-    } else if (status == "Present") {
+    } else if (displayStatus == "Present") {
       bgColor = greenPresent;
-    } else if (status == "Absent") {
+    } else if (displayStatus == "Absent") {
       bgColor = redAbsent;
-    } else if (status == "Leave") {
+    } else if (displayStatus == "Leave") {
       bgColor = orangeLeave;
     } else {
       bgColor = pillGray;
@@ -1044,7 +1230,7 @@ class StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        status,
+        displayStatus,
         style: TextStyle(
           color: textColor,
           fontWeight: FontWeight.w700,

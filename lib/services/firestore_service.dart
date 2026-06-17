@@ -131,6 +131,11 @@ class FirestoreService {
     return docRef.id;
   }
 
+  Future<void> updateAttendanceRecord(String id, Map<String, dynamic> data) async {
+    Validators.validateAttendance(data);
+    await _attendance.doc(id).update(data);
+  }
+
   Future<void> deleteAttendanceRecord(String id) async {
     await _attendance.doc(id).delete();
   }
