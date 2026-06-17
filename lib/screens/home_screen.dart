@@ -1948,6 +1948,52 @@ class AttendanceLineChart extends StatelessWidget {
   }
 }
 
+class LeavePeriodConfig {
+  final double casualVal;
+  final double sickVal;
+  final double medicalVal;
+
+  final List<Offset> casualPath;
+  final List<Offset> sickPath;
+  final List<Offset> medicalPath;
+
+  final double? casualLeft;
+  final double? casualTop;
+  final double? casualRight;
+  final double? casualBottom;
+
+  final double? sickLeft;
+  final double? sickTop;
+  final double? sickRight;
+  final double? sickBottom;
+
+  final double? medicalLeft;
+  final double? medicalTop;
+  final double? medicalRight;
+  final double? medicalBottom;
+
+  const LeavePeriodConfig({
+    required this.casualVal,
+    required this.sickVal,
+    required this.medicalVal,
+    required this.casualPath,
+    required this.sickPath,
+    required this.medicalPath,
+    this.casualLeft,
+    this.casualTop,
+    this.casualRight,
+    this.casualBottom,
+    this.sickLeft,
+    this.sickTop,
+    this.sickRight,
+    this.sickBottom,
+    this.medicalLeft,
+    this.medicalTop,
+    this.medicalRight,
+    this.medicalBottom,
+  });
+}
+
 class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
@@ -1958,11 +2004,86 @@ class LeaveTypesPieChart extends StatelessWidget {
     this.isEmpty = false,
   });
 
+  static const Map<String, LeavePeriodConfig> _configs = {
+    'Week': LeavePeriodConfig(
+      casualVal: 60,
+      sickVal: 15,
+      medicalVal: 25,
+      casualPath: [Offset(147, 116), Offset(97, 60), Offset(55, 60)],
+      casualLeft: 65,
+      casualTop: 36,
+      sickPath: [Offset(230, 110), Offset(275, 60), Offset(325, 60)],
+      sickRight: 65,
+      sickTop: 36,
+      medicalPath: [Offset(220, 160), Offset(170, 220), Offset(100, 220)],
+      medicalLeft: 110,
+      medicalBottom: 43,
+    ),
+    'Month': LeavePeriodConfig(
+      casualVal: 50,
+      sickVal: 20,
+      medicalVal: 30,
+      casualPath: [Offset(151, 107.5), Offset(105, 60), Offset(55, 60)],
+      casualLeft: 65,
+      casualTop: 36,
+      sickPath: [Offset(226.4, 103.5), Offset(275, 60), Offset(325, 60)],
+      sickRight: 65,
+      sickTop: 36,
+      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
+      medicalLeft: 110,
+      medicalBottom: 43,
+    ),
+    '3 Month': LeavePeriodConfig(
+      casualVal: 45,
+      sickVal: 25,
+      medicalVal: 30,
+      casualPath: [Offset(149, 111), Offset(101, 60), Offset(55, 60)],
+      casualLeft: 65,
+      casualTop: 36,
+      sickPath: [Offset(222, 98), Offset(275, 60), Offset(325, 60)],
+      sickRight: 65,
+      sickTop: 36,
+      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
+      medicalLeft: 110,
+      medicalBottom: 43,
+    ),
+    '6 Month': LeavePeriodConfig(
+      casualVal: 40,
+      sickVal: 30,
+      medicalVal: 30,
+      casualPath: [Offset(147, 114), Offset(98, 60), Offset(55, 60)],
+      casualLeft: 65,
+      casualTop: 36,
+      sickPath: [Offset(212, 91), Offset(275, 60), Offset(325, 60)],
+      sickRight: 65,
+      sickTop: 36,
+      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
+      medicalLeft: 110,
+      medicalBottom: 43,
+    ),
+    'Yearly': LeavePeriodConfig(
+      casualVal: 35,
+      sickVal: 35,
+      medicalVal: 30,
+      casualPath: [Offset(146, 118), Offset(95, 60), Offset(55, 60)],
+      casualLeft: 65,
+      casualTop: 36,
+      sickPath: [Offset(205, 88), Offset(275, 60), Offset(325, 60)],
+      sickRight: 65,
+      sickTop: 36,
+      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
+      medicalLeft: 110,
+      medicalBottom: 43,
+    ),
+  };
+
   @override
   Widget build(BuildContext context) {
+    final config = _configs[period] ?? _configs['Month']!;
+
     return Card(
       elevation: 0,
-      color: Color(0xFFFFFFFF),
+      color: const Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -2004,26 +2125,20 @@ class LeaveTypesPieChart extends StatelessWidget {
                                     90, // Draw from 6 o'clock (Left half)
                                 sections: [
                                   PieChartSectionData(
-                                    color: const Color(
-                                      0xFF84A9FF,
-                                    ), // Casual Leave (50%)
-                                    value: 50,
+                                    color: const Color(0xFF84A9FF), // Casual Leave
+                                    value: config.casualVal,
                                     radius: 85,
                                     showTitle: false,
                                   ),
                                   PieChartSectionData(
-                                    color: const Color(
-                                      0xFFFF4A5E,
-                                    ), // Sick Leave (20%)
-                                    value: 20,
+                                    color: const Color(0xFFFF4A5E), // Sick Leave
+                                    value: config.sickVal,
                                     radius: 85,
                                     showTitle: false,
                                   ),
                                   PieChartSectionData(
-                                    color: const Color(
-                                      0xFF97FFA9,
-                                    ), // Medical Leave (30%)
-                                    value: 30,
+                                    color: const Color(0xFF97FFA9), // Medical Leave
+                                    value: config.medicalVal,
                                     radius: 85,
                                     showTitle: false,
                                   ),
@@ -2032,22 +2147,32 @@ class LeaveTypesPieChart extends StatelessWidget {
                             ),
                             CustomPaint(
                               size: const Size(380, 260),
-                              painter: CalloutLinesPainter(),
+                              painter: CalloutLinesPainter(
+                                casualPath: config.casualPath,
+                                sickPath: config.sickPath,
+                                medicalPath: config.medicalPath,
+                              ),
                             ),
-                            const Positioned(
-                              top: 36,
-                              left: 65,
-                              child: _ChartLabel('50%'),
+                            Positioned(
+                              top: config.casualTop,
+                              left: config.casualLeft,
+                              right: config.casualRight,
+                              bottom: config.casualBottom,
+                              child: _ChartLabel('${config.casualVal.toInt()}%'),
                             ),
-                            const Positioned(
-                              bottom: 43,
-                              left: 110,
-                              child: _ChartLabel('30%'),
+                            Positioned(
+                              top: config.sickTop,
+                              left: config.sickLeft,
+                              right: config.sickRight,
+                              bottom: config.sickBottom,
+                              child: _ChartLabel('${config.sickVal.toInt()}%'),
                             ),
-                            const Positioned(
-                              top: 36,
-                              right: 65,
-                              child: _ChartLabel('20%'),
+                            Positioned(
+                              top: config.medicalTop,
+                              left: config.medicalLeft,
+                              right: config.medicalRight,
+                              bottom: config.medicalBottom,
+                              child: _ChartLabel('${config.medicalVal.toInt()}%'),
                             ),
                           ],
                         ),
@@ -2064,13 +2189,13 @@ class LeaveTypesPieChart extends StatelessWidget {
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFF84A9FF),
-                                'Casual Leave: 50%',
+                                'Casual Leave: ${config.casualVal.toInt()}%',
                               ),
                             ),
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFFFF4A5E),
-                                'Sick Leave: 20%',
+                                'Sick Leave: ${config.sickVal.toInt()}%',
                               ),
                             ),
                           ],
@@ -2081,7 +2206,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFF97FFA9),
-                                'Medical Leave: 30%',
+                                'Medical Leave: ${config.medicalVal.toInt()}%',
                               ),
                             ),
                             const Expanded(child: SizedBox()),
@@ -2163,34 +2288,44 @@ class _ChartLabel extends StatelessWidget {
 }
 
 class CalloutLinesPainter extends CustomPainter {
+  final List<Offset> casualPath;
+  final List<Offset> sickPath;
+  final List<Offset> medicalPath;
+
+  CalloutLinesPainter({
+    required this.casualPath,
+    required this.sickPath,
+    required this.medicalPath,
+  });
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Color(0xFF000000)
+      ..color = const Color(0xFF000000)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
-    final path50 = Path();
-    path50.moveTo(55, 60);
-    path50.lineTo(105, 60);
-    path50.lineTo(151, 107.5);
-    canvas.drawPath(path50, paint);
+    _drawOffsetPath(canvas, paint, casualPath);
+    _drawOffsetPath(canvas, paint, sickPath);
+    _drawOffsetPath(canvas, paint, medicalPath);
+  }
 
-    final path20 = Path();
-    path20.moveTo(325, 60);
-    path20.lineTo(275, 60);
-    path20.lineTo(226.4, 103.5);
-    canvas.drawPath(path20, paint);
-
-    final path30 = Path();
-    path30.moveTo(100, 220);
-    path30.lineTo(170, 220);
-    path30.lineTo(200, 165);
-    canvas.drawPath(path30, paint);
+  void _drawOffsetPath(Canvas canvas, Paint paint, List<Offset> points) {
+    if (points.length < 2) return;
+    final path = Path();
+    path.moveTo(points[0].dx, points[0].dy);
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CalloutLinesPainter oldDelegate) {
+    return oldDelegate.casualPath != casualPath ||
+        oldDelegate.sickPath != sickPath ||
+        oldDelegate.medicalPath != medicalPath;
+  }
 }
 
 // ==========================================
