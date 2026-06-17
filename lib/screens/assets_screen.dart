@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode;
 import 'package:flutter_svg/flutter_svg.dart';

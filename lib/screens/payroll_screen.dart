@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -468,23 +469,27 @@ class _PayrollScreenState extends State<PayrollScreen> {
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () {
+              child: InkWell(
+                onTap: () {
                   _showPayrollDataDialog(context, doc);
                 },
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(50, 30),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  alignment: Alignment.centerLeft,
-                ),
-                child: const Text(
-                  'Payroll Data',
-                  style: TextStyle(
-                    color: Color(0xFF0D4CC6),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
+                mouseCursor: SystemMouseCursors.click,
+                borderRadius: BorderRadius.circular(4),
+                splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
+                highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Text(
+                      'Payroll Data',
+                      style: TextStyle(
+                        color: Color(0xFF0D4CC6),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
                   ),
                 ),
               ),

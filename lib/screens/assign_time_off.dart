@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import '../widgets/clickable_gesture_detector.dart';
+import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';

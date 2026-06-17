@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import 'clickable_gesture_detector.dart';
 
 class CustomTimeframeDropdown extends StatefulWidget {
   final String selectedPeriod;

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide GestureDetector;
+import '../widgets/clickable_gesture_detector.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
 import '../utils/snackbar_utils.dart';
