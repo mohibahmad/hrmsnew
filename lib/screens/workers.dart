@@ -609,8 +609,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   onTap: widget.onNotificationTap,
                   child: SvgPicture.asset(
                     'assets/notification_icon.svg',
-                    height: 24,
-                    width: 24,
+                    width: 22,
+              height: 26,
                     colorFilter: const ColorFilter.mode(
                       Color(0xFF000000),
                       BlendMode.srcIn,
@@ -620,12 +620,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 const SizedBox(width: 20),
                 GestureDetector(
                   onTap: widget.onProfileTap,
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundImage: const AssetImage(
-                      'assets/profileimage.png',
-                    ),
-                  ),
+                  child: const UserAvatar(),
                 ),
               ] else ...[
                 GestureDetector(
@@ -637,10 +632,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   ),
                 ),
                 const SizedBox(width: 24),
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: const AssetImage('assets/profileimage.png'),
-                ),
+                const UserAvatar(),
               ],
             ],
           ),
@@ -1047,6 +1039,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               offset: const Offset(0, 40),
               onSelected: (value) {
                 if (value == 'preview') {
+                  final phone = (worker['phone'] ?? '').toString();
+                  final fatherName = (worker['fatherName'] ?? '').toString();
+                  final joiningDate = (worker['joiningDate'] ?? '').toString();
+                  final gender = (worker['gender'] ?? '').toString();
+                  final currency = (worker['currency'] ?? '').toString();
+                  final salaryAmount = (worker['salaryAmount'] ?? '')
+                      .toString();
+                  final salary = (salaryAmount.isNotEmpty)
+                      ? (currency.isNotEmpty
+                            ? '$currency $salaryAmount'
+                            : salaryAmount)
+                      : '';
+
                   showDialog(
                     context: context,
                     barrierColor: const Color(
@@ -1058,6 +1063,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       position: position,
                       workType: type1,
                       attendanceType: type2,
+                      fatherName: fatherName,
+                      phone: phone,
+                      joiningDate: joiningDate,
+                      gender: gender,
+                      salary: salary,
                     ),
                   );
                 } else if (value == 'edit') {
@@ -1236,6 +1246,11 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
   final String position;
   final String workType;
   final String attendanceType;
+  final String fatherName;
+  final String phone;
+  final String joiningDate;
+  final String gender;
+  final String salary;
 
   const WorkerProfilePreviewDialog({
     super.key,
@@ -1244,6 +1259,11 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     required this.position,
     required this.workType,
     required this.attendanceType,
+    required this.fatherName,
+    required this.phone,
+    required this.joiningDate,
+    required this.gender,
+    required this.salary,
   });
 
   // Exact colors picked from the image
@@ -1419,16 +1439,16 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
 
                                 // Phone Row
                                 Row(
-                                  children: const [
-                                    Icon(
+                                  children: [
+                                    const Icon(
                                       Icons.phone,
                                       color: Color(0xFFFFFFFF),
                                       size: 20,
                                     ),
-                                    SizedBox(width: 10),
+                                    const SizedBox(width: 10),
                                     Text(
-                                      '123 5434567',
-                                      style: TextStyle(
+                                      phone.isNotEmpty ? phone : 'N/A',
+                                      style: const TextStyle(
                                         color: Color(0xFFFFFFFF),
                                         fontSize: 15,
                                         fontWeight: FontWeight.w500,
@@ -1462,7 +1482,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             child: _buildInfoCard(
                               Icons.person,
                               'Father/Husband Name',
-                              'Ahmad',
+                              fatherName.isNotEmpty ? fatherName : 'N/A',
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1515,7 +1535,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             child: _buildInfoCard(
                               Icons.calendar_month,
                               'Joining Date',
-                              '10/10/2025',
+                              joiningDate.isNotEmpty ? joiningDate : 'N/A',
                             ),
                           ),
                         ],
@@ -1529,7 +1549,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             child: _buildInfoCard(
                               Icons.transgender,
                               'Gender',
-                              'Male',
+                              gender.isNotEmpty ? gender : 'Male',
                             ),
                           ), // Closest to combined symbol
                           const SizedBox(width: 12),
@@ -1537,7 +1557,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             child: _buildInfoCard(
                               Icons.volunteer_activism,
                               'Salary',
-                              'Rs 12,000',
+                              salary.isNotEmpty ? salary : 'N/A',
                             ),
                           ), // Hand holding icon
                         ],

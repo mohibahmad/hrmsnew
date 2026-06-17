@@ -134,8 +134,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
             onTap: widget.onNotificationTap,
             child: SvgPicture.asset(
               'assets/notification_icon.svg',
-              height: 24,
-              width: 24,
+              width: 22,
+              height: 26,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF000000),
                 BlendMode.srcIn,
@@ -145,10 +145,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,
-            child: CircleAvatar(
-              radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
-            ),
+            child: const UserAvatar(),
           ),
         ],
       ),

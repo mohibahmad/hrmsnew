@@ -1,4 +1,6 @@
 import 'dart:io' as io;
+import 'dart:typed_data';
+import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +12,21 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
+
+const List<String> _months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
 // ==========================================
 // ADD NEW WORKER FLOW (EXPERIENCE & DOCS)
@@ -33,11 +50,23 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _nationalIdController = TextEditingController();
   final _religionController = TextEditingController();
   final _dobController = TextEditingController();
-  final _genderController = TextEditingController();
+  final _genderController = TextEditingController(text: 'Male');
   final _addressController = TextEditingController();
   final _positionController = TextEditingController();
-  final _type1Controller = TextEditingController();
-  final _type2Controller = TextEditingController();
+  final _type1Controller = TextEditingController(text: 'Full-Time');
+  final _type2Controller = TextEditingController(text: 'On-Site');
+
+  // Upgraded form controllers & state
+  final _experienceLevelController = TextEditingController(text: 'Mid-Level');
+  final _educationController = TextEditingController(text: 'Bachelor\'s');
+  final _salaryTypeController = TextEditingController(text: 'Monthly');
+  final _currencyController = TextEditingController(text: 'USD');
+  final _salaryAmountController = TextEditingController();
+  final _leavePolicyController = TextEditingController(text: 'Standard');
+  final _annualLeavesController = TextEditingController();
+  final _sickLeavesController = TextEditingController();
+  final _casualLeavesController = TextEditingController();
+  String _relationshipStatus = 'Single';
 
   // Upload states
   Uint8List? _profileImageBytes;
@@ -75,14 +104,61 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _religionController.text = (widget.workerToEdit!['religion'] ?? '')
           .toString();
       _dobController.text = (widget.workerToEdit!['dob'] ?? '').toString();
-      _genderController.text = (widget.workerToEdit!['gender'] ?? '')
+
+      _genderController.text = (widget.workerToEdit!['gender'] ?? 'Male')
           .toString();
+      if (_genderController.text.isEmpty) _genderController.text = 'Male';
+
       _addressController.text = (widget.workerToEdit!['address'] ?? '')
           .toString();
       _positionController.text = (widget.workerToEdit!['position'] ?? '')
           .toString();
-      _type1Controller.text = (widget.workerToEdit!['type1'] ?? '').toString();
-      _type2Controller.text = (widget.workerToEdit!['type2'] ?? '').toString();
+
+      _type1Controller.text = (widget.workerToEdit!['type1'] ?? 'Full-Time')
+          .toString();
+      if (_type1Controller.text.isEmpty) _type1Controller.text = 'Full-Time';
+
+      _type2Controller.text = (widget.workerToEdit!['type2'] ?? 'On-Site')
+          .toString();
+      if (_type2Controller.text.isEmpty) _type2Controller.text = 'On-Site';
+
+      _experienceLevelController.text =
+          (widget.workerToEdit!['experienceLevel'] ?? 'Mid-Level').toString();
+      if (_experienceLevelController.text.isEmpty)
+        _experienceLevelController.text = 'Mid-Level';
+
+      _educationController.text =
+          (widget.workerToEdit!['education'] ?? 'Bachelor\'s').toString();
+      if (_educationController.text.isEmpty)
+        _educationController.text = 'Bachelor\'s';
+
+      _salaryTypeController.text =
+          (widget.workerToEdit!['salaryType'] ?? 'Monthly').toString();
+      if (_salaryTypeController.text.isEmpty)
+        _salaryTypeController.text = 'Monthly';
+
+      _currencyController.text = (widget.workerToEdit!['currency'] ?? 'USD')
+          .toString();
+      if (_currencyController.text.isEmpty) _currencyController.text = 'USD';
+
+      _salaryAmountController.text =
+          (widget.workerToEdit!['salaryAmount'] ?? '').toString();
+
+      _leavePolicyController.text =
+          (widget.workerToEdit!['leavePolicy'] ?? 'Standard').toString();
+      if (_leavePolicyController.text.isEmpty)
+        _leavePolicyController.text = 'Standard';
+
+      _annualLeavesController.text =
+          (widget.workerToEdit!['annualLeaves'] ?? '').toString();
+      _sickLeavesController.text = (widget.workerToEdit!['sickLeaves'] ?? '')
+          .toString();
+      _casualLeavesController.text =
+          (widget.workerToEdit!['casualLeaves'] ?? '').toString();
+
+      _relationshipStatus =
+          (widget.workerToEdit!['relationshipStatus'] ?? 'Single').toString();
+      if (_relationshipStatus.isEmpty) _relationshipStatus = 'Single';
 
       _existingProfileImageUrl = widget.workerToEdit!['profileImage']
           ?.toString();
@@ -94,6 +170,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _cvName = _existingCvUrl!.split('/').last;
       }
       _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
+    }
+    if (_joiningDate == null || _joiningDate!.isEmpty) {
+      final today = DateTime.now();
+      _joiningDate = '${_months[today.month - 1]} ${today.day}, ${today.year}';
     }
   }
 
@@ -212,6 +292,41 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   }
 
   Future<void> _saveWorker() async {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
+
+    if (name.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter worker name.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    if (phone.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter contact number.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
+    if (email.isNotEmpty &&
+        !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter a valid email address.',
+        title: 'Validation Error',
+        isError: true,
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -254,28 +369,34 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
 
     final data = {
-      'name': _nameController.text.isNotEmpty
-          ? _nameController.text
-          : 'New Worker',
-      'fatherName': _fatherNameController.text,
-      'email': _emailController.text.isNotEmpty
-          ? _emailController.text
-          : 'worker@email.com',
-      'phone': _phoneController.text,
-      'nationalId': _nationalIdController.text,
-      'religion': _religionController.text,
-      'dob': _dobController.text,
-      'gender': _genderController.text,
-      'address': _addressController.text,
+      'name': name,
+      'fatherName': _fatherNameController.text.trim(),
+      'email': email.isNotEmpty ? email : 'worker@email.com',
+      'phone': phone,
+      'nationalId': _nationalIdController.text.trim(),
+      'religion': _religionController.text.trim(),
+      'dob': _dobController.text.trim(),
+      'gender': _genderController.text.trim(),
+      'address': _addressController.text.trim(),
+      'relationshipStatus': _relationshipStatus,
       'type1': _type1Controller.text.isNotEmpty
           ? _type1Controller.text
           : 'Full-Time',
       'position': _positionController.text.isNotEmpty
-          ? _positionController.text
+          ? _positionController.text.trim()
           : 'Employee',
       'type2': _type2Controller.text.isNotEmpty
           ? _type2Controller.text
           : 'On-Site',
+      'experienceLevel': _experienceLevelController.text.trim(),
+      'education': _educationController.text.trim(),
+      'salaryType': _salaryTypeController.text.trim(),
+      'currency': _currencyController.text.trim(),
+      'salaryAmount': _salaryAmountController.text.trim(),
+      'leavePolicy': _leavePolicyController.text.trim(),
+      'annualLeaves': _annualLeavesController.text.trim(),
+      'sickLeaves': _sickLeavesController.text.trim(),
+      'casualLeaves': _casualLeavesController.text.trim(),
       'joiningDate': _joiningDate ?? 'January 9, 2026',
       'profileImage': profileImageUrl,
       'frontId': frontIdUrl,
@@ -345,6 +466,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _positionController.dispose();
     _type1Controller.dispose();
     _type2Controller.dispose();
+    _experienceLevelController.dispose();
+    _educationController.dispose();
+    _salaryTypeController.dispose();
+    _currencyController.dispose();
+    _salaryAmountController.dispose();
+    _leavePolicyController.dispose();
+    _annualLeavesController.dispose();
+    _sickLeavesController.dispose();
+    _casualLeavesController.dispose();
     super.dispose();
   }
 
@@ -494,6 +624,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       profileImageName: _profileImageName,
                       existingProfileImageUrl: _existingProfileImageUrl,
                       onUploadProfileTap: _pickProfileImage,
+                      relationshipStatus: _relationshipStatus,
+                      onRelationshipStatusChanged: (status) {
+                        setState(() {
+                          _relationshipStatus = status;
+                        });
+                      },
                       onNextStep: () => setState(() => _activeTabIndex = 1),
                     ),
                   if (_activeTabIndex == 1)
@@ -501,11 +637,21 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       positionController: _positionController,
                       type1Controller: _type1Controller,
                       type2Controller: _type2Controller,
+                      experienceLevelController: _experienceLevelController,
+                      educationController: _educationController,
+                      salaryTypeController: _salaryTypeController,
+                      currencyController: _currencyController,
+                      salaryAmountController: _salaryAmountController,
+                      leavePolicyController: _leavePolicyController,
+                      annualLeavesController: _annualLeavesController,
+                      sickLeavesController: _sickLeavesController,
+                      casualLeavesController: _casualLeavesController,
                       selectedJoiningDate: _joiningDate,
                       onJoiningDateChanged: (date) {
                         setState(() => _joiningDate = date);
                       },
                       onNextStep: () => setState(() => _activeTabIndex = 2),
+                      onPrevStep: () => setState(() => _activeTabIndex = 0),
                     ),
                   if (_activeTabIndex == 2)
                     DocumentationSection(
@@ -530,6 +676,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                           _isCvUploaded = false;
                         });
                       },
+                      onPrevStep: () => setState(() => _activeTabIndex = 1),
                     ),
                 ],
               ),
@@ -596,6 +743,8 @@ class WorkerDetailFormSection extends StatelessWidget {
   final String? profileImageName;
   final String? existingProfileImageUrl;
   final VoidCallback? onUploadProfileTap;
+  final String relationshipStatus;
+  final ValueChanged<String> onRelationshipStatusChanged;
 
   const WorkerDetailFormSection({
     super.key,
@@ -613,6 +762,8 @@ class WorkerDetailFormSection extends StatelessWidget {
     this.profileImageName,
     this.existingProfileImageUrl,
     this.onUploadProfileTap,
+    required this.relationshipStatus,
+    required this.onRelationshipStatusChanged,
   });
 
   final Color formBgGrey = const Color(0xFFF3F5F8);
@@ -637,36 +788,42 @@ class WorkerDetailFormSection extends StatelessWidget {
             padding: const EdgeInsets.only(top: 6),
             child: Column(
               children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  import_cupertino.CupertinoButton(
-                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  import_cupertino.CupertinoButton(
-                    child: const Text('Done', style: TextStyle(color: Color(0xFF0247C4))),
-                    onPressed: () {
-                      onDateSelected(tempPickedDate);
-                      Navigator.of(context).pop();
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    import_cupertino.CupertinoButton(
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    import_cupertino.CupertinoButton(
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(color: Color(0xFF0247C4)),
+                      ),
+                      onPressed: () {
+                        onDateSelected(tempPickedDate);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: import_cupertino.CupertinoDatePicker(
+                    mode: import_cupertino.CupertinoDatePickerMode.date,
+                    initialDateTime: initialDate,
+                    minimumDate: DateTime(1950),
+                    maximumDate: DateTime.now(),
+                    onDateTimeChanged: (DateTime newDate) {
+                      tempPickedDate = newDate;
                     },
                   ),
-                ],
-              ),
-              Expanded(
-                child: import_cupertino.CupertinoDatePicker(
-                  mode: import_cupertino.CupertinoDatePickerMode.date,
-                  initialDateTime: initialDate,
-                  minimumDate: DateTime(1950),
-                  maximumDate: DateTime.now(),
-                  onDateTimeChanged: (DateTime newDate) {
-                    tempPickedDate = newDate;
-                  },
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         );
       },
     );
@@ -809,8 +966,14 @@ class WorkerDetailFormSection extends StatelessWidget {
                                 context: context,
                                 initialDate: DateTime(1990, 1, 1),
                                 onDateSelected: (date) {
-                                  final day = date.day.toString().padLeft(2, '0');
-                                  final month = date.month.toString().padLeft(2, '0');
+                                  final day = date.day.toString().padLeft(
+                                    2,
+                                    '0',
+                                  );
+                                  final month = date.month.toString().padLeft(
+                                    2,
+                                    '0',
+                                  );
                                   final year = date.year.toString();
                                   dobController.text = '$day/$month/$year';
                                 },
@@ -828,11 +991,15 @@ class WorkerDetailFormSection extends StatelessWidget {
                         ),
                         const SizedBox(width: 24),
                         Expanded(
-                          child: _buildInputField(
-                            'Gender:',
-                            'Male',
-                            isDropdown: true,
-                            controller: genderController,
+                          child: _buildDropdownField(
+                            label: 'Gender:',
+                            selectedValue: genderController.text,
+                            items: ['Male', 'Female', 'Other'],
+                            onChanged: (val) {
+                              if (val != null) {
+                                genderController.text = val;
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -980,9 +1147,17 @@ class WorkerDetailFormSection extends StatelessWidget {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      _buildCustomRadio(label: 'Married', isSelected: true),
+                      _buildCustomRadio(
+                        label: 'Married',
+                        isSelected: relationshipStatus == 'Married',
+                        onTap: () => onRelationshipStatusChanged('Married'),
+                      ),
                       const SizedBox(width: 40),
-                      _buildCustomRadio(label: 'Single', isSelected: false),
+                      _buildCustomRadio(
+                        label: 'Single',
+                        isSelected: relationshipStatus == 'Single',
+                        onTap: () => onRelationshipStatusChanged('Single'),
+                      ),
                     ],
                   ),
                 ],
@@ -1032,18 +1207,38 @@ class ExperienceFormSection extends StatefulWidget {
   final TextEditingController positionController;
   final TextEditingController type1Controller;
   final TextEditingController type2Controller;
+  final TextEditingController experienceLevelController;
+  final TextEditingController educationController;
+  final TextEditingController salaryTypeController;
+  final TextEditingController currencyController;
+  final TextEditingController salaryAmountController;
+  final TextEditingController leavePolicyController;
+  final TextEditingController annualLeavesController;
+  final TextEditingController sickLeavesController;
+  final TextEditingController casualLeavesController;
   final String? selectedJoiningDate;
   final ValueChanged<String>? onJoiningDateChanged;
   final VoidCallback? onNextStep;
+  final VoidCallback? onPrevStep;
 
   const ExperienceFormSection({
     super.key,
     required this.positionController,
     required this.type1Controller,
     required this.type2Controller,
+    required this.experienceLevelController,
+    required this.educationController,
+    required this.salaryTypeController,
+    required this.currencyController,
+    required this.salaryAmountController,
+    required this.leavePolicyController,
+    required this.annualLeavesController,
+    required this.sickLeavesController,
+    required this.casualLeavesController,
     this.selectedJoiningDate,
     this.onJoiningDateChanged,
     this.onNextStep,
+    this.onPrevStep,
   });
 
   @override
@@ -1052,21 +1247,55 @@ class ExperienceFormSection extends StatefulWidget {
 
 class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   final Color formBgGrey = const Color(0xFFF3F5F8);
-  int _selectedDay = 9;
+  late DateTime _calendarMonth;
+  DateTime? _selectedDate;
+  DateTime? _initialDate;
 
   @override
   void initState() {
     super.initState();
-    if (widget.selectedJoiningDate != null) {
-      final parts = widget.selectedJoiningDate!.split(' ');
-      if (parts.length >= 2) {
-        final dayString = parts[1].replaceAll(',', '');
-        final day = int.tryParse(dayString);
-        if (day != null) {
-          _selectedDay = day;
+    _parseSelectedDate();
+  }
+
+  @override
+  void didUpdateWidget(covariant ExperienceFormSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedJoiningDate != oldWidget.selectedJoiningDate) {
+      _parseSelectedDate();
+    }
+  }
+
+  void _parseSelectedDate() {
+    if (widget.selectedJoiningDate != null &&
+        widget.selectedJoiningDate!.isNotEmpty) {
+      try {
+        final dateStr = widget.selectedJoiningDate!;
+        final parts = dateStr.split(' ');
+        if (parts.length >= 3) {
+          final monthName = parts[0];
+          final day = int.parse(parts[1].replaceAll(',', ''));
+          final year = int.parse(parts[2]);
+          final monthIndex = _months.indexWhere(
+            (m) => m.toLowerCase() == monthName.toLowerCase(),
+          );
+          if (monthIndex != -1) {
+            setState(() {
+              _selectedDate = DateTime(year, monthIndex + 1, day);
+              _calendarMonth = DateTime(year, monthIndex + 1, 1);
+              _initialDate = _selectedDate;
+            });
+            return;
+          }
         }
+      } catch (e) {
+        debugPrint('Error parsing joining date: $e');
       }
     }
+    setState(() {
+      _selectedDate = DateTime.now();
+      _calendarMonth = DateTime(_selectedDate!.year, _selectedDate!.month, 1);
+      _initialDate = _selectedDate;
+    });
   }
 
   @override
@@ -1093,7 +1322,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Color(0xFFFFFFFF),
+                  color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
                 ),
@@ -1150,11 +1379,21 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         ),
                         const SizedBox(width: 24),
                         Expanded(
-                          child: _buildInputField(
-                            'Experience Level:',
-                            'Enter your level',
-                            isDropdown: true,
-                            textAlign: TextAlign.center,
+                          child: _buildDropdownField(
+                            label: 'Experience Level:',
+                            selectedValue:
+                                widget.experienceLevelController.text,
+                            items: const [
+                              'Junior',
+                              'Mid-Level',
+                              'Senior',
+                              'Lead',
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                widget.experienceLevelController.text = val;
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -1163,21 +1402,39 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildInputField(
-                            'Work Type:',
-                            'Enter your work type',
-                            isDropdown: true,
-                            controller: widget.type1Controller,
-                            textAlign: TextAlign.center,
+                          child: _buildDropdownField(
+                            label: 'Work Type:',
+                            selectedValue: widget.type1Controller.text,
+                            items: const [
+                              'Full-Time',
+                              'Part-Time',
+                              'Contract',
+                              'Internship',
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                widget.type1Controller.text = val;
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 24),
                         Expanded(
-                          child: _buildInputField(
-                            'Education:',
-                            'Enter your education',
-                            isDropdown: true,
-                            textAlign: TextAlign.center,
+                          child: _buildDropdownField(
+                            label: 'Education:',
+                            selectedValue: widget.educationController.text,
+                            items: const [
+                              'High School',
+                              'Bachelor\'s',
+                              'Master\'s',
+                              'PhD',
+                              'Other',
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                widget.educationController.text = val;
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -1186,12 +1443,15 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildInputField(
-                            'Attendance Type:',
-                            'Enter your attendance type',
-                            isDropdown: true,
-                            controller: widget.type2Controller,
-                            textAlign: TextAlign.center,
+                          child: _buildDropdownField(
+                            label: 'Attendance Type:',
+                            selectedValue: widget.type2Controller.text,
+                            items: const ['On-Site', 'Remote', 'Hybrid'],
+                            onChanged: (val) {
+                              if (val != null) {
+                                widget.type2Controller.text = val;
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1237,110 +1497,223 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: Column(
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            Icon(Icons.keyboard_arrow_left, size: 20),
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _calendarMonth = DateTime(
+                                    _calendarMonth.year,
+                                    _calendarMonth.month - 1,
+                                    1,
+                                  );
+                                });
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_left,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
                             Text(
-                              'JANUARY20XX',
-                              style: TextStyle(
+                              '${_months[_calendarMonth.month - 1].toUpperCase()}${_calendarMonth.year}',
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
+                                letterSpacing: 1.0,
                                 fontFamily: 'SF Pro Display',
                               ),
                             ),
-                            Icon(Icons.keyboard_arrow_right, size: 20),
+                            const SizedBox(width: 20),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _calendarMonth = DateTime(
+                                    _calendarMonth.year,
+                                    _calendarMonth.month + 1,
+                                    1,
+                                  );
+                                });
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_right,
+                                size: 20,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildDayPill('SUN', true),
-                            _buildDayPill('MON', false),
-                            _buildDayPill('THE', false),
-                            _buildDayPill('WED', false),
-                            _buildDayPill('THU', false),
-                            _buildDayPill('FRI', false, isGreen: true),
-                            _buildDayPill('SAT', false),
+                            Expanded(
+                              child: Center(child: _buildDayPill('SUN', true)),
+                            ),
+                            Expanded(
+                              child: Center(child: _buildDayPill('MON', false)),
+                            ),
+                            Expanded(
+                              child: Center(child: _buildDayPill('THE', false)),
+                            ),
+                            Expanded(
+                              child: Center(child: _buildDayPill('WED', false)),
+                            ),
+                            Expanded(
+                              child: Center(child: _buildDayPill('THU', false)),
+                            ),
+                            Expanded(
+                              child: Center(
+                                child: _buildDayPill(
+                                  'FRI',
+                                  false,
+                                  isGreen: true,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Center(child: _buildDayPill('SAT', false)),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        // Calendar Grid Mockup
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: List.generate(31, (index) {
-                            int day = index + 1;
-                            bool isSelected = day == _selectedDay;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedDay = day;
-                                });
-                              },
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFF0B50C3)
-                                      : Color(0xFFFFFFFF),
-                                  border: isSelected
-                                      ? null
-                                      : Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '$day',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isSelected
-                                        ? Color(0xFFFFFFFF)
-                                        : Colors.black,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
+                        // Calendar Grid View (CrossAxisCount 7 for perfect column alignment)
+                        Builder(
+                          builder: (context) {
+                            final firstDay = DateTime(
+                              _calendarMonth.year,
+                              _calendarMonth.month,
+                              1,
                             );
-                          }),
+                            final firstWeekday = firstDay.weekday;
+                            final daysInMonth = DateTime(
+                              _calendarMonth.year,
+                              _calendarMonth.month + 1,
+                              0,
+                            ).day;
+                            final padCount = firstWeekday == 7
+                                ? 0
+                                : firstWeekday;
+
+                            return GridView.count(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisCount: 7,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              children: [
+                                for (int i = 0; i < padCount; i++)
+                                  const SizedBox.shrink(),
+                                for (int day = 1; day <= daysInMonth; day++)
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedDate = DateTime(
+                                          _calendarMonth.year,
+                                          _calendarMonth.month,
+                                          day,
+                                        );
+                                      });
+                                    },
+                                    child: Builder(
+                                      builder: (context) {
+                                        final isSelected =
+                                            _selectedDate != null &&
+                                            _selectedDate!.year ==
+                                                _calendarMonth.year &&
+                                            _selectedDate!.month ==
+                                                _calendarMonth.month &&
+                                            _selectedDate!.day == day;
+                                        return Container(
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? const Color(0xFF0B50C3)
+                                                : Color(0xFFFFFFFF),
+                                            border: isSelected
+                                                ? null
+                                                : Border.all(
+                                                    color: Colors.grey.shade300,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '$day',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isSelected
+                                                  ? Color(0xFFFFFFFF)
+                                                  : Colors.black,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.bold
+                                                  : FontWeight.w500,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Cancel',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (_initialDate != null) {
+                                    _selectedDate = _initialDate;
+                                    _calendarMonth = DateTime(
+                                      _initialDate!.year,
+                                      _initialDate!.month,
+                                      1,
+                                    );
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () {
-                                final selectedDate =
-                                    'January $_selectedDay, 2026';
-                                widget.onJoiningDateChanged?.call(selectedDate);
-                                FlashySnackBar.show(
-                                  context,
-                                  message: 'Joining date is $selectedDate',
-                                  isError: false,
-                                );
+                                if (_selectedDate != null) {
+                                  final monthName =
+                                      _months[_selectedDate!.month - 1];
+                                  final formatted =
+                                      '$monthName ${_selectedDate!.day}, ${_selectedDate!.year}';
+                                  widget.onJoiningDateChanged?.call(formatted);
+                                  setState(() {
+                                    _initialDate = _selectedDate;
+                                  });
+                                  FlashySnackBar.show(
+                                    context,
+                                    message: 'Joining date is $formatted',
+                                    isError: false,
+                                  );
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -1396,20 +1769,33 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildInputField(
-                      'Salary Type:',
-                      'Enter your salary type',
-                      isDropdown: true,
-                      textAlign: TextAlign.center,
+                    child: _buildDropdownField(
+                      label: 'Salary Type:',
+                      selectedValue: widget.salaryTypeController.text,
+                      items: const [
+                        'Monthly',
+                        'Hourly',
+                        'Weekly',
+                        'Project-based',
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          widget.salaryTypeController.text = val;
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: _buildInputField(
-                      'Currency:',
-                      'Enter your currency',
-                      isDropdown: true,
-                      textAlign: TextAlign.center,
+                    child: _buildDropdownField(
+                      label: 'Currency:',
+                      selectedValue: widget.currencyController.text,
+                      items: const ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED'],
+                      onChanged: (val) {
+                        if (val != null) {
+                          widget.currencyController.text = val;
+                        }
+                      },
                     ),
                   ),
                 ],
@@ -1422,6 +1808,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       'Salary Amount:',
                       'Enter your amount',
                       textAlign: TextAlign.center,
+                      controller: widget.salaryAmountController,
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -1455,11 +1842,15 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildInputField(
-                      'Leave Policy:',
-                      'Select policy',
-                      isDropdown: true,
-                      textAlign: TextAlign.center,
+                    child: _buildDropdownField(
+                      label: 'Leave Policy:',
+                      selectedValue: widget.leavePolicyController.text,
+                      items: const ['Standard', 'Custom', 'Sick/Casual Only'],
+                      onChanged: (val) {
+                        if (val != null) {
+                          widget.leavePolicyController.text = val;
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -1468,6 +1859,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       'Annual Leaves (Days):',
                       'e.g., 14',
                       textAlign: TextAlign.center,
+                      controller: widget.annualLeavesController,
                     ),
                   ),
                 ],
@@ -1480,6 +1872,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       'Sick Leaves (Days):',
                       'e.g., 7',
                       textAlign: TextAlign.center,
+                      controller: widget.sickLeavesController,
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -1488,6 +1881,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       'Casual Leaves (Days):',
                       'e.g., 3',
                       textAlign: TextAlign.center,
+                      controller: widget.casualLeavesController,
                     ),
                   ),
                 ],
@@ -1543,6 +1937,7 @@ class DocumentationSection extends StatelessWidget {
   final bool isCvUploaded;
   final VoidCallback? onUploadCvTap;
   final VoidCallback? onDeleteCvTap;
+  final VoidCallback? onPrevStep;
 
   const DocumentationSection({
     super.key,
@@ -1560,6 +1955,7 @@ class DocumentationSection extends StatelessWidget {
     this.isCvUploaded = false,
     this.onUploadCvTap,
     this.onDeleteCvTap,
+    this.onPrevStep,
   });
 
   @override
@@ -1847,6 +2243,12 @@ class DocumentationSection extends StatelessWidget {
   }
 
   Widget _buildCvPreview(BuildContext buildContext) {
+    final isImage =
+        cvName != null &&
+        (cvName!.toLowerCase().endsWith('.png') ||
+            cvName!.toLowerCase().endsWith('.jpg') ||
+            cvName!.toLowerCase().endsWith('.jpeg'));
+
     return Container(
       height: 580,
       width: double.infinity,
@@ -1857,183 +2259,192 @@ class DocumentationSection extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Mock CV lines background
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+          // White document page sheet representing the CV page (spans full height now)
+          Positioned(
+            top: 24,
+            bottom: 24,
+            left: 24,
+            right: 24,
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: isImage
+                  ? GestureDetector(
+                      onTap: () => _openDocumentPreview(buildContext),
+                      child: cvBytes != null
+                          ? Image.memory(cvBytes!, fit: BoxFit.cover)
+                          : (existingCvUrl != null && existingCvUrl!.isNotEmpty
+                                ? Image.network(
+                                    existingCvUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Center(
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 48,
+                                              ),
+                                            ),
+                                  )
+                                : const SizedBox.shrink()),
+                    )
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Mock CV lines background inside the page sheet
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                height: 16,
+                                width: 150,
+                                color: Colors.grey.shade200,
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                height: 10,
+                                width: 100,
+                                color: Colors.grey.shade200,
+                              ),
+                              const SizedBox(height: 40),
+                              ...List.generate(
+                                6,
+                                (index) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Container(
+                                    height: 10,
+                                    width: double.infinity,
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // PDF Page Preview rendered directly on top of the mock lines (no text / icon overlays)
+                        if (cvBytes != null ||
+                            (existingCvUrl != null &&
+                                existingCvUrl!.isNotEmpty))
+                          Positioned.fill(
+                            child: PdfPagePreview(
+                              cvBytes: cvBytes,
+                              existingCvUrl: existingCvUrl,
+                            ),
+                          ),
+
+                        // Make the sheet clickable to trigger preview document view
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () => _openDocumentPreview(buildContext),
+                            behavior: HitTestBehavior.opaque,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+
+          // Centered controls overlay (Edit / Delete) in the middle of the preview container
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(height: 16, width: 200, color: Colors.grey.shade300),
-                const SizedBox(height: 8),
-                Container(height: 10, width: 150, color: Colors.grey.shade300),
-                const SizedBox(height: 40),
-                ...List.generate(
-                  8,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      height: 12,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
+                GestureDetector(
+                  onTap: onUploadCvTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Edit',
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SvgPicture.asset(
+                          'assets/edit_icon.svg',
+                          height: 18,
+                          width: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: onDeleteCvTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SvgPicture.asset(
+                          'assets/delete_icon.svg',
+                          height: 18,
+                          width: 18,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-
-          // Show uploaded document preview (PDF icon) if available
-          if (cvBytes != null ||
-              (existingCvUrl != null && existingCvUrl!.isNotEmpty))
-            GestureDetector(
-              onTap: () => _openDocumentPreview(buildContext),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.picture_as_pdf,
-                    size: 120,
-                    color: Colors.red.shade300,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    cvName ?? 'Uploaded CV',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap to preview document',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.blue.shade600,
-                      fontFamily: 'SF Pro Display',
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Semi-transparent overlay
-          Container(color: const Color(0xFFFFFFFF).withValues(alpha: 0.5)),
-          // Foreground controls
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (cvName != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.description,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 200),
-                        child: Text(
-                          cvName!,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: onUploadCvTap,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Edit',
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SvgPicture.asset(
-                            'assets/edit_icon.svg',
-                            height: 18,
-                            width: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: onDeleteCvTap,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Delete',
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SvgPicture.asset(
-                            'assets/delete_icon.svg',
-                            height: 18,
-                            width: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ],
       ),
@@ -2168,40 +2579,222 @@ Widget _buildInputField(
   );
 }
 
-Widget _buildCustomRadio({required String label, required bool isSelected}) {
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Color(0xFF000000), width: 2),
-        ),
-        child: isSelected
-            ? Center(
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF000000),
+Widget _buildCustomRadio({
+  required String label,
+  required bool isSelected,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFF000000), width: 2),
+          ),
+          child: isSelected
+              ? Center(
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF000000),
+                    ),
                   ),
-                ),
-              )
-            : const SizedBox(),
-      ),
-      const SizedBox(width: 10),
+                )
+              : const SizedBox(),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF000000),
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildDropdownField({
+  required String label,
+  required String selectedValue,
+  required List<String> items,
+  required ValueChanged<String?> onChanged,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
       Text(
         label,
         style: const TextStyle(
           color: Color(0xFF000000),
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
           fontFamily: 'SF Pro Display',
+        ),
+      ),
+      const SizedBox(height: 8),
+      Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        alignment: Alignment.center,
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            isExpanded: true,
+            value: items.contains(selectedValue) ? selectedValue : items.first,
+            icon: Icon(
+              Icons.arrow_drop_down,
+              color: Colors.grey.shade400,
+              size: 22,
+            ),
+            dropdownColor: const Color(0xFFFFFFFF),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF000000),
+              fontFamily: 'SF Pro Display',
+            ),
+            items: items.map((String item) {
+              return DropdownMenuItem<String>(value: item, child: Text(item));
+            }).toList(),
+            onChanged: onChanged,
+          ),
         ),
       ),
     ],
   );
+}
+
+// Stateful widget that renders the first page of the PDF CV file
+class PdfPagePreview extends StatefulWidget {
+  final Uint8List? cvBytes;
+  final String? existingCvUrl;
+
+  const PdfPagePreview({super.key, this.cvBytes, this.existingCvUrl});
+
+  @override
+  State<PdfPagePreview> createState() => _PdfPagePreviewState();
+}
+
+class _PdfPagePreviewState extends State<PdfPagePreview> {
+  Uint8List? _pageImageBytes;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _renderPdfPage();
+  }
+
+  @override
+  void didUpdateWidget(covariant PdfPagePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cvBytes != oldWidget.cvBytes ||
+        widget.existingCvUrl != oldWidget.existingCvUrl) {
+      _renderPdfPage();
+    }
+  }
+
+  Future<void> _renderPdfPage() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _pageImageBytes = null;
+    });
+
+    try {
+      PdfDocument? document;
+      if (widget.cvBytes != null) {
+        document = await PdfDocument.openData(widget.cvBytes!);
+      } else if (widget.existingCvUrl != null &&
+          widget.existingCvUrl!.isNotEmpty) {
+        if (widget.existingCvUrl!.startsWith('http')) {
+          final request = await io.HttpClient().getUrl(
+            Uri.parse(widget.existingCvUrl!),
+          );
+          final response = await request.close();
+          final bytesBuilder = BytesBuilder();
+          await for (var chunk in response) {
+            bytesBuilder.add(chunk);
+          }
+          final bytes = bytesBuilder.takeBytes();
+          document = await PdfDocument.openData(bytes);
+        }
+      }
+
+      if (document != null) {
+        final page = await document.getPage(1);
+        final pageImage = await page.render(
+          width: page.width * 2,
+          height: page.height * 2,
+          format: PdfPageImageFormat.png,
+        );
+        if (pageImage != null) {
+          if (mounted) {
+            setState(() {
+              _pageImageBytes = pageImage.bytes;
+              _isLoading = false;
+            });
+          }
+        } else {
+          throw Exception('Failed to render PDF page');
+        }
+        await document.close();
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error rendering PDF page preview: $e');
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.0),
+        ),
+      );
+    }
+    if (_error != null) {
+      return const SizedBox.shrink();
+    }
+    if (_pageImageBytes != null) {
+      return Image.memory(
+        _pageImageBytes!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      );
+    }
+    return const SizedBox.shrink();
+  }
 }

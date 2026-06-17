@@ -201,8 +201,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             onTap: widget.onNotificationTap,
             child: SvgPicture.asset(
               'assets/notification_icon.svg',
-              height: 24,
-              width: 24,
+              width: 22,
+              height: 26,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF000000),
                 BlendMode.srcIn,

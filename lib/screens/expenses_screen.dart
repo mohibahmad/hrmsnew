@@ -400,19 +400,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _buildModalCalendar(calendarDate, selectedDay, (day) {
-                            setModalState(() {
-                              selectedDay = day;
-                            });
-                          }, (newDate) {
-                            setModalState(() {
-                              calendarDate = newDate;
-                              int daysInNewMonth = DateTime(newDate.year, newDate.month + 1, 0).day;
-                              if (selectedDay > daysInNewMonth) {
-                                selectedDay = daysInNewMonth;
-                              }
-                            });
-                          }),
+                          child: _buildModalCalendar(
+                            calendarDate,
+                            selectedDay,
+                            (day) {
+                              setModalState(() {
+                                selectedDay = day;
+                              });
+                            },
+                            (newDate) {
+                              setModalState(() {
+                                calendarDate = newDate;
+                                int daysInNewMonth = DateTime(
+                                  newDate.year,
+                                  newDate.month + 1,
+                                  0,
+                                ).day;
+                                if (selectedDay > daysInNewMonth) {
+                                  selectedDay = daysInNewMonth;
+                                }
+                              });
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -487,10 +496,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     ValueChanged<DateTime> onMonthChanged,
   ) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
-    String monthYearStr = '${months[calendarDate.month - 1].toUpperCase()} ${calendarDate.year}';
+    String monthYearStr =
+        '${months[calendarDate.month - 1].toUpperCase()} ${calendarDate.year}';
 
     return Container(
       decoration: BoxDecoration(
@@ -505,9 +525,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1));
+                  onMonthChanged(
+                    DateTime(calendarDate.year, calendarDate.month - 1, 1),
+                  );
                 },
-                child: const Icon(Icons.chevron_left, size: 16, color: Colors.black),
+                child: const Icon(
+                  Icons.chevron_left,
+                  size: 16,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(width: 16),
               Text(
@@ -521,9 +547,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               const SizedBox(width: 16),
               GestureDetector(
                 onTap: () {
-                  onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1));
+                  onMonthChanged(
+                    DateTime(calendarDate.year, calendarDate.month + 1, 1),
+                  );
                 },
-                child: const Icon(Icons.chevron_right, size: 16, color: Colors.black),
+                child: const Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: Colors.black,
+                ),
               ),
             ],
           ),
@@ -572,10 +604,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDaysGrid(DateTime calendarDate, int selectedDay, ValueChanged<int> onDaySelected) {
+  Widget _buildDaysGrid(
+    DateTime calendarDate,
+    int selectedDay,
+    ValueChanged<int> onDaySelected,
+  ) {
     List<Widget> rows = [];
-    int daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
-    int firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    int daysInMonth = DateTime(
+      calendarDate.year,
+      calendarDate.month + 1,
+      0,
+    ).day;
+    int firstWeekday = DateTime(
+      calendarDate.year,
+      calendarDate.month,
+      1,
+    ).weekday;
     int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
 
     int currentDay = 1;
@@ -703,8 +747,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             onTap: widget.onNotificationTap,
             child: SvgPicture.asset(
               'assets/notification_icon.svg',
-              height: 24,
-              width: 24,
+              width: 22,
+              height: 26,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF000000),
                 BlendMode.srcIn,
@@ -714,10 +758,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,
-            child: CircleAvatar(
-              radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
-            ),
+            child: const UserAvatar(),
           ),
         ],
       ),

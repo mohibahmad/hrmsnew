@@ -131,6 +131,33 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   Widget build(BuildContext context) {
     final filteredWorkers = _filteredWorkers;
 
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: bgGray,
+        body: Center(child: CircularProgressIndicator(color: primaryBlue)),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: bgGray,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: textDark,
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: bgGray,
       resizeToAvoidBottomInset: false,
@@ -141,6 +168,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           SidebarWidget(
             selectedIndex: 2,
             selectedSubIndex: 0,
+            isGuest: AuthService().currentUser?.isAnonymous ?? false,
             onItemSelected: (index, {subIndex}) {
               Navigator.of(context).pop();
             },
@@ -158,105 +186,48 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       children: [
                         _buildSearchBar(),
                         const SizedBox(height: 32),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left List Section: Worker Attendance Statuses
-                            Expanded(
-                              flex: 65,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    "Worker Attendance",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: textDark,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildFilterChips(),
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFFFFFFF),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: const Color(0xFFEEEEEE),
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Left List Section: Worker Attendance Statuses
+                              Expanded(
+                                flex: 70,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Worker Attendance",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: textDark,
+                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
-                                    child: Column(
-                                      children: [
-                                        if (filteredWorkers.isEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.all(40.0),
-                                            child: Center(
-                                              child: Text(
-                                                "No Workers Found",
-                                                style: TextStyle(
-                                                  color: Color(0xFF000000),
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w500,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                        else
-                                          ...filteredWorkers
-                                              .map(
-                                                (worker) => WorkerListItem(
-                                                  data: worker,
-                                                ),
-                                              )
-                                              .toList(),
-                                        const SizedBox(height: 8),
-                                        const PaginationWidget(),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 32),
-                            // Right List Section: Today Detailed Attendance Logs
-                            Expanded(
-                              flex: 35,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    "Today Attendance",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: textDark,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFFFFFFF),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: const Color(0xFFEEEEEE),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: _todayAttendance.isEmpty
-                                          ? [
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFEEEEEE),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            if (filteredWorkers.isEmpty)
                                               Padding(
                                                 padding: const EdgeInsets.all(
                                                   40.0,
                                                 ),
                                                 child: Center(
                                                   child: Text(
-                                                    "No Attendance Records",
+                                                    "No Workers Found",
                                                     style: TextStyle(
                                                       color: Color(0xFF000000),
                                                       fontSize: 15,
@@ -267,21 +238,92 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     ),
                                                   ),
                                                 ),
+                                              )
+                                            else
+                                              ...filteredWorkers.map(
+                                                (worker) => WorkerListItem(
+                                                  data: worker,
+                                                ),
                                               ),
-                                            ]
-                                          : _todayAttendance
-                                                .map(
-                                                  (att) => TodayAttendanceItem(
-                                                    data: att,
-                                                  ),
-                                                )
-                                                .toList(),
+                                            const SizedBox(height: 8),
+                                            const PaginationWidget(),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 20),
+                              // Right List Section: Today Detailed Attendance Logs
+                              Expanded(
+                                flex: 30,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Today Attendance",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: textDark,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFEEEEEE),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: _todayAttendance.isEmpty
+                                              ? [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          40.0,
+                                                        ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        "No Attendance Records",
+                                                        style: TextStyle(
+                                                          color: Color(
+                                                            0xFF000000,
+                                                          ),
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ]
+                                              : _todayAttendance
+                                                    .map(
+                                                      (att) =>
+                                                          TodayAttendanceItem(
+                                                            data: att,
+                                                          ),
+                                                    )
+                                                    .toList(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 40),
                       ],
@@ -335,15 +377,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             onTap: () => Navigator.of(context).pop(),
             child: SvgPicture.asset(
               'assets/notification_icon.svg',
-              height: 24,
-              width: 24,
+              width: 22,
+              height: 26,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF000000),
                 BlendMode.srcIn,
               ),
             ),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 20),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
@@ -358,12 +400,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
-            child: SvgPicture.asset(
-              'assets/app_icon.svg',
-              width: 42,
-              height: 42,
-              fit: BoxFit.contain,
-            ),
+            child: const UserAvatar(),
             itemBuilder: (context) => [
               PopupMenuItem<String>(
                 enabled: false,
@@ -471,53 +508,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               },
               child: Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: Icon(
-                  Icons.close,
-                  size: 18,
-                  color: Colors.grey[400],
-                ),
+                child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
               ),
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    final filters = ['All', 'Present', 'Absent', 'Leave'];
-    return Row(
-      children: filters.map((filter) {
-        final isActive = _selectedStatusFilter == filter;
-        return Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedStatusFilter = filter;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: isActive ? primaryBlue : Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isActive ? primaryBlue : const Color(0xFFEEEEEE),
-                ),
-              ),
-              child: Text(
-                filter,
-                style: TextStyle(
-                  color: isActive ? Color(0xFFFFFFFF) : textDark,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }
@@ -593,7 +588,7 @@ void _showMarkAttendanceDialog(
                             width: 2,
                           ),
                           image: const DecorationImage(
-                            image: AssetImage('assets/boy.png'),
+                            image: AssetImage('assets/profile_placeholder.png'),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -849,40 +844,48 @@ class WorkerListItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundImage: const AssetImage('assets/boy.png'),
+            backgroundImage: const AssetImage('assets/profile_placeholder.png'),
           ),
           const SizedBox(width: 16),
           Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  (data["name"] ?? '').toString(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: textDark,
-                    fontFamily: 'SF Pro Display',
+            flex: 4,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (data["name"] ?? '').toString(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: textDark,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  (data["email"] ?? '').toString(),
-                  style: const TextStyle(
-                    color: textMuted,
-                    fontSize: 13,
-                    fontFamily: 'SF Pro Display',
+                  const SizedBox(height: 2),
+                  Text(
+                    (data["email"] ?? '').toString(),
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 13,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Align(
               alignment: Alignment.centerLeft,
               child: Container(
+                margin: const EdgeInsets.only(right: 24.0),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 8,
@@ -899,6 +902,8 @@ class WorkerListItem extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -907,7 +912,10 @@ class WorkerListItem extends StatelessWidget {
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: StatusPill(status: (data["status"] ?? '').toString()),
+              child: Container(
+                margin: const EdgeInsets.only(right: 16.0),
+                child: StatusPill(status: (data["status"] ?? '').toString()),
+              ),
             ),
           ),
           GestureDetector(
@@ -949,7 +957,9 @@ class TodayAttendanceItem extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundImage: const AssetImage('assets/boy.png'),
+                backgroundImage: const AssetImage(
+                  'assets/profile_placeholder.png',
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -989,6 +999,8 @@ class TodayAttendanceItem extends StatelessWidget {
                   height: 1.3,
                   fontFamily: 'SF Pro Display',
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ],
@@ -1007,12 +1019,10 @@ class StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bgColor;
     Color textColor = Color(0xFFFFFFFF);
-    double hPadding = 16;
 
     if (status == "*****") {
       bgColor = pillGray;
       textColor = textDark;
-      hPadding = 24;
     } else if (status == "Present") {
       bgColor = greenPresent;
     } else if (status == "Absent") {
@@ -1025,10 +1035,12 @@ class StatusPill extends StatelessWidget {
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: 8),
+      width: 80,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         status,

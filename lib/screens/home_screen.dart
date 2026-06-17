@@ -1,6 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
@@ -152,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.profilePicNotifier.value = AuthService().currentUser?.photoURL;
     _selectedIndex = 0;
     _loadDashboardData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -190,10 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           setState(() {
             _holidays = snap.docs.map((d) {
-              return {
-                ...d.data() as Map<String, dynamic>,
-                'id': d.id,
-              };
+              return {...d.data() as Map<String, dynamic>, 'id': d.id};
             }).toList();
           });
         }
@@ -261,20 +264,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _recalculateDummyTotals(String period) {
     double scale = 1.0;
-    if (period == 'Week') scale = 0.05;
-    else if (period == 'Month') scale = 0.2;
-    else if (period == '3 Month') scale = 0.5;
-    else if (period == '6 Month') scale = 0.75;
-    else if (period == 'Yearly') scale = 1.0;
+    if (period == 'Week')
+      scale = 0.05;
+    else if (period == 'Month')
+      scale = 0.2;
+    else if (period == '3 Month')
+      scale = 0.5;
+    else if (period == '6 Month')
+      scale = 0.75;
+    else if (period == 'Yearly')
+      scale = 1.0;
 
-    _totalExpensesSum = DummyData.expenses.fold(0.0, (sum, item) {
-      return sum + ((item['amount'] ?? 0.0) as num).toDouble();
-    }) * scale;
-    
-    _totalSalarySum = DummyData.payroll.fold(0.0, (sum, item) {
-      final salaryStr = (item['salary'] ?? '').toString().replaceAll('\$', '').replaceAll(',', '').trim();
-      return sum + (double.tryParse(salaryStr) ?? 0.0);
-    }) * scale;
+    _totalExpensesSum =
+        DummyData.expenses.fold(0.0, (sum, item) {
+          return sum + ((item['amount'] ?? 0.0) as num).toDouble();
+        }) *
+        scale;
+
+    _totalSalarySum =
+        DummyData.payroll.fold(0.0, (sum, item) {
+          final salaryStr = (item['salary'] ?? '')
+              .toString()
+              .replaceAll('\$', '')
+              .replaceAll(',', '')
+              .trim();
+          return sum + (double.tryParse(salaryStr) ?? 0.0);
+        }) *
+        scale;
   }
 
   void _handleLogout() {
@@ -333,7 +349,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   index: stackIndex,
                   children: [
                     // 0: Dashboard View
-                    _activatedScreens[0] ? _buildDashboardView() : const SizedBox.shrink(),
+                    _activatedScreens[0]
+                        ? _buildDashboardView()
+                        : const SizedBox.shrink(),
                     // 1: Workers Screen
                     _getScreen(1),
                     // 2: Attendance Screen
@@ -353,10 +371,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     // 9: Assign Time Off
                     _getScreen(9),
                     // 10: Profile View
-                    _activatedScreens[10] ? _buildProfileView() : const SizedBox.shrink(),
+                    _activatedScreens[10]
+                        ? _buildProfileView()
+                        : const SizedBox.shrink(),
                   ],
                 );
-              }
+              },
             ),
           ),
         ],
@@ -548,7 +568,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     return SizedBox(
                                       width: itemWidth,
                                       child: HolidayCard(
-                                        day: h['day'] != null ? '${h['day']}'.padLeft(2, '0') : '',
+                                        day: h['day'] != null
+                                            ? '${h['day']}'.padLeft(2, '0')
+                                            : '',
                                         month: h['month'] ?? 'May',
                                         remainingDays: h['remainingDays'] ?? '',
                                         dayOfWeek: h['dayOfWeek'] ?? '',
@@ -660,8 +682,8 @@ class ProfileInlineHeader extends StatelessWidget {
             onTap: onNotificationTap,
             child: SvgPicture.asset(
               'assets/notification_icon.svg',
-              height: 24,
-              width: 24,
+              width: 22,
+              height: 26,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF000000),
                 BlendMode.srcIn,
@@ -744,12 +766,7 @@ class ProfileInlineHeader extends StatelessWidget {
                 ),
               ),
             ],
-            child: SvgPicture.asset(
-              'assets/app_icon.svg',
-              width: 36,
-              height: 36,
-              fit: BoxFit.contain,
-            ),
+            child: const UserAvatar(),
           ),
         ],
       ),
@@ -773,6 +790,8 @@ class _ProfileBodyState extends State<ProfileBody> {
   late final TextEditingController _contact2Controller;
   late final TextEditingController _addressController;
   bool _isLoading = true;
+  bool _isEditing = false;
+  String? _profilePicUrl;
 
   @override
   void initState() {
@@ -789,25 +808,6 @@ class _ProfileBodyState extends State<ProfileBody> {
     _loadProfile();
   }
 
-  Future<void> _loadProfile() async {
-    final profile = await FirestoreService().getUserProfile();
-    if (profile != null && mounted) {
-      setState(() {
-        _businessNameController.text = profile['businessName'] ?? '';
-        _companyIdController.text = profile['companyId'] ?? '';
-        _emailController.text =
-            profile['email'] ?? AuthService().currentUser?.email ?? '';
-        _currencyController.text = profile['currency'] ?? 'USD';
-        _contact1Controller.text = profile['contact1'] ?? '';
-        _contact2Controller.text = profile['contact2'] ?? '';
-        _addressController.text = profile['address'] ?? '';
-        _isLoading = false;
-      });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
-    }
-  }
-
   @override
   void dispose() {
     _businessNameController.dispose();
@@ -820,16 +820,152 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.dispose();
   }
 
+  Future<void> _loadProfile() async {
+    if (AuthService().currentUser?.isAnonymous ?? false) {
+      if (mounted) {
+        setState(() {
+          _businessNameController.text = 'Guest Company Ltd.';
+          _companyIdController.text = 'GUEST-001';
+          _emailController.text = 'guest@example.com';
+          _currencyController.text = 'USD';
+          _contact1Controller.text = '+1 415-555-0198';
+          _contact2Controller.text = '';
+          _addressController.text = '123 Demo Street, Test City';
+          _profilePicUrl = AuthService.profilePicNotifier.value;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    final profile = await FirestoreService().getUserProfile();
+    if (profile != null && mounted) {
+      setState(() {
+        _businessNameController.text = profile['businessName'] ?? '';
+        _companyIdController.text = profile['companyId'] ?? '';
+        _emailController.text =
+            profile['email'] ?? AuthService().currentUser?.email ?? '';
+        _currencyController.text = profile['currency'] ?? 'USD';
+        _contact1Controller.text = profile['contact1'] ?? '';
+        _contact2Controller.text = profile['contact2'] ?? '';
+        _addressController.text = profile['address'] ?? '';
+        _profilePicUrl = profile['profilePic'];
+        AuthService.profilePicNotifier.value = _profilePicUrl;
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() {
+        _profilePicUrl = AuthService.profilePicNotifier.value;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Uint8List? _newProfileImageBytes;
+  String? _newProfileImagePath;
+
+  Future<void> _pickProfilePic() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+
+      if (result == null) return;
+
+      setState(() {
+        _newProfileImageBytes = result.files.single.bytes;
+        _newProfileImagePath = result.files.single.path;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error selecting image: $e')));
+      }
+    }
+  }
+
   Future<void> _saveProfile() async {
-    await FirestoreService().updateUserProfile({
-      'businessName': _businessNameController.text,
-      'companyId': _companyIdController.text,
-      'email': _emailController.text,
-      'currency': _currencyController.text,
-      'contact1': _contact1Controller.text,
-      'contact2': _contact2Controller.text,
-      'address': _addressController.text,
+    setState(() {
+      _isLoading = true;
     });
+
+    try {
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      String? downloadUrl;
+
+      if (!isGuest) {
+        if (_newProfileImageBytes != null || _newProfileImagePath != null) {
+          final fileName =
+              'profile_${AuthService().currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.png';
+          final ref = FirebaseStorage.instance
+              .ref()
+              .child('profile_pics')
+              .child(fileName);
+
+          if (_newProfileImageBytes != null) {
+            await ref.putData(_newProfileImageBytes!);
+          } else if (_newProfileImagePath != null) {
+            await ref.putFile(File(_newProfileImagePath!));
+          }
+          downloadUrl = await ref.getDownloadURL();
+        }
+
+        if (downloadUrl != null) {
+          await AuthService().currentUser?.updatePhotoURL(downloadUrl);
+          _profilePicUrl = downloadUrl;
+          AuthService.profilePicNotifier.value = downloadUrl;
+          _newProfileImageBytes = null;
+          _newProfileImagePath = null;
+        }
+
+        await FirestoreService().updateUserProfile({
+          'businessName': _businessNameController.text,
+          'companyId': _companyIdController.text,
+          'email': _emailController.text,
+          'currency': _currencyController.text,
+          'contact1': _contact1Controller.text,
+          'contact2': _contact2Controller.text,
+          'address': _addressController.text,
+          if (downloadUrl != null) 'profilePic': downloadUrl,
+        });
+      } else {
+        // Guest user: save temporary preview image link to notifier in-memory.
+        if (_newProfileImageBytes != null) {
+          final base64String = base64Encode(_newProfileImageBytes!);
+          downloadUrl = 'data:image/png;base64,$base64String';
+        } else if (_newProfileImagePath != null) {
+          downloadUrl = _newProfileImagePath;
+        }
+
+        if (downloadUrl != null) {
+          _profilePicUrl = downloadUrl;
+          AuthService.profilePicNotifier.value = downloadUrl;
+          _newProfileImageBytes = null;
+          _newProfileImagePath = null;
+        }
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile saved successfully!')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving profile: $e')));
+      }
+    }
   }
 
   void _showPreviewDialog() {
@@ -859,32 +995,71 @@ class _ProfileBodyState extends State<ProfileBody> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildProfileIcon(),
-            ElevatedButton(
-              onPressed: () async {
-                await _saveProfile();
-                if (mounted) _showPreviewDialog();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF155ED5),
-                foregroundColor: Color(0xFFFFFFFF),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 18,
+            if (_isEditing)
+              ElevatedButton(
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        await _saveProfile();
+                        if (mounted) {
+                          setState(() => _isEditing = false);
+                          _showPreviewDialog();
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF155ED5),
+                  foregroundColor: const Color(0xFFFFFFFF),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  elevation: 0,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+              )
+            else
+              InkWell(
+                onTap: () => setState(() => _isEditing = true),
+                borderRadius: BorderRadius.circular(8),
+                child: Tooltip(
+                  message: 'Edit Profile',
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F0FE),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/edit_icon.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF155ED5),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
                 ),
-                elevation: 0,
               ),
-              child: const Text(
-                'Save',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 30),
@@ -897,36 +1072,39 @@ class _ProfileBodyState extends State<ProfileBody> {
           child: Column(
             children: [
               _buildFormRow(
-                _buildInputField('Business Name', _businessNameController),
-                _buildInputField('Company ID no', _companyIdController),
-              ),
-              const SizedBox(height: 24),
-              _buildFormRow(
-                _buildInputField('Company E-mail', _emailController),
                 _buildInputField(
-                  'Currency',
-                  _currencyController,
-                  isDropdown: true,
+                  'Business Name',
+                  _businessNameController,
+                  readOnly: !_isEditing,
+                ),
+                _buildInputField(
+                  'Company ID no',
+                  _companyIdController,
+                  readOnly: !_isEditing,
                 ),
               ),
               const SizedBox(height: 24),
               _buildFormRow(
-                _buildInputField('Contact Number', _contact1Controller),
-                _buildInputField(' ', _contact2Controller),
+                _buildInputField(
+                  'Company E-mail',
+                  _emailController,
+                  readOnly: true,
+                ),
+                _buildInputField(
+                  'Contact Number',
+                  _contact1Controller,
+                  readOnly: !_isEditing,
+                ),
               ),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInputField(
-                      'Address',
-                      _addressController,
-                      maxLines: 2,
-                    ),
-                  ),
-                  const SizedBox(width: 40),
-                  const Expanded(child: SizedBox()),
-                ],
+              _buildFormRow(
+                _buildInputField(
+                  'Address',
+                  _addressController,
+                  maxLines: 2,
+                  readOnly: !_isEditing,
+                ),
+                const SizedBox(),
               ),
             ],
           ),
@@ -936,46 +1114,98 @@ class _ProfileBodyState extends State<ProfileBody> {
   }
 
   Widget _buildProfileIcon() {
-    return Stack(
-      children: [
-        Container(
+    final hasNewBytes = _newProfileImageBytes != null;
+    final hasNewPath = _newProfileImagePath != null;
+    final hasCustomPic = _profilePicUrl != null && _profilePicUrl!.isNotEmpty;
+
+    Widget childWidget;
+    if (hasNewBytes) {
+      childWidget = Image.memory(
+        _newProfileImageBytes!,
+        width: 90,
+        height: 90,
+        fit: BoxFit.cover,
+      );
+    } else if (hasNewPath) {
+      childWidget = Image.file(
+        File(_newProfileImagePath!),
+        width: 90,
+        height: 90,
+        fit: BoxFit.cover,
+      );
+    } else if (hasCustomPic) {
+      if (_profilePicUrl!.startsWith('http')) {
+        childWidget = Image.network(
+          _profilePicUrl!,
           width: 90,
           height: 90,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF4F5F7),
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.integration_instructions_outlined,
-              size: 50,
-              color: Color(0xFF155ED5),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            width: 28,
-            height: 28,
+          fit: BoxFit.cover,
+        );
+      } else if (_profilePicUrl!.startsWith('data:image')) {
+        final String base64Content = _profilePicUrl!.substring(
+          _profilePicUrl!.indexOf(',') + 1,
+        );
+        childWidget = Image.memory(
+          base64Decode(base64Content),
+          width: 90,
+          height: 90,
+          fit: BoxFit.cover,
+        );
+      } else {
+        childWidget = Image.file(
+          File(_profilePicUrl!),
+          width: 90,
+          height: 90,
+          fit: BoxFit.cover,
+        );
+      }
+    } else {
+      childWidget = Image.asset(
+        'assets/profile_pic.png',
+        width: 55,
+        height: 55,
+        fit: BoxFit.contain,
+      );
+    }
+
+    return GestureDetector(
+      onTap: _pickProfilePic,
+      child: Stack(
+        children: [
+          Container(
+            width: 90,
+            height: 90,
             decoration: const BoxDecoration(
-              color: Color(0xFF155ED5),
+              color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: SvgPicture.asset(
-                'assets/edit_pencil_profile.svg',
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFFFFFFF),
-                  BlendMode.srcIn,
+            clipBehavior: Clip.antiAlias,
+            child: Center(child: childWidget),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Color(0xFF155ED5),
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: SvgPicture.asset(
+                  'assets/edit_pencil_profile.svg',
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFFFFFFF),
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -995,25 +1225,51 @@ class _ProfileBodyState extends State<ProfileBody> {
     TextEditingController controller, {
     bool isDropdown = false,
     int maxLines = 1,
+    bool readOnly = false,
   }) {
+    final bool isEmailField = label == 'Company E-mail';
+    final Color bgColor = readOnly
+        ? const Color(0xFFEEEFF2)
+        : const Color(0xFFFFFFFF);
+    final Color textColor = readOnly
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFF000000);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            color: Colors.black,
-            fontFamily: 'SF Pro Display',
-          ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.black,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            if (isEmailField) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.lock_outline,
+                size: 13,
+                color: Color(0xFF9CA3AF),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Color(0xFFFFFFFF),
+            color: bgColor,
             borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: readOnly
+                  ? const Color(0xFFE5E7EB)
+                  : const Color(0xFFD1D5DB),
+            ),
           ),
           child: Row(
             children: [
@@ -1021,14 +1277,15 @@ class _ProfileBodyState extends State<ProfileBody> {
                 child: TextField(
                   controller: controller,
                   maxLines: maxLines,
+                  readOnly: readOnly,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(vertical: 12),
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
-                    color: Color(0xFF000000),
+                    color: textColor,
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -1161,13 +1418,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                       ),
-                      padding: const EdgeInsets.all(8),
-                      child: ClipOval(
-                        child: SvgPicture.asset(
-                          'assets/app_icon.svg',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                      child: const ClipOval(child: UserAvatar(radius: 70)),
                     ),
                     const SizedBox(width: 24),
                     Expanded(
@@ -1217,24 +1468,8 @@ class ProfilePreviewDialog extends StatelessWidget {
                         ),
                         const SizedBox(width: 16),
                         _buildPreviewCard(
-                          'Currency',
-                          currency,
-                          'assets/currency_preview.svg',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildPreviewCard(
                           'Contact No',
                           contact1,
-                          'assets/phone_preview.svg',
-                        ),
-                        const SizedBox(width: 16),
-                        _buildPreviewCard(
-                          '',
-                          contact2,
                           'assets/phone_preview.svg',
                         ),
                       ],
@@ -1247,8 +1482,6 @@ class ProfilePreviewDialog extends StatelessWidget {
                           address,
                           'assets/location_preview.svg',
                         ),
-                        const SizedBox(width: 16),
-                        const SizedBox(width: 200),
                       ],
                     ),
                   ],
@@ -1261,9 +1494,14 @@ class ProfilePreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewCard(String label, String value, String svgPath) {
+  Widget _buildPreviewCard(
+    String label,
+    String value,
+    String svgPath, {
+    double width = 200,
+  }) {
     return Container(
-      width: 200,
+      width: width,
       height: 70,
       padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       decoration: BoxDecoration(
@@ -1905,8 +2143,8 @@ class TopHeader extends StatelessWidget {
                 onTap: onNotificationTap,
                 child: SvgPicture.asset(
                   'assets/notification_icon.svg',
-                  height: 24,
-                  width: 24,
+                  width: 22,
+                  height: 26,
                   colorFilter: const ColorFilter.mode(
                     Color(0xFF000000),
                     BlendMode.srcIn,
@@ -1915,13 +2153,7 @@ class TopHeader extends StatelessWidget {
               ),
               const SizedBox(width: 20),
               // Profile avatar (clickable to open profile screen)
-              GestureDetector(
-                onTap: onProfileTap,
-                child: CircleAvatar(
-                  radius: 19,
-                  backgroundImage: const AssetImage('assets/profileimage.png'),
-                ),
-              ),
+              GestureDetector(onTap: onProfileTap, child: const UserAvatar()),
             ],
           ),
         ],
@@ -2286,7 +2518,15 @@ class SparklineCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.easeInOutCubic,
                       builder: (context, animValue, child) {
-                        final double m = period == 'Week' ? 0.3 : period == 'Month' ? 0.6 : period == '3 Month' ? 0.8 : period == '6 Month' ? 0.9 : 1.0;
+                        final double m = period == 'Week'
+                            ? 0.3
+                            : period == 'Month'
+                            ? 0.6
+                            : period == '3 Month'
+                            ? 0.8
+                            : period == '6 Month'
+                            ? 0.9
+                            : 1.0;
                         final spots = [
                           FlSpot(0, 3 * m),
                           FlSpot(1, 6 * m),
@@ -2424,7 +2664,15 @@ class AttendanceLineChart extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeInOutCubic,
                       builder: (context, animValue, child) {
-                        final double m = period == 'Week' ? 0.4 : period == 'Month' ? 0.6 : period == '3 Month' ? 0.8 : period == '6 Month' ? 0.9 : 1.0;
+                        final double m = period == 'Week'
+                            ? 0.4
+                            : period == 'Month'
+                            ? 0.6
+                            : period == '3 Month'
+                            ? 0.8
+                            : period == '6 Month'
+                            ? 0.9
+                            : 1.0;
                         final spots = [
                           FlSpot(0, 0),
                           FlSpot(1, 0.4 * m),
@@ -2685,22 +2933,29 @@ class LeaveTypesPieChart extends StatelessWidget {
                               PieChartData(
                                 sectionsSpace: 0.0,
                                 centerSpaceRadius: 0,
-                                startDegreeOffset: 90, // Draw from 6 o'clock (Left half)
+                                startDegreeOffset:
+                                    90, // Draw from 6 o'clock (Left half)
                                 sections: [
                                   PieChartSectionData(
-                                    color: const Color(0xFF84A9FF), // Casual Leave (50%)
+                                    color: const Color(
+                                      0xFF84A9FF,
+                                    ), // Casual Leave (50%)
                                     value: 50,
                                     radius: 85,
                                     showTitle: false,
                                   ),
                                   PieChartSectionData(
-                                    color: const Color(0xFFFF4A5E), // Sick Leave (20%)
+                                    color: const Color(
+                                      0xFFFF4A5E,
+                                    ), // Sick Leave (20%)
                                     value: 20,
                                     radius: 85,
                                     showTitle: false,
                                   ),
                                   PieChartSectionData(
-                                    color: const Color(0xFF97FFA9), // Medical Leave (30%)
+                                    color: const Color(
+                                      0xFF97FFA9,
+                                    ), // Medical Leave (30%)
                                     value: 30,
                                     radius: 85,
                                     showTitle: false,
@@ -2870,7 +3125,6 @@ class CalloutLinesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
 
 // ==========================================
 // REUSABLE CUSTOM HOLIDAY CARD WIDGET

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -6,6 +9,8 @@ import 'firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  static final ValueNotifier<String?> profilePicNotifier = ValueNotifier<String?>(null);
 
   /// Toggle this to `true` to bypass native SDKs and log in instantly in
   /// demo mode. Set to `false` to use the real Google/Apple sign-in flows.
@@ -143,5 +148,43 @@ class AuthService {
   /// Send password reset email
   Future<void> resetPassword(String email) async {
     await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+}
+
+class UserAvatar extends StatelessWidget {
+  final double radius;
+  const UserAvatar({super.key, this.radius = 18});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<String?>(
+      valueListenable: AuthService.profilePicNotifier,
+      builder: (context, photoUrl, _) {
+        final hasImage = photoUrl != null && photoUrl.isNotEmpty;
+        ImageProvider? provider;
+        if (hasImage) {
+          if (photoUrl.startsWith('http')) {
+            provider = NetworkImage(photoUrl);
+          } else if (photoUrl.startsWith('data:image')) {
+            try {
+              final String base64Content = photoUrl.substring(photoUrl.indexOf(',') + 1);
+              provider = MemoryImage(base64Decode(base64Content));
+            } catch (e) {
+              provider = const AssetImage('assets/profile_pic.png');
+            }
+          } else {
+            provider = FileImage(File(photoUrl));
+          }
+        } else {
+          provider = const AssetImage('assets/profile_pic.png');
+        }
+
+        return CircleAvatar(
+          radius: radius,
+          backgroundColor: Colors.transparent,
+          backgroundImage: provider,
+        );
+      },
+    );
   }
 }

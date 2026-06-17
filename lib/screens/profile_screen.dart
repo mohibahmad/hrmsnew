@@ -79,8 +79,8 @@ class ProfileTopHeader extends StatelessWidget {
           const Spacer(),
           SvgPicture.asset(
             'assets/notification_icon.svg',
-            height: 24,
-            width: 24,
+            width: 22,
+              height: 26,
             colorFilter: const ColorFilter.mode(
               Color(0xFF000000),
               BlendMode.srcIn,
@@ -164,7 +164,7 @@ class ProfileTopHeader extends StatelessWidget {
             ],
             child: CircleAvatar(
               radius: 21,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
+              backgroundImage: const AssetImage('assets/profile_pic.png'),
             ),
           ),
         ],

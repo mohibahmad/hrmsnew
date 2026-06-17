@@ -11,7 +11,6 @@ import 'workers_attendance_screen.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/snackbar_utils.dart';
 
-// --- STYLING CONSTANTS (Curated HSL/Hex Harmonious Palette) ---
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color lightBlueBg = Color(0xFFE8F0FE);
 const Color bgGray = Color(0xFFF8FAFC);
@@ -242,8 +241,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             onTap: widget.onNotificationTap,
             child: SvgPicture.asset(
               'assets/notification_icon.svg',
-              height: 24,
-              width: 24,
+              width: 22,
+              height: 26,
               colorFilter: const ColorFilter.mode(
                 Color(0xFF000000),
                 BlendMode.srcIn,
@@ -253,10 +252,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,
-            child: CircleAvatar(
-              radius: 19,
-              backgroundImage: const AssetImage('assets/profileimage.png'),
-            ),
+            child: const UserAvatar(),
           ),
         ],
       ),
