@@ -38,21 +38,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   // Helper to get month name
   String _getMonthName(int month) {
-    const months = [
-      'JANUARY',
-      'FEBRUARY',
-      'MARCH',
-      'APRIL',
-      'MAY',
-      'JUNE',
-      'JULY',
-      'AUGUST',
-      'SEPTEMBER',
-      'OCTOBER',
-      'NOVEMBER',
-      'DECEMBER',
-    ];
-    return months[month - 1];
+    return DateFormat('MMMM').format(DateTime(2024, month));
   }
 
   // Helper to format date as DD/MM/YYYY
@@ -186,7 +172,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   Widget _buildHeader(BuildContext context) {
     final user = AuthService().currentUser;
-    final name = user?.displayName ?? 'User';
+    final name = user?.displayName ?? 'user'.tr();
 
     return Container(
       height: 94,
@@ -383,10 +369,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               onPressed: () async {
                 final isGuest = AuthService().currentUser?.isAnonymous ?? false;
                 final recordMap = {
-                  'name': 'John Smith',
-                  'email': 'john.smith@stark.com',
-                  'position': 'Senior Web Developer',
-                  'contact': '+1 555-0101',
+                  'name': 'guest_name'.tr(),
+                  'email': 'guest_email'.tr(),
+                  'position': 'guest_position'.tr(),
+                  'contact': 'guest_contact'.tr(),
                   'action': _timeOffType,
                 };
                 if (isGuest) {
@@ -617,19 +603,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Widget _buildWeekdayRow() {
     return Row(
       children: [
-        Expanded(child: _buildWeekday('SUN', Colors.red)),
+        Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('MON', const Color(0xFF0247C4))),
+        Expanded(child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4))),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('TUE', const Color(0xFF0247C4))),
+        Expanded(child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4))),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('WED', const Color(0xFF0247C4))),
+        Expanded(child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4))),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('THU', const Color(0xFF0247C4))),
+        Expanded(child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4))),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('FRI', const Color(0xFF4CAF50))), // Green
+        Expanded(child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50))),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('SAT', const Color(0xFF0247C4))),
+        Expanded(child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4))),
       ],
     );
   }

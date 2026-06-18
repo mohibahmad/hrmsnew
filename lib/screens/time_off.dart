@@ -435,7 +435,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 final email = (doc['email'] ?? '').toString();
                 final position = (doc['position'] ?? '').toString();
                 final contact = (doc['contact'] ?? '').toString();
-                final action = (doc['action'] ?? 'Payroll Data').toString();
+                final action = (doc['action'] ?? 'payroll_data'.tr()).toString();
                 return Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,

@@ -211,21 +211,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   'type': typeController.text,
                                   'dateLoaned': formatDate(loanedDate),
                                   'dateReturned': isReturned
+                                  ? formatDate(returnedDate)
+                                  : 'in_use'.tr(),
+                              'isReturned': isReturned,
+                            };
+                            setState(() {
+                              _assets.insert(
+                                0,
+                                AssetData(
+                                  nameController.text,
+                                  positionController.text,
+                                  typeController.text,
+                                  formatDate(loanedDate),
+                                  isReturned
                                       ? formatDate(returnedDate)
-                                      : 'In use',
-                                  'isReturned': isReturned,
-                                };
-                                setState(() {
-                                  _assets.insert(
-                                    0,
-                                    AssetData(
-                                      nameController.text,
-                                      positionController.text,
-                                      typeController.text,
-                                      formatDate(loanedDate),
-                                      isReturned
-                                          ? formatDate(returnedDate)
-                                          : 'In use',
+                                      : 'in_use'.tr(),
                                       isReturned,
                                     ),
                                   );
@@ -261,19 +261,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     _buildModalTextField(
                       'worker_name'.tr(),
                       nameController,
-                      'Ali Ahmad',
+                      'worker_name_hint'.tr(),
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
                       'asset_type'.tr(),
                       typeController,
-                      'Laptop',
+                      'asset_type_hint'.tr(),
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
                       'position'.tr(),
                       positionController,
-                      'Graphic Designer',
+                      'position_hint'.tr(),
                     ),
                     const SizedBox(height: 16),
 
