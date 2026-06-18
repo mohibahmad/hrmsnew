@@ -1249,7 +1249,7 @@ class TotalWorkersCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: Color(0xFFFFFFFF),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: count > 0
@@ -1534,7 +1534,7 @@ class SparklineCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: Color(0xFFFFFFFF),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: !isEmpty
