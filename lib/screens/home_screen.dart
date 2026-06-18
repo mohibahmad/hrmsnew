@@ -2482,7 +2482,7 @@ class HolidayCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: badgeBg,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       dayOfWeek,

@@ -663,7 +663,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
                           color: Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: const Color(0xFFEEEEEE)),
                         ),
                         child: Row(
@@ -748,7 +748,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
