@@ -667,6 +667,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       status: (doc['status'] ?? '').toString(),
       attendanceType: (doc['attendanceType'] ?? 'Remote').toString(),
       workType: (doc['workType'] ?? 'Full Time').toString(),
+      profileImage: doc['profileImage']?.toString(),
     );
     showDialog(
       context: context,
@@ -760,8 +761,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           children: [
                             CircleAvatar(
                               radius: 18,
-                              backgroundImage: const AssetImage(
-                                'assets/profileimage.png',
+                              backgroundImage: _getProfileImage(
+                                doc['profileImage']?.toString(),
+                                index,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1038,8 +1040,8 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: Color(0xFFFFFFFF), width: 2),
-                  image: const DecorationImage(
-                    image: AssetImage('assets/boy.png'),
+                  image: DecorationImage(
+                    image: _getProfileImage(record.profileImage, 0),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -1427,4 +1429,20 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       ),
     );
   }
+}
+
+ImageProvider _getProfileImage(String? url, int index) {
+  if (url == null || url.isEmpty) {
+    return AssetImage(
+      index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
+    );
+  }
+  if (url.startsWith('data:image/')) {
+    final base64Content = url.split(',').last;
+    return MemoryImage(base64Decode(base64Content));
+  }
+  if (url.startsWith('http')) {
+    return NetworkImage(url);
+  }
+  return AssetImage(url);
 }
