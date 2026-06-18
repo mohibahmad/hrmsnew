@@ -634,36 +634,43 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   ],
                 ),
                 // Save Button (Blue state based on image 2)
-                GestureDetector(
-                  onTap: _isSaving ? null : _saveWorker,
-                  child: Container(
-                    height: 44,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: BoxDecoration(
-                      color: _isSaving ? Colors.grey : const Color(0xFF0B50C3),
-                      borderRadius: BorderRadius.circular(6),
+                Builder(builder: (context) {
+                  final bool hasFrontId = _frontIdBytes != null || (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
+                  final bool hasCv = _cvBytes != null || (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
+                  final bool isSaveReady = _activeTabIndex == 2 && hasFrontId && hasCv;
+                  final bool canSave = isSaveReady && !_isSaving;
+                  
+                  return GestureDetector(
+                    onTap: canSave ? _saveWorker : null,
+                    child: Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        color: isSaveReady ? const Color(0xFF0B50C3) : const Color(0xFFE6EAEF),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      alignment: Alignment.center,
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'save'.tr(),
+                              style: TextStyle(
+                                color: isSaveReady ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
                     ),
-                    alignment: Alignment.center,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            'save'.tr(),
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                  ),
-                ),
+                  );
+                }),
               ],
             ),
           ),
