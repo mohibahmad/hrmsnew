@@ -791,13 +791,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (isActive) {
       if (index == 0) {
         borderRadius = const BorderRadius.only(
-          topLeft: Radius.circular(8),
-          bottomLeft: Radius.circular(8),
+          topLeft: Radius.circular(6),
+          bottomLeft: Radius.circular(6),
         );
       } else if (index == 2) {
         borderRadius = const BorderRadius.only(
-          topRight: Radius.circular(8),
-          bottomRight: Radius.circular(8),
+          topRight: Radius.circular(6),
+          bottomRight: Radius.circular(6),
         );
       }
     }
