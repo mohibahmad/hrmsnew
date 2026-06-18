@@ -187,7 +187,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             String selectedMonthName = months[calendarDate.month - 1];
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               backgroundColor: Color(0xFFFFFFFF),
               elevation: 10,
@@ -225,7 +225,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -339,7 +339,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       height: 44,
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       alignment: Alignment.centerLeft,
@@ -568,7 +568,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               color: isSelected ? Colors.red : Colors.grey.shade300,
               width: 1,
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             day,
@@ -687,7 +687,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(140, 44),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             elevation: 0,
           ),
@@ -757,7 +757,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Row(

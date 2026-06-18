@@ -321,7 +321,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: cardLightBlue,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: isSelected ? Border.all(color: primaryBlue, width: 2) : null,
         ),
         child: Stack(

@@ -264,7 +264,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -401,7 +401,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF6F8FA),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
@@ -474,7 +474,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   _showPayrollDataDialog(context, doc);
                 },
                 mouseCursor: SystemMouseCursors.click,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(6),
                 splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
                 highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
                 child: Padding(
@@ -804,7 +804,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
       ),
       child: Row(
@@ -945,7 +945,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: const Color(0xFF0D4CC6),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             '$_currentPage',

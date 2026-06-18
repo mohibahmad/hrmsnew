@@ -641,7 +641,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: BoxDecoration(
                       color: _isSaving ? Colors.grey : const Color(0xFF0B50C3),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     alignment: Alignment.center,
                     child: _isSaving
@@ -680,7 +680,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     height: 56,
                     decoration: BoxDecoration(
                       color: Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                       boxShadow: [
                         BoxShadow(
                           color: Color(0xFF000000).withValues(alpha: 0.02),
@@ -980,7 +980,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: formBgGrey,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1461,7 +1461,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: formBgGrey,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1786,7 +1786,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   border: Border.all(
                                     color: Colors.grey.shade300,
                                   ),
-                                  borderRadius: BorderRadius.circular(4),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   'cancel'.tr(),
@@ -1824,7 +1824,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF0B50C3),
-                                  borderRadius: BorderRadius.circular(4),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   'set'.tr(),
@@ -1864,7 +1864,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: formBgGrey,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
             children: [
@@ -1939,7 +1939,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: formBgGrey,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
             children: [
@@ -2138,7 +2138,7 @@ class DocumentationSection extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3F5F8),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2229,7 +2229,7 @@ class DocumentationSection extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: hasFile
                 ? const Color(0xFF0B50C3).withValues(alpha: 0.5)
@@ -2362,7 +2362,7 @@ class DocumentationSection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: const Color(0xFF000000),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -2424,7 +2424,7 @@ class DocumentationSection extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF3F5F8),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Stack(
         alignment: Alignment.center,
@@ -2550,7 +2550,7 @@ class DocumentationSection extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.25),
@@ -2591,7 +2591,7 @@ class DocumentationSection extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.25),
@@ -2636,7 +2636,7 @@ class DocumentationSection extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF3F5F8),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Stack(
         alignment: Alignment.center,
@@ -2706,7 +2706,7 @@ Widget _buildInputField(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
         ),
         alignment: isTextArea ? Alignment.topLeft : Alignment.center,
         child: TextField(
@@ -2908,7 +2908,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
           },
           offset: const Offset(0, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             side: BorderSide(color: Colors.grey.shade200, width: 1),
           ),
           color: const Color(0xFFFFFFFF),
@@ -2931,7 +2931,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: const Color(0xFFFFFFFF),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

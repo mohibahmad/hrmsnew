@@ -564,7 +564,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               elevation: 0,
               insetPadding: const EdgeInsets.symmetric(horizontal: 24),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(6),
                 child: Container(
                   width: 440,
                   decoration: BoxDecoration(
@@ -772,7 +772,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               ),
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               child: TextField(
                                 controller: reasonController,
@@ -1018,7 +1018,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isSelected ? const Color(0xFF0F52BA) : Colors.grey.shade200,
         ),
@@ -1060,7 +1060,7 @@ class WorkerListItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: cardLightGray,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
@@ -1170,7 +1170,7 @@ class TodayAttendanceItem extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardLightGray,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1295,7 +1295,7 @@ class PaginationWidget extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
             color: primaryBlue,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: const Text(
             "1",

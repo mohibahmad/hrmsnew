@@ -561,14 +561,14 @@ class _ProfileBodyState extends State<ProfileBody> {
             else
               InkWell(
                 onTap: () => setState(() => _isEditing = true),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
                 child: Tooltip(
                   message: 'edit_profile'.tr(),
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F0FE),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: SvgPicture.asset(
                       'assets/edit_icon.svg',
@@ -589,7 +589,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: const Color(0xFFF4F5F7),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
             children: [
@@ -786,7 +786,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             border: readOnly
                 ? Border.all(color: const Color(0xFFE5E7EB))
                 : null,
@@ -860,7 +860,7 @@ class ProfilePreviewDialog extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
                 color: Color(0xFF000000).withValues(alpha: 0.15),
@@ -1044,7 +1044,7 @@ class ProfilePreviewDialog extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Row(

@@ -353,7 +353,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryBlue,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -425,7 +425,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
             color: Color(0xFF000000).withValues(alpha: 0.02),
@@ -480,7 +480,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
             children: [
@@ -598,7 +598,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         Offset.zero & overlay.size,
       ),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         side: const BorderSide(color: Color(0xFFCBCBCB)),
       ),
       color: const Color(0xFFFBFBFC),
@@ -707,7 +707,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Column(
@@ -890,7 +890,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: primaryBlue,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '$_currentPage',
@@ -953,7 +953,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
         width: 500,
         decoration: BoxDecoration(
@@ -1186,7 +1186,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Color(0xFF000000).withValues(alpha: 0.05)),
       ),
       child: Row(

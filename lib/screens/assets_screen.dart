@@ -144,7 +144,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           builder: (context, setModalState) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               backgroundColor: Color(0xFFFFFFFF),
               elevation: 10,
@@ -178,7 +178,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -291,7 +291,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             DateTime tempDate = loanedDate;
                             return Dialog(
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               backgroundColor: Colors.white,
                               child: Container(
@@ -344,7 +344,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                             ),
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                                  BorderRadius.circular(6),
                                             ),
                                           ),
                                           child: Text(
@@ -415,7 +415,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               DateTime tempDate = returnedDate;
                               return Dialog(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 backgroundColor: Colors.white,
                                 child: Container(
@@ -469,7 +469,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                               ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(4),
+                                                    BorderRadius.circular(6),
                                               ),
                                             ),
                                             child: Text(
@@ -529,7 +529,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           height: 44,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
@@ -582,7 +582,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               children: [
@@ -780,7 +780,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(140, 50),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             elevation: 0,
           ),
@@ -834,7 +834,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Column(
@@ -895,7 +895,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '$_currentPage',

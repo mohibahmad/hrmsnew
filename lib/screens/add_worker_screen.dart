@@ -217,7 +217,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                       // SAVE BUTTON with Loading Indicator
                       InkWell(
                         onTap: isLoading ? null : _handleSave,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                         child: Container(
                           height: 44,
                           width:
@@ -225,7 +225,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8EDF8),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           alignment: Alignment.center,
                           child: isLoading
@@ -269,7 +269,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                             height: 56,
                             decoration: BoxDecoration(
                               color: Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
                                   color: Color(0xFF000000).withOpacity(0.02),
@@ -358,7 +358,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                   padding: const EdgeInsets.all(24),
                                   decoration: BoxDecoration(
                                     color: formBgGrey,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
@@ -586,7 +586,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         title,
@@ -625,7 +625,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           alignment: isTextArea ? Alignment.topLeft : Alignment.center,
           child: TextField(

@@ -85,7 +85,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                       ),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                           color: Color(0xFFFFFFFF),
                           width: 1.0,
@@ -299,7 +299,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(
               color: isActive ? activeTabBlue : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -901,7 +901,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         ),
                         decoration: BoxDecoration(
                           color: actionBtnBlue,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '$_currentPage',
@@ -951,7 +951,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
@@ -1034,7 +1034,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               icon: const Icon(Icons.more_vert, size: 24),
               padding: EdgeInsets.zero,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
                 side: const BorderSide(color: Color(0xFFCBCBCB)),
               ),
               color: const Color(0xFFFBFBFC),
@@ -1171,12 +1171,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       height: 50,
       decoration: BoxDecoration(
         color: buttonColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1293,7 +1293,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             boxShadow: [
               BoxShadow(
                 color: Color(0xFF000000).withValues(alpha: 0.15),
@@ -1587,7 +1587,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: cardBorderGrey, width: 1.2),
       ),
       child: Row(

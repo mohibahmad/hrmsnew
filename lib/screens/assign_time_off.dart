@@ -296,7 +296,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Column(
@@ -362,7 +362,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0247C4),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 elevation: 0,
               ),
@@ -441,7 +441,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -506,7 +506,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -741,7 +741,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                         : Colors.grey.shade300),
               width: 1,
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
             day,
@@ -786,7 +786,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 height: 100,
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -873,7 +873,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF0247C4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           elevation: 0,
         ),
         onPressed: _isLoading ? null : _handleSave,

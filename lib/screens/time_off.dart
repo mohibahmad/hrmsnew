@@ -289,7 +289,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -359,7 +359,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: Column(
@@ -573,7 +573,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '$_currentPage',

@@ -709,7 +709,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 margin: const EdgeInsets.only(top: 29, left: 19, right: 19),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
                   image: const DecorationImage(
                     image: AssetImage('assets/premium_bg.png'),
@@ -906,7 +906,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF).withValues(alpha: 0.36),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Column(
               children: [
@@ -1022,7 +1022,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           color: isSelected
               ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
               : const Color(0x00FFFFFF),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1098,7 +1098,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               color: isSelected
                   ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
                   : const Color(0x00FFFFFF),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
