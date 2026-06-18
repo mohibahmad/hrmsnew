@@ -6,10 +6,10 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
-
 
 class ProfileTopHeader extends StatelessWidget {
   final VoidCallback onLogout;
@@ -18,7 +18,7 @@ class ProfileTopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
-    final name = user?.displayName ?? 'User';
+    final name = user?.displayName ?? 'user'.tr();
 
     return Container(
       height: 94,
@@ -38,8 +38,8 @@ class ProfileTopHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(width: 8),
-          const Text(
-            'My Info',
+          Text(
+            'my_info'.tr(),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -120,9 +120,9 @@ class ProfileTopHeader extends StatelessWidget {
                       color: Colors.red.shade400,
                     ),
                     const SizedBox(width: 10),
-                    const Text(
-                      'Logout',
-                      style: TextStyle(
+                    Text(
+                      'logout'.tr(),
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFFEF4444),
                         fontWeight: FontWeight.w500,
@@ -161,7 +161,7 @@ class ProfileInlineHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
-    final name = user?.displayName ?? 'User';
+    final name = user?.displayName ?? 'user'.tr();
 
     return Container(
       height: 94,
@@ -180,8 +180,8 @@ class ProfileInlineHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'My Info',
+          Text(
+            'my_info'.tr(),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -265,8 +265,8 @@ class ProfileInlineHeader extends StatelessWidget {
                       color: Colors.red.shade400,
                     ),
                     const SizedBox(width: 10),
-                    const Text(
-                      'Logout',
+                    Text(
+                      'logout'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Color(0xFFEF4444),
@@ -397,7 +397,9 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Error selecting image: $e',
+          message: 'error_selecting_image'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
           isError: true,
         );
       }
@@ -470,10 +472,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       });
 
       if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'Profile saved successfully!',
-        );
+        FlashySnackBar.show(context, message: 'profile_saved'.tr());
       }
     } catch (e) {
       setState(() {
@@ -482,7 +481,9 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Error saving profile: $e',
+          message: 'error_saving_profile'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
           isError: true,
         );
       }
@@ -548,8 +549,8 @@ class _ProfileBodyState extends State<ProfileBody> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                        'Save',
+                    : Text(
+                        'save'.tr(),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -562,7 +563,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                 onTap: () => setState(() => _isEditing = true),
                 borderRadius: BorderRadius.circular(8),
                 child: Tooltip(
-                  message: 'Edit Profile',
+                  message: 'edit_profile'.tr(),
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -594,12 +595,12 @@ class _ProfileBodyState extends State<ProfileBody> {
             children: [
               _buildFormRow(
                 _buildInputField(
-                  'Business Name',
+                  'business_name'.tr(),
                   _businessNameController,
                   readOnly: !_isEditing,
                 ),
                 _buildInputField(
-                  'Company ID no',
+                  'company_id_no'.tr(),
                   _companyIdController,
                   readOnly: !_isEditing,
                 ),
@@ -607,12 +608,12 @@ class _ProfileBodyState extends State<ProfileBody> {
               const SizedBox(height: 24),
               _buildFormRow(
                 _buildInputField(
-                  'Company E-mail',
+                  'company_email'.tr(),
                   _emailController,
                   readOnly: true,
                 ),
                 _buildInputField(
-                  'Contact Number',
+                  'contact_number'.tr(),
                   _contact1Controller,
                   readOnly: !_isEditing,
                 ),
@@ -620,7 +621,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               const SizedBox(height: 24),
               _buildFormRow(
                 _buildInputField(
-                  'Address',
+                  'address'.tr(),
                   _addressController,
                   maxLines: 2,
                   readOnly: !_isEditing,
@@ -706,25 +707,25 @@ class _ProfileBodyState extends State<ProfileBody> {
           Positioned(
             bottom: 0,
             right: 0,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF155ED5),
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: SvgPicture.asset(
-                    'assets/edit_pencil_profile.svg',
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFFFFFFFF),
-                      BlendMode.srcIn,
-                    ),
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Color(0xFF155ED5),
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: SvgPicture.asset(
+                  'assets/edit_pencil_profile.svg',
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFFFFFFF),
+                    BlendMode.srcIn,
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -748,7 +749,7 @@ class _ProfileBodyState extends State<ProfileBody> {
     int maxLines = 1,
     bool readOnly = false,
   }) {
-    final bool isEmailField = label == 'Company E-mail';
+    final bool isEmailField = label == 'company_email'.tr();
     final Color bgColor = readOnly
         ? const Color(0xFFEEEFF2)
         : const Color(0xFFFFFFFF);
@@ -877,8 +878,8 @@ class ProfilePreviewDialog extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    const Text(
-                      'Profile Preview',
+                    Text(
+                      'profile_preview'.tr(),
                       style: TextStyle(
                         color: Color(0xFFFFFFFF),
                         fontSize: 20,
@@ -969,7 +970,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildPreviewCard(
-                            'Business Name',
+                            'business_name'.tr(),
                             businessName,
                             'assets/preview_profile.svg',
                           ),
@@ -977,7 +978,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildPreviewCard(
-                            'Company ID no',
+                            'company_id_no'.tr(),
                             companyId,
                             'assets/company_id.svg',
                           ),
@@ -990,7 +991,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildPreviewCard(
-                            'Company E-mail',
+                            'company_email'.tr(),
                             email,
                             'assets/company_email.svg',
                           ),
@@ -998,7 +999,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildPreviewCard(
-                            'Currency',
+                            'currency'.tr(),
                             currency,
                             'assets/currency_preview.svg',
                           ),
@@ -1011,7 +1012,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildPreviewCard(
-                            'Contact No',
+                            'contact_no'.tr(),
                             contact1,
                             'assets/phone_preview.svg',
                           ),
@@ -1032,7 +1033,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildPreviewCard(
-                            'Address',
+                            'address'.tr(),
                             address,
                             'assets/location_preview.svg',
                           ),
@@ -1052,11 +1053,7 @@ class ProfilePreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewCard(
-    String label,
-    String value,
-    String svgPath,
-  ) {
+  Widget _buildPreviewCard(String label, String value, String svgPath) {
     return Container(
       height: 70,
       padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),

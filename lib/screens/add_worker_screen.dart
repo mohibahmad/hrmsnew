@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,7 +11,7 @@ class WorkerManagementApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Worker Management',
+      title: 'worker_management'.tr(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
@@ -65,7 +66,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     if (nameController.text.isEmpty || contactController.text.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please fill Name and Contact at least!',
+        message: 'please_fill_name_contact'.tr(),
         isError: true,
       );
       return;
@@ -93,10 +94,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
 
       // Show Success Message
       if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'Worker Added Successfully!',
-        );
+        FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
         _clearForm(); // Clear the form after saving
       }
     } catch (e) {
@@ -104,7 +102,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Error saving data: $e',
+          message: 'error_saving_data'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
       }
@@ -163,7 +161,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                   decoration: const BoxDecoration(
                     color: Color(0xFFFFFFFF),
                     border: Border(
-                        bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+                      bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -178,8 +177,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               onTap: _safePop,
                               child: const Padding(
                                 padding: EdgeInsets.only(top: 2.0),
-                                child: Icon(Icons.arrow_back_ios_new,
-                                    color: Color(0xFF000000), size: 24),
+                                child: Icon(
+                                  Icons.arrow_back_ios_new,
+                                  color: Color(0xFF000000),
+                                  size: 24,
+                                ),
                               ),
                             ),
                           ),
@@ -189,7 +191,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Add New Worker',
+                                'add_new_worker'.tr(),
                                 style: TextStyle(
                                   color: textDark,
                                   fontSize: 26,
@@ -199,8 +201,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              const Text(
-                                'Fill in the worker details to get started.',
+                              Text(
+                                'fill_worker_details'.tr(),
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 13,
@@ -218,7 +220,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           height: 44,
-                          width: 100, // Fixed width so it doesn't shrink when loading
+                          width:
+                              100, // Fixed width so it doesn't shrink when loading
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8EDF8),
@@ -230,10 +233,12 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(
-                                      color: Color(0xFF000000), strokeWidth: 2),
+                                    color: Color(0xFF000000),
+                                    strokeWidth: 2,
+                                  ),
                                 )
-                              : const Text(
-                                  'Save',
+                              : Text(
+                                  'save'.tr(),
                                   style: TextStyle(
                                     color: Color(0xFF000000),
                                     fontWeight: FontWeight.w500,
@@ -253,7 +258,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                     thumbVisibility: true,
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 40, vertical: 24),
+                        horizontal: 40,
+                        vertical: 24,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -261,22 +268,30 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           Container(
                             height: 56,
                             decoration: BoxDecoration(
-                                color: Color(0xFFFFFFFF),
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0xFF000000).withOpacity(0.02),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ]),
+                              color: Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF000000).withOpacity(0.02),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
                             child: Row(
                               children: [
                                 Expanded(
-                                    child: _buildTopTab('Worker Detail',
-                                        isActive: true)),
-                                Expanded(child: _buildTopTab('Experience')),
-                                Expanded(child: _buildTopTab('Documentation')),
+                                  child: _buildTopTab(
+                                    'worker_detail'.tr(),
+                                    isActive: true,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _buildTopTab('experience'.tr()),
+                                ),
+                                Expanded(
+                                  child: _buildTopTab('documentation'.tr()),
+                                ),
                               ],
                             ),
                           ),
@@ -286,8 +301,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Personal Information',
+                              Text(
+                                'personal_information'.tr(),
                                 style: TextStyle(
                                   color: Color(0xFF000000),
                                   fontSize: 20,
@@ -298,17 +313,20 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               Container(
                                 height: 40,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16),
+                                  horizontal: 16,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Color(0xFFFFFFFF),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                      color: const Color(0xFFE0E0E0), width: 1),
+                                    color: const Color(0xFFE0E0E0),
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Row(
-                                  children: const [
+                                  children: [
                                     Text(
-                                      'Next Step',
+                                      'next_step'.tr(),
                                       style: TextStyle(
                                         color: Color(0xFF000000),
                                         fontSize: 14,
@@ -317,11 +335,14 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                       ),
                                     ),
                                     SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward,
-                                        size: 18, color: Color(0xFF000000)),
+                                    Icon(
+                                      Icons.arrow_forward,
+                                      size: 18,
+                                      color: Color(0xFF000000),
+                                    ),
                                   ],
                                 ),
-                              )
+                              ),
                             ],
                           ),
                           const SizedBox(height: 24),
@@ -340,74 +361,96 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Worker Name:', 'Enter name',
-                                                  controller: nameController)),
+                                            child: _buildInputField(
+                                              'worker_name_label'.tr(),
+                                              'enter_name'.tr(),
+                                              controller: nameController,
+                                            ),
+                                          ),
                                           const SizedBox(width: 24),
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Worker Father/Husband Name:',
-                                                  'Enter name',
-                                                  controller: fatherNameController)),
+                                            child: _buildInputField(
+                                              'worker_father_husband_name'.tr(),
+                                              'enter_name'.tr(),
+                                              controller: fatherNameController,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       const SizedBox(height: 24),
                                       Row(
                                         children: [
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Worker E-mail:',
-                                                  'Enter email',
-                                                  controller: emailController)),
+                                            child: _buildInputField(
+                                              'worker_email'.tr(),
+                                              'enter_email'.tr(),
+                                              controller: emailController,
+                                            ),
+                                          ),
                                           const SizedBox(width: 24),
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Contact no:', '0000000000',
-                                                  controller: contactController)),
+                                            child: _buildInputField(
+                                              'contact_no_label'.tr(),
+                                              '0000000000',
+                                              controller: contactController,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       const SizedBox(height: 24),
                                       Row(
                                         children: [
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'National ID:',
-                                                  'Enter national id',
-                                                  controller: nationalIdController)),
+                                            child: _buildInputField(
+                                              'national_id'.tr(),
+                                              'enter_national_id'.tr(),
+                                              controller: nationalIdController,
+                                            ),
+                                          ),
                                           const SizedBox(width: 24),
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Professed Religion:',
-                                                  'Enter religion',
-                                                  controller: religionController)),
+                                            child: _buildInputField(
+                                              'professed_religion'.tr(),
+                                              'enter_religion'.tr(),
+                                              controller: religionController,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       const SizedBox(height: 24),
                                       Row(
                                         children: [
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Worker Date of Birth:',
-                                                  'DD/MM/YYYY',
-                                                  suffixIcon: Icons.calendar_month,
-                                                  controller: dobController)),
+                                            child: _buildInputField(
+                                              'worker_dob'.tr(),
+                                              'date_format'.tr(),
+                                              suffixIcon: Icons.calendar_month,
+                                              controller: dobController,
+                                            ),
+                                          ),
                                           const SizedBox(width: 24),
                                           Expanded(
-                                              child: _buildInputField(
-                                                  'Gender:', 'Male',
-                                                  suffixIcon: Icons.arrow_drop_down)),
+                                            child: _buildInputField(
+                                              'gender_label'.tr(),
+                                              'male'.tr(),
+                                              suffixIcon: Icons.arrow_drop_down,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       const SizedBox(height: 24),
                                       _buildInputField(
-                                          'Worker Address:', 'Enter address',
-                                          isTextArea: true,
-                                          controller: addressController),
+                                        'worker_address'.tr(),
+                                        'enter_address'.tr(),
+                                        isTextArea: true,
+                                        controller: addressController,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -420,8 +463,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Worker Profile',
+                                    Text(
+                                      'worker_profile'.tr(),
                                       style: TextStyle(
                                         color: Color(0xFF000000),
                                         fontSize: 16,
@@ -434,17 +477,18 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                       height: 240,
                                       width: double.infinity,
                                       decoration: BoxDecoration(
-                                          color: Color(0xFFFFFFFF),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Color(0xFF000000)
-                                                  .withOpacity(0.01),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 5),
-                                            )
-                                          ]),
+                                        color: Color(0xFFFFFFFF),
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Color(
+                                              0xFF000000,
+                                            ).withOpacity(0.01),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
                                       child: Column(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
@@ -454,15 +498,17 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                             height: 64,
                                             width: 64,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error,
-                                                    stackTrace) =>
-                                                const Icon(Icons.person,
-                                                    size: 64,
-                                                    color: Colors.grey),
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    const Icon(
+                                                      Icons.person,
+                                                      size: 64,
+                                                      color: Colors.grey,
+                                                    ),
                                           ),
                                           const SizedBox(height: 12),
-                                          const Text(
-                                            'Upload Profile',
+                                          Text(
+                                            'upload_profile'.tr(),
                                             style: TextStyle(
                                               color: Color(0xFF000000),
                                               fontWeight: FontWeight.w700,
@@ -471,8 +517,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          const Text(
-                                            'Upload a profile image\nPNG, JPG or PDF',
+                                          Text(
+                                            'upload_profile_hint'.tr(),
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
                                               color: Colors.black,
@@ -487,8 +533,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     const SizedBox(height: 32),
 
                                     // Relationship Status Section
-                                    const Text(
-                                      'Relationship Status:',
+                                    Text(
+                                      'relationship_status'.tr(),
                                       style: TextStyle(
                                         color: Color(0xFF000000),
                                         fontSize: 16,
@@ -500,23 +546,25 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     Row(
                                       children: [
                                         _buildCustomRadio(
-                                            label: 'Married',
-                                            isSelected: isMarried,
-                                            onTap: () {
-                                              setState(() => isMarried = true);
-                                            }),
+                                          label: 'married'.tr(),
+                                          isSelected: isMarried,
+                                          onTap: () {
+                                            setState(() => isMarried = true);
+                                          },
+                                        ),
                                         const SizedBox(width: 40),
                                         _buildCustomRadio(
-                                            label: 'Single',
-                                            isSelected: !isMarried,
-                                            onTap: () {
-                                              setState(() => isMarried = false);
-                                            }),
+                                          label: 'single'.tr(),
+                                          isSelected: !isMarried,
+                                          onTap: () {
+                                            setState(() => isMarried = false);
+                                          },
+                                        ),
                                       ],
-                                    )
+                                    ),
                                   ],
                                 ),
-                              )
+                              ),
                             ],
                           ),
                           const SizedBox(height: 40),
@@ -552,10 +600,13 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     );
   }
 
-  Widget _buildInputField(String label, String hint,
-      {IconData? suffixIcon,
-      bool isTextArea = false,
-      TextEditingController? controller}) {
+  Widget _buildInputField(
+    String label,
+    String hint, {
+    IconData? suffixIcon,
+    bool isTextArea = false,
+    TextEditingController? controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -594,8 +645,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               ),
               border: InputBorder.none,
               isDense: true,
-              contentPadding:
-                  isTextArea ? const EdgeInsets.only(top: 14) : EdgeInsets.zero,
+              contentPadding: isTextArea
+                  ? const EdgeInsets.only(top: 14)
+                  : EdgeInsets.zero,
               suffixIcon: suffixIcon != null
                   ? Icon(suffixIcon, color: Colors.grey.shade400, size: 22)
                   : null,
@@ -606,10 +658,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     );
   }
 
-  Widget _buildCustomRadio(
-      {required String label,
-      required bool isSelected,
-      required VoidCallback onTap}) {
+  Widget _buildCustomRadio({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(

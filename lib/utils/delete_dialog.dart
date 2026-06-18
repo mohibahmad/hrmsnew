@@ -1,13 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class DeleteDialog {
   static Future<bool> show({
     required BuildContext context,
     required String title,
     required String content,
-    String confirmButtonText = 'Delete',
+    String confirmButtonText = 'delete',
   }) async {
+    final resolvedConfirmText = confirmButtonText == 'delete'
+        ? 'delete'.tr()
+        : confirmButtonText;
     final confirm = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -100,8 +104,8 @@ class DeleteDialog {
                                   color: const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Text(
-                                  'Cancel',
+                                child: Text(
+                                  'cancel'.tr(),
                                   style: TextStyle(
                                     color: Color(0xFF000000),
                                     fontSize: 15,
@@ -134,7 +138,7 @@ class DeleteDialog {
                                   ],
                                 ),
                                 child: Text(
-                                  confirmButtonText,
+                                  resolvedConfirmText,
                                   style: const TextStyle(
                                     color: Color(0xFFFFFFFF),
                                     fontSize: 15,

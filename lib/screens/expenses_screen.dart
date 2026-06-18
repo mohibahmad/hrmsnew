@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -185,9 +186,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _deleteExpense(String docId) async {
     final confirmed = await DeleteDialog.show(
       context: context,
-      title: 'Delete Expense',
-      content:
-          'Are you sure you want to delete this expense? This action cannot be undone.',
+      title: 'delete_expense'.tr(),
+      content: 'delete_expense_desc'.tr(),
     );
     if (!confirmed) return;
 
@@ -244,8 +244,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
-                        const Text(
-                          'Add Expense',
+                        Text(
+                          'add_expense'.tr(),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -270,7 +270,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             if (categoryController.text.trim().isEmpty) {
                               FlashySnackBar.show(
                                 context,
-                                message: 'Please enter a category',
+                                message: 'please_enter_category'.tr(),
                                 isError: true,
                               );
                               return;
@@ -281,7 +281,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             if (amt == null) {
                               FlashySnackBar.show(
                                 context,
-                                message: 'Please enter a valid numeric amount',
+                                message: 'please_enter_valid_amount'.tr(),
                                 isError: true,
                               );
                               return;
@@ -315,12 +315,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             Navigator.of(context).pop();
                             FlashySnackBar.show(
                               context,
-                              message:
-                                  'Successfully added expense "${categoryController.text}"',
+                              message: 'successfully_added_expense'.tr(
+                                namedArgs: {'name': categoryController.text},
+                              ),
                             );
                           },
-                          child: const Text(
-                            'Save',
+                          child: Text(
+                            'save'.tr(),
                             style: TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 13,
@@ -338,14 +339,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       children: [
                         Expanded(
                           child: _buildModalTextField(
-                            'Expense Category',
+                            'expense_category'.tr(),
                             categoryController,
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildModalTextField(
-                            'Amount (\$)',
+                            'amount_dollar'.tr(),
                             amountController,
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
@@ -362,8 +363,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Expense Title',
+                              Text(
+                                'expense_title'.tr(),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -736,9 +737,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
-                'Expenses',
+                'expenses'.tr(),
                 style: TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,
@@ -805,7 +806,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search by workers or categories',
+                      hintText: 'search_expenses_hint'.tr(),
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,
@@ -857,8 +858,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               BlendMode.srcIn,
             ),
           ),
-          label: const Text(
-            'Add Expenses',
+          label: Text(
+            'add_expenses'.tr(),
             style: TextStyle(
               color: Color(0xFFFFFFFF),
               fontSize: 14,
@@ -876,7 +877,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       children: [
         Expanded(
           child: _buildCard(
-            title: 'This Month Expense',
+            title: 'this_month_expense'.tr(),
             titleColor: const Color(0xFF0247C4),
             amount: _formatCurrency(_totalExpenseSum),
             iconWidget: SvgPicture.asset(
@@ -889,7 +890,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         const SizedBox(width: 24),
         Expanded(
           child: _buildCard(
-            title: 'Total Expense',
+            title: 'total_expense'.tr(),
             titleColor: Colors.red,
             amount: _formatCurrency(_totalExpenseSum),
             iconWidget: SvgPicture.asset(
@@ -953,8 +954,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Expenses List',
+        Text(
+          'expenses_list'.tr(),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -1020,10 +1021,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
               children: [
-                Expanded(flex: 3, child: _tableHeader('Worker Name')),
-                Expanded(flex: 3, child: _tableHeader('Date')),
-                Expanded(flex: 3, child: _tableHeader('Expense Category')),
-                Expanded(flex: 2, child: _tableHeader('Amount')),
+                Expanded(
+                  flex: 3,
+                  child: _tableHeader('worker_name_header'.tr()),
+                ),
+                Expanded(flex: 3, child: _tableHeader('date_header'.tr())),
+                Expanded(flex: 3, child: _tableHeader('expense_category'.tr())),
+                Expanded(flex: 2, child: _tableHeader('amount_header'.tr())),
                 const SizedBox(width: 48), // Spacer to match action menu width
               ],
             ),
@@ -1220,8 +1224,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'Edit Expense',
+                Text(
+                  'edit_expense'.tr(),
                   style: TextStyle(
                     color: Color(0xFF0247C4),
                     fontSize: 13,
@@ -1247,8 +1251,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'Delete',
+                Text(
+                  'delete'.tr(),
                   style: TextStyle(
                     color: Colors.red,
                     fontSize: 13,
@@ -1282,8 +1286,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 color: const Color(0xFFCBCBCB),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Add expenses found',
+              Text(
+                'add_workers_found'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,

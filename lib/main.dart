@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'firebase_options.dart';
 import 'services/error_reporter.dart';
 import 'screens/splash_screen.dart';
@@ -40,7 +41,12 @@ void main() {
       // Errors from the platform side (e.g. plugins) that the framework can't
       // catch otherwise.
       PlatformDispatcher.instance.onError = (error, stack) {
-        ErrorReporter.report(error, stack, context: 'PlatformDispatcher', fatal: true);
+        ErrorReporter.report(
+          error,
+          stack,
+          context: 'PlatformDispatcher',
+          fatal: true,
+        );
         return true;
       };
 
@@ -77,7 +83,22 @@ void main() {
         }());
       }
 
-      runApp(const HRMSApp());
+      await EasyLocalization.ensureInitialized();
+      runApp(
+        EasyLocalization(
+          supportedLocales: const [
+            Locale('en'),
+            Locale('es'),
+            Locale('fr'),
+            Locale('pt'),
+            Locale('ru'),
+          ],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('en'),
+          saveLocale: true,
+          child: const HRMSApp(),
+        ),
+      );
     },
     (error, stack) =>
         ErrorReporter.report(error, stack, context: 'Zone', fatal: true),
@@ -93,6 +114,9 @@ class HRMSApp extends StatelessWidget {
       title: 'HRMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'SF Pro Display'),
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(

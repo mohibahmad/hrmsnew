@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/error_reporter.dart';
@@ -83,17 +84,17 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       if (mounted) {
-        _showErrorSnackBar('Google login failed. Please try again.');
+        _showErrorSnackBar('google_login_failed'.tr());
       }
     } on FirebaseAuthException catch (e, st) {
       ErrorReporter.report(e, st, context: 'googleSignIn');
       if (mounted) {
-        _showErrorSnackBar('Google login failed. Please try again.');
+        _showErrorSnackBar('google_login_failed'.tr());
       }
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'googleSignIn');
       if (mounted) {
-        _showErrorSnackBar('An unexpected error occurred. Please try again.');
+        _showErrorSnackBar('unexpected_error'.tr());
       }
     } finally {
       if (mounted) {
@@ -120,11 +121,11 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       if (mounted) {
-        _showErrorSnackBar('Apple login failed. Please try again.');
+        _showErrorSnackBar('apple_login_failed'.tr());
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Apple login failed. Please try again.');
+        _showErrorSnackBar('apple_login_failed'.tr());
       }
     } finally {
       if (mounted) {
@@ -140,8 +141,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          title: 'Success',
-          message: 'Continuing as Guest User',
+          title: 'success'.tr(),
+          message: 'continuing_as_guest'.tr(),
           isError: false,
         );
         Navigator.of(context).pushReplacement(
@@ -150,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Guest login failed. Please try again.');
+        _showErrorSnackBar('guest_login_failed'.tr());
       }
     } finally {
       if (mounted) setState(() => _isGuestLoading = false);
@@ -178,39 +179,37 @@ class _LoginScreenState extends State<LoginScreen> {
       String message;
       switch (e.code) {
         case 'user-not-found':
-          message = 'No account found with this email. Please sign up first.';
+          message = 'user_not_found'.tr();
           break;
         case 'wrong-password':
-          message = 'Incorrect password. Please try again.';
+          message = 'wrong_password'.tr();
           break;
         case 'invalid-email':
-          message = 'Please enter a valid email address.';
+          message = 'invalid_email'.tr();
           break;
         case 'user-disabled':
-          message = 'This account has been disabled.';
+          message = 'user_disabled'.tr();
           break;
         case 'too-many-requests':
-          message = 'Too many attempts. Please try again later.';
+          message = 'too_many_requests'.tr();
           break;
         case 'network-request-failed':
         case 'network-error':
         case 'unavailable':
-          message =
-              'Network error. Please check your internet connection and try again.';
+          message = 'network_error'.tr();
           break;
         case 'invalid-credential':
-          message = 'Invalid email or password. Please try again.';
+          message = 'invalid_credential'.tr();
           break;
         case 'operation-not-allowed':
-          message = 'Email/password sign-in is not enabled. Contact support.';
+          message = 'operation_not_allowed'.tr();
           break;
         default:
           if (e.message != null &&
               e.message!.toLowerCase().contains('network')) {
-            message =
-                'Network error. Please check your internet connection and try again.';
+            message = 'network_error'.tr();
           } else {
-            message = 'Login failed (${e.code}). Please try again.';
+            message = 'login_failed'.tr(namedArgs: {'code': e.code});
           }
       }
       if (mounted) {
@@ -218,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('An unexpected error occurred. Please try again.');
+        _showErrorSnackBar('unexpected_error'.tr());
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -240,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           FlashySnackBar.show(
             context,
-            message: 'Account Deleted, please contact realmappsrs12@gmail.com',
+            message: 'account_deleted_contact'.tr(),
             isError: true,
           );
         }
@@ -329,8 +328,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 32),
 
-      const Text(
-        'Welcome Back!',
+      Text(
+        'welcome_back'.tr(),
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
@@ -341,7 +340,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 4),
       Text(
-        'Sign in to continue your HR journey',
+        'sign_in_subtitle'.tr(),
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w500,
@@ -360,7 +359,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _InputLabel(label: 'E-mail'),
+            _InputLabel(label: 'email_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _emailController,
@@ -370,22 +369,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _inputDecoration('Enter your e-mail'),
+              decoration: _inputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your email';
+                  return 'email_required'.tr();
                 }
                 if (!value.trim().contains('@')) {
-                  return 'Email must contain @';
+                  return 'email_must_contain_at'.tr();
                 }
                 if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
-                  return 'Please enter a valid email (e.g. name@domain.com)';
+                  return 'email_invalid'.tr();
                 }
                 return null;
               },
             ),
             const SizedBox(height: 12),
-            const _InputLabel(label: 'Password'),
+            _InputLabel(label: 'password_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
@@ -396,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _inputDecoration(
-                'Enter your password',
+                'password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscurePassword,
                 onToggleVisibility: () {
@@ -405,10 +404,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter your password';
+                  return 'password_required'.tr();
                 }
                 if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
+                  return 'password_too_short'.tr();
                 }
                 return null;
               },
@@ -428,10 +427,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
         behavior: HitTestBehavior.opaque,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(vertical: 4),
           child: Text(
-            'Forget password',
+            'forget_password'.tr(),
             style: TextStyle(
               color: Color(0xFFFF1014),
               fontSize: 13,
@@ -469,8 +468,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 )
-              : const Text(
-                  'Log in',
+              : Text(
+                  'log_in'.tr(),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -488,7 +487,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              'or',
+              'or'.tr(),
               style: TextStyle(
                 color: Colors.grey.shade400,
                 fontSize: 13,
@@ -503,7 +502,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Continue with Google Button
       _buildSocialButton(
-        text: 'Continue with Google',
+        text: 'continue_with_google'.tr(),
         icon: SvgPicture.string(_googleSvg, width: 16, height: 16),
         isLoading: _isGoogleLoading,
         onPressed: _anyLoading ? null : _handleGoogleLogin,
@@ -514,7 +513,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Continue with Apple Button
       _buildSocialButton(
-        text: 'Continue with Apple',
+        text: 'continue_with_apple'.tr(),
         icon: SvgPicture.string(
           _appleSvg,
           width: 16,
@@ -531,7 +530,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Continue as Guest Button
       _buildSocialButton(
-        text: 'Continue as Guest',
+        text: 'continue_as_guest'.tr(),
         icon: SvgPicture.string(
           _guestSvg,
           width: 16,
@@ -555,7 +554,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Center(
         child: RichText(
           text: TextSpan(
-            text: "Don't have an account? ",
+            text: 'dont_have_account'.tr(),
             style: const TextStyle(
               color: Color(0xFF000000),
               fontSize: 13,
@@ -563,7 +562,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             children: [
               TextSpan(
-                text: 'Sign Up',
+                text: 'sign_up'.tr(),
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w600,

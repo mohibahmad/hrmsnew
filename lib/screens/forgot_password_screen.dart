@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../utils/snackbar_utils.dart';
 
@@ -36,8 +37,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          title: 'Success',
-          message: 'Password reset email sent. Check your inbox.',
+          title: 'success'.tr(),
+          message: 'password_reset_sent'.tr(),
           isError: false,
         );
         Navigator.of(context).pop();
@@ -46,22 +47,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       String message;
       switch (e.code) {
         case 'user-not-found':
-          message = 'No user found for this email.';
+          message = 'no_user_found'.tr();
           break;
         case 'invalid-email':
-          message = 'Invalid email address.';
+          message = 'invalid_email_address_short'.tr();
           break;
         case 'network-request-failed':
         case 'network-error':
         case 'unavailable':
-          message = 'Network error. Please check your connection.';
+          message = 'network_error_short'.tr();
           break;
         default:
           if (e.message != null &&
               e.message!.toLowerCase().contains('network')) {
-            message = 'Network error. Please check your connection.';
+            message = 'network_error_short'.tr();
           } else {
-            message = 'Failed to send reset email.';
+            message = 'failed_send_reset'.tr();
           }
       }
       if (mounted) {
@@ -71,7 +72,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'An unexpected error occurred. Please try again.',
+          message: 'unexpected_error'.tr(),
           isError: true,
         );
       }
@@ -153,8 +154,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 ),
                               ),
                               const SizedBox(height: 32),
-                              const Text(
-                                'Forgot Password',
+                              Text(
+                                'forgot_password'.tr(),
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w700,
@@ -165,7 +166,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Enter your email and we\'ll send you a secure link to reset your password.',
+                                'forgot_password_subtitle'.tr(),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
@@ -183,7 +184,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const _InputLabel(label: 'E-mail'),
+                                    _InputLabel(label: 'email_label'.tr()),
                                     const SizedBox(height: 8),
                                     TextFormField(
                                       controller: _emailController,
@@ -194,17 +195,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                         fontFamily: 'SF Pro Display',
                                       ),
                                       decoration: _inputDecoration(
-                                        'Enter your e-mail',
+                                        'email_hint'.tr(),
                                       ),
                                       validator: (value) {
                                         if (value == null ||
                                             value.trim().isEmpty) {
-                                          return 'Please enter your email';
+                                          return 'email_required'.tr();
                                         }
                                         if (!RegExp(
                                           r'^[^@]+@[^@]+\.[^@]+',
                                         ).hasMatch(value.trim())) {
-                                          return 'Please enter a valid email (e.g. name@domain.com)';
+                                          return 'email_invalid'.tr();
                                         }
                                         return null;
                                       },
@@ -243,8 +244,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                                 ),
                                           ),
                                         )
-                                      : const Text(
-                                          'Send Reset Link',
+                                      : Text(
+                                          'send_reset_link'.tr(),
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -265,16 +266,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     foregroundColor: const Color(0xFF000000),
                                   ),
                                   child: RichText(
-                                    text: const TextSpan(
-                                      text: "Don't need this? ",
-                                      style: TextStyle(
+                                    text: TextSpan(
+                                      text: 'dont_need_this'.tr(),
+                                      style: const TextStyle(
                                         color: Color(0xFF000000),
                                         fontSize: 13,
                                         fontFamily: 'SF Pro Display',
                                       ),
                                       children: [
                                         TextSpan(
-                                          text: 'Back to Login',
+                                          text: 'back_to_login'.tr(),
                                           style: TextStyle(
                                             color: Color(0xFFFF1014),
                                             fontWeight: FontWeight.w600,

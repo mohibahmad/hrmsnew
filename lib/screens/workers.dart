@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -112,8 +113,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                 fit: BoxFit.contain,
                               ),
                               const SizedBox(width: 10),
-                              const Text(
-                                'Upgrade Pro',
+                              Text(
+                                'upgrade_pro'.tr(),
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 22,
@@ -124,9 +125,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          _buildCheckItem('Unlock All Features'),
-                          _buildCheckItem('No Commitment'),
-                          _buildCheckItem('Cancel Anytime'),
+                          _buildCheckItem('unlock_all_features'.tr()),
+                          _buildCheckItem('no_commitment'.tr()),
+                          _buildCheckItem('cancel_anytime'.tr()),
                           const SizedBox(height: 10),
                           Stack(
                             clipBehavior: Clip.none,
@@ -147,12 +148,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                     width: 1.0,
                                   ),
                                 ),
-                                child: const Column(
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      'Get to Pro',
+                                      'get_to_pro'.tr(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -164,7 +165,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Subscribe Now',
+                                      'subscribe_now'.tr(),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -209,24 +210,28 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 // Navigation Menu
                 _buildNavItem(
                   Icons.grid_view_rounded,
-                  'Dashboard',
+                  'sidebar_dashboard'.tr(),
                   _currentMenuIndex == 0,
                   onTap: () => setState(() => _currentMenuIndex = 0),
                 ),
                 _buildNavItem(
                   Icons.people_alt,
-                  'Workers',
+                  'sidebar_workers'.tr(),
                   _currentMenuIndex == 1,
                   onTap: () => setState(() => _currentMenuIndex = 1),
                 ),
                 _buildNavItem(
                   Icons.engineering,
-                  'Workforce',
+                  'sidebar_workforce'.tr(),
                   false,
                   hasDropdown: true,
                 ),
-                _buildNavItem(Icons.receipt_long, 'Expenses', false),
-                _buildNavItem(Icons.settings, 'Settings', false),
+                _buildNavItem(
+                  Icons.receipt_long,
+                  'sidebar_expenses'.tr(),
+                  false,
+                ),
+                _buildNavItem(Icons.settings, 'sidebar_settings'.tr(), false),
               ],
             ),
           ),
@@ -547,9 +552,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   Future<void> _deleteWorker(String docId) async {
     final confirmed = await DeleteDialog.show(
       context: context,
-      title: 'Delete Worker',
-      content:
-          'Are you sure you want to delete this worker? This action cannot be undone.',
+      title: 'delete_worker'.tr(),
+      content: 'delete_worker_desc'.tr(),
     );
     if (!confirmed) return;
 
@@ -584,7 +588,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Worker Management',
+                    'worker_management'.tr(),
                     style: TextStyle(
                       color: textDark,
                       fontSize: 28,
@@ -593,7 +597,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     ),
                   ),
                   Text(
-                    'Complete all required fields to register a new worker.',
+                    'complete_required_fields_worker'.tr(),
                     style: TextStyle(
                       color: textDark,
                       fontSize: 12,
@@ -611,7 +615,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   child: SvgPicture.asset(
                     'assets/notification_icon.svg',
                     width: 22,
-              height: 26,
+                    height: 26,
                     colorFilter: const ColorFilter.mode(
                       Color(0xFF000000),
                       BlendMode.srcIn,
@@ -683,7 +687,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                   });
                                 },
                                 decoration: InputDecoration(
-                                  hintText: 'Search by workers name / position',
+                                  hintText: 'search_workers_name_position'.tr(),
                                   hintStyle: TextStyle(
                                     color: Colors.grey[400],
                                     fontSize: 14,
@@ -718,17 +722,17 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     const SizedBox(width: 16),
                     _buildActionButton(
                       svgPath: 'assets/add_worker.svg',
-                      label: 'Add Worker',
+                      label: 'add_worker'.tr(),
                       onTap: widget.onAddWorker,
                     ),
                     const SizedBox(width: 16),
                     _buildActionButton(
                       svgPath: 'assets/add_bulk_worker.svg',
-                      label: 'Add Bulk Workers',
+                      label: 'add_bulk_workers'.tr(),
                       onTap: () {
                         FlashySnackBar.show(
                           context,
-                          message: 'Bulk add feature coming soon!',
+                          message: 'bulk_add_coming_soon'.tr(),
                         );
                       },
                     ),
@@ -751,12 +755,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _buildFilterTab('All'),
-                        _buildFilterTab('Designer'),
-                        _buildFilterTab('Developer'),
-                        _buildFilterTab('Engineering'),
-                        _buildFilterTab('Sales'),
-                        _buildFilterTab('Management'),
+                        _buildFilterTab('All', 'all_filter'.tr()),
+                        _buildFilterTab('Designer', 'designer'.tr()),
+                        _buildFilterTab('Developer', 'developer'.tr()),
+                        _buildFilterTab('Engineering', 'engineering'.tr()),
+                        _buildFilterTab('Sales', 'sales'.tr()),
+                        _buildFilterTab('Management', 'management'.tr()),
                       ],
                     ),
                   ),
@@ -771,12 +775,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       vertical: 12,
                     ),
                     child: Row(
-                      children: const [
+                      children: [
                         Expanded(
                           flex: 3,
                           child: Text(
-                            'Worker Name',
-                            style: TextStyle(
+                            'worker_name'.tr(),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                               fontFamily: 'SF Pro Display',
@@ -786,8 +790,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            'Work Type',
-                            style: TextStyle(
+                            'work_type'.tr(),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                               fontFamily: 'SF Pro Display',
@@ -797,8 +801,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            'Position',
-                            style: TextStyle(
+                            'position'.tr(),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                               fontFamily: 'SF Pro Display',
@@ -808,15 +812,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            'Work Type',
-                            style: TextStyle(
+                            'work_type'.tr(),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ),
-                        SizedBox(width: 48),
+                        const SizedBox(width: 48),
                       ],
                     ),
                   ),
@@ -849,8 +853,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                               const SizedBox(height: 16),
                               Text(
                                 _allWorkers.isEmpty
-                                    ? "Add workers found"
-                                    : "No workers found",
+                                    ? 'add_workers_found'.tr()
+                                    : 'no_workers_found'.tr(),
                                 style: const TextStyle(
                                   color: Color(0xFF0247C4),
                                   fontSize: 16,
@@ -1028,7 +1032,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           SizedBox(
             width: 48,
             child: PopupMenuButton<String>(
-              tooltip: 'Actions',
+              tooltip: 'actions'.tr(),
               icon: const Icon(Icons.more_vert, size: 24),
               padding: EdgeInsets.zero,
               shape: RoundedRectangleBorder(
@@ -1084,15 +1088,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   height: 48,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(
+                    children: [
+                      const Icon(
                         Icons.remove_red_eye,
                         size: 16,
                         color: Color(0xFF000000),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
-                        'Preview',
+                        'preview'.tr(),
                         style: TextStyle(
                           color: Color(0xFF000000),
                           fontSize: 13,
@@ -1112,7 +1116,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       Icon(Icons.edit, size: 16, color: actionBtnBlue),
                       const SizedBox(width: 8),
                       Text(
-                        'Edit Worker',
+                        'edit_worker'.tr(),
                         style: TextStyle(
                           color: actionBtnBlue,
                           fontSize: 13,
@@ -1139,8 +1143,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Delete',
+                      Text(
+                        'delete'.tr(),
                         style: TextStyle(
                           color: Colors.red,
                           fontSize: 13,
@@ -1206,12 +1210,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     );
   }
 
-  Widget _buildFilterTab(String label) {
-    final bool isActive = _selectedFilter == label;
+  Widget _buildFilterTab(String filterKey, String displayLabel) {
+    final bool isActive = _selectedFilter == filterKey;
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedFilter = label;
+          _selectedFilter = filterKey;
           _currentPage = 1;
         });
       },
@@ -1225,7 +1229,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
-          label,
+          displayLabel,
           style: TextStyle(
             color: isActive ? Color(0xFFFFFFFF) : Colors.black,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
@@ -1319,8 +1323,8 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const SizedBox(width: 40), // Spacer for centering
-                          const Text(
-                            'Worker Profile Preview',
+                          Text(
+                            'worker_profile_preview'.tr(),
                             style: TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 20,
@@ -1401,7 +1405,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                       ), // Bright green dot
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Active',
+                                        'active'.tr(),
                                         style: TextStyle(
                                           color: primaryBlue,
                                           fontSize: 14,
@@ -1448,7 +1452,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Text(
-                                      phone.isNotEmpty ? phone : 'N/A',
+                                      phone.isNotEmpty ? phone : 'na'.tr(),
                                       style: const TextStyle(
                                         color: Color(0xFFFFFFFF),
                                         fontSize: 15,
@@ -1482,8 +1486,8 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _buildInfoCard(
                               Icons.person,
-                              'Father/Husband Name',
-                              fatherName.isNotEmpty ? fatherName : 'N/A',
+                              'father_husband_name'.tr(),
+                              fatherName.isNotEmpty ? fatherName : 'na'.tr(),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1491,7 +1495,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _buildInfoCard(
                               Icons.business_center,
-                              'Postion',
+                              'postion'.tr(),
                               position,
                             ),
                           ),
@@ -1505,7 +1509,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _buildInfoCard(
                               Icons.location_city,
-                              'Attendance Type',
+                              'attendance_type'.tr(),
                               attendanceType,
                             ),
                           ),
@@ -1513,7 +1517,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _buildInfoCard(
                               Icons.schedule,
-                              'Work Type',
+                              'work_type'.tr(),
                               workType,
                             ),
                           ),
@@ -1527,16 +1531,16 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _buildInfoCard(
                               Icons.show_chart,
-                              'Experience Level',
-                              'Junior Level',
+                              'experience_level'.tr(),
+                              'junior_level'.tr(),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildInfoCard(
                               Icons.calendar_month,
-                              'Joining Date',
-                              joiningDate.isNotEmpty ? joiningDate : 'N/A',
+                              'joining_date'.tr(),
+                              joiningDate.isNotEmpty ? joiningDate : 'na'.tr(),
                             ),
                           ),
                         ],
@@ -1549,16 +1553,16 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _buildInfoCard(
                               Icons.transgender,
-                              'Gender',
-                              gender.isNotEmpty ? gender : 'Male',
+                              'gender'.tr(),
+                              gender.isNotEmpty ? gender : 'male'.tr(),
                             ),
                           ), // Closest to combined symbol
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildInfoCard(
                               Icons.volunteer_activism,
-                              'Salary',
-                              salary.isNotEmpty ? salary : 'N/A',
+                              'salary'.tr(),
+                              salary.isNotEmpty ? salary : 'na'.tr(),
                             ),
                           ), // Hand holding icon
                         ],

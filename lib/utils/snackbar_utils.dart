@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class FlashySnackBar {
   static OverlayEntry? _currentEntry;
@@ -183,7 +184,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                         children: [
                           Text(
                             widget.title ??
-                                (widget.isError ? 'Error' : 'Success'),
+                                (widget.isError ? 'Error' : 'success'.tr()),
                             softWrap: true,
                             maxLines: 2,
                             overflow: TextOverflow.visible,

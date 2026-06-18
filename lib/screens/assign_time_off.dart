@@ -7,6 +7,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/logout_dialog.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -38,8 +39,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // Helper to get month name
   String _getMonthName(int month) {
     const months = [
-      'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-      'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+      'JANUARY',
+      'FEBRUARY',
+      'MARCH',
+      'APRIL',
+      'MAY',
+      'JUNE',
+      'JULY',
+      'AUGUST',
+      'SEPTEMBER',
+      'OCTOBER',
+      'NOVEMBER',
+      'DECEMBER',
     ];
     return months[month - 1];
   }
@@ -74,47 +85,57 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     CupertinoButton(
-                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  CupertinoButton(
-                    child: const Text('Done', style: TextStyle(color: Color(0xFF0247C4))),
-                    onPressed: () {
-                      setState(() {
-                        if (isStartDate) {
-                          _startDate = tempPickedDate;
-                          if (_endDate.isBefore(_startDate)) {
-                            _endDate = _startDate.add(const Duration(days: 9));
-                          }
-                        } else {
-                          _endDate = tempPickedDate;
-                          if (_endDate.isBefore(_startDate)) {
-                            _startDate = _endDate.subtract(const Duration(days: 9));
-                            if (_startDate.isBefore(DateTime(2020))) {
-                              _startDate = DateTime(2020);
+                      child: Text(
+                        'cancel'.tr(),
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      child: Text(
+                        'done'.tr(),
+                        style: const TextStyle(color: Color(0xFF0247C4)),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          if (isStartDate) {
+                            _startDate = tempPickedDate;
+                            if (_endDate.isBefore(_startDate)) {
+                              _endDate = _startDate.add(
+                                const Duration(days: 9),
+                              );
+                            }
+                          } else {
+                            _endDate = tempPickedDate;
+                            if (_endDate.isBefore(_startDate)) {
+                              _startDate = _endDate.subtract(
+                                const Duration(days: 9),
+                              );
+                              if (_startDate.isBefore(DateTime(2020))) {
+                                _startDate = DateTime(2020);
+                              }
                             }
                           }
-                        }
-                      });
-                      Navigator.of(context).pop();
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: initialDate,
+                    minimumDate: DateTime(2020),
+                    maximumDate: DateTime(2030),
+                    onDateTimeChanged: (DateTime newDate) {
+                      tempPickedDate = newDate;
                     },
                   ),
-                ],
-              ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: initialDate,
-                  minimumDate: DateTime(2020),
-                  maximumDate: DateTime(2030),
-                  onDateTimeChanged: (DateTime newDate) {
-                    tempPickedDate = newDate;
-                  },
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         );
       },
     );
@@ -143,9 +164,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Assign Time Off',
-                    style: TextStyle(
+                  Text(
+                    'assign_time_off'.tr(),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF000000),
@@ -188,9 +209,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          const Text(
-            "Workforce",
-            style: TextStyle(
+          Text(
+            'workforce'.tr(),
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
               color: Color(0xFF000000),
@@ -263,9 +284,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       color: Colors.red.shade400,
                     ),
                     const SizedBox(width: 10),
-                    const Text(
-                      'Logout',
-                      style: TextStyle(
+                    Text(
+                      'logout'.tr(),
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFFEF4444),
                         fontWeight: FontWeight.w500,
@@ -302,16 +323,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             children: [
               Expanded(child: _buildCalendar(_calendarMonth)),
               const SizedBox(width: 24),
-              Expanded(child: _buildCalendar(DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1))),
+              Expanded(
+                child: _buildCalendar(
+                  DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 32),
           _buildNotesAndSummary(),
           const SizedBox(height: 32),
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildSaveButton(),
-          ),
+          Align(alignment: Alignment.centerRight, child: _buildSaveButton()),
         ],
       ),
     );
@@ -325,13 +347,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       children: [
         Expanded(
           flex: 3,
-          child: _buildLabeledDropdown('Time Off Type', _timeOffType),
+          child: _buildLabeledDropdown('time_off_type'.tr(), _timeOffType),
         ),
         const SizedBox(width: 16),
         Expanded(
           flex: 3,
           child: _buildLabeledInput(
-            'Start Date',
+            'start_date'.tr(),
             _formatDate(_startDate),
             isStart: true,
           ),
@@ -340,7 +362,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         Expanded(
           flex: 3,
           child: _buildLabeledInput(
-            'End Date',
+            'end_date'.tr(),
             _formatDate(_endDate),
             isStart: false,
           ),
@@ -368,11 +390,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   'action': _timeOffType,
                 };
                 if (isGuest) {
-                  final newId = 'dummy_t${DateTime.now().millisecondsSinceEpoch}';
-                  DummyData.timeoff.insert(0, {
-                    ...recordMap,
-                    'id': newId,
-                  });
+                  final newId =
+                      'dummy_t${DateTime.now().millisecondsSinceEpoch}';
+                  DummyData.timeoff.insert(0, {...recordMap, 'id': newId});
                 } else {
                   try {
                     await FirestoreService().addTimeOffRecord(recordMap);
@@ -384,8 +404,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 // Show assign success confirmation
                 FlashySnackBar.show(
                   context,
-                  message:
-                      'Successfully assigned $_timeOffType from ${_formatDate(_startDate)} to ${_formatDate(_endDate)} ($_requestedDays days)',
+                  message: 'assign_success'.tr(
+                    namedArgs: {
+                      'type': _timeOffType,
+                      'start': _formatDate(_startDate),
+                      'end': _formatDate(_endDate),
+                      'days': '$_requestedDays',
+                    },
+                  ),
                 );
                 // Return to Time Off screen after a short delay
                 Future.delayed(const Duration(milliseconds: 1500), () {
@@ -394,9 +420,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   }
                 });
               },
-              child: const Text(
-                'Assign',
-                style: TextStyle(
+              child: Text(
+                'assign'.tr(),
+                style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -436,22 +462,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               isExpanded: true,
               value: value,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'Annual Leave',
-                  child: Text('Annual Leave'),
+                  child: Text('annual_leave'.tr()),
                 ),
                 DropdownMenuItem(
                   value: 'Sick Leave',
-                  child: Text('Sick Leave'),
+                  child: Text('sick_leave_type'.tr()),
                 ),
                 DropdownMenuItem(
                   value: 'Casual Leave',
-                  child: Text('Casual Leave'),
+                  child: Text('leaves_tab'.tr()),
                 ),
                 DropdownMenuItem(
                   value: 'Maternity Leave',
-                  child: Text('Maternity Leave'),
+                  child: Text('maternity_leave'.tr()),
                 ),
               ],
               onChanged: (v) {
@@ -538,10 +564,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month - 1, 1);
+                    _calendarMonth = DateTime(
+                      _calendarMonth.year,
+                      _calendarMonth.month - 1,
+                      1,
+                    );
                   });
                 },
-                child: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+                child: const Icon(
+                  Icons.chevron_left,
+                  size: 20,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(width: 32),
               Text(
@@ -556,10 +590,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1);
+                    _calendarMonth = DateTime(
+                      _calendarMonth.year,
+                      _calendarMonth.month + 1,
+                      1,
+                    );
                   });
                 },
-                child: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+                child: const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Colors.black,
+                ),
               ),
             ],
           ),
@@ -627,13 +669,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         if (i == 0 && j < startIndex) {
           rowChildren.add(Expanded(child: _buildDayCell('')));
         } else if (currentDay <= daysInMonth) {
-          DateTime cellDate = DateTime(monthDate.year, monthDate.month, currentDay);
-          
-          DateTime startStart = DateTime(_startDate.year, _startDate.month, _startDate.day);
-          DateTime endStart = DateTime(_endDate.year, _endDate.month, _endDate.day);
-          
-          bool isSelected = cellDate.isAtSameMomentAs(startStart) || cellDate.isAtSameMomentAs(endStart);
-          bool inRange = cellDate.isAfter(startStart) && cellDate.isBefore(endStart);
+          DateTime cellDate = DateTime(
+            monthDate.year,
+            monthDate.month,
+            currentDay,
+          );
+
+          DateTime startStart = DateTime(
+            _startDate.year,
+            _startDate.month,
+            _startDate.day,
+          );
+          DateTime endStart = DateTime(
+            _endDate.year,
+            _endDate.month,
+            _endDate.day,
+          );
+
+          bool isSelected =
+              cellDate.isAtSameMomentAs(startStart) ||
+              cellDate.isAtSameMomentAs(endStart);
+          bool inRange =
+              cellDate.isAfter(startStart) && cellDate.isBefore(endStart);
 
           rowChildren.add(
             Expanded(
@@ -649,7 +706,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         } else {
           rowChildren.add(Expanded(child: _buildDayCell('')));
         }
-        if (j < 6) rowChildren.add(const SizedBox(width: 8)); // Space between cells
+        if (j < 6)
+          rowChildren.add(const SizedBox(width: 8)); // Space between cells
       }
       rows.add(Row(children: rowChildren));
       if (currentDay > daysInMonth) break;
@@ -658,7 +716,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, {bool isSelected = false, bool inRange = false, DateTime? date}) {
+  Widget _buildDayCell(
+    String day, {
+    bool isSelected = false,
+    bool inRange = false,
+    DateTime? date,
+  }) {
     if (day.isEmpty) return const SizedBox();
     return GestureDetector(
       onTap: () {
@@ -679,9 +742,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected ? Colors.red : (inRange ? Colors.red.withValues(alpha: 0.1) : Colors.transparent),
+            color: isSelected
+                ? Colors.red
+                : (inRange
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.transparent),
             border: Border.all(
-              color: isSelected ? Colors.red : (inRange ? Colors.red.withValues(alpha: 0.3) : Colors.grey.shade300),
+              color: isSelected
+                  ? Colors.red
+                  : (inRange
+                        ? Colors.red.withValues(alpha: 0.3)
+                        : Colors.grey.shade300),
               width: 1,
             ),
             borderRadius: BorderRadius.circular(4),
@@ -689,9 +760,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           child: Text(
             day,
             style: TextStyle(
-              color: isSelected ? const Color(0xFFFFFFFF) : (inRange ? Colors.red : Colors.black),
+              color: isSelected
+                  ? const Color(0xFFFFFFFF)
+                  : (inRange ? Colors.red : Colors.black),
               fontSize: 13,
-              fontWeight: isSelected || inRange ? FontWeight.w600 : FontWeight.normal,
+              fontWeight: isSelected || inRange
+                  ? FontWeight.w600
+                  : FontWeight.normal,
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -711,9 +786,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Notes',
-                style: TextStyle(
+              Text(
+                'notes_label'.tr(),
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF000000),
@@ -734,8 +809,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 child: TextField(
                   controller: _notesController,
                   maxLines: null,
-                  decoration: const InputDecoration.collapsed(
-                    hintText: 'Please enter your notes',
+                  decoration: InputDecoration.collapsed(
+                    hintText: 'please_enter_notes'.tr(),
                     hintStyle: TextStyle(
                       color: Colors.black,
                       fontSize: 14,
@@ -755,17 +830,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             child: Column(
               children: [
                 _buildSummaryRow(
-                  'Available Annual Leave Days',
+                  'available_annual_leave'.tr(),
                   '-1',
                   Colors.red,
                 ),
                 _buildSummaryRow(
-                  'Requested Days',
+                  'requested_days'.tr(),
                   '$_requestedDays',
                   Colors.black,
                 ),
                 _buildSummaryRow(
-                  'Remaining Days',
+                  'remaining_days'.tr(),
                   '${-1 - _requestedDays}',
                   Colors.red,
                 ),
@@ -812,9 +887,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF0247C4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           elevation: 0,
         ),
         onPressed: _isLoading ? null : _handleSave,
@@ -827,9 +900,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   strokeWidth: 2,
                 ),
               )
-            : const Text(
-                'Save',
-                style: TextStyle(
+            : Text(
+                'save'.tr(),
+                style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -847,8 +920,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       final recordMap = {
         'type': _timeOffType,
-        'startDate': '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-        'endDate': '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}',
+        'startDate':
+            '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
+        'endDate':
+            '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}',
         'notes': _notesController.text,
         'requestedDays': _requestedDays,
         'status': 'Approved',
@@ -863,17 +938,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       }
 
       if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'Successfully assigned time off',
-        );
+        FlashySnackBar.show(context, message: 'assign_time_off_success'.tr());
         widget.onBack();
       }
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Failed to assign time off',
+          message: 'assign_time_off_failed'.tr(),
           isError: true,
         );
       }

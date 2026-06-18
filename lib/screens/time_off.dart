@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -144,8 +145,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 children: [
                   _buildSearchBar(),
                   const SizedBox(height: 30),
-                  const Text(
-                    'Time off List',
+                  Text(
+                    'time_off_list'.tr(),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -186,9 +187,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
-                'Workforce',
+                'workforce'.tr(),
                 style: TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,
@@ -254,7 +255,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: "Search by workers name",
+                hintText: 'search_by_workers_name'.tr(),
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
@@ -293,23 +294,23 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildTabItem('All'),
-          _buildTabItem('Designer'),
-          _buildTabItem('Developer'),
-          _buildTabItem('Engineering'),
-          _buildTabItem('Sales'),
-          _buildTabItem('Management'),
+          _buildTabItem('All', 'all_filter'.tr()),
+          _buildTabItem('Designer', 'designer'.tr()),
+          _buildTabItem('Developer', 'developer'.tr()),
+          _buildTabItem('Engineering', 'engineering'.tr()),
+          _buildTabItem('Sales', 'sales'.tr()),
+          _buildTabItem('Management', 'management'.tr()),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(String text) {
-    final bool isSelected = _selectedTab == text;
+  Widget _buildTabItem(String filterKey, String displayLabel) {
+    final bool isSelected = _selectedTab == filterKey;
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedTab = text;
+          _selectedTab = filterKey;
           _currentPage = 1;
         });
       },
@@ -321,7 +322,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
-          text,
+          displayLabel,
           style: TextStyle(
             color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -367,11 +368,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
-              children: const [
+              children: [
                 Expanded(
                   flex: 3,
                   child: Text(
-                    'Worker Name',
+                    'worker_name_header'.tr(),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
@@ -383,7 +384,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Position',
+                    'position'.tr(),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
@@ -395,7 +396,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Contact no',
+                    'contact_no'.tr(),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
@@ -407,7 +408,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Time Off',
+                    'time_off'.tr(),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
@@ -619,8 +620,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               color: const Color(0xFFCBCBCB),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "No Time Off Requests",
+            Text(
+              'no_time_off_requests'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,

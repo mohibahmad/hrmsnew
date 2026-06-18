@@ -4,6 +4,7 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -397,8 +398,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Dashboard',
+                Text(
+                  'dashboard'.tr(),
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -418,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: SparklineCard(
-                          title: 'Total Salary',
+                          title: 'total_salary'.tr(),
                           amount:
                               '\$${NumberFormat.compact().format(_totalSalarySum)}',
                           period: _selectedPeriod,
@@ -428,7 +429,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: SparklineCard(
-                          title: 'Expenses',
+                          title: 'expenses'.tr(),
                           amount:
                               '\$${NumberFormat.compact().format(_totalExpensesSum)}',
                           period: _selectedPeriod,
@@ -441,9 +442,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 30),
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Attendance Overview',
+                        'attendance_overview'.tr(),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -456,8 +457,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Leave Types',
+                          Text(
+                            'leave_types'.tr(),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -502,8 +503,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Upcoming Holidays',
+                    Text(
+                      'upcoming_holidays'.tr(),
                       style: TextStyle(
                         color: Color(0xFF000000),
                         fontSize: 22,
@@ -541,8 +542,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Overview',
+                            Text(
+                              'overview'.tr(),
                               style: TextStyle(
                                 color: Color(0xFF000000),
                                 fontSize: 18,
@@ -594,8 +595,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: const Color(0xFF9CA3AF),
                                 ),
                                 const SizedBox(height: 12),
-                                const Text(
-                                  'No holidays yet',
+                                Text(
+                                  'no_holidays_yet'.tr(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF9CA3AF),
@@ -632,7 +633,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
 
 class SidebarWidget extends StatefulWidget {
   final int selectedIndex;
@@ -671,20 +671,20 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     }
   }
 
-  static const _menuItems = [
-    ('assets/dashbaord_icon_slidebar.svg', 'Dashboard', false),
-    ('assets/workers_icon_slidebar.svg', 'Workers', false),
-    ('assets/workforce_icon_sldiebar.svg', 'Workforce', true),
-    ('assets/expenses_icon_slidebar.svg', 'Expenses', false),
-    ('assets/settings_icon_slidebar.svg', 'Settings', false),
+  static final _menuItems = [
+    ('assets/dashbaord_icon_slidebar.svg', 'sidebar_dashboard', false),
+    ('assets/workers_icon_slidebar.svg', 'sidebar_workers', false),
+    ('assets/workforce_icon_sldiebar.svg', 'sidebar_workforce', true),
+    ('assets/expenses_icon_slidebar.svg', 'sidebar_expenses', false),
+    ('assets/settings_icon_slidebar.svg', 'sidebar_settings', false),
   ];
 
-  static const _subItems = [
-    ('assets/total_salary.svg', 'Attendance'),
-    ('assets/payroll_icon.svg', 'Pay Roll'),
-    ('assets/time_off_icon.svg', 'Time Off'),
-    ('assets/assets_icon.svg', 'Assets'),
-    ('assets/holidays_icon.svg', 'Holidays'),
+  static final _subItems = [
+    ('assets/total_salary.svg', 'sidebar_attendance'),
+    ('assets/payroll_icon.svg', 'sidebar_payroll'),
+    ('assets/time_off_icon.svg', 'sidebar_time_off'),
+    ('assets/assets_icon.svg', 'sidebar_assets'),
+    ('assets/holidays_icon.svg', 'sidebar_holidays'),
   ];
 
   @override
@@ -735,8 +735,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           fit: BoxFit.contain,
                         ),
                         const SizedBox(width: 10),
-                        const Text(
-                          'Upgrade Pro',
+                        Text(
+                          'upgrade_pro'.tr(),
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 20,
@@ -749,9 +749,9 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    _buildCheckText('Unlock All Features'),
-                    _buildCheckText('No Commitment'),
-                    _buildCheckText('Cancel Anytime'),
+                    _buildCheckText('unlock_all_features'.tr()),
+                    _buildCheckText('no_commitment'.tr()),
+                    _buildCheckText('cancel_anytime'.tr()),
                     const SizedBox(height: 4),
                     Stack(
                       clipBehavior: Clip.none,
@@ -773,8 +773,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                'Get to Pro',
+                              Text(
+                                'get_to_pro'.tr(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -787,8 +787,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              const Text(
-                                'Subscribe Now',
+                              Text(
+                                'subscribe_now'.tr(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -839,7 +839,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     else
                       _buildMenuItem(
                         _menuItems[i].$1,
-                        _menuItems[i].$2,
+                        _menuItems[i].$2.tr(),
                         isSelected: widget.selectedIndex == i,
                         hasDropdown: _menuItems[i].$3,
                         onTap: () {
@@ -875,8 +875,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         size: 22,
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        'Back to login',
+                      Text(
+                        'back_to_login_sidebar'.tr(),
                         style: TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontSize: 18,
@@ -918,7 +918,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 for (int i = 0; i < _subItems.length; i++)
                   _buildSubMenuItem(
                     _subItems[i].$1,
-                    _subItems[i].$2,
+                    _subItems[i].$2.tr(),
                     isSelected:
                         widget.selectedIndex == index &&
                         widget.selectedSubIndex == i,
@@ -951,7 +951,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     } else {
       return _buildMenuItem(
         _menuItems[index].$1,
-        _menuItems[index].$2,
+        _menuItems[index].$2.tr(),
         isSelected: widget.selectedIndex == index,
         hasDropdown: true,
         onTap: () {
@@ -980,8 +980,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               color: Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Workforce',
+            Text(
+              'sidebar_workforce'.tr(),
               style: TextStyle(
                 color: Color(0xFFFFFFFF),
                 fontSize: 18,
@@ -1184,7 +1184,7 @@ class TopHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Welcome $name',
+                'welcome_user'.tr(namedArgs: {'name': name}),
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -1193,8 +1193,8 @@ class TopHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 1),
-              const Text(
-                "Here's what's happening in your organization today.",
+              Text(
+                'welcome_subtitle'.tr(),
                 style: TextStyle(
                   fontSize: 12,
                   color: Color(0xFF000000),
@@ -1257,8 +1257,8 @@ class TotalWorkersCard extends StatelessWidget {
                             color: const Color(0xFF155ED5),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Total Workers',
+                          Text(
+                            'total_workers'.tr(),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
@@ -1289,8 +1289,8 @@ class TotalWorkersCard extends StatelessWidget {
                           children: [
                             Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Text(
+                              children: [
+                                const Text(
                                   '60%',
                                   style: TextStyle(
                                     fontSize: 13,
@@ -1300,8 +1300,8 @@ class TotalWorkersCard extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'Male',
-                                  style: TextStyle(
+                                  'male'.tr(),
+                                  style: const TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
                                     color: Color(0xFF64748B),
@@ -1322,7 +1322,7 @@ class TotalWorkersCard extends StatelessWidget {
                             const SizedBox(width: 2),
                             Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Text(
                                   '40%',
                                   style: TextStyle(
@@ -1333,7 +1333,7 @@ class TotalWorkersCard extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'Female',
+                                  'female'.tr(),
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
@@ -1353,13 +1353,13 @@ class TotalWorkersCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildLegendItem(
-                        const Color(0xFF155ED5),
-                        'Male',
+                        Color(0xFF155ED5),
+                        'male'.tr(),
                         '380 Workers',
                       ),
                       _buildLegendItem(
-                        const Color(0xFFFF2D2D),
-                        'Female',
+                        Color(0xFFFF2D2D),
+                        'female'.tr(),
                         '70 Workers',
                       ),
                     ],
@@ -1377,8 +1377,8 @@ class TotalWorkersCard extends StatelessWidget {
                       color: const Color(0xFF9CA3AF),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'No workers added yet',
+                    Text(
+                      'no_workers_added_yet'.tr(),
                       style: TextStyle(
                         fontSize: 13,
                         color: Color(0xFF9CA3AF),
@@ -1537,7 +1537,7 @@ class SparklineCard extends StatelessWidget {
                       Row(
                         children: [
                           SvgPicture.asset(
-                            title == 'Total Salary'
+                            lineColor == const Color(0xFF8BB1F3)
                                 ? 'assets/total_salary.svg'
                                 : 'assets/total_expense.svg',
                             height: 22,
@@ -1668,7 +1668,7 @@ class SparklineCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SvgPicture.asset(
-                      title == 'Total Salary'
+                      lineColor == const Color(0xFF8BB1F3)
                           ? 'assets/total_salary.svg'
                           : 'assets/total_expense.svg',
                       height: 40,
@@ -1677,9 +1677,9 @@ class SparklineCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      title == 'Total Salary'
-                          ? 'No salary records yet'
-                          : 'No expenses recorded yet',
+                      lineColor == const Color(0xFF8BB1F3)
+                          ? 'no_salary_records_yet'.tr()
+                          : 'no_expenses_recorded_yet'.tr(),
                       style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF9CA3AF),
@@ -1932,8 +1932,8 @@ class AttendanceLineChart extends StatelessWidget {
                         width: 50,
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'No attendance data yet',
+                      Text(
+                        'no_attendance_data_yet'.tr(),
                         style: TextStyle(
                           fontSize: 14,
                           color: Color(0xFF9CA3AF),
@@ -2126,19 +2126,25 @@ class LeaveTypesPieChart extends StatelessWidget {
                                     90, // Draw from 6 o'clock (Left half)
                                 sections: [
                                   PieChartSectionData(
-                                    color: const Color(0xFF84A9FF), // Casual Leave
+                                    color: const Color(
+                                      0xFF84A9FF,
+                                    ), // Casual Leave
                                     value: config.casualVal,
                                     radius: 85,
                                     showTitle: false,
                                   ),
                                   PieChartSectionData(
-                                    color: const Color(0xFFFF4A5E), // Sick Leave
+                                    color: const Color(
+                                      0xFFFF4A5E,
+                                    ), // Sick Leave
                                     value: config.sickVal,
                                     radius: 85,
                                     showTitle: false,
                                   ),
                                   PieChartSectionData(
-                                    color: const Color(0xFF97FFA9), // Medical Leave
+                                    color: const Color(
+                                      0xFF97FFA9,
+                                    ), // Medical Leave
                                     value: config.medicalVal,
                                     radius: 85,
                                     showTitle: false,
@@ -2159,7 +2165,9 @@ class LeaveTypesPieChart extends StatelessWidget {
                               left: config.casualLeft,
                               right: config.casualRight,
                               bottom: config.casualBottom,
-                              child: _ChartLabel('${config.casualVal.toInt()}%'),
+                              child: _ChartLabel(
+                                '${config.casualVal.toInt()}%',
+                              ),
                             ),
                             Positioned(
                               top: config.sickTop,
@@ -2173,7 +2181,9 @@ class LeaveTypesPieChart extends StatelessWidget {
                               left: config.medicalLeft,
                               right: config.medicalRight,
                               bottom: config.medicalBottom,
-                              child: _ChartLabel('${config.medicalVal.toInt()}%'),
+                              child: _ChartLabel(
+                                '${config.medicalVal.toInt()}%',
+                              ),
                             ),
                           ],
                         ),
@@ -2230,8 +2240,8 @@ class LeaveTypesPieChart extends StatelessWidget {
                         width: 50,
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'No leave data yet',
+                      Text(
+                        'no_leave_data_yet'.tr(),
                         style: TextStyle(
                           fontSize: 14,
                           color: Color(0xFF9CA3AF),

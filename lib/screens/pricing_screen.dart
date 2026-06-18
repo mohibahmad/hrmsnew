@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
 
 class SubscriptionDialog extends StatefulWidget {
@@ -75,8 +76,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 36),
 
                               // --- Heading ---
-                              const Text(
-                                'All-in-one HR Solution',
+                              Text(
+                                'all_in_one_hr'.tr(),
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 28,
@@ -87,13 +88,15 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 32),
 
                               // --- Features List (with solid play arrow triangles) ---
-                              _buildFeatureItem('Secure Staff Records'),
-                              _buildFeatureItem('Modern HRMS Experience'),
-                              _buildFeatureItem('Leave & Shift Management'),
-                              _buildFeatureItem('Employee & Asset Tracking'),
-                              _buildFeatureItem('Smart Workforce Management'),
+                              _buildFeatureItem('secure_staff_records'.tr()),
+                              _buildFeatureItem('modern_hrms_experience'.tr()),
+                              _buildFeatureItem('leave_shift_management'.tr()),
+                              _buildFeatureItem('employee_asset_tracking'.tr()),
                               _buildFeatureItem(
-                                'Attendance & Payroll Automation',
+                                'smart_workforce_management'.tr(),
+                              ),
+                              _buildFeatureItem(
+                                'attendance_payroll_automation'.tr(),
                               ),
                             ],
                           ),
@@ -113,7 +116,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                             children: [
                               const SizedBox(height: 10),
                               Text(
-                                'Choose Your Plan',
+                                'choose_your_plan'.tr(),
                                 style: TextStyle(
                                   color: primaryBlue,
                                   fontSize: 28,
@@ -123,7 +126,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Select the subscription that works best\nfor your team',
+                                'select_subscription'.tr(),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: primaryBlue,
@@ -138,18 +141,18 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               // --- Subscription Cards ---
                               _buildPlanCard(
                                 index: 0,
-                                title: 'Monthly',
+                                title: 'monthly'.tr(),
                                 price: '\$6.99',
                               ),
                               _buildPlanCard(
                                 index: 1,
-                                title: 'Six Month',
+                                title: 'six_month'.tr(),
                                 price: '\$46.99',
                                 isPopular: true,
                               ),
                               _buildPlanCard(
                                 index: 2,
-                                title: 'Yearly',
+                                title: 'yearly'.tr(),
                                 price: '\$64.99',
                               ),
                               const SizedBox(height: 16),
@@ -172,8 +175,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                       borderRadius: BorderRadius.circular(50),
                                     ),
                                   ),
-                                  child: const Text(
-                                    'Continue',
+                                  child: Text(
+                                    'continue'.tr(),
                                     style: TextStyle(
                                       color: Color(0xFFFFFFFF),
                                       fontSize: 18,
@@ -189,7 +192,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               GestureDetector(
                                 onTap: () => Navigator.of(context).pop(false),
                                 child: Text(
-                                  'Continue with free plan',
+                                  'continue_free_plan'.tr(),
                                   style: TextStyle(
                                     color: primaryBlue,
                                     fontSize: 14,
@@ -201,10 +204,10 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 12),
 
                               // --- Disclaimer Text ---
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
-                                  'Subscription automatically renew unless canceled before the\nend of the current period. You won\'t be change if you\ncancel during the trial period.',
+                                  'subscription_disclaimer'.tr(),
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.black,
@@ -221,14 +224,20 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _buildFooterLink('Privacy Policy'),
+                                  _buildFooterLink('privacy_policy'.tr()),
                                   _buildFooterDivider(),
-                                  _buildFooterLink('Restore'),
+                                  _buildFooterLink('restore'.tr()),
                                   _buildFooterDivider(),
                                   GestureDetector(
-                                    onTap: () => launchUrl(Uri.parse('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')),
+                                    onTap: () => launchUrl(
+                                      Uri.parse(
+                                        'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                      ),
+                                    ),
                                     behavior: HitTestBehavior.opaque,
-                                    child: _buildFooterLink('Terms of Use'),
+                                    child: _buildFooterLink(
+                                      'terms_of_use'.tr(),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -383,8 +392,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                       bottomLeft: Radius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'POPULAR',
+                  child: Text(
+                    'popular'.tr(),
                     style: TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontSize: 9,

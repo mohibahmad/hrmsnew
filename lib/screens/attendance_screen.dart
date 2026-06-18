@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -179,8 +180,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "Today Attendance",
+                            Text(
+                              'today_attendance'.tr(),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -230,9 +231,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
-                'Workforce',
+                'workforce'.tr(),
                 style: TextStyle(
                   color: textDark,
                   fontSize: 28,
@@ -301,7 +302,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: "Search by workers name",
+                      hintText: 'search_by_workers_name'.tr(),
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,
@@ -354,8 +355,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24),
             ),
-            child: const Text(
-              "Workers Attendance",
+            child: Text(
+              'workers_attendance'.tr(),
               style: TextStyle(
                 color: Color(0xFFFFFFFF),
                 fontSize: 15,
@@ -374,7 +375,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       children: [
         Expanded(
           child: _buildSummaryCard(
-            title: "Total Workers",
+            title: 'total_workers'.tr(),
             count: "$_totalCount",
             iconAsset: 'assets/total_workers.svg',
             countColor: const Color(0xFF0247C4),
@@ -383,7 +384,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 20),
         Expanded(
           child: _buildSummaryCard(
-            title: "Present Workers",
+            title: 'present_workers'.tr(),
             count: "$_presentCount",
             iconAsset: 'assets/present.svg',
             countColor: const Color(0xFF00FF2A),
@@ -392,7 +393,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 20),
         Expanded(
           child: _buildSummaryCard(
-            title: "Absent Workers",
+            title: 'absent_workers'.tr(),
             count: "$_absentCount",
             iconAsset: 'assets/absent.svg',
             countColor: const Color(0xFFFF0004),
@@ -401,7 +402,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 20),
         Expanded(
           child: _buildSummaryCard(
-            title: "Leave Workers",
+            title: 'leave_workers'.tr(),
             count: "$_leaveCount",
             iconAsset: 'assets/leave.svg',
             countColor: const Color(0xFFFF7B00),
@@ -477,10 +478,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           child: Row(
             children: [
-              _buildTab("All"),
-              _buildTab("Present"),
-              _buildTab("Absent"),
-              _buildTab("Leaves"),
+              _buildTab('All', 'all_tab'.tr()),
+              _buildTab('Present', 'present_tab'.tr()),
+              _buildTab('Absent', 'absent_tab'.tr()),
+              _buildTab('Leaves', 'leaves_tab'.tr()),
             ],
           ),
         ),
@@ -505,12 +506,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildTab(String text) {
-    final bool isActive = _selectedTab == text;
+  Widget _buildTab(String filterKey, String displayLabel) {
+    final bool isActive = _selectedTab == filterKey;
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedTab = text;
+          _selectedTab = filterKey;
           _currentPage = 1;
         });
       },
@@ -521,7 +522,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
-          text,
+          displayLabel,
           style: TextStyle(
             color: isActive ? Color(0xFFFFFFFF) : textDark,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
@@ -551,8 +552,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               color: const Color(0xFFCBCBCB),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "No Attendance Records",
+            Text(
+              'no_attendance_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,
@@ -596,13 +597,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       color: const Color(0xFFFBFBFC),
       items: [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'preview',
           child: Row(
             children: [
               Icon(Icons.visibility, size: 18, color: Colors.black),
               SizedBox(width: 8),
-              Text('Preview', style: TextStyle(fontSize: 14)),
+              Text('preview'.tr(), style: TextStyle(fontSize: 14)),
             ],
           ),
         ),
@@ -620,7 +621,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ),
               SizedBox(width: 8),
-              Text('Delete', style: TextStyle(color: Colors.red, fontSize: 13)),
+              Text(
+                'delete'.tr(),
+                style: TextStyle(color: Colors.red, fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -632,9 +636,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } else if (value == 'delete') {
       final confirmed = await DeleteDialog.show(
         context: context,
-        title: 'Delete Attendance Record',
-        content:
-            'Are you sure you want to delete this attendance record? This action cannot be undone.',
+        title: 'delete_attendance_record'.tr(),
+        content: 'delete_attendance_desc'.tr(),
       );
       if (!confirmed) return;
 
@@ -707,11 +710,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
               children: [
-                Expanded(flex: 3, child: _tableHeader('Worker Name')),
-                Expanded(flex: 2, child: _tableHeader('Attendance Type')),
-                Expanded(flex: 2, child: _tableHeader('Status')),
-                Expanded(flex: 2, child: _tableHeader('Work Type')),
-                Expanded(flex: 2, child: _tableHeader('Position')),
+                Expanded(
+                  flex: 3,
+                  child: _tableHeader('worker_name_header'.tr()),
+                ),
+                Expanded(flex: 2, child: _tableHeader('attendance_type'.tr())),
+                Expanded(flex: 2, child: _tableHeader('status_header'.tr())),
+                Expanded(flex: 2, child: _tableHeader('work_type'.tr())),
+                Expanded(flex: 2, child: _tableHeader('position'.tr())),
                 const SizedBox(width: 48),
               ],
             ),
@@ -983,8 +989,8 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-              const Text(
-                'Worker Attendance Preview',
+              Text(
+                'worker_attendance_preview'.tr(),
                 style: TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontSize: 16,
@@ -1005,7 +1011,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 onPressed: () {
                   FlashySnackBar.show(
                     context,
-                    message: 'Share feature coming soon!',
+                    message: 'share_coming_soon'.tr(),
                   );
                 },
                 padding: EdgeInsets.zero,
@@ -1127,7 +1133,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
           SizedBox(
             width: 140,
             child: _buildSummaryCard(
-              title: 'Total Presents',
+              title: 'total_presents'.tr(),
               value: '112',
               bgColor: lightGreenBg,
               iconColor: darkGreen,
@@ -1138,7 +1144,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
           SizedBox(
             width: 140,
             child: _buildSummaryCard(
-              title: 'Total Absent',
+              title: 'total_absent'.tr(),
               value: '10',
               bgColor: lightRedBg,
               iconColor: darkRed,
@@ -1149,7 +1155,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
           SizedBox(
             width: 140,
             child: _buildSummaryCard(
-              title: 'Total Leaves',
+              title: 'total_leaves'.tr(),
               value: '4',
               bgColor: lightOrangeBg,
               iconColor: darkOrange,
@@ -1203,8 +1209,8 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const Text(
-                  'Days',
+                Text(
+                  'days_label'.tr(),
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.black,
@@ -1311,17 +1317,21 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             SizedBox(
               width: 214,
               child: _buildDetailCard(
-                title: 'Attendance',
+                title: 'attendance_label'.tr(),
                 rows: [
                   _buildDetailRow(
-                    'Total Working Days',
+                    'total_working_days'.tr(),
                     '132 Days',
                     Color(0xFF000000),
                   ),
-                  _buildDetailRow('Total Presents', '112 Days', darkGreen),
-                  _buildDetailRow('Total Absents', '8 Days', darkRed),
-                  _buildDetailRow('Total Leaves', '12 Days', darkOrange),
-                  _buildDetailRow('Attendance %', '8.5%', primaryBlue),
+                  _buildDetailRow('total_presents'.tr(), '112 Days', darkGreen),
+                  _buildDetailRow('total_absents'.tr(), '8 Days', darkRed),
+                  _buildDetailRow('total_leaves'.tr(), '12 Days', darkOrange),
+                  _buildDetailRow(
+                    'attendance_percentage'.tr(),
+                    '8.5%',
+                    primaryBlue,
+                  ),
                 ],
               ),
             ),
@@ -1329,16 +1339,20 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             SizedBox(
               width: 214,
               child: _buildDetailCard(
-                title: 'Worker Information',
+                title: 'worker_information'.tr(),
                 rows: [
-                  _buildDetailRow('Position', record.role, Color(0xFF000000)),
                   _buildDetailRow(
-                    'Work Type',
+                    'position'.tr(),
+                    record.role,
+                    Color(0xFF000000),
+                  ),
+                  _buildDetailRow(
+                    'work_type'.tr(),
                     record.workType,
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
-                    'Attendance Type',
+                    'attendance_type'.tr(),
                     record.attendanceType,
                     Color(0xFF000000),
                   ),

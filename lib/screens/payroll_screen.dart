@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
@@ -86,8 +87,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 children: [
                   _buildSearchBar(),
                   const SizedBox(height: 30),
-                  const Text(
-                    'Pay Roll List',
+                  Text(
+                    'pay_roll_list'.tr(),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -125,8 +126,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ),
       child: Row(
         children: [
-          const Text(
-            'Workforce',
+          Text(
+            'workforce'.tr(),
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -188,7 +189,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: "Search by workers name",
+                hintText: 'search_by_workers_name'.tr(),
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
@@ -251,13 +252,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildFilterTabs() {
-    final filters = [
-      'All',
-      'Designer',
-      'Developer',
-      'Engineering',
-      'Sales',
-      'Management',
+    final filters = <Map<String, String>>[
+      {'key': 'All', 'label': 'all_filter'.tr()},
+      {'key': 'Designer', 'label': 'designer'.tr()},
+      {'key': 'Developer', 'label': 'developer'.tr()},
+      {'key': 'Engineering', 'label': 'engineering'.tr()},
+      {'key': 'Sales', 'label': 'sales'.tr()},
+      {'key': 'Management', 'label': 'management'.tr()},
     ];
     return Container(
       padding: const EdgeInsets.all(8),
@@ -268,10 +269,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: filters.map((filter) {
-          final isSelected = _selectedFilter == filter;
+          final isSelected = _selectedFilter == filter['key'];
           return GestureDetector(
             onTap: () => setState(() {
-              _selectedFilter = filter;
+              _selectedFilter = filter['key']!;
               _currentPage = 1;
             }),
             child: Container(
@@ -284,7 +285,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                filter,
+                filter['label']!,
                 style: TextStyle(
                   color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -316,8 +317,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
               color: const Color(0xFFCBCBCB),
             ),
             const SizedBox(height: 16),
-            const Text(
-              "No Payroll Records",
+            Text(
+              'no_payroll_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,
@@ -352,19 +353,19 @@ class _PayrollScreenState extends State<PayrollScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text('Worker Name', style: _headerStyle()),
+                  child: Text('worker_name_header'.tr(), style: _headerStyle()),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('Position', style: _headerStyle()),
+                  child: Text('position'.tr(), style: _headerStyle()),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('Contact no', style: _headerStyle()),
+                  child: Text('contact_no'.tr(), style: _headerStyle()),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('Payroll Data', style: _headerStyle()),
+                  child: Text('payroll_data'.tr(), style: _headerStyle()),
                 ),
               ],
             ),
@@ -374,8 +375,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             child: ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: _currentPageItems.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) =>
                   _buildEmployeeRow(_currentPageItems[index], index),
             ),
@@ -477,12 +477,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 borderRadius: BorderRadius.circular(4),
                 splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
                 highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: Text(
-                      'Payroll Data',
+                      'payroll_data'.tr(),
                       style: TextStyle(
                         color: Color(0xFF0D4CC6),
                         fontSize: 15,
@@ -555,9 +555,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const SizedBox(width: 40), // Spacer for centering
-                      const Flexible(
+                      Flexible(
                         child: Text(
-                          'PayRoll Data Preview',
+                          'payroll_data_preview'.tr(),
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 18,
@@ -729,7 +729,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'Total Work Days',
+                                  title: 'total_work_days'.tr(),
                                   value: totalWorkDays,
                                 ),
                               ),
@@ -737,7 +737,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildAbsentsIcon(),
-                                  title: 'Absents',
+                                  title: 'absents_label'.tr(),
                                   value: absents,
                                 ),
                               ),
@@ -749,7 +749,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildLeavesIcon(),
-                                  title: 'Leaves',
+                                  title: 'leaves_label'.tr(),
                                   value: leaves,
                                 ),
                               ),
@@ -757,7 +757,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildOvertimeDaysIcon(),
-                                  title: 'Overtime Days',
+                                  title: 'overtime_days'.tr(),
                                   value: overtimeDays,
                                 ),
                               ),
@@ -773,7 +773,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'Salary',
+                                  title: 'salary'.tr(),
                                   value: salary,
                                 ),
                               ),

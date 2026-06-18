@@ -10,6 +10,7 @@ import '../utils/delete_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -164,9 +165,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
-                        const Text(
-                          'Add Asset',
-                          style: TextStyle(
+                        Text(
+                          'add_asset'.tr(),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF000000),
@@ -197,7 +198,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'dateLoaned': formatDate(loanedDate),
                                 'dateReturned': isReturned
                                     ? formatDate(returnedDate)
-                                    : 'In use',
+                                    : 'in_use'.tr(),
                                 'isReturned': isReturned,
                               };
                               final isGuest =
@@ -237,14 +238,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
-                                message:
-                                    'Successfully added asset for ${nameController.text}',
+                                message: 'successfully_added_asset'.tr(
+                                  namedArgs: {'name': nameController.text},
+                                ),
                               );
                             }
                           },
-                          child: const Text(
-                            'Save',
-                            style: TextStyle(
+                          child: Text(
+                            'save'.tr(),
+                            style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
@@ -257,19 +259,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
                     // Form Fields
                     _buildModalTextField(
-                      'Worker Name',
+                      'worker_name'.tr(),
                       nameController,
                       'Ali Ahmad',
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
-                      'Asset Type',
+                      'asset_type'.tr(),
                       typeController,
                       'Laptop',
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
-                      'Position',
+                      'position'.tr(),
                       positionController,
                       'Graphic Designer',
                     ),
@@ -278,7 +280,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     // Date Picker for Loaned Date
                     _buildModalDatePicker(
                       context,
-                      'Date Loaned',
+                      'date_loaned'.tr(),
                       formatDate(loanedDate),
                       const Color(0xFF0247C4),
                       () {
@@ -298,9 +300,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
                                   children: [
-                                    const Text(
-                                      'Select Date',
-                                      style: TextStyle(
+                                    Text(
+                                      'select_date'.tr(),
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black,
@@ -324,8 +326,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
                                         TextButton(
-                                          child: const Text(
-                                            'Cancel',
+                                          child: Text(
+                                            'cancel'.tr(),
                                             style: TextStyle(
                                               color: Colors.grey,
                                               fontFamily: 'SF Pro Display',
@@ -345,9 +347,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                   BorderRadius.circular(4),
                                             ),
                                           ),
-                                          child: const Text(
-                                            'OK',
-                                            style: TextStyle(
+                                          child: Text(
+                                            'ok'.tr(),
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontFamily: 'SF Pro Display',
                                             ),
@@ -374,9 +376,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     // Toggle returned vs in use
                     Row(
                       children: [
-                        const Text(
-                          'Has been returned?',
-                          style: TextStyle(
+                        Text(
+                          'has_been_returned'.tr(),
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF000000),
@@ -402,7 +404,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       // Date Picker for Returned Date
                       _buildModalDatePicker(
                         context,
-                        'Returned Date',
+                        'returned_date'.tr(),
                         formatDate(returnedDate),
                         Colors.red,
                         () {
@@ -422,9 +424,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
                                     children: [
-                                      const Text(
-                                        'Select Date',
-                                        style: TextStyle(
+                                      Text(
+                                        'select_date'.tr(),
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.black,
@@ -449,8 +451,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                             MainAxisAlignment.end,
                                         children: [
                                           TextButton(
-                                            child: const Text(
-                                              'Cancel',
+                                            child: Text(
+                                              'cancel'.tr(),
                                               style: TextStyle(
                                                 color: Colors.grey,
                                                 fontFamily: 'SF Pro Display',
@@ -470,9 +472,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                     BorderRadius.circular(4),
                                               ),
                                             ),
-                                            child: const Text(
-                                              'OK',
-                                              style: TextStyle(
+                                            child: Text(
+                                              'ok'.tr(),
+                                              style: const TextStyle(
                                                 color: Colors.white,
                                                 fontFamily: 'SF Pro Display',
                                               ),
@@ -625,9 +627,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 children: [
                   _buildTopActionRow(context),
                   const SizedBox(height: 30),
-                  const Text(
-                    'Asset List',
-                    style: TextStyle(
+                  Text(
+                    'asset_list'.tr(),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF000000),
@@ -667,10 +669,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
-                'Workforce',
-                style: TextStyle(
+                'workforce'.tr(),
+                style: const TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -739,7 +741,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search by workers or asset details',
+                      hintText: 'search_assets_hint'.tr(),
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,
@@ -791,9 +793,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
               BlendMode.srcIn,
             ),
           ),
-          label: const Text(
-            'Add Asset',
-            style: TextStyle(
+          label: Text(
+            'add_asset'.tr(),
+            style: const TextStyle(
               color: Color(0xFFFFFFFF),
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -842,11 +844,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
               children: [
-                Expanded(flex: 3, child: _tableHeader('Worker Name')),
-                Expanded(flex: 2, child: _tableHeader('Position')),
-                Expanded(flex: 2, child: _tableHeader('Type')),
-                Expanded(flex: 2, child: _tableHeader('Date Loaned')),
-                Expanded(flex: 2, child: _tableHeader('Date Returned')),
+                Expanded(flex: 3, child: _tableHeader('worker_name'.tr())),
+                Expanded(flex: 2, child: _tableHeader('position'.tr())),
+                Expanded(flex: 2, child: _tableHeader('type_header'.tr())),
+                Expanded(flex: 2, child: _tableHeader('date_loaned'.tr())),
+                Expanded(
+                  flex: 2,
+                  child: _tableHeader('date_returned_header'.tr()),
+                ),
               ],
             ),
           ),
@@ -940,9 +945,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
       onTap: () async {
         final confirmed = await DeleteDialog.show(
           context: context,
-          title: 'Delete Asset',
-          content:
-              'Are you sure you want to delete this asset? This action cannot be undone.',
+          title: 'delete_asset'.tr(),
+          content: 'delete_asset_desc'.tr(),
         );
         if (!confirmed) return;
 
@@ -1065,9 +1069,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'No Assets Found',
-              style: TextStyle(
+            Text(
+              'no_assets_found'.tr(),
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF0247C4),

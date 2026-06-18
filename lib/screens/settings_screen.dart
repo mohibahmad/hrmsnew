@@ -4,6 +4,7 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
@@ -29,7 +30,23 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _selectedLanguage = 'United State';
+  String _selectedLanguage = 'English';
+
+  static const Map<String, Locale> _languageMap = {
+    'English': Locale('en'),
+    'Español': Locale('es'),
+    'Français': Locale('fr'),
+    'Português': Locale('pt'),
+    'Русский': Locale('ru'),
+  };
+
+  String _getCurrentLanguageName() {
+    final code = context.locale.languageCode;
+    for (final entry in _languageMap.entries) {
+      if (entry.value.languageCode == code) return entry.key;
+    }
+    return 'English';
+  }
 
   Future<void> _resetPassword(BuildContext context) async {
     final email = AuthService().currentUser?.email;
@@ -275,15 +292,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final allLanguages = [
-              'United State',
-              'Chinese',
-              'French',
-              'German',
-              'Russian',
-              'Italian',
-              'UK',
-            ];
+            final allLanguages = _languageMap.keys.toList();
+            final currentLang = _getCurrentLanguageName();
             return Align(
               alignment: Alignment.centerRight,
               child: Padding(
@@ -312,10 +322,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          'Select Language',
+                        Text(
+                          'select_language'.tr(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF000000),
@@ -324,13 +334,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         ...allLanguages.map((lang) {
-                          final isSel = _selectedLanguage == lang;
+                          final isSel = currentLang == lang;
                           return InkWell(
                             onTap: () {
-                              setModalState(() {
+                              final locale = _languageMap[lang]!;
+                              context.setLocale(locale);
+                              setModalState(() {});
+                              setState(() {
                                 _selectedLanguage = lang;
                               });
-                              setState(() {});
                               Future.delayed(
                                 const Duration(milliseconds: 150),
                                 () {
@@ -402,8 +414,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   _buildActionSettingItem(
                     'assets/changepassword.svg',
-                    'Change your password to keep your account secure.',
-                    'Reset Password',
+                    'reset_password_desc'.tr(),
+                    'reset_password'.tr(),
                     onTap: widget.isGuest
                         ? null
                         : () => _resetPassword(context),
@@ -411,8 +423,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   _buildActionSettingItem(
                     'assets/permenantly_delete.svg',
-                    'Permanently remove your profile and account data securely.',
-                    'Delete Profile',
+                    'delete_profile_desc'.tr(),
+                    'delete_profile'.tr(),
                     onTap: widget.isGuest
                         ? null
                         : () => _deleteAccount(context),
@@ -421,12 +433,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildLanguageItem(),
                   _buildSimpleSettingItem(
                     'assets/share.svg',
-                    'Share App',
+                    'share_app'.tr(),
                     onTap: _shareApp,
                   ),
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
-                    'Terms & Condition',
+                    'terms_condition'.tr(),
                     onTap: () => launchUrl(
                       Uri.parse(
                         'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
@@ -435,12 +447,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   _buildSimpleSettingItem(
                     'assets/privacy_policy.svg',
-                    'Privacy Policy',
+                    'privacy_policy'.tr(),
                   ),
                   if (!widget.isGuest)
                     _buildSimpleSettingItem(
                       'assets/signout.svg',
-                      'Sign out',
+                      'sign_out'.tr(),
                       onTap: widget.onLogout,
                     ),
                 ],
@@ -467,9 +479,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
-                'Setting',
+                'setting'.tr(),
                 style: TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,
@@ -611,7 +623,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Spacer(),
             Text(
-              _selectedLanguage,
+              _getCurrentLanguageName(),
               style: const TextStyle(
                 fontSize: 16,
                 color: Color(0xFF000000),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -197,8 +198,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      "Worker Attendance",
+                                    Text(
+                                      'worker_attendance'.tr(),
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -228,7 +229,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 ),
                                                 child: Center(
                                                   child: Text(
-                                                    "No Workers Found",
+                                                    'no_workers_found_title'
+                                                        .tr(),
                                                     style: TextStyle(
                                                       color: Color(0xFF000000),
                                                       fontSize: 15,
@@ -246,9 +248,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   data: worker,
                                                   onMarkAttendance: () =>
                                                       _showMarkAttendanceDialog(
-                                                    context,
-                                                    worker,
-                                                  ),
+                                                        context,
+                                                        worker,
+                                                      ),
                                                 ),
                                               ),
                                             const SizedBox(height: 8),
@@ -267,8 +269,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      "Today Attendance",
+                                    Text(
+                                      'today_attendance'.tr(),
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -299,7 +301,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         ),
                                                     child: Center(
                                                       child: Text(
-                                                        "No Attendance Records",
+                                                        'no_attendance_records'
+                                                            .tr(),
                                                         style: TextStyle(
                                                           color: Color(
                                                             0xFF000000,
@@ -369,8 +372,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          const Text(
-            "Workforce",
+          Text(
+            'workforce'.tr(),
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -445,8 +448,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       color: Colors.red.shade400,
                     ),
                     const SizedBox(width: 10),
-                    const Text(
-                      'Logout',
+                    Text(
+                      'logout'.tr(),
                       style: TextStyle(
                         fontSize: 14,
                         color: Color(0xFFEF4444),
@@ -494,7 +497,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: "Search by workers name / position",
+                hintText: 'search_workers_name_position'.tr(),
                 hintStyle: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
@@ -521,6 +524,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       ),
     );
   }
+
   void _showMarkAttendanceDialog(
     BuildContext context,
     Map<String, dynamic> data,
@@ -542,7 +546,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext context) {
-        String selectedStatus = (initialStatus == 'Present' ||
+        String selectedStatus =
+            (initialStatus == 'Present' ||
                 initialStatus == 'Absent' ||
                 initialStatus == 'Leave')
             ? initialStatus
@@ -553,7 +558,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           builder: (context, setDialogState) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(0)),
+                borderRadius: BorderRadius.circular(0),
+              ),
               backgroundColor: Colors.transparent,
               elevation: 0,
               insetPadding: const EdgeInsets.symmetric(horizontal: 24),
@@ -578,14 +584,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       Container(
                         height: 40,
                         width: double.infinity,
-                        decoration:
-                            const BoxDecoration(color: Color(0xFF004FDE)),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF004FDE),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Mark Attendance',
+                              'mark_attendance'.tr(),
                               style: TextStyle(
                                 color: Color(0xFFFFFFFF),
                                 fontSize: 14,
@@ -615,7 +622,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 ),
                                 image: const DecorationImage(
                                   image: AssetImage(
-                                      'assets/profile_placeholder.png'),
+                                    'assets/profile_placeholder.png',
+                                  ),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -702,7 +710,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       });
                                     },
                                     child: _buildToggleChip(
-                                      'Present',
+                                      'present'.tr(),
                                       'assets/present.svg',
                                       const Color(0xFF00C853),
                                       isSelected: selectedStatus == 'Present',
@@ -718,7 +726,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       });
                                     },
                                     child: _buildToggleChip(
-                                      'Absent',
+                                      'absent'.tr(),
                                       'assets/absent.svg',
                                       const Color(0xFFF44336),
                                       isSelected: selectedStatus == 'Absent',
@@ -734,7 +742,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       });
                                     },
                                     child: _buildToggleChip(
-                                      'Leave',
+                                      'leave'.tr(),
                                       'assets/leave.svg',
                                       const Color(0xFFFF9800),
                                       isSelected: selectedStatus == 'Leave',
@@ -746,8 +754,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                             const SizedBox(height: 16),
                             Text(
                               selectedStatus == 'Present'
-                                  ? 'Reason (Optional)'
-                                  : 'Reason (Required)',
+                                  ? 'reason_optional'.tr()
+                                  : 'reason_required'.tr(),
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -769,8 +777,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               child: TextField(
                                 controller: reasonController,
                                 maxLines: null,
-                                decoration: const InputDecoration.collapsed(
-                                  hintText: 'Enter reason......',
+                                decoration: InputDecoration.collapsed(
+                                  hintText: 'enter_reason_hint'.tr(),
                                   hintStyle: TextStyle(
                                     color: Colors.black38,
                                     fontSize: 13,
@@ -787,7 +795,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   onPressed: () => Navigator.pop(context),
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(
-                                        color: Colors.grey.shade300),
+                                      color: Colors.grey.shade300,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6),
                                     ),
@@ -797,8 +806,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     ),
                                     minimumSize: const Size(0, 40),
                                   ),
-                                  child: const Text(
-                                    'Cancel',
+                                  child: Text(
+                                    'cancel'.tr(),
                                     style: TextStyle(
                                       color: Colors.black87,
                                       fontWeight: FontWeight.w600,
@@ -813,11 +822,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     final reason = reasonController.text.trim();
                                     if (selectedStatus != 'Present' &&
                                         reason.isEmpty) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
                                           content: Text(
-                                              'Please enter a reason for Absent/Leave.'),
+                                            'please_enter_reason'.tr(),
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -825,39 +836,47 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     }
 
                                     try {
-                                      final isGuest = AuthService()
+                                      final isGuest =
+                                          AuthService()
                                               .currentUser
                                               ?.isAnonymous ??
                                           false;
                                       final type = selectedStatus == 'Absent'
                                           ? (data['type'] ?? 'Absent')
                                           : (selectedStatus == 'Leave'
-                                              ? (data['type'] ?? 'Sick Leave')
-                                              : null);
+                                                ? (data['type'] ?? 'Sick Leave')
+                                                : null);
                                       final desc = selectedStatus == 'Present'
                                           ? (reason.isEmpty ? null : reason)
                                           : reason;
 
                                       if (isGuest) {
                                         final index = DummyData.attendance
-                                            .indexWhere((element) =>
-                                                element['email'] == email);
+                                            .indexWhere(
+                                              (element) =>
+                                                  element['email'] == email,
+                                            );
                                         if (index != -1) {
-                                          DummyData.attendance[index]
-                                              ['status'] = selectedStatus;
+                                          DummyData
+                                                  .attendance[index]['status'] =
+                                              selectedStatus;
                                           if (type != null) {
-                                            DummyData.attendance[index]
-                                                ['type'] = type;
+                                            DummyData
+                                                    .attendance[index]['type'] =
+                                                type;
                                           } else {
-                                            DummyData.attendance[index]
-                                                .remove('type');
+                                            DummyData.attendance[index].remove(
+                                              'type',
+                                            );
                                           }
                                           if (desc != null && desc.isNotEmpty) {
-                                            DummyData.attendance[index]
-                                                ['desc'] = desc;
+                                            DummyData
+                                                    .attendance[index]['desc'] =
+                                                desc;
                                           } else {
-                                            DummyData.attendance[index]
-                                                .remove('desc');
+                                            DummyData.attendance[index].remove(
+                                              'desc',
+                                            );
                                           }
                                         }
                                         setState(() {});
@@ -866,13 +885,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         final workerId = data['id'];
                                         if (workerId != null) {
                                           final Map<String, dynamic>
-                                              updatedWorker =
+                                          updatedWorker =
                                               Map<String, dynamic>.from(data);
                                           updatedWorker['status'] =
                                               selectedStatus;
                                           updatedWorker.remove('id');
                                           await _firestore.updateWorker(
-                                              workerId, updatedWorker);
+                                            workerId,
+                                            updatedWorker,
+                                          );
                                         }
 
                                         // 2. Add or Update attendance record in today attendance
@@ -880,25 +901,30 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             todayRecord['id'] != null) {
                                           await _firestore
                                               .updateAttendanceRecord(
-                                                  todayRecord['id'], {
-                                            'name': name,
-                                            'email': email,
-                                            'role': data['role'] ??
-                                                data['position'] ??
-                                                '',
-                                            'status': selectedStatus,
-                                            'attendanceType':
-                                                data['type2'] ?? 'Remote',
-                                            'workType':
-                                                data['type1'] ?? 'Full Time',
-                                            'type': type,
-                                            'desc': desc,
-                                          });
+                                                todayRecord['id'],
+                                                {
+                                                  'name': name,
+                                                  'email': email,
+                                                  'role':
+                                                      data['role'] ??
+                                                      data['position'] ??
+                                                      '',
+                                                  'status': selectedStatus,
+                                                  'attendanceType':
+                                                      data['type2'] ?? 'Remote',
+                                                  'workType':
+                                                      data['type1'] ??
+                                                      'Full Time',
+                                                  'type': type,
+                                                  'desc': desc,
+                                                },
+                                              );
                                         } else {
                                           await _firestore.addAttendanceRecord({
                                             'name': name,
                                             'email': email,
-                                            'role': data['role'] ??
+                                            'role':
+                                                data['role'] ??
                                                 data['position'] ??
                                                 '',
                                             'status': selectedStatus,
@@ -914,21 +940,31 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
                                       if (!context.mounted) return;
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                              'Attendance updated successfully for $name.'),
+                                            'attendance_updated_success'.tr(
+                                              namedArgs: {'name': name},
+                                            ),
+                                          ),
                                           backgroundColor: Colors.green,
                                         ),
                                       );
                                     } catch (e) {
                                       if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                              'Failed to update attendance: $e'),
+                                            'attendance_update_failed'.tr(
+                                              namedArgs: {
+                                                'error': e.toString(),
+                                              },
+                                            ),
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -946,8 +982,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     minimumSize: const Size(0, 40),
                                     elevation: 0,
                                   ),
-                                  child: const Text(
-                                    'Save',
+                                  child: Text(
+                                    'save'.tr(),
                                     style: TextStyle(
                                       color: Color(0xFFFFFFFF),
                                       fontWeight: FontWeight.w600,
@@ -1167,7 +1203,7 @@ class TodayAttendanceItem extends StatelessWidget {
           if (data["type"] != null) ...[
             const SizedBox(height: 12),
             Text(
-              "Absent Type: ${data["type"]}",
+              'absent_type'.tr(namedArgs: {'type': data["type"].toString()}),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -1205,7 +1241,9 @@ class StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bgColor;
     Color textColor = Color(0xFFFFFFFF);
-    final displayStatus = (status.isEmpty || status == "*****") ? "*****" : status;
+    final displayStatus = (status.isEmpty || status == "*****")
+        ? "*****"
+        : status;
 
     if (displayStatus == "*****") {
       bgColor = pillGray;

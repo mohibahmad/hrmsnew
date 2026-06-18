@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
 
@@ -9,11 +10,16 @@ Future<void> showLogoutDialog(BuildContext context) async {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'LogoutDialog',
-    barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3), // Sleek slate backdrop overlay
+    barrierColor: const Color(
+      0xFF0F172A,
+    ).withValues(alpha: 0.3), // Sleek slate backdrop overlay
     transitionDuration: const Duration(milliseconds: 400),
     pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
+      final curve = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+      );
       return BackdropFilter(
         filter: ImageFilter.blur(
           sigmaX: 12 * animation.value,
@@ -102,8 +108,8 @@ class _LogoutDialogContent extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               // Header Title
-              const Text(
-                'Sign Out',
+              Text(
+                'sign_out_dialog_title'.tr(),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -114,8 +120,8 @@ class _LogoutDialogContent extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               // Body Description
-              const Text(
-                'Are you sure you want to sign out? You will need to log back in to manage your HR profile and workforce data.',
+              Text(
+                'sign_out_dialog_desc'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -141,8 +147,8 @@ class _LogoutDialogContent extends StatelessWidget {
                           color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          'Cancel',
+                        child: Text(
+                          'cancel'.tr(),
                           style: TextStyle(
                             color: Color(0xFF000000),
                             fontSize: 15,
@@ -167,14 +173,16 @@ class _LogoutDialogContent extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                              color: const Color(
+                                0xFFEF4444,
+                              ).withValues(alpha: 0.2),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: const Text(
-                          'Sign Out',
+                        child: Text(
+                          'sign_out'.tr(),
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 15,

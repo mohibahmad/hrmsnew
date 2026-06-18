@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
@@ -69,20 +70,19 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    final destination = user != null
-        ? const HomeScreen()
-        : const LoginScreen();
+    final destination = user != null ? const HomeScreen() : const LoginScreen();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => destination,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final slideAnimation = Tween<Offset>(
-            begin: const Offset(0, 0.08),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          );
+          final slideAnimation =
+              Tween<Offset>(
+                begin: const Offset(0, 0.08),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              );
 
           final fadeAnimation = CurvedAnimation(
             parent: animation,
@@ -91,10 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
 
           return FadeTransition(
             opacity: fadeAnimation,
-            child: SlideTransition(
-              position: slideAnimation,
-              child: child,
-            ),
+            child: SlideTransition(position: slideAnimation, child: child),
           );
         },
         transitionDuration: const Duration(milliseconds: 600),
@@ -133,8 +130,8 @@ class _SplashScreenState extends State<SplashScreen>
 
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: const Text(
-                      'Human Resource Management System',
+                    child: Text(
+                      'human_resource_management_system'.tr(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xFFFFFFFF),

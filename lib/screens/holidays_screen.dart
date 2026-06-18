@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter_svg/flutter_svg.dart';
@@ -30,8 +31,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   int _monthToIndex(String monthStr) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final index = months.indexOf(monthStr);
     return index == -1 ? 1 : index + 1;
@@ -103,7 +114,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 final holidayDate = DateTime(year, _monthToIndex(month), day);
                 final today = DateTime.now();
                 final todayDate = DateTime(today.year, today.month, today.day);
-                
+
                 if (todayDate.isAfter(holidayDate)) {
                   isEnabled = false;
                   // Lazily update firestore in the background
@@ -144,11 +155,27 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     int selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const weekdays = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
 
     showDialog(
@@ -185,8 +212,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
-                        const Text(
-                          'Add Holiday',
+                        Text(
+                          'add_holiday'.tr(),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -209,11 +236,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           ),
                           onPressed: () async {
                             if (holidayNameController.text.isNotEmpty) {
-                              final dateObj = DateTime(calendarDate.year, calendarDate.month, selectedDay);
-                              final dayOfWeekName = weekdays[dateObj.weekday - 1];
-                              final remainingDaysVal = dateObj.difference(DateTime.now()).inDays;
-                              final remainingDaysStr = remainingDaysVal > 0 
-                                  ? remainingDaysVal.toString().padLeft(2, '0') 
+                              final dateObj = DateTime(
+                                calendarDate.year,
+                                calendarDate.month,
+                                selectedDay,
+                              );
+                              final dayOfWeekName =
+                                  weekdays[dateObj.weekday - 1];
+                              final remainingDaysVal = dateObj
+                                  .difference(DateTime.now())
+                                  .inDays;
+                              final remainingDaysStr = remainingDaysVal > 0
+                                  ? remainingDaysVal.toString().padLeft(2, '0')
                                   : '00';
 
                               final holidayMap = {
@@ -251,17 +285,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                   )) {
                                     DummyData.holidays[selectedMonthName] = [];
                                   }
-                                  DummyData.holidays[selectedMonthName]!.insert(
-                                    0,
-                                    {
-                                      'day': selectedDay,
-                                      'month': selectedMonthName,
-                                      'remainingDays': remainingDaysStr,
-                                      'dayOfWeek': dayOfWeekName,
-                                      'name': holidayNameController.text,
-                                      'isEnabled': true,
-                                    },
-                                  );
+                                  DummyData.holidays[selectedMonthName]!
+                                      .insert(0, {
+                                        'day': selectedDay,
+                                        'month': selectedMonthName,
+                                        'remainingDays': remainingDaysStr,
+                                        'dayOfWeek': dayOfWeekName,
+                                        'name': holidayNameController.text,
+                                        'isEnabled': true,
+                                      });
                                 });
                               } else {
                                 await FirestoreService().addHoliday(holidayMap);
@@ -270,13 +302,16 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
-                                message:
-                                    'Successfully added holiday "${holidayNameController.text}"',
+                                message: 'successfully_added_holiday'.tr(
+                                  namedArgs: {
+                                    'name': holidayNameController.text,
+                                  },
+                                ),
                               );
                             }
                           },
-                          child: const Text(
-                            'Save',
+                          child: Text(
+                            'save'.tr(),
                             style: TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 13,
@@ -290,8 +325,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     const SizedBox(height: 24),
 
                     // Input Field
-                    const Text(
-                      'Holiday Name',
+                    Text(
+                      'holiday_name'.tr(),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -329,19 +364,28 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     const SizedBox(height: 24),
 
                     // Calendar Widget inside Modal
-                    _buildModalCalendar(calendarDate, selectedDay, (day) {
-                      setModalState(() {
-                        selectedDay = day;
-                      });
-                    }, (newDate) {
-                      setModalState(() {
-                        calendarDate = newDate;
-                        int daysInNewMonth = DateTime(newDate.year, newDate.month + 1, 0).day;
-                        if (selectedDay > daysInNewMonth) {
-                          selectedDay = daysInNewMonth;
-                        }
-                      });
-                    }),
+                    _buildModalCalendar(
+                      calendarDate,
+                      selectedDay,
+                      (day) {
+                        setModalState(() {
+                          selectedDay = day;
+                        });
+                      },
+                      (newDate) {
+                        setModalState(() {
+                          calendarDate = newDate;
+                          int daysInNewMonth = DateTime(
+                            newDate.year,
+                            newDate.month + 1,
+                            0,
+                          ).day;
+                          if (selectedDay > daysInNewMonth) {
+                            selectedDay = daysInNewMonth;
+                          }
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -359,10 +403,21 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     ValueChanged<DateTime> onMonthChanged,
   ) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
-    String monthYearStr = '${months[calendarDate.month - 1].toUpperCase()} ${calendarDate.year}';
+    String monthYearStr =
+        '${months[calendarDate.month - 1].toUpperCase()} ${calendarDate.year}';
 
     return Column(
       children: [
@@ -371,9 +426,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           children: [
             GestureDetector(
               onTap: () {
-                onMonthChanged(DateTime(calendarDate.year, calendarDate.month - 1, 1));
+                onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month - 1, 1),
+                );
               },
-              child: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              child: const Icon(
+                Icons.chevron_left,
+                size: 20,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(width: 32),
             Text(
@@ -387,9 +448,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             const SizedBox(width: 32),
             GestureDetector(
               onTap: () {
-                onMonthChanged(DateTime(calendarDate.year, calendarDate.month + 1, 1));
+                onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
+                );
               },
-              child: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+              child: const Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: Colors.black,
+              ),
             ),
           ],
         ),
@@ -437,10 +504,22 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
-  Widget _buildDaysGrid(DateTime calendarDate, int selectedDay, ValueChanged<int> onDaySelected) {
+  Widget _buildDaysGrid(
+    DateTime calendarDate,
+    int selectedDay,
+    ValueChanged<int> onDaySelected,
+  ) {
     List<Widget> rows = [];
-    int daysInMonth = DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
-    int firstWeekday = DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+    int daysInMonth = DateTime(
+      calendarDate.year,
+      calendarDate.month + 1,
+      0,
+    ).day;
+    int firstWeekday = DateTime(
+      calendarDate.year,
+      calendarDate.month,
+      1,
+    ).weekday;
     int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
 
     int currentDay = 1;
@@ -553,9 +632,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Text(
-                'Workforce',
+                'workforce'.tr(),
                 style: TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,
@@ -593,8 +672,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Holiday List',
+        Text(
+          'holiday_list'.tr(),
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
@@ -621,8 +700,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               BlendMode.srcIn,
             ),
           ),
-          label: const Text(
-            'Add Holiday',
+          label: Text(
+            'add_holiday'.tr(),
             style: TextStyle(
               color: Color(0xFFFFFFFF),
               fontSize: 14,
@@ -753,8 +832,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 color: const Color(0xFFCBCBCB),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'No Holidays Found',
+              Text(
+                'no_holidays_found'.tr(),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,

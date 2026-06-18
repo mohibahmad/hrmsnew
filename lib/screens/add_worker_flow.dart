@@ -1,5 +1,6 @@
 import 'dart:io' as io;
 import 'dart:typed_data';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
@@ -301,8 +302,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (name.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter worker name.',
-        title: 'Validation Error',
+        message: 'please_enter_worker_name'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -311,8 +312,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (phone.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter contact number.',
-        title: 'Validation Error',
+        message: 'please_enter_contact_number'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -322,8 +323,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter a valid email address.',
-        title: 'Validation Error',
+        message: 'please_enter_valid_email'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -436,7 +437,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       errorMessage = e.message;
     } catch (e) {
       debugPrint('Error saving worker: $e');
-      errorMessage = 'Could not save worker. Please try again.';
+      errorMessage = 'could_not_save_worker'.tr();
     }
 
     if (!mounted) return;
@@ -450,7 +451,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     } else {
       FlashySnackBar.show(
         context,
-        message: errorMessage ?? 'Could not save worker. Please try again.',
+        message: errorMessage ?? 'could_not_save_worker'.tr(),
         isError: true,
       );
     }
@@ -465,8 +466,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (name.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter worker name.',
-        title: 'Validation Error',
+        message: 'please_enter_worker_name'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -475,8 +476,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (phone.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter contact number.',
-        title: 'Validation Error',
+        message: 'please_enter_contact_number'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -486,8 +487,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter a valid email address.',
-        title: 'Validation Error',
+        message: 'please_enter_valid_email'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -503,8 +504,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (position.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter job position.',
-        title: 'Validation Error',
+        message: 'please_enter_job_position'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -513,8 +514,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (salaryAmount.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter salary amount.',
-        title: 'Validation Error',
+        message: 'please_enter_salary_amount'.tr(),
+        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -588,10 +589,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Text(
-                          'Add New Worker',
-                          style: TextStyle(
+                          'add_new_worker'.tr(),
+                          style: const TextStyle(
                             color: Color(0xFF000000),
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
@@ -599,9 +600,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
-                          'Fill in the worker details to get started.',
+                          'fill_worker_details'.tr(),
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 13,
@@ -633,8 +634,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text(
-                            'Save',
+                        : Text(
+                            'save'.tr(),
                             style: TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontWeight: FontWeight.w600,
@@ -671,9 +672,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: _buildTopTab('Worker Detail', 0)),
-                        Expanded(child: _buildTopTab('Experience', 1)),
-                        Expanded(child: _buildTopTab('Documentation', 2)),
+                        Expanded(child: _buildTopTab('worker_detail'.tr(), 0)),
+                        Expanded(child: _buildTopTab('experience'.tr(), 1)),
+                        Expanded(child: _buildTopTab('documentation'.tr(), 2)),
                       ],
                     ),
                   ),
@@ -863,15 +864,15 @@ class WorkerDetailFormSection extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     import_cupertino.CupertinoButton(
-                      child: const Text(
-                        'Cancel',
+                      child: Text(
+                        'cancel'.tr(),
                         style: TextStyle(color: Colors.red),
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     import_cupertino.CupertinoButton(
-                      child: const Text(
-                        'Done',
+                      child: Text(
+                        'done'.tr(),
                         style: TextStyle(color: Color(0xFF0247C4)),
                       ),
                       onPressed: () {
@@ -909,8 +910,8 @@ class WorkerDetailFormSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Personal Information',
+            Text(
+              'personal_information'.tr(),
               style: TextStyle(
                 color: Color(0xFF000000),
                 fontSize: 20,
@@ -928,19 +929,19 @@ class WorkerDetailFormSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Text(
-                      'Next Step',
-                      style: TextStyle(
+                      'next_step'.tr(),
+                      style: const TextStyle(
                         color: Color(0xFF000000),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    SizedBox(width: 8),
-                    Icon(
+                    const SizedBox(width: 8),
+                    const Icon(
                       Icons.arrow_forward,
                       size: 18,
                       color: Color(0xFF000000),
@@ -972,16 +973,16 @@ class WorkerDetailFormSection extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            'Worker Name:',
-                            'Enter your name',
+                            'worker_name_label'.tr(),
+                            'enter_your_name'.tr(),
                             controller: nameController,
                           ),
                         ),
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildInputField(
-                            'Worker Father/Husband Name:',
-                            'Enter your name',
+                            'worker_father_husband_name'.tr(),
+                            'enter_your_name'.tr(),
                             controller: fatherNameController,
                           ),
                         ),
@@ -992,15 +993,15 @@ class WorkerDetailFormSection extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            'Worker E-mail:',
-                            'Enter your email',
+                            'worker_email'.tr(),
+                            'enter_your_email'.tr(),
                             controller: emailController,
                           ),
                         ),
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildInputField(
-                            'Contact no:',
+                            'contact_no_label'.tr(),
                             '0000000000',
                             controller: phoneController,
                           ),
@@ -1012,7 +1013,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            'National ID:',
+                            'national_id'.tr(),
                             'Enter your national id',
                             controller: nationalIdController,
                           ),
@@ -1020,8 +1021,8 @@ class WorkerDetailFormSection extends StatelessWidget {
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildInputField(
-                            'Professed Religion:',
-                            'Enter your religion',
+                            'professed_religion'.tr(),
+                            'enter_your_religion'.tr(),
                             controller: religionController,
                           ),
                         ),
@@ -1052,7 +1053,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             },
                             child: AbsorbPointer(
                               child: _buildInputField(
-                                'Worker Date of Birth:',
+                                'worker_dob'.tr(),
                                 '00/00/0000',
                                 suffixIcon: Icons.calendar_month,
                                 controller: dobController,
@@ -1063,7 +1064,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildDropdownField(
-                            label: 'Gender:',
+                            label: 'gender_label'.tr(),
                             selectedValue: genderController.text,
                             items: ['Male', 'Female', 'Other'],
                             onChanged: (val) {
@@ -1077,8 +1078,8 @@ class WorkerDetailFormSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     _buildInputField(
-                      'Worker Address:',
-                      'Enter your address',
+                      'worker_address'.tr(),
+                      'enter_your_address'.tr(),
                       isTextArea: true,
                       controller: addressController,
                     ),
@@ -1095,8 +1096,8 @@ class WorkerDetailFormSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Profile Upload Section
-                  const Text(
-                    'Worker Profile',
+                  Text(
+                    'worker_profile'.tr(),
                     style: TextStyle(
                       color: Color(0xFF000000),
                       fontSize: 16,
@@ -1130,8 +1131,8 @@ class WorkerDetailFormSection extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   // Relationship Status Section
-                  const Text(
-                    'Relationship Status:',
+                  Text(
+                    'relationship_status'.tr(),
                     style: TextStyle(
                       color: Color(0xFF000000),
                       fontSize: 16,
@@ -1143,13 +1144,13 @@ class WorkerDetailFormSection extends StatelessWidget {
                   Row(
                     children: [
                       _buildCustomRadio(
-                        label: 'Married',
+                        label: 'married'.tr(),
                         isSelected: relationshipStatus == 'Married',
                         onTap: () => onRelationshipStatusChanged('Married'),
                       ),
                       const SizedBox(width: 40),
                       _buildCustomRadio(
-                        label: 'Single',
+                        label: 'single'.tr(),
                         isSelected: relationshipStatus == 'Single',
                         onTap: () => onRelationshipStatusChanged('Single'),
                       ),
@@ -1166,7 +1167,8 @@ class WorkerDetailFormSection extends StatelessWidget {
 
   Widget _buildProfileContent() {
     final hasImageBytes = profileImageBytes != null;
-    final hasImageUrl = existingProfileImageUrl != null && existingProfileImageUrl!.isNotEmpty;
+    final hasImageUrl =
+        existingProfileImageUrl != null && existingProfileImageUrl!.isNotEmpty;
 
     if (!hasImageBytes && !hasImageUrl) return _buildUploadPlaceholder();
 
@@ -1210,8 +1212,8 @@ class WorkerDetailFormSection extends StatelessWidget {
       children: [
         SvgPicture.asset('assets/Upload_profile.svg', height: 64, width: 64),
         const SizedBox(height: 12),
-        const Text(
-          'Upload Profile',
+        Text(
+          'upload_profile'.tr(),
           style: TextStyle(
             color: Color(0xFF000000),
             fontWeight: FontWeight.w700,
@@ -1342,8 +1344,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Job Experience Information',
+            Text(
+              'job_experience_info'.tr(),
               style: TextStyle(
                 color: Color(0xFF000000),
                 fontSize: 20,
@@ -1361,19 +1363,19 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Text(
-                      'Next Step',
-                      style: TextStyle(
+                      'next_step'.tr(),
+                      style: const TextStyle(
                         color: Color(0xFF000000),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    SizedBox(width: 8),
-                    Icon(
+                    const SizedBox(width: 8),
+                    const Icon(
                       Icons.arrow_forward,
                       size: 18,
                       color: Color(0xFF000000),
@@ -1406,8 +1408,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            'Job Position:',
-                            'Enter your level',
+                            'job_position_label'.tr(),
+                            'enter_your_level'.tr(),
                             controller: widget.positionController,
                             textAlign: TextAlign.center,
                           ),
@@ -1415,7 +1417,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildDropdownField(
-                            label: 'Experience Level:',
+                            label: 'experience_level_label'.tr(),
                             selectedValue:
                                 widget.experienceLevelController.text,
                             items: const [
@@ -1438,7 +1440,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       children: [
                         Expanded(
                           child: _buildDropdownField(
-                            label: 'Work Type:',
+                            label: 'work_type_label'.tr(),
                             selectedValue: widget.type1Controller.text,
                             items: const [
                               'Full-Time',
@@ -1456,7 +1458,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildDropdownField(
-                            label: 'Education:',
+                            label: 'education_label'.tr(),
                             selectedValue: widget.educationController.text,
                             items: const [
                               'High School',
@@ -1479,7 +1481,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       children: [
                         Expanded(
                           child: _buildDropdownField(
-                            label: 'Attendance Type:',
+                            label: 'attendance_type_label'.tr(),
                             selectedValue: widget.type2Controller.text,
                             items: const ['On-Site', 'Remote', 'Hybrid'],
                             onChanged: (val) {
@@ -1506,8 +1508,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Joining Date set',
+                  Text(
+                    'joining_date_set'.tr(),
                     style: TextStyle(
                       color: Color(0xFF000000),
                       fontSize: 15,
@@ -1721,8 +1723,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text(
-                                  'Cancel',
+                                child: Text(
+                                  'cancel'.tr(),
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -1759,8 +1761,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   color: const Color(0xFF0B50C3),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text(
-                                  'Set',
+                                child: Text(
+                                  'set'.tr(),
                                   style: TextStyle(
                                     color: Color(0xFFFFFFFF),
                                     fontSize: 11,
@@ -1783,8 +1785,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         const SizedBox(height: 40),
 
         // Salary Section
-        const Text(
-          'Salary Section',
+        Text(
+          'salary_section'.tr(),
           style: TextStyle(
             color: Color(0xFF000000),
             fontSize: 20,
@@ -1805,7 +1807,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 children: [
                   Expanded(
                     child: _buildDropdownField(
-                      label: 'Salary Type:',
+                      label: 'salary_type_label'.tr(),
                       selectedValue: widget.salaryTypeController.text,
                       items: const [
                         'Monthly',
@@ -1823,7 +1825,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   const SizedBox(width: 24),
                   Expanded(
                     child: _buildDropdownField(
-                      label: 'Currency:',
+                      label: 'currency_label'.tr(),
                       selectedValue: widget.currencyController.text,
                       items: const ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED'],
                       onChanged: (val) {
@@ -1840,8 +1842,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 children: [
                   Expanded(
                     child: _buildInputField(
-                      'Salary Amount:',
-                      'Enter your amount',
+                      'salary_amount_label'.tr(),
+                      'enter_your_amount'.tr(),
                       textAlign: TextAlign.center,
                       controller: widget.salaryAmountController,
                     ),
@@ -1856,8 +1858,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         const SizedBox(height: 40),
 
         // Custom Leave Section (As Requested by user)
-        const Text(
-          'Leave Section',
+        Text(
+          'leave_section'.tr(),
           style: TextStyle(
             color: Color(0xFF000000),
             fontSize: 20,
@@ -1878,7 +1880,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 children: [
                   Expanded(
                     child: _buildDropdownField(
-                      label: 'Leave Policy:',
+                      label: 'leave_policy_label'.tr(),
                       selectedValue: widget.leavePolicyController.text,
                       items: const ['Standard', 'Custom', 'Sick/Casual Only'],
                       onChanged: (val) {
@@ -1891,7 +1893,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   const SizedBox(width: 24),
                   Expanded(
                     child: _buildInputField(
-                      'Annual Leaves (Days):',
+                      'annual_leaves_days'.tr(),
                       'e.g., 14',
                       textAlign: TextAlign.center,
                       controller: widget.annualLeavesController,
@@ -1904,7 +1906,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 children: [
                   Expanded(
                     child: _buildInputField(
-                      'Sick Leaves (Days):',
+                      'sick_leaves_days'.tr(),
                       'e.g., 7',
                       textAlign: TextAlign.center,
                       controller: widget.sickLeavesController,
@@ -1913,7 +1915,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   const SizedBox(width: 24),
                   Expanded(
                     child: _buildInputField(
-                      'Casual Leaves (Days):',
+                      'casual_leaves_days'.tr(),
                       'e.g., 3',
                       textAlign: TextAlign.center,
                       controller: widget.casualLeavesController,
@@ -1998,8 +2000,8 @@ class DocumentationSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Personal Documentation',
+        Text(
+          'personal_documentation'.tr(),
           style: TextStyle(
             color: Color(0xFF000000),
             fontSize: 20,
@@ -2018,8 +2020,8 @@ class DocumentationSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'ID Card:',
+                  Text(
+                    'id_card_label'.tr(),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -2036,8 +2038,8 @@ class DocumentationSection extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Upload Front Side:',
+                        Text(
+                          'upload_front_side'.tr(),
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -2046,15 +2048,15 @@ class DocumentationSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         _buildIdUploadBox(
-                          label: 'Upload front side ID Card',
+                          label: 'upload_front_id_hint'.tr(),
                           bytes: frontIdBytes,
                           fileName: frontIdName,
                           existingUrl: existingFrontIdUrl,
                           onTap: onUploadFrontTap,
                         ),
                         const SizedBox(height: 24),
-                        const Text(
-                          'Upload Back Side:',
+                        Text(
+                          'upload_back_side'.tr(),
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -2063,7 +2065,7 @@ class DocumentationSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         _buildIdUploadBox(
-                          label: 'Upload back side ID Card',
+                          label: 'upload_back_id_hint'.tr(),
                           bytes: backIdBytes,
                           fileName: backIdName,
                           existingUrl: existingBackIdUrl,
@@ -2082,8 +2084,8 @@ class DocumentationSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Upload CV:',
+                  Text(
+                    'upload_cv_label'.tr(),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -2208,7 +2210,7 @@ class DocumentationSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Tap to select file',
+          'tap_to_select_file'.tr(),
           style: TextStyle(
             color: Colors.grey.shade300,
             fontSize: 12,
@@ -2232,8 +2234,8 @@ class DocumentationSection extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Upload',
+              Text(
+                'upload'.tr(),
                 style: TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,
@@ -2418,8 +2420,8 @@ class DocumentationSection extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Edit',
+                        Text(
+                          'edit'.tr(),
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontWeight: FontWeight.w600,
@@ -2459,8 +2461,8 @@ class DocumentationSection extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Delete',
+                        Text(
+                          'delete'.tr(),
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontWeight: FontWeight.w600,

@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
@@ -85,7 +86,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Google login failed. Please try again.',
+          message: 'google_login_failed'.tr(),
           isError: true,
         );
       }
@@ -94,7 +95,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Google login failed. Please try again.',
+          message: 'google_login_failed'.tr(),
           isError: true,
         );
       }
@@ -103,7 +104,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'An unexpected error occurred. Please try again.',
+          message: 'unexpected_error'.tr(),
           isError: true,
         );
       }
@@ -134,7 +135,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Apple login failed. Please try again.',
+          message: 'apple_login_failed'.tr(),
           isError: true,
         );
       }
@@ -142,7 +143,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Apple login failed. Please try again.',
+          message: 'apple_login_failed'.tr(),
           isError: true,
         );
       }
@@ -160,8 +161,8 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          title: 'Success',
-          message: 'Continuing as Guest User',
+          title: 'success'.tr(),
+          message: 'continuing_as_guest'.tr(),
           isError: false,
         );
         Navigator.of(context).pushReplacement(
@@ -172,7 +173,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Guest login failed. Please try again.',
+          message: 'guest_login_failed'.tr(),
           isError: true,
         );
       }
@@ -230,36 +231,35 @@ class _SignupScreenState extends State<SignupScreen> {
           return;
         } on FirebaseAuthException catch (signInError) {
           if (signInError.code == 'wrong-password') {
-            message =
-                'This email already exists. Please sign in with the correct password.';
+            message = 'email_already_in_use_wrong_password'.tr();
           } else {
-            message = 'This email already exists. Please sign in instead.';
+            message = 'email_already_in_use'.tr();
           }
         }
       } else {
         switch (e.code) {
           case 'invalid-email':
-            message = 'The email address is not valid.';
+            message = 'invalid_email_address'.tr();
             break;
           case 'weak-password':
-            message = 'The password is too weak (min 6 characters).';
+            message = 'weak_password'.tr();
             break;
           case 'operation-not-allowed':
-            message = 'Email/password accounts are not enabled.';
+            message = 'email_accounts_not_enabled'.tr();
             break;
           case 'network-request-failed':
           case 'network-error':
           case 'unavailable':
-            message =
-                'Network error. Please check your internet connection and try again.';
+            message = 'network_error'.tr();
             break;
           default:
             if (e.message != null &&
                 e.message!.toLowerCase().contains('network')) {
-              message =
-                  'Network error. Please check your internet connection and try again.';
+              message = 'network_error'.tr();
             } else {
-              message = 'Sign up failed (${e.code}): ${e.message}';
+              message = 'signup_failed'.tr(
+                namedArgs: {'code': e.code, 'message': e.message ?? ''},
+              );
             }
         }
       }
@@ -270,7 +270,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'An error occurred: $e',
+          message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
       }
@@ -290,7 +290,7 @@ class _SignupScreenState extends State<SignupScreen> {
         if (mounted) {
           FlashySnackBar.show(
             context,
-            message: 'Account Deleted, please contact realmappsrs12@gmail.com',
+            message: 'account_deleted_contact'.tr(),
             isError: true,
           );
         }
@@ -379,8 +379,8 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 24),
 
-      const Text(
-        'Create Account',
+      Text(
+        'create_account'.tr(),
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
@@ -391,7 +391,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 4),
       Text(
-        'Join us to get started on your journey',
+        'signup_subtitle'.tr(),
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w500,
@@ -410,7 +410,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _InputLabel(label: 'Username'),
+            _InputLabel(label: 'username_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _usernameController,
@@ -420,19 +420,19 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _inputDecoration('Enter your username'),
+              decoration: _inputDecoration('username_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your username';
+                  return 'username_required'.tr();
                 }
                 if (value.trim().length < 2) {
-                  return 'Username must be at least 2 characters';
+                  return 'username_too_short'.tr();
                 }
                 return null;
               },
             ),
             const SizedBox(height: 10),
-            const _InputLabel(label: 'E-mail'),
+            _InputLabel(label: 'email_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _emailController,
@@ -442,22 +442,22 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _inputDecoration('Enter your e-mail'),
+              decoration: _inputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your email';
+                  return 'email_required'.tr();
                 }
                 if (!value.trim().contains('@')) {
-                  return 'Email must contain @';
+                  return 'email_must_contain_at'.tr();
                 }
                 if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
-                  return 'Please enter a valid email (e.g. name@domain.com)';
+                  return 'email_invalid'.tr();
                 }
                 return null;
               },
             ),
             const SizedBox(height: 10),
-            const _InputLabel(label: 'Password'),
+            _InputLabel(label: 'password_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
@@ -468,7 +468,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _inputDecoration(
-                'Enter your password',
+                'password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscurePassword,
                 onToggleVisibility: () {
@@ -477,10 +477,10 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter a password';
+                  return 'password_enter'.tr();
                 }
                 if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
+                  return 'password_too_short'.tr();
                 }
                 return null;
               },
@@ -516,8 +516,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                 )
-              : const Text(
-                  'Create Account',
+              : Text(
+                  'create_account'.tr(),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -535,7 +535,7 @@ class _SignupScreenState extends State<SignupScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              'or',
+              'or'.tr(),
               style: TextStyle(
                 color: Colors.grey.shade400,
                 fontSize: 13,
@@ -550,7 +550,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       // Continue with Google Button
       _buildSocialButton(
-        text: 'Continue with Google',
+        text: 'continue_with_google'.tr(),
         icon: SvgPicture.string(_googleSvg, width: 16, height: 16),
         isLoading: _isGoogleLoading,
         onPressed: _anyLoading ? null : _handleGoogleLogin,
@@ -561,7 +561,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       // Continue with Apple Button
       _buildSocialButton(
-        text: 'Continue with Apple',
+        text: 'continue_with_apple'.tr(),
         icon: SvgPicture.string(
           _appleSvg,
           width: 16,
@@ -578,7 +578,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
       // Continue as Guest Button
       _buildSocialButton(
-        text: 'Continue as Guest',
+        text: 'continue_as_guest'.tr(),
         icon: SvgPicture.string(
           _guestSvg,
           width: 16,
@@ -602,7 +602,7 @@ class _SignupScreenState extends State<SignupScreen> {
       Center(
         child: RichText(
           text: TextSpan(
-            text: 'Already have an account? ',
+            text: 'already_have_account'.tr(),
             style: const TextStyle(
               color: Color(0xFF000000),
               fontSize: 13,
@@ -610,7 +610,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             children: [
               TextSpan(
-                text: 'Sign In',
+                text: 'sign_in'.tr(),
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w600,
