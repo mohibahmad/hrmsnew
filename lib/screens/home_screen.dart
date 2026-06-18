@@ -690,7 +690,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 265,
+      width: 300,
       color: const Color(0xFF0247C4),
       child: Column(
         children: [
@@ -875,13 +875,16 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                         size: 22,
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        'back_to_login_sidebar'.tr(),
-                        style: TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro',
+                      Expanded(
+                        child: Text(
+                          'back_to_login_sidebar'.tr(),
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro',
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -980,16 +983,18 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               color: Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
-            Text(
-              'sidebar_workforce'.tr(),
-              style: TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro',
+            Expanded(
+              child: Text(
+                'sidebar_workforce'.tr(),
+                style: TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro',
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
             const Icon(
               Icons.keyboard_arrow_down,
               color: Color(0xFFFFFFFF),
@@ -1029,13 +1034,16 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               color: Color(0xFFFFFFFF),
             ),
             const SizedBox(width: 12),
-            Text(
-              title,
-              style: TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 15,
-                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
-                fontFamily: 'SF Pro',
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
+                  fontFamily: 'SF Pro',
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1102,17 +1110,19 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   color: Color(0xFFFFFFFF),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 18,
-                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
-                    fontFamily: 'SF Pro',
-                  ),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontSize: 18,
+                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
+                  fontFamily: 'SF Pro',
                 ),
-                const Spacer(),
-                if (hasDropdown)
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (hasDropdown)
                   const Icon(
                     Icons.keyboard_arrow_down,
                     color: Color(0xFFFFFFFF),

@@ -435,29 +435,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: textDark,
-                  fontFamily: 'SF Pro Display',
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textDark,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                count,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: countColor,
-                  fontFamily: 'SF Pro Display',
+                const SizedBox(height: 12),
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: countColor,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           SvgPicture.asset(iconAsset, height: 28, width: 28),
         ],

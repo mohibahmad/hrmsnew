@@ -11,7 +11,8 @@ import 'error_reporter.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  static final ValueNotifier<String?> profilePicNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> profilePicNotifier =
+      ValueNotifier<String?>(null);
 
   /// Toggle this to `true` to bypass native SDKs and log in instantly in
   /// demo mode. Set to `false` to use the real Google/Apple sign-in flows.
@@ -170,7 +171,9 @@ class UserAvatar extends StatelessWidget {
             provider = NetworkImage(photoUrl);
           } else if (photoUrl.startsWith('data:image')) {
             try {
-              final String base64Content = photoUrl.substring(photoUrl.indexOf(',') + 1);
+              final String base64Content = photoUrl.substring(
+                photoUrl.indexOf(',') + 1,
+              );
               provider = MemoryImage(base64Decode(base64Content));
             } catch (e) {
               provider = const AssetImage('assets/profile_pic.png');
