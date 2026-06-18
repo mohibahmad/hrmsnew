@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
@@ -33,6 +34,7 @@ class AttendanceRecord {
   final String status;
   final String attendanceType;
   final String workType;
+  final String? profileImage;
 
   AttendanceRecord({
     required this.name,
@@ -41,6 +43,7 @@ class AttendanceRecord {
     required this.status,
     this.attendanceType = 'Remote',
     this.workType = 'Full Time',
+    this.profileImage,
   });
 }
 
@@ -978,7 +981,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       children: [
         Container(
           color: const Color(0xFF004FDE),
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -38,7 +38,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   // Helper to get month name
   String _getMonthName(int month) {
-    return DateFormat('MMMM').format(DateTime(2024, month));
+    return DateFormat('MMMM', context.locale.toString()).format(DateTime(2024, month));
   }
 
   // Helper to format date as DD/MM/YYYY

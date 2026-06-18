@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -942,6 +943,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final type1 = (worker['type1'] ?? '').toString();
     final position = (worker['position'] ?? '').toString();
     final type2 = (worker['type2'] ?? '').toString();
+    final profileImage = worker['profileImage'] as String?;
     final docId = worker['id'] as String;
 
     return Container(
@@ -959,11 +961,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: AssetImage(
-                    index % 2 == 0
-                        ? 'assets/profileimage.png'
-                        : 'assets/boy.png',
-                  ),
+                  backgroundImage: _getProfileImage(profileImage, index),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -1073,6 +1071,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       joiningDate: joiningDate,
                       gender: gender,
                       salary: salary,
+                      profileImage: profileImage,
                     ),
                   );
                 } else if (value == 'edit') {
@@ -1256,6 +1255,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
   final String joiningDate;
   final String gender;
   final String salary;
+  final String? profileImage;
 
   const WorkerProfilePreviewDialog({
     super.key,
@@ -1269,6 +1269,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     required this.joiningDate,
     required this.gender,
     required this.salary,
+    this.profileImage,
   });
 
   // Exact colors picked from the image
@@ -1639,4 +1640,20 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+ImageProvider _getProfileImage(String? url, int index) {
+  if (url == null || url.isEmpty) {
+    return AssetImage(
+      index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
+    );
+  }
+  if (url.startsWith('data:image/')) {
+    final base64Content = url.split(',').last;
+    return MemoryImage(base64Decode(base64Content));
+  }
+  if (url.startsWith('http')) {
+    return NetworkImage(url);
+  }
+  return AssetImage(url);
 }

@@ -1,5 +1,7 @@
 import 'dart:io' as io;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
@@ -225,7 +227,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
         allowMultiple: false,
         withData: true,
       );
@@ -249,7 +251,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
         allowMultiple: false,
         withData: true,
       );
@@ -339,36 +341,54 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     String? backIdUrl = _existingBackIdUrl;
     String? cvUrl = _existingCvUrl;
 
-    if (_profileImageBytes != null) {
-      profileImageUrl = await _uploadToStorage(
-        'profile_images',
-        _profileImageName ?? 'profile.jpg',
-        _profileImageBytes!,
-      );
-      profileImageUrl ??= 'mock://profile_images/$_profileImageName';
-    }
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
 
-    if (_frontIdBytes != null) {
-      frontIdUrl = await _uploadToStorage(
-        'id_cards',
-        _frontIdName ?? 'front.jpg',
-        _frontIdBytes!,
-      );
-      frontIdUrl ??= 'mock://id_cards/$_frontIdName';
-    }
+    if (isGuest) {
+      if (_profileImageBytes != null) {
+        profileImageUrl =
+            'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
+      }
+      if (_frontIdBytes != null) {
+        frontIdUrl = 'data:image/jpeg;base64,${base64Encode(_frontIdBytes!)}';
+      }
+      if (_backIdBytes != null) {
+        backIdUrl = 'data:image/jpeg;base64,${base64Encode(_backIdBytes!)}';
+      }
+      if (_cvBytes != null) {
+        cvUrl = 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
+      }
+    } else {
+      if (_profileImageBytes != null) {
+        profileImageUrl = await _uploadToStorage(
+          'profile_images',
+          _profileImageName ?? 'profile.jpg',
+          _profileImageBytes!,
+        );
+        profileImageUrl ??= 'mock://profile_images/$_profileImageName';
+      }
 
-    if (_backIdBytes != null) {
-      backIdUrl = await _uploadToStorage(
-        'id_cards',
-        _backIdName ?? 'back.jpg',
-        _backIdBytes!,
-      );
-      backIdUrl ??= 'mock://id_cards/$_backIdName';
-    }
+      if (_frontIdBytes != null) {
+        frontIdUrl = await _uploadToStorage(
+          'id_cards',
+          _frontIdName ?? 'front.jpg',
+          _frontIdBytes!,
+        );
+        frontIdUrl ??= 'mock://id_cards/$_frontIdName';
+      }
 
-    if (_cvBytes != null) {
-      cvUrl = await _uploadToStorage('cvs', _cvName ?? 'cv.pdf', _cvBytes!);
-      cvUrl ??= 'mock://cvs/$_cvName';
+      if (_backIdBytes != null) {
+        backIdUrl = await _uploadToStorage(
+          'id_cards',
+          _backIdName ?? 'back.jpg',
+          _backIdBytes!,
+        );
+        backIdUrl ??= 'mock://id_cards/$_backIdName';
+      }
+
+      if (_cvBytes != null) {
+        cvUrl = await _uploadToStorage('cvs', _cvName ?? 'cv.pdf', _cvBytes!);
+        cvUrl ??= 'mock://cvs/$_cvName';
+      }
     }
 
     final data = {
@@ -409,7 +429,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
     bool success = false;
     String? errorMessage;
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     try {
       if (widget.workerToEdit != null) {
         final editId = widget.workerToEdit!['id']?.toString();
@@ -775,22 +794,19 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         );
       }
     }
-    return GestureDetector(
-      onTap: () => setState(() => _activeTabIndex = index),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
-          borderRadius: borderRadius,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 15,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-            fontFamily: 'SF Pro Display',
-          ),
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
+        borderRadius: borderRadius,
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: Color(0xFF000000),
+          fontSize: 15,
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+          fontFamily: 'SF Pro Display',
         ),
       ),
     );
@@ -1066,7 +1082,8 @@ class WorkerDetailFormSection extends StatelessWidget {
                           child: _buildDropdownField(
                             label: 'gender_label'.tr(),
                             selectedValue: genderController.text,
-                            items: ['Male', 'Female', 'Other'],
+                            hint: 'enter_gender'.tr(),
+                            items: const ['Male', 'Female', 'Other'],
                             onChanged: (val) {
                               if (val != null) {
                                 genderController.text = val;
@@ -1178,8 +1195,8 @@ class WorkerDetailFormSection extends StatelessWidget {
         if (hasImageBytes)
           Image.memory(profileImageBytes!, fit: BoxFit.cover)
         else
-          Image.network(
-            existingProfileImageUrl!,
+          Image(
+            image: getProfileImageProvider(existingProfileImageUrl),
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _buildUploadPlaceholder(),
           ),
@@ -1353,36 +1370,81 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            GestureDetector(
-              onTap: widget.onNextStep,
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'next_step'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFF000000),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onPrevStep != null) ...[
+                  GestureDetector(
+                    onTap: widget.onPrevStep,
+                    child: Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFFE0E0E0),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.arrow_back,
+                            size: 18,
+                            color: Color(0xFF000000),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'previous_step'.tr(),
+                            style: const TextStyle(
+                              color: Color(0xFF000000),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: Color(0xFF000000),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                GestureDetector(
+                  onTap: widget.onNextStep,
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFFE0E0E0),
+                        width: 1,
+                      ),
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        Text(
+                          'next_step'.tr(),
+                          style: const TextStyle(
+                            color: Color(0xFF000000),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 18,
+                          color: Color(0xFF000000),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -1411,7 +1473,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             'job_position_label'.tr(),
                             'enter_your_level'.tr(),
                             controller: widget.positionController,
-                            textAlign: TextAlign.center,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -1420,11 +1481,12 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             label: 'experience_level_label'.tr(),
                             selectedValue:
                                 widget.experienceLevelController.text,
+                            hint: 'enter_your_level'.tr(),
                             items: const [
+                              'Fresher',
                               'Junior',
                               'Mid-Level',
                               'Senior',
-                              'Lead',
                             ],
                             onChanged: (val) {
                               if (val != null) {
@@ -1442,11 +1504,12 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                           child: _buildDropdownField(
                             label: 'work_type_label'.tr(),
                             selectedValue: widget.type1Controller.text,
+                            hint: 'enter_your_work'.tr(),
                             items: const [
                               'Full-Time',
                               'Part-Time',
                               'Contract',
-                              'Internship',
+                              'Freelance',
                             ],
                             onChanged: (val) {
                               if (val != null) {
@@ -1460,11 +1523,12 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                           child: _buildDropdownField(
                             label: 'education_label'.tr(),
                             selectedValue: widget.educationController.text,
+                            hint: 'enter_your_education'.tr(),
                             items: const [
-                              'High School',
-                              'Bachelor\'s',
-                              'Master\'s',
-                              'PhD',
+                              'Matric',
+                              'Intermediate',
+                              'Bachelor',
+                              'Master',
                               'Other',
                             ],
                             onChanged: (val) {
@@ -1483,7 +1547,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                           child: _buildDropdownField(
                             label: 'attendance_type_label'.tr(),
                             selectedValue: widget.type2Controller.text,
-                            items: const ['On-Site', 'Remote', 'Hybrid'],
+                            hint: 'enter_your_attendance_type'.tr(),
+                            items: const ['Remote', 'On-site', 'Hybrid'],
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type2Controller.text = val;
@@ -1809,12 +1874,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildDropdownField(
                       label: 'salary_type_label'.tr(),
                       selectedValue: widget.salaryTypeController.text,
-                      items: const [
-                        'Monthly',
-                        'Hourly',
-                        'Weekly',
-                        'Project-based',
-                      ],
+                      hint: 'enter_your_salary_type'.tr(),
+                      items: const ['Monthly', 'Hourly', 'Contract'],
                       onChanged: (val) {
                         if (val != null) {
                           widget.salaryTypeController.text = val;
@@ -1827,7 +1888,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildDropdownField(
                       label: 'currency_label'.tr(),
                       selectedValue: widget.currencyController.text,
-                      items: const ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED'],
+                      hint: 'enter_your_currency'.tr(),
+                      items: const [
+                        'USD',
+                        'PKR',
+                        'GBP',
+                        'Japanese Yen',
+                        'Pound',
+                      ],
                       onChanged: (val) {
                         if (val != null) {
                           widget.currencyController.text = val;
@@ -1844,7 +1912,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildInputField(
                       'salary_amount_label'.tr(),
                       'enter_your_amount'.tr(),
-                      textAlign: TextAlign.center,
                       controller: widget.salaryAmountController,
                     ),
                   ),
@@ -1882,6 +1949,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildDropdownField(
                       label: 'leave_policy_label'.tr(),
                       selectedValue: widget.leavePolicyController.text,
+                      hint: 'enter_leave_policy'.tr(),
                       items: const ['Standard', 'Custom', 'Sick/Casual Only'],
                       onChanged: (val) {
                         if (val != null) {
@@ -1895,7 +1963,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildInputField(
                       'annual_leaves_days'.tr(),
                       'e.g., 14',
-                      textAlign: TextAlign.center,
                       controller: widget.annualLeavesController,
                     ),
                   ),
@@ -1908,7 +1975,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildInputField(
                       'sick_leaves_days'.tr(),
                       'e.g., 7',
-                      textAlign: TextAlign.center,
                       controller: widget.sickLeavesController,
                     ),
                   ),
@@ -1917,7 +1983,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     child: _buildInputField(
                       'casual_leaves_days'.tr(),
                       'e.g., 3',
-                      textAlign: TextAlign.center,
                       controller: widget.casualLeavesController,
                     ),
                   ),
@@ -2000,14 +2065,54 @@ class DocumentationSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'personal_documentation'.tr(),
-          style: TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            fontFamily: 'SF Pro Display',
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'personal_documentation'.tr(),
+              style: TextStyle(
+                color: Color(0xFF000000),
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            if (onPrevStep != null)
+              GestureDetector(
+                onTap: onPrevStep,
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFFE0E0E0),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.arrow_back,
+                        size: 18,
+                        color: Color(0xFF000000),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'previous_step'.tr(),
+                        style: const TextStyle(
+                          color: Color(0xFF000000),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 24),
 
@@ -2112,6 +2217,9 @@ class DocumentationSection extends StatelessWidget {
   }) {
     final bool hasFile =
         bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
+    final bool isPdf =
+        (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
+        (existingUrl != null && existingUrl.toLowerCase().contains('.pdf'));
 
     return GestureDetector(
       onTap: onTap,
@@ -2133,7 +2241,38 @@ class DocumentationSection extends StatelessWidget {
             ? Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (bytes != null)
+                  if (isPdf)
+                    Container(
+                      color: Colors.white,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.picture_as_pdf,
+                            color: Color(0xFFE53935),
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              fileName ?? 'PDF Document',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    )
+                  else if (bytes != null)
                     Image.memory(bytes, fit: BoxFit.cover)
                   else if (existingUrl != null &&
                       existingUrl.startsWith('http'))
@@ -2171,12 +2310,6 @@ class DocumentationSection extends StatelessWidget {
                                 fontFamily: 'SF Pro Display',
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.edit,
-                            color: Colors.white70,
-                            size: 12,
                           ),
                         ],
                       ),
@@ -2315,82 +2448,91 @@ class DocumentationSection extends StatelessWidget {
                   ),
                 ],
               ),
-              child: isImage
-                  ? GestureDetector(
-                      onTap: () => _openDocumentPreview(buildContext),
-                      child: cvBytes != null
-                          ? Image.memory(cvBytes!, fit: BoxFit.cover)
-                          : (existingCvUrl != null && existingCvUrl!.isNotEmpty
-                                ? Image.network(
-                                    existingCvUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Center(
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 48,
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+                child: isImage
+                    ? GestureDetector(
+                        onTap: () => _openDocumentPreview(buildContext),
+                        child: cvBytes != null
+                            ? Image.memory(
+                                cvBytes!,
+                                fit: BoxFit.cover,
+                                filterQuality: FilterQuality.high,
+                              )
+                            : (existingCvUrl != null &&
+                                      existingCvUrl!.isNotEmpty
+                                  ? Image.network(
+                                      existingCvUrl!,
+                                      fit: BoxFit.cover,
+                                      filterQuality: FilterQuality.high,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 48,
+                                                ),
                                               ),
-                                            ),
-                                  )
-                                : const SizedBox.shrink()),
-                    )
-                  : Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Mock CV lines background inside the page sheet
-                        Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                height: 16,
-                                width: 150,
-                                color: Colors.grey.shade200,
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 10,
-                                width: 100,
-                                color: Colors.grey.shade200,
-                              ),
-                              const SizedBox(height: 40),
-                              ...List.generate(
-                                6,
-                                (index) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Container(
-                                    height: 10,
-                                    width: double.infinity,
-                                    color: Colors.grey.shade200,
+                                    )
+                                  : const SizedBox.shrink()),
+                      )
+                    : Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Mock CV lines background inside the page sheet
+                          Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  height: 16,
+                                  width: 150,
+                                  color: Colors.grey.shade200,
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  height: 10,
+                                  width: 100,
+                                  color: Colors.grey.shade200,
+                                ),
+                                const SizedBox(height: 40),
+                                ...List.generate(
+                                  6,
+                                  (index) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Container(
+                                      height: 10,
+                                      width: double.infinity,
+                                      color: Colors.grey.shade200,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // PDF Page Preview rendered directly on top of the mock lines (no text / icon overlays)
-                        if (cvBytes != null ||
-                            (existingCvUrl != null &&
-                                existingCvUrl!.isNotEmpty))
-                          Positioned.fill(
-                            child: PdfPagePreview(
-                              cvBytes: cvBytes,
-                              existingCvUrl: existingCvUrl,
+                              ],
                             ),
                           ),
 
-                        // Make the sheet clickable to trigger preview document view
-                        Positioned.fill(
-                          child: GestureDetector(
-                            onTap: () => _openDocumentPreview(buildContext),
-                            behavior: HitTestBehavior.opaque,
+                          // PDF Page Preview rendered directly on top of the mock lines (no text / icon overlays)
+                          if (cvBytes != null ||
+                              (existingCvUrl != null &&
+                                  existingCvUrl!.isNotEmpty))
+                            Positioned.fill(
+                              child: PdfPagePreview(
+                                cvBytes: cvBytes,
+                                existingCvUrl: existingCvUrl,
+                              ),
+                            ),
+
+                          // Make the sheet clickable to trigger preview document view
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTap: () => _openDocumentPreview(buildContext),
+                              behavior: HitTestBehavior.opaque,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+              ),
             ),
           ),
 
@@ -2662,56 +2804,174 @@ Widget _buildCustomRadio({
   );
 }
 
-Widget _buildDropdownField({
-  required String label,
-  required String selectedValue,
-  required List<String> items,
-  required ValueChanged<String?> onChanged,
-}) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
+Widget _buildMenuRadio(bool isSelected, String text) {
+  final Color activeColor = const Color(0xFF0B50C3);
+  return Row(
+    mainAxisSize: MainAxisSize.min,
     children: [
+      Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? activeColor : Colors.grey.shade300,
+            width: 1.5,
+          ),
+        ),
+        child: isSelected
+            ? Center(
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: activeColor,
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
+      const SizedBox(width: 12),
       Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF000000),
+        text,
+        style: TextStyle(
+          color: isSelected ? activeColor : Colors.grey.shade500,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           fontSize: 14,
-          fontWeight: FontWeight.bold,
           fontFamily: 'SF Pro Display',
         ),
       ),
-      const SizedBox(height: 8),
-      Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        alignment: Alignment.center,
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            isExpanded: true,
-            value: items.contains(selectedValue) ? selectedValue : items.first,
-            icon: Icon(
-              Icons.arrow_drop_down,
-              color: Colors.grey.shade400,
-              size: 22,
-            ),
-            dropdownColor: const Color(0xFFFFFFFF),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
-            ),
-            items: items.map((String item) {
-              return DropdownMenuItem<String>(value: item, child: Text(item));
-            }).toList(),
-            onChanged: onChanged,
+    ],
+  );
+}
+
+class CustomDropdownField extends StatefulWidget {
+  final String label;
+  final String selectedValue;
+  final String hint;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+
+  const CustomDropdownField({
+    super.key,
+    required this.label,
+    required this.selectedValue,
+    required this.hint,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  State<CustomDropdownField> createState() => _CustomDropdownFieldState();
+}
+
+class _CustomDropdownFieldState extends State<CustomDropdownField> {
+  late String _currentValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentValue = widget.selectedValue;
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomDropdownField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedValue != oldWidget.selectedValue) {
+      _currentValue = widget.selectedValue;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(
+            color: Color(0xFF000000),
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'SF Pro Display',
           ),
         ),
-      ),
-    ],
+        const SizedBox(height: 8),
+        PopupMenuButton<String>(
+          tooltip: widget.label,
+          onSelected: (val) {
+            setState(() {
+              _currentValue = val;
+            });
+            widget.onChanged(val);
+          },
+          offset: const Offset(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+          color: const Color(0xFFFFFFFF),
+          elevation: 4,
+          itemBuilder: (context) {
+            return widget.items.map((String item) {
+              final bool isSelected =
+                  item.trim().toLowerCase() == _currentValue.trim().toLowerCase();
+              return PopupMenuItem<String>(
+                value: item,
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildMenuRadio(isSelected, item),
+              );
+            }).toList();
+          },
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFFFF),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _currentValue.isEmpty ? widget.hint : _currentValue,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _currentValue.isEmpty
+                        ? Colors.grey.shade400
+                        : const Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Colors.grey.shade400,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _buildDropdownField({
+  required String label,
+  required String selectedValue,
+  required String hint,
+  required List<String> items,
+  required ValueChanged<String?> onChanged,
+}) {
+  return CustomDropdownField(
+    label: label,
+    selectedValue: selectedValue,
+    hint: hint,
+    items: items,
+    onChanged: onChanged,
   );
 }
 
@@ -2777,8 +3037,8 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       if (document != null) {
         final page = await document.getPage(1);
         final pageImage = await page.render(
-          width: page.width * 2,
-          height: page.height * 2,
+          width: page.width * 3,
+          height: page.height * 3,
           format: PdfPageImageFormat.png,
         );
         if (pageImage != null) {
@@ -2828,10 +3088,25 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       return Image.memory(
         _pageImageBytes!,
         fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
         width: double.infinity,
         height: double.infinity,
       );
     }
     return const SizedBox.shrink();
   }
+}
+
+ImageProvider getProfileImageProvider(String? url) {
+  if (url == null || url.isEmpty) {
+    return const AssetImage('assets/profileimage.png');
+  }
+  if (url.startsWith('data:image/')) {
+    final base64Content = url.split(',').last;
+    return MemoryImage(base64Decode(base64Content));
+  }
+  if (url.startsWith('http')) {
+    return NetworkImage(url);
+  }
+  return AssetImage(url);
 }
