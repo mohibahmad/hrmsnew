@@ -1289,7 +1289,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
       child: Center(
         child: Container(
           width: 480,
-          height: 568,
+          height: 610,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
@@ -1478,6 +1478,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
               // ==========================================
               Expanded(
                 child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [

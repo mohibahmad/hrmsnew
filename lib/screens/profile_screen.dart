@@ -684,8 +684,8 @@ class _ProfileBodyState extends State<ProfileBody> {
     } else {
       childWidget = Image.asset(
         'assets/profile_pic.png',
-        width: 55,
-        height: 55,
+        width: 75,
+        height: 75,
         fit: BoxFit.contain,
       );
     }
@@ -1007,7 +1007,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Row 3: Contact No + Second Phone
+                    // Row 3: Contact No + Address
                     Row(
                       children: [
                         Expanded(
@@ -1020,26 +1020,11 @@ class ProfilePreviewDialog extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildPreviewCard(
-                            '',
-                            contact2,
-                            'assets/phone_preview.svg',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // Row 4: Address (single card, half width)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildPreviewCard(
                             'address'.tr(),
                             address,
                             'assets/location_preview.svg',
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        const Expanded(child: SizedBox()),
                       ],
                     ),
                     const SizedBox(height: 12),
