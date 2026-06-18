@@ -1719,7 +1719,7 @@ class AttendanceLineChart extends StatelessWidget {
     return Card(
       elevation: 0,
       color: Color(0xFFFFFFFF),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: !isEmpty
@@ -2095,7 +2095,7 @@ class LeaveTypesPieChart extends StatelessWidget {
     return Card(
       elevation: 0,
       color: const Color(0xFFFFFFFF),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: !isEmpty
