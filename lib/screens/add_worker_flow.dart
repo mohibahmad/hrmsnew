@@ -2916,7 +2916,8 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
           itemBuilder: (context) {
             return widget.items.map((String item) {
               final bool isSelected =
-                  item.trim().toLowerCase() == _currentValue.trim().toLowerCase();
+                  item.trim().toLowerCase() ==
+                  _currentValue.trim().toLowerCase();
               return PopupMenuItem<String>(
                 value: item,
                 height: 40,

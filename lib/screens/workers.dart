@@ -1361,8 +1361,8 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 color: const Color(0xFFFFFFFF),
                                 width: 2.0,
                               ),
-                              image: const DecorationImage(
-                                image: AssetImage('assets/boy.png'),
+                              image: DecorationImage(
+                                image: _getProfileImage(profileImage, 0),
                                 fit: BoxFit.cover,
                               ),
                             ),
