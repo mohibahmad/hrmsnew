@@ -39,82 +39,79 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
   final List<bool> _activatedScreens = List.filled(11, false);
-  final Map<int, Widget> _screenCache = {};
 
   Widget _getScreen(int index) {
     if (!_activatedScreens[index]) {
       return const SizedBox.shrink();
     }
-    return _screenCache.putIfAbsent(index, () {
-      switch (index) {
-        case 1:
-          return WorkersScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 2:
-          return AttendanceScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 3:
-          return PayrollScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onAssignTimeOff: () {
-              setState(() {
-                _showAssignTimeOff = true;
-              });
-            },
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 4:
-          return TimeOffScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onAssignTimeOff: () {
-              setState(() {
-                _showAssignTimeOff = true;
-              });
-            },
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 5:
-          return AssetsScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 6:
-          return HolidaysScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 7:
-          return ExpensesScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 8:
-          return SettingsScreen(
-            onLogout: _handleLogout,
-            onProfileTap: _openProfile,
-            isGuest: AuthService().currentUser?.isAnonymous ?? false,
-            onNotificationTap: _navigateToAttendance,
-          );
-        case 9:
-          return AssignTimeOffScreen(
-            onBack: () => setState(() => _showAssignTimeOff = false),
-            onNotificationTap: _navigateToAttendance,
-          );
-        default:
-          return const SizedBox.shrink();
-      }
-    });
+    switch (index) {
+      case 1:
+        return WorkersScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 2:
+        return AttendanceScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 3:
+        return PayrollScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onAssignTimeOff: () {
+            setState(() {
+              _showAssignTimeOff = true;
+            });
+          },
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 4:
+        return TimeOffScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onAssignTimeOff: () {
+            setState(() {
+              _showAssignTimeOff = true;
+            });
+          },
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 5:
+        return AssetsScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 6:
+        return HolidaysScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 7:
+        return ExpensesScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 8:
+        return SettingsScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          isGuest: AuthService().currentUser?.isAnonymous ?? false,
+          onNotificationTap: _navigateToAttendance,
+        );
+      case 9:
+        return AssignTimeOffScreen(
+          onBack: () => setState(() => _showAssignTimeOff = false),
+          onNotificationTap: _navigateToAttendance,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   int _getStackIndex() {

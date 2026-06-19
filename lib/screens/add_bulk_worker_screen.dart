@@ -5,7 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:csv/csv.dart' show Csv;
+import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/auth_service.dart';
@@ -64,8 +64,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
 
         if (bytes != null) {
-          final csvString = utf8.decode(bytes);
-          final rows = Csv().decode(csvString);
+          final csvString = utf8.decode(bytes, allowMalformed: true);
+          final rows = const CsvDecoder().convert(csvString);
+          if (!mounted) return;
           _processCsvData(rows);
         }
       }
@@ -96,7 +97,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       Map<String, dynamic> workerData = {
         'fatherName': '',
-        'email': 'worker@email.com',
+        'email': 'worker$i@email.com',
         'nationalId': '',
         'religion': '',
         'dob': '',
@@ -158,8 +159,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     try {
       if (isGuest) {
-        for (var data in _validWorkers) {
-          final newId = 'dummy_${DateTime.now().millisecondsSinceEpoch}_${data['name']}';
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        for (var i = 0; i < _validWorkers.length; i++) {
+          final data = _validWorkers[i];
+          final newId = 'dummy_${ts}_${i}_${data['name']}';
           DummyData.workers.insert(0, {...data, 'id': newId});
         }
       } else {

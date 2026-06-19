@@ -940,48 +940,27 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   Widget _buildDataRow(AssetData data, int index) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () async {
-        final confirmed = await DeleteDialog.show(
-          context: context,
-          title: 'delete_asset'.tr(),
-          content: 'delete_asset_desc'.tr(),
-        );
-        if (!confirmed) return;
-
-        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-        if (isGuest) {
-          setState(() {
-            _assets.remove(data);
-          });
-        } else {
-          if (data.id != null) {
-            await FirestoreService().deleteAsset(data.id!);
-          }
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        child: Row(
-          children: [
-            // Name and Avatar (Placeholder image)
-            Expanded(
-              flex: 3,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage(
-                      index % 2 == 0
-                          ? 'assets/profileimage.png'
-                          : 'assets/boy.png',
-                    ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      child: Row(
+        children: [
+          // Name and Avatar (Placeholder image)
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundImage: AssetImage(
+                    index % 2 == 0
+                        ? 'assets/profileimage.png'
+                        : 'assets/boy.png',
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      data.name,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    data.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1042,9 +1021,227 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 ),
               ),
             ),
+            _buildAssetActionMenu(data),
           ],
         ),
+      );
+  }
+
+  Widget _buildAssetActionMenu(AssetData data) {
+    return SizedBox(
+      width: 48,
+      child: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, color: Colors.black),
+        offset: const Offset(0, 40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: const BorderSide(color: Color(0xFFCBCBCB)),
+        ),
+        color: const Color(0xFFFBFBFC),
+        elevation: 4,
+        onSelected: (value) async {
+          if (value == 'edit') {
+            _showEditAssetModal(data);
+          } else if (value == 'delete') {
+            final confirmed = await DeleteDialog.show(
+              context: context,
+              title: 'delete_asset'.tr(),
+              content: 'delete_asset_desc'.tr(),
+            );
+            if (!confirmed) return;
+            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              setState(() { _assets.remove(data); });
+            } else {
+              if (data.id != null) await FirestoreService().deleteAsset(data.id!);
+            }
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'edit',
+            height: 36,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF0247C4),
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Edit',
+                  style: TextStyle(
+                    color: Color(0xFF0247C4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'delete',
+            height: 36,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/delete_icon.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.red,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'delete'.tr(),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _showEditAssetModal(AssetData data) {
+    final nameController = TextEditingController(text: data.name);
+    final typeController = TextEditingController(text: data.type);
+    final positionController = TextEditingController(text: data.position);
+    DateTime loanedDate = DateTime(2022, 2, 1);
+    DateTime returnedDate = DateTime(2026, 10, 9);
+    bool isReturned = data.isReturned;
+
+    String formatDate(DateTime date) {
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      final year = date.year.toString();
+      return '$day/$month/$year';
+    }
+
+    showDialog(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              backgroundColor: Color(0xFFFFFFFF),
+              elevation: 10,
+              child: Container(
+                width: 450,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.black),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        Text(
+                          'Edit Asset',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0247C4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            minimumSize: const Size(0, 36),
+                          ),
+                          onPressed: () async {
+                            if (nameController.text.isNotEmpty &&
+                                typeController.text.isNotEmpty &&
+                                positionController.text.isNotEmpty) {
+                              final assetMap = {
+                                'name': nameController.text,
+                                'position': positionController.text,
+                                'type': typeController.text,
+                                'dateLoaned': formatDate(loanedDate),
+                                'dateReturned': isReturned ? formatDate(returnedDate) : 'in_use'.tr(),
+                                'isReturned': isReturned,
+                              };
+                              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                              if (isGuest) {
+                                setState(() {
+                                  final idx = _assets.indexWhere((a) => a.id == data.id);
+                                  if (idx != -1) {
+                                    _assets[idx] = AssetData(
+                                      nameController.text,
+                                      positionController.text,
+                                      typeController.text,
+                                      formatDate(loanedDate),
+                                      isReturned ? formatDate(returnedDate) : 'in_use'.tr(),
+                                      isReturned,
+                                      id: data.id,
+                                    );
+                                  }
+                                  final dummyIdx = DummyData.assets.indexWhere((a) => a['name'] == data.name);
+                                  if (dummyIdx != -1) DummyData.assets[dummyIdx] = assetMap;
+                                });
+                              } else {
+                                if (data.id != null) await FirestoreService().updateAsset(data.id!, assetMap);
+                              }
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop();
+                              FlashySnackBar.show(context, message: 'Asset updated');
+                            }
+                          },
+                          child: Text(
+                            'save'.tr(),
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _buildModalTextField('Worker Name', nameController, 'Enter worker name'),
+                    const SizedBox(height: 14),
+                    _buildModalTextField('Asset Type', typeController, 'Enter asset type'),
+                    const SizedBox(height: 14),
+                    _buildModalTextField('Position', positionController, 'Enter position'),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

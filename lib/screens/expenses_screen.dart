@@ -202,6 +202,112 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
   }
 
+  void _editExpense(Map<String, dynamic> doc) {
+    final categoryController = TextEditingController(text: doc['category']?.toString() ?? '');
+    final amountController = TextEditingController(text: doc['amount']?.toString() ?? '0.00');
+    final descriptionController = TextEditingController(text: doc['description']?.toString() ?? '');
+    final docId = doc['id'] as String;
+
+    showDialog(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              backgroundColor: Color(0xFFFFFFFF),
+              elevation: 10,
+              child: Container(
+                width: 600,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.black),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        Text(
+                          'edit_expense'.tr(),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0247C4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          onPressed: () async {
+                            if (categoryController.text.trim().isEmpty) {
+                              FlashySnackBar.show(context, message: 'please_enter_category'.tr(), isError: true);
+                              return;
+                            }
+                            final double? amt = double.tryParse(amountController.text.trim());
+                            if (amt == null) {
+                              FlashySnackBar.show(context, message: 'please_enter_valid_amount'.tr(), isError: true);
+                              return;
+                            }
+                            final updatedMap = {
+                              'name': doc['name'],
+                              'date': doc['date'],
+                              'category': categoryController.text,
+                              'amount': amt,
+                            };
+                            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                            if (isGuest) {
+                              setState(() {
+                                final idx = _expensesDocs.indexWhere((e) => e['id'] == docId);
+                                if (idx != -1) _expensesDocs[idx] = {...updatedMap, 'id': docId};
+                                final dummyIdx = DummyData.expenses.indexWhere((e) => e['id'] == docId);
+                                if (dummyIdx != -1) DummyData.expenses[dummyIdx] = {...updatedMap, 'id': docId};
+                              });
+                            } else {
+                              await FirestoreService().updateExpense(docId, updatedMap);
+                            }
+                            if (!context.mounted) return;
+                            Navigator.of(context).pop();
+                            FlashySnackBar.show(context, message: 'Expense updated');
+                          },
+                          child: Text(
+                            'save'.tr(),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showAddExpenseModal(BuildContext context) {
     final categoryController = TextEditingController(text: 'Dinner');
     final amountController = TextEditingController(text: '0.00');
@@ -1185,13 +1291,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
           ),
-          _buildActionMenu(docId),
+          _buildActionMenu(doc),
         ],
       ),
     );
   }
 
-  Widget _buildActionMenu(String docId) {
+  Widget _buildActionMenu(Map<String, dynamic> doc) {
+    final docId = doc['id'] as String;
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(
@@ -1204,7 +1311,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         color: const Color(0xFFFBFBFC),
         elevation: 4,
         onSelected: (value) {
-          if (value == 'delete') {
+          if (value == 'edit') {
+            _editExpense(doc);
+          } else if (value == 'delete') {
             _deleteExpense(docId);
           }
         },

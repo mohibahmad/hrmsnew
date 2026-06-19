@@ -73,7 +73,7 @@ class Validators {
 
   static void validateExpense(Map<String, dynamic> e) {
     if (_str(e, 'name').isEmpty) {
-      throw const ValidationException('Worker name is required', field: 'name');
+      throw const ValidationException('Expense name is required', field: 'name');
     }
     if (_str(e, 'category').isEmpty) {
       throw const ValidationException(

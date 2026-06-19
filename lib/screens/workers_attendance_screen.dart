@@ -15,7 +15,7 @@ const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
 const Color cardLightGray = Color(0xFFF3F5F8);
 const Color textDark = Color(0xFF000000);
-const Color textMuted = Color(0xFF000000);
+const Color textMuted = Color(0xFF64748B);
 
 const Color greenPresent = Color(0xFF00FF2A);
 const Color redAbsent = Color(0xFFFF0004);
@@ -208,14 +208,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFFFFFFF),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           border: Border.all(
                                             color: const Color(0xFFEEEEEE),
                                           ),
@@ -279,14 +279,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFFFFFFF),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           border: Border.all(
                                             color: const Color(0xFFEEEEEE),
                                           ),

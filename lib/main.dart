@@ -19,6 +19,8 @@ void main() {
       FlutterError.onError = (FlutterErrorDetails details) {
         // Suppress the noisy HardwareKeyboard assertion on macOS that fires
         // when the app loses focus while a key is pressed (e.g. CMD+M/CMD+Tab).
+        // NOTE: brittle string match — revisit if the Flutter SDK changes this
+        // assertion message.
         if (details.exception is AssertionError &&
             details.exception.toString().contains(
               '!_pressedKeys.containsKey(event.physicalKey)',
@@ -31,10 +33,15 @@ void main() {
           context: 'FlutterError',
           fatal: true,
         );
-        if (originalOnError != null) {
-          originalOnError(details);
-        } else {
-          FlutterError.presentError(details);
+        // FIX #3: don't double-handle. Only forward to the original handler in
+        // debug so you still get the red error screen; in release we've already
+        // reported it.
+        if (kDebugMode) {
+          if (originalOnError != null) {
+            originalOnError(details);
+          } else {
+            FlutterError.presentError(details);
+          }
         }
       };
 
@@ -50,6 +57,10 @@ void main() {
         return true;
       };
 
+      // FIX #1: don't return Firebase.app() on timeout — the default app isn't
+      // registered yet when init times out, so it would throw [core/no-app].
+      // Track readiness with a flag and gate Firebase usage on it instead.
+      bool firebaseReady = false;
       try {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
@@ -59,31 +70,47 @@ void main() {
             debugPrint(
               'Firebase.initializeApp timed out — continuing without remote config.',
             );
-            return Firebase.app();
+            // Returning the in-flight future's value is impossible here, so
+            // signal a timeout by throwing a typed error we catch below.
+            throw TimeoutException('Firebase.initializeApp timed out');
           },
+        );
+        firebaseReady = true;
+      } on TimeoutException catch (e, st) {
+        // Non-fatal: app continues without Firebase-backed features.
+        ErrorReporter.report(
+          e,
+          st,
+          context: 'Firebase.initializeApp(timeout)',
+          fatal: false,
         );
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'Firebase.initializeApp');
       }
+      debugPrint('Firebase ready: $firebaseReady');
 
+      // FIX #2: await window setup BEFORE runApp and launch hidden, then show,
+      // to avoid the default-size flash / position jump on macOS.
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
-        unawaited(() async {
-          try {
-            await windowManager.ensureInitialized();
-            await windowManager.waitUntilReadyToShow().then((_) async {
-              await windowManager.setMinimumSize(const Size(1280, 800));
-              await windowManager.setSize(const Size(1280, 800));
-              await windowManager.center();
-              await windowManager.show();
-              await windowManager.focus();
-            });
-          } catch (e, st) {
-            ErrorReporter.report(e, st, context: 'windowManager');
-          }
-        }());
+        try {
+          await windowManager.ensureInitialized();
+          const windowOptions = WindowOptions(
+            size: Size(1280, 800),
+            minimumSize: Size(1280, 800),
+            center: true,
+            titleBarStyle: TitleBarStyle.normal,
+          );
+          await windowManager.waitUntilReadyToShow(windowOptions, () async {
+            await windowManager.show();
+            await windowManager.focus();
+          });
+        } catch (e, st) {
+          ErrorReporter.report(e, st, context: 'windowManager');
+        }
       }
 
       await EasyLocalization.ensureInitialized();
+
       runApp(
         EasyLocalization(
           supportedLocales: const [
@@ -118,11 +145,12 @@ class HRMSApp extends StatelessWidget {
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       builder: (context, child) {
+        // FIX #4: const TextScaler.
         return MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(1.0)),
-          child: child!,
+          ).copyWith(textScaler: const TextScaler.linear(1.0)),
+          child: child ?? const SizedBox.shrink(), // FIX #6: safe fallback
         );
       },
       home: const SplashScreen(),

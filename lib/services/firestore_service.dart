@@ -37,7 +37,7 @@ class FirestoreService {
   }
 
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
-    await _userDoc.update(data);
+    await _userDoc.set(data, SetOptions(merge: true));
   }
 
   Future<void> deleteUserData() async {
@@ -144,6 +144,11 @@ class FirestoreService {
     return docRef.id;
   }
 
+  Future<void> updateExpense(String id, Map<String, dynamic> data) async {
+    Validators.validateExpense(data);
+    await _expenses.doc(id).update(data);
+  }
+
   Future<void> deleteExpense(String id) async {
     await _expenses.doc(id).delete();
   }
@@ -214,6 +219,11 @@ class FirestoreService {
     return docRef.id;
   }
 
+  Future<void> updateAsset(String id, Map<String, dynamic> data) async {
+    Validators.validateAsset(data);
+    await _assets.doc(id).update(data);
+  }
+
   Future<void> deleteAsset(String id) async {
     await _assets.doc(id).delete();
   }
@@ -251,7 +261,8 @@ class FirestoreService {
     required String displayName,
     required String email,
   }) async {
-    final docRef = _db.collection('hrms_user').doc(uid);
+    final userKey = email.trim().toLowerCase();
+    final docRef = _db.collection('hrms_user').doc(userKey);
     final userSnap = await docRef.get();
 
     if (userSnap.exists) {
@@ -284,65 +295,51 @@ class FirestoreService {
     final payrollColl = docRef.collection('hrms_payroll');
     final timeoffColl = docRef.collection('hrms_timeoff');
 
-    // 1. Seed Workers (batch)
-    final dummyWorkers = DummyData.workers.map((w) {
-      final copy = Map<String, dynamic>.from(w);
-      copy.remove('id');
-      return copy;
-    }).toList();
-
-    for (var w in dummyWorkers) {
+    // 1. Seed Workers
+    for (var w in DummyData.workers) {
+      final copy = Map<String, dynamic>.from(w)..remove('id');
       batch.set(workersColl.doc(), {
-        ...w,
+        ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
 
     // 2. Seed Attendance
-    final dummyAttendance = DummyData.attendance.map((a) {
-      final copy = Map<String, dynamic>.from(a);
-      copy.remove('id');
-      return copy;
-    }).toList();
-
-    for (var a in dummyAttendance) {
-      await attendanceColl.add({
-        ...a,
+    for (var a in DummyData.attendance) {
+      final copy = Map<String, dynamic>.from(a)..remove('id');
+      batch.set(attendanceColl.doc(), {
+        ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
 
     // 3. Seed Expenses
-    final dummyExpenses = DummyData.expenses.map((e) {
-      final copy = Map<String, dynamic>.from(e);
-      copy.remove('id');
-      return copy;
-    }).toList();
-
-    for (var e in dummyExpenses) {
-      await expensesColl.add({...e, 'createdAt': FieldValue.serverTimestamp()});
+    for (var e in DummyData.expenses) {
+      final copy = Map<String, dynamic>.from(e)..remove('id');
+      batch.set(expensesColl.doc(), {
+        ...copy,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
 
     // 4. Seed Payroll
-    final dummyPayroll = DummyData.payroll.map((p) {
-      final copy = Map<String, dynamic>.from(p);
-      copy.remove('id');
-      return copy;
-    }).toList();
-
-    for (var p in dummyPayroll) {
-      await payrollColl.add({...p, 'createdAt': FieldValue.serverTimestamp()});
+    for (var p in DummyData.payroll) {
+      final copy = Map<String, dynamic>.from(p)..remove('id');
+      batch.set(payrollColl.doc(), {
+        ...copy,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
 
     // 5. Seed Time Off requests
-    final dummyTimeoff = DummyData.timeoff.map((t) {
-      final copy = Map<String, dynamic>.from(t);
-      copy.remove('id');
-      return copy;
-    }).toList();
-
-    for (var t in dummyTimeoff) {
-      await timeoffColl.add({...t, 'createdAt': FieldValue.serverTimestamp()});
+    for (var t in DummyData.timeoff) {
+      final copy = Map<String, dynamic>.from(t)..remove('id');
+      batch.set(timeoffColl.doc(), {
+        ...copy,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
+
+    await batch.commit();
   }
 }
