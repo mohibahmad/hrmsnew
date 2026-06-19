@@ -182,14 +182,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               children: [
                 _buildHeader(context),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 0),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildSearchBar(),
                         const SizedBox(height: 32),
-                        IntrinsicHeight(
+                        Expanded(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -209,51 +209,59 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                      Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: Color(0xFFFFFFFF),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                           border: Border.all(
                                             color: const Color(0xFFEEEEEE),
                                           ),
                                         ),
                                         child: Column(
                                           children: [
-                                            if (filteredWorkers.isEmpty)
-                                              Padding(
-                                                padding: const EdgeInsets.all(
-                                                  40.0,
-                                                ),
-                                                child: Center(
-                                                  child: Text(
-                                                    'no_workers_found_title'
-                                                        .tr(),
-                                                    style: TextStyle(
-                                                      color: Color(0xFF000000),
-                                                      fontSize: 15,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontFamily:
-                                                          'SF Pro Display',
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
-                                            else
-                                              ...filteredWorkers.map(
-                                                (worker) => WorkerListItem(
-                                                  data: worker,
-                                                  onMarkAttendance: () =>
-                                                      _showMarkAttendanceDialog(
-                                                        context,
-                                                        worker,
+                                            Expanded(
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  children: [
+                                                    if (filteredWorkers.isEmpty)
+                                                      Padding(
+                                                        padding: const EdgeInsets.all(
+                                                          40.0,
+                                                        ),
+                                                        child: Center(
+                                                          child: Text(
+                                                            'no_workers_found_title'
+                                                                .tr(),
+                                                            style: TextStyle(
+                                                              color: Color(0xFF000000),
+                                                              fontSize: 15,
+                                                              fontWeight:
+                                                                  FontWeight.w500,
+                                                              fontFamily:
+                                                                  'SF Pro Display',
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    else
+                                                      ...filteredWorkers.map(
+                                                        (worker) => WorkerListItem(
+                                                          data: worker,
+                                                          onMarkAttendance: () =>
+                                                              _showMarkAttendanceDialog(
+                                                                context,
+                                                                worker,
+                                                              ),
+                                                        ),
                                                       ),
+                                                  ],
                                                 ),
                                               ),
+                                            ),
                                             const SizedBox(height: 8),
                                             const PaginationWidget(),
                                           ],
@@ -280,53 +288,47 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                      Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: Color(0xFFFFFFFF),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                           border: Border.all(
                                             color: const Color(0xFFEEEEEE),
                                           ),
                                         ),
-                                        child: Column(
-                                          children: _todayAttendance.isEmpty
-                                              ? [
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          40.0,
-                                                        ),
-                                                    child: Center(
-                                                      child: Text(
-                                                        'no_attendance_records'
-                                                            .tr(),
-                                                        style: TextStyle(
-                                                          color: Color(
-                                                            0xFF000000,
-                                                          ),
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          fontFamily:
-                                                              'SF Pro Display',
-                                                        ),
-                                                      ),
+                                        child: _todayAttendance.isEmpty
+                                            ? Center(
+                                                child: Text(
+                                                  'no_attendance_records'
+                                                      .tr(),
+                                                  style: TextStyle(
+                                                    color: Color(
+                                                      0xFF000000,
                                                     ),
+                                                    fontSize: 15,
+                                                    fontWeight:
+                                                        FontWeight.w500,
+                                                    fontFamily:
+                                                        'SF Pro Display',
                                                   ),
-                                                ]
-                                              : _todayAttendance
-                                                    .map(
-                                                      (att) =>
-                                                          TodayAttendanceItem(
-                                                            data: att,
-                                                          ),
-                                                    )
-                                                    .toList(),
-                                        ),
+                                                ),
+                                              )
+                                            : SingleChildScrollView(
+                                                child: Column(
+                                                  children: _todayAttendance
+                                                      .map(
+                                                        (att) =>
+                                                            TodayAttendanceItem(
+                                                              data: att,
+                                                            ),
+                                                      )
+                                                      .toList(),
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   ],
@@ -335,7 +337,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
