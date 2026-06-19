@@ -32,7 +32,7 @@ class Worker {
 class TimeOffScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
-  final VoidCallback? onAssignTimeOff;
+  final ValueChanged<Map<String, dynamic>>? onAssignTimeOff;
   final VoidCallback? onNotificationTap;
 
   const TimeOffScreen({
@@ -515,13 +515,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         child: GestureDetector(
                           onTap: () {
                             if (widget.onAssignTimeOff != null) {
-                              widget.onAssignTimeOff!();
+                              widget.onAssignTimeOff!(doc);
                             } else {
                               // Fallback if rendered as standalone
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) => AssignTimeOffScreen(
                                     onBack: () => Navigator.of(context).pop(),
+                                    initialWorker: doc,
                                   ),
                                 ),
                               );

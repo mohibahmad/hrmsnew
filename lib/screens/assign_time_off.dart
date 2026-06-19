@@ -13,10 +13,12 @@ import 'package:easy_localization/easy_localization.dart';
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback? onNotificationTap;
+  final Map<String, dynamic>? initialWorker;
   const AssignTimeOffScreen({
     super.key,
     required this.onBack,
     this.onNotificationTap,
+    this.initialWorker,
   });
 
   @override
@@ -48,7 +50,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (isGuest) {
       setState(() {
         _workers = DummyData.workers;
-        if (_workers.isNotEmpty) {
+        if (widget.initialWorker != null) {
+          _selectedWorker = _workers.firstWhere(
+            (w) => w['email'] == widget.initialWorker!['email'],
+            orElse: () => widget.initialWorker!,
+          );
+        } else if (_workers.isNotEmpty) {
           _selectedWorker = _workers.first;
         }
         _loadingWorkers = false;
@@ -60,7 +67,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             _workers = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
-            if (_workers.isNotEmpty) {
+            if (widget.initialWorker != null) {
+              _selectedWorker = _workers.firstWhere(
+                (w) => w['email'] == widget.initialWorker!['email'],
+                orElse: () => widget.initialWorker!,
+              );
+            } else if (_workers.isNotEmpty) {
               if (_selectedWorker == null || !_workers.any((w) => w['email'] == _selectedWorker!['email'])) {
                 _selectedWorker = _workers.first;
               }
@@ -81,6 +93,44 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildWorkerDropdown() {
+    if (widget.initialWorker != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'select_worker'.tr() == 'select_worker' ? 'Select Worker' : 'select_worker'.tr(),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF000000),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 48,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.centerLeft,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '${_selectedWorker?['name'] ?? widget.initialWorker!['name'] ?? ''} (${_selectedWorker?['position'] ?? widget.initialWorker!['position'] ?? ''})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1013,11 +1063,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Future<void> _handleSave() async {
+    if (_selectedWorker == null) {
+      FlashySnackBar.show(context, message: 'Please select a worker first');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       final recordMap = {
+        'name': _selectedWorker!['name'] ?? 'Worker',
+        'email': _selectedWorker!['email'] ?? '',
+        'position': _selectedWorker!['position'] ?? 'Worker',
+        'contact': _selectedWorker!['phone'] ?? _selectedWorker!['contact'] ?? '',
+        'action': _timeOffType,
         'type': _timeOffType,
         'startDate':
             '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
@@ -1026,8 +1086,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'notes': _notesController.text,
         'requestedDays': _requestedDays,
         'status': 'Approved',
-        'workerName': 'Worker', // Default
-        'workerAvatar': 'assets/profileimage.png',
+        'workerName': _selectedWorker!['name'] ?? 'Worker',
+        'workerAvatar': _selectedWorker!['profileImage'] ?? 'assets/profileimage.png',
       };
 
       if (isGuest) {

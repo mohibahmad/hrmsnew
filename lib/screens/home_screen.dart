@@ -64,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onProfileTap: _openProfile,
           onAssignTimeOff: () {
             setState(() {
+              _selectedTimeOffWorker = null;
               _showAssignTimeOff = true;
             });
           },
@@ -73,8 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
         return TimeOffScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onAssignTimeOff: () {
+          onAssignTimeOff: (worker) {
             setState(() {
+              _selectedTimeOffWorker = worker;
               _showAssignTimeOff = true;
             });
           },
@@ -107,8 +109,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       case 9:
         return AssignTimeOffScreen(
-          onBack: () => setState(() => _showAssignTimeOff = false),
+          onBack: () => setState(() {
+            _showAssignTimeOff = false;
+            _selectedTimeOffWorker = null;
+          }),
           onNotificationTap: _navigateToAttendance,
+          initialWorker: _selectedTimeOffWorker,
         );
       default:
         return const SizedBox.shrink();
@@ -147,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _totalAttendanceCount = 0;
   int _totalTimeoffCount = 0;
   List<Map<String, dynamic>> _attendanceDocs = [];
+  Map<String, dynamic>? _selectedTimeOffWorker;
 
   @override
   void dispose() {
@@ -386,6 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedSubIndex = 0;
       _showProfile = false;
       _showAssignTimeOff = false;
+      _selectedTimeOffWorker = null;
     });
   }
 
@@ -406,6 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               _showProfile = false;
               _showAssignTimeOff = false;
+              _selectedTimeOffWorker = null;
             }),
             onBackToLogin: _handleBackToLogin,
           ),
@@ -1380,6 +1389,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 45),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1729,113 +1739,113 @@ class SparklineCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Expanded(
                   child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeInOutCubic,
-                      builder: (context, animValue, child) {
-                        final double m = period == 'Week'
-                            ? 0.3
-                            : period == 'Month'
-                            ? 0.6
-                            : period == '3 Month'
-                            ? 0.8
-                            : period == '6 Month'
-                            ? 0.9
-                            : 1.0;
-                        final spots = [
-                          FlSpot(0, 3 * m),
-                          FlSpot(1, 6 * m),
-                          FlSpot(2, 4 * m),
-                          FlSpot(3, 4 * m),
-                          FlSpot(4, 7 * m),
-                          FlSpot(5, 5 * m),
-                          FlSpot(6, 6 * m),
-                          FlSpot(7, 2 * m),
-                          FlSpot(8, 7 * m),
-                        ];
-                        return LineChart(
-                          LineChartData(
-                            lineTouchData: LineTouchData(
-                              touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (spot) =>
-                                    const Color(0xFF2C3E50),
-                                tooltipRoundedRadius: 8,
-                                getTooltipItems: (spots) {
-                                  return spots.map((spot) {
-                                    return LineTooltipItem(
-                                      spot.y.toStringAsFixed(0),
-                                      const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    );
-                                  }).toList();
-                                },
-                              ),
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeInOutCubic,
+                    builder: (context, animValue, child) {
+                      final double m = period == 'Week'
+                          ? 0.3
+                          : period == 'Month'
+                          ? 0.6
+                          : period == '3 Month'
+                          ? 0.8
+                          : period == '6 Month'
+                          ? 0.9
+                          : 1.0;
+                      final spots = [
+                        FlSpot(0, 3 * m),
+                        FlSpot(1, 6 * m),
+                        FlSpot(2, 4 * m),
+                        FlSpot(3, 4 * m),
+                        FlSpot(4, 7 * m),
+                        FlSpot(5, 5 * m),
+                        FlSpot(6, 6 * m),
+                        FlSpot(7, 2 * m),
+                        FlSpot(8, 7 * m),
+                      ];
+                      return LineChart(
+                        LineChartData(
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (spot) =>
+                                  const Color(0xFF2C3E50),
+                              tooltipRoundedRadius: 8,
+                              getTooltipItems: (spots) {
+                                return spots.map((spot) {
+                                  return LineTooltipItem(
+                                    spot.y.toStringAsFixed(0),
+                                    const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  );
+                                }).toList();
+                              },
                             ),
-                            gridData: FlGridData(show: false),
-                            titlesData: FlTitlesData(show: false),
-                            borderData: FlBorderData(show: false),
-                            minY: 0,
-                            maxY: 10,
-                            lineBarsData: [
-                              LineChartBarData(
-                                spots: spots
-                                    .map((s) => FlSpot(s.x, s.y * animValue))
-                                    .toList(),
-                                isCurved: true,
-                                color: lineColor,
-                                barWidth: 1,
-                                isStrokeCapRound: true,
-                                dotData: FlDotData(show: false),
-                                belowBarData: BarAreaData(
-                                  show: true,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      lineColor.withValues(alpha: 0.3),
-                                      Colors.transparent,
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
+                          ),
+                          gridData: FlGridData(show: false),
+                          titlesData: FlTitlesData(show: false),
+                          borderData: FlBorderData(show: false),
+                          minY: 0,
+                          maxY: 10,
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: spots
+                                  .map((s) => FlSpot(s.x, s.y * animValue))
+                                  .toList(),
+                              isCurved: true,
+                              color: lineColor,
+                              barWidth: 1,
+                              isStrokeCapRound: true,
+                              dotData: FlDotData(show: false),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    lineColor.withValues(alpha: 0.3),
+                                    Colors.transparent,
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
                               ),
-                            ],
-                          ),
-                        );
-                      },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            )
+          : Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SvgPicture.asset(
+                    lineColor == const Color(0xFF8BB1F3)
+                        ? 'assets/total_salary.svg'
+                        : 'assets/total_expense.svg',
+                    height: 40,
+                    width: 40,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    lineColor == const Color(0xFF8BB1F3)
+                        ? 'no_salary_records_yet'.tr()
+                        : 'no_expenses_recorded_yet'.tr(),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF9CA3AF),
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ],
-              )
-            : Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      lineColor == const Color(0xFF8BB1F3)
-                          ? 'assets/total_salary.svg'
-                          : 'assets/total_expense.svg',
-                      height: 40,
-                      width: 40,
-                      color: const Color(0xFF9CA3AF),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      lineColor == const Color(0xFF8BB1F3)
-                          ? 'no_salary_records_yet'.tr()
-                          : 'no_expenses_recorded_yet'.tr(),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF9CA3AF),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
               ),
+            ),
     );
   }
 }
@@ -1899,9 +1909,13 @@ NiceChartRange getNiceRange(double rawMax) {
   }
 }
 
-ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGuest) {
+ChartData getChartData(
+  String period,
+  List<Map<String, dynamic>> docs,
+  bool isGuest,
+) {
   final now = DateTime.now();
-  
+
   if (isGuest || docs.isEmpty) {
     switch (period) {
       case 'Week':
@@ -1912,12 +1926,12 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
           labels.add(DateFormat('E').format(date).toUpperCase());
         }
         return ChartData(labels, values);
-        
+
       case 'Month':
         final labels = ['W1', 'W2', 'W3', 'W4'];
         final values = [48.0, 55.0, 50.0, 62.0];
         return ChartData(labels, values);
-        
+
       case '3 Month':
         final labels = <String>[];
         final values = [210.0, 245.0, 230.0];
@@ -1926,7 +1940,7 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
           labels.add(DateFormat('MMM').format(date).toUpperCase());
         }
         return ChartData(labels, values);
-        
+
       case '6 Month':
         final labels = <String>[];
         final values = [420.0, 450.0, 480.0, 510.0, 490.0, 530.0];
@@ -1935,11 +1949,24 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
           labels.add(DateFormat('MMM').format(date).toUpperCase());
         }
         return ChartData(labels, values);
-        
+
       case 'Yearly':
       default:
         final labels = <String>[];
-        final dummyValues = [95.0, 120.0, 240.0, 330.0, 290.0, 510.0, 960.0, 850.0, 910.0, 980.0, 1020.0, 1050.0];
+        final dummyValues = [
+          95.0,
+          120.0,
+          240.0,
+          330.0,
+          290.0,
+          510.0,
+          960.0,
+          850.0,
+          910.0,
+          980.0,
+          1020.0,
+          1050.0,
+        ];
         final values = <double>[];
         for (int i = 0; i < 12; i++) {
           final date = DateTime(now.year, i + 1, 1);
@@ -1968,13 +1995,17 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
     case 'Week':
       final labels = <String>[];
       final values = List.filled(7, 0.0);
-      final startOfWeek = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
-      
+      final startOfWeek = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(const Duration(days: 6));
+
       for (int i = 6; i >= 0; i--) {
         final date = now.subtract(Duration(days: i));
         labels.add(DateFormat('E').format(date).toUpperCase());
       }
-      
+
       for (final dt in parsedRecords) {
         final difference = dt.difference(startOfWeek).inDays;
         if (difference >= 0 && difference < 7) {
@@ -1986,8 +2017,12 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
     case 'Month':
       final labels = ['W1', 'W2', 'W3', 'W4'];
       final values = List.filled(4, 0.0);
-      final startOfPeriod = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 27));
-      
+      final startOfPeriod = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(const Duration(days: 27));
+
       for (final dt in parsedRecords) {
         final difference = dt.difference(startOfPeriod).inDays;
         if (difference >= 0 && difference < 28) {
@@ -2002,12 +2037,12 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
     case '3 Month':
       final labels = <String>[];
       final values = List.filled(3, 0.0);
-      
+
       for (int i = 2; i >= 0; i--) {
         final date = DateTime(now.year, now.month - i, 1);
         labels.add(DateFormat('MMM').format(date).toUpperCase());
       }
-      
+
       for (final dt in parsedRecords) {
         for (int i = 0; i < 3; i++) {
           final targetDate = DateTime(now.year, now.month - (2 - i), 1);
@@ -2022,12 +2057,12 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
     case '6 Month':
       final labels = <String>[];
       final values = List.filled(6, 0.0);
-      
+
       for (int i = 5; i >= 0; i--) {
         final date = DateTime(now.year, now.month - i, 1);
         labels.add(DateFormat('MMM').format(date).toUpperCase());
       }
-      
+
       for (final dt in parsedRecords) {
         for (int i = 0; i < 6; i++) {
           final targetDate = DateTime(now.year, now.month - (5 - i), 1);
@@ -2043,12 +2078,12 @@ ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGu
     default:
       final labels = <String>[];
       final values = List.filled(12, 0.0);
-      
+
       for (int i = 0; i < 12; i++) {
         final date = DateTime(now.year, i + 1, 1);
         labels.add(DateFormat('MMM').format(date).toUpperCase());
       }
-      
+
       for (final dt in parsedRecords) {
         if (dt.year == now.year) {
           values[dt.month - 1] += 1.0;
@@ -2098,7 +2133,11 @@ class AttendanceLineChart extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeInOutCubic,
                       builder: (context, animValue, child) {
-                        final chartData = getChartData(period, attendanceDocs, AuthService().currentUser?.isAnonymous ?? false);
+                        final chartData = getChartData(
+                          period,
+                          attendanceDocs,
+                          AuthService().currentUser?.isAnonymous ?? false,
+                        );
                         final double rawMaxY = chartData.values.isEmpty
                             ? 1.0
                             : chartData.values.reduce((a, b) => a > b ? a : b);
@@ -2186,7 +2225,8 @@ class AttendanceLineChart extends StatelessWidget {
                                   interval: 1,
                                   getTitlesWidget: (value, meta) {
                                     final idx = value.toInt();
-                                    if (idx < 0 || idx >= chartData.labels.length) {
+                                    if (idx < 0 ||
+                                        idx >= chartData.labels.length) {
                                       return const SizedBox.shrink();
                                     }
                                     const style = TextStyle(
@@ -2221,7 +2261,10 @@ class AttendanceLineChart extends StatelessWidget {
                                   color: Color(0xFF939393),
                                   width: 1,
                                 ),
-                                left: BorderSide(color: Color(0xFF939393), width: 1),
+                                left: BorderSide(
+                                  color: Color(0xFF939393),
+                                  width: 1,
+                                ),
                               ),
                             ),
                             lineBarsData: [
