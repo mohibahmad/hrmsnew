@@ -132,6 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int _totalWorkersCount = 0;
+  int _maleWorkersCount = 0;
+  int _femaleWorkersCount = 0;
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
   List<Map<String, dynamic>> _holidays = [];
@@ -139,6 +141,10 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _workersSub;
   StreamSubscription? _expensesSub;
   StreamSubscription? _payrollSub;
+  StreamSubscription? _attendanceSub;
+  StreamSubscription? _timeoffSub;
+  int _totalAttendanceCount = 0;
+  int _totalTimeoffCount = 0;
 
   @override
   void dispose() {
@@ -146,6 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _workersSub?.cancel();
     _expensesSub?.cancel();
     _payrollSub?.cancel();
+    _attendanceSub?.cancel();
+    _timeoffSub?.cancel();
     super.dispose();
   }
 
@@ -175,7 +183,35 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
       setState(() {
-        _totalWorkersCount = DummyData.workers.length;
+        final workersList = DummyData.workers;
+        _totalWorkersCount = workersList.length;
+        int mCount = 0;
+        int fCount = 0;
+        for (final w in workersList) {
+          final genderStr = (w['gender'] ?? '').toString().trim().toLowerCase();
+          if (genderStr == 'female') {
+            fCount++;
+          } else if (genderStr == 'male') {
+            mCount++;
+          } else {
+            final name = (w['name'] ?? '').toString().toLowerCase();
+            if (name.contains('emily') ||
+                name.contains('sophia') ||
+                name.contains('olivia') ||
+                name.contains('amelia') ||
+                name.contains('charlotte') ||
+                name.contains('harper') ||
+                name.contains('jane')) {
+              fCount++;
+            } else {
+              mCount++;
+            }
+          }
+        }
+        _maleWorkersCount = mCount;
+        _femaleWorkersCount = fCount;
+        _totalAttendanceCount = DummyData.attendance.length;
+        _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
         _holidays = (DummyData.holidays[targetKey] ?? [])
             .cast<Map<String, dynamic>>();
@@ -199,8 +235,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
       _workersSub = firestore.workersStream.listen((snap) {
         if (mounted) {
+          int mCount = 0;
+          int fCount = 0;
+          for (final doc in snap.docs) {
+            final data = doc.data() as Map<String, dynamic>?;
+            final genderStr = (data?['gender'] ?? '').toString().trim().toLowerCase();
+            if (genderStr == 'female') {
+              fCount++;
+            } else {
+              mCount++;
+            }
+          }
           setState(() {
             _totalWorkersCount = snap.docs.length;
+            _maleWorkersCount = mCount;
+            _femaleWorkersCount = fCount;
+          });
+        }
+      });
+
+      _attendanceSub = firestore.attendanceStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _totalAttendanceCount = snap.docs.length;
+          });
+        }
+      });
+
+      _timeoffSub = firestore.timeoffStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _totalTimeoffCount = snap.docs.length;
           });
         }
       });
@@ -411,7 +476,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: TotalWorkersCard(count: _totalWorkersCount),
+                        child: TotalWorkersCard(
+                          count: _totalWorkersCount,
+                          maleCount: _maleWorkersCount,
+                          femaleCount: _femaleWorkersCount,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -479,14 +548,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: AttendanceLineChart(
                           period: _selectedPeriod,
-                          isEmpty: _totalWorkersCount == 0,
+                          isEmpty: _totalAttendanceCount == 0,
                         ),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
                         child: LeaveTypesPieChart(
                           period: _selectedPeriod,
-                          isEmpty: _totalWorkersCount == 0,
+                          isEmpty: _totalTimeoffCount == 0,
                         ),
                       ),
                     ],
@@ -1107,19 +1176,21 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   color: Color(0xFFFFFFFF),
                 ),
                 const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  color: Color(0xFFFFFFFF),
-                  fontSize: 18,
-                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
-                  fontFamily: 'SF Pro',
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontSize: 18,
+                      fontWeight: isSelected
+                          ? FontWeight.w500
+                          : FontWeight.w500,
+                      fontFamily: 'SF Pro',
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (hasDropdown)
+                if (hasDropdown)
                   const Icon(
                     Icons.keyboard_arrow_down,
                     color: Color(0xFFFFFFFF),
@@ -1239,10 +1310,22 @@ class TopHeader extends StatelessWidget {
 
 class TotalWorkersCard extends StatelessWidget {
   final int count;
-  const TotalWorkersCard({super.key, required this.count});
+  final int maleCount;
+  final int femaleCount;
+  const TotalWorkersCard({
+    super.key,
+    required this.count,
+    required this.maleCount,
+    required this.femaleCount,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final double malePercent = count > 0 ? (maleCount / count) : 0.0;
+    final double femalePercent = count > 0 ? (femaleCount / count) : 0.0;
+    final String malePercentStr = '${(malePercent * 100).toStringAsFixed(0)}%';
+    final String femalePercentStr = '${(femalePercent * 100).toStringAsFixed(0)}%';
+
     return Card(
       elevation: 0,
       color: Color(0xFFFFFFFF),
@@ -1290,16 +1373,19 @@ class TotalWorkersCard extends StatelessWidget {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        const RoundedDonutChart(),
+                        RoundedDonutChart(
+                          malePercent: malePercent,
+                          femalePercent: femalePercent,
+                        ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  '60%',
-                                  style: TextStyle(
+                                Text(
+                                  malePercentStr,
+                                  style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF000000),
@@ -1331,7 +1417,7 @@ class TotalWorkersCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  '40%',
+                                  femalePercentStr,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
@@ -1362,12 +1448,12 @@ class TotalWorkersCard extends StatelessWidget {
                       _buildLegendItem(
                         Color(0xFF155ED5),
                         'male'.tr(),
-                        '380 Workers',
+                        'workers_count'.tr(namedArgs: {'count': maleCount.toString()}),
                       ),
                       _buildLegendItem(
                         Color(0xFFFF2D2D),
                         'female'.tr(),
-                        '70 Workers',
+                        'workers_count'.tr(namedArgs: {'count': femaleCount.toString()}),
                       ),
                     ],
                   ),
@@ -1437,7 +1523,14 @@ class TotalWorkersCard extends StatelessWidget {
 }
 
 class RoundedDonutChart extends StatelessWidget {
-  const RoundedDonutChart({super.key});
+  final double malePercent;
+  final double femalePercent;
+
+  const RoundedDonutChart({
+    super.key,
+    required this.malePercent,
+    required this.femalePercent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1448,7 +1541,11 @@ class RoundedDonutChart extends StatelessWidget {
       builder: (context, value, child) {
         return CustomPaint(
           size: const Size(130, 130),
-          painter: _DonutChartPainter(progress: value),
+          painter: _DonutChartPainter(
+            progress: value,
+            malePercent: malePercent,
+            femalePercent: femalePercent,
+          ),
         );
       },
     );
@@ -1457,8 +1554,14 @@ class RoundedDonutChart extends StatelessWidget {
 
 class _DonutChartPainter extends CustomPainter {
   final double progress;
+  final double malePercent;
+  final double femalePercent;
 
-  _DonutChartPainter({this.progress = 1});
+  _DonutChartPainter({
+    this.progress = 1,
+    required this.malePercent,
+    required this.femalePercent,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1466,7 +1569,7 @@ class _DonutChartPainter extends CustomPainter {
     final radius =
         (size.width - 24) / 2; // radius to draw the center of the arc
 
-    // Red Paint (40%)
+    // Red Paint (Female)
     final redPaint = Paint()
       ..color = const Color(0xFFFF2D2D)
       ..style = PaintingStyle.stroke
@@ -1474,7 +1577,7 @@ class _DonutChartPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..isAntiAlias = true;
 
-    // Blue Paint (60%)
+    // Blue Paint (Male)
     final bluePaint = Paint()
       ..color = const Color(0xFF155ED5)
       ..style = PaintingStyle.stroke
@@ -1484,8 +1587,8 @@ class _DonutChartPainter extends CustomPainter {
 
     // Start angle is -45 degrees (-pi / 4)
     const double startAngle = -3.1415926535 / 4;
-    const double redSweep = 0.40 * 2 * 3.1415926535;
-    const double blueSweep = 0.60 * 2 * 3.1415926535;
+    final double redSweep = femalePercent * 2 * 3.1415926535;
+    final double blueSweep = malePercent * 2 * 3.1415926535;
 
     // Draw Red first
     canvas.drawArc(
@@ -1508,7 +1611,9 @@ class _DonutChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DonutChartPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress ||
+      oldDelegate.malePercent != malePercent ||
+      oldDelegate.femalePercent != femalePercent;
 }
 
 class SparklineCard extends StatelessWidget {

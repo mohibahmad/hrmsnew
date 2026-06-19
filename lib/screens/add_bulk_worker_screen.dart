@@ -43,7 +43,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     } catch (e) {
       debugPrint('Error generating template: $e');
       if (mounted) {
-        FlashySnackBar.show(context, message: 'could_not_save_worker'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_save_worker'.tr(),
+          isError: true,
+        );
       }
     }
   }
@@ -56,24 +60,35 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         withData: true,
       );
 
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        Uint8List? bytes = file.bytes;
-        if (bytes == null && file.path != null) {
-          bytes = io.File(file.path!).readAsBytesSync();
-        }
+      if (result == null || result.files.isEmpty) return;
 
-        if (bytes != null) {
-          final csvString = utf8.decode(bytes, allowMalformed: true);
-          final rows = const CsvDecoder().convert(csvString);
-          if (!mounted) return;
-          _processCsvData(rows);
-        }
+      final file = result.files.first;
+      Uint8List? bytes = file.bytes;
+      if (bytes == null && file.path != null) {
+        bytes = await io.File(file.path!).readAsBytes();
       }
+
+      if (bytes == null) return;
+
+      // BOM strip + UTF-8 safe + normalize line endings
+      var csvString = utf8.decode(bytes, allowMalformed: true);
+      if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
+        csvString = csvString.substring(1);
+      }
+      csvString = csvString.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
+      final rows = Csv(dynamicTyping: false).decode(csvString);
+
+      if (!mounted) return;
+      _processCsvData(rows);
     } catch (e) {
       debugPrint('Error picking CSV: $e');
       if (mounted) {
-        FlashySnackBar.show(context, message: 'Error picking CSV', isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'Error picking CSV',
+          isError: true,
+        );
       }
     }
   }
@@ -81,11 +96,17 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   void _processCsvData(List<List<dynamic>> rows) {
     if (rows.isEmpty) return;
 
-    final headers = rows.first.map((e) => e.toString().trim().toLowerCase()).toList();
-    
+    final headers = rows.first
+        .map((e) => e.toString().trim().toLowerCase())
+        .toList();
+
     // Check basic required columns
     if (!headers.contains('name') || !headers.contains('phone')) {
-      FlashySnackBar.show(context, message: 'CSV must contain at least "name" and "phone" columns.', isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'CSV must contain at least "name" and "phone" columns.',
+        isError: true,
+      );
       return;
     }
 
@@ -93,11 +114,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
-      if (row.isEmpty || row.every((element) => element.toString().trim().isEmpty)) continue;
+      if (row.isEmpty ||
+          row.every((element) => element.toString().trim().isEmpty))
+        continue;
 
       Map<String, dynamic> workerData = {
         'fatherName': '',
-        'email': 'worker$i@email.com',
+        'email': '',
         'nationalId': '',
         'religion': '',
         'dob': '',
@@ -131,10 +154,12 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           }
         }
       }
-      
+
       // Ensure required fields
-      if (workerData['name'] == null || workerData['name'].toString().isEmpty) continue;
-      if (workerData['phone'] == null || workerData['phone'].toString().isEmpty) continue;
+      if (workerData['name'] == null || workerData['name'].toString().isEmpty)
+        continue;
+      if (workerData['phone'] == null || workerData['phone'].toString().isEmpty)
+        continue;
 
       parsedWorkers.add(workerData);
     }
@@ -147,7 +172,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   Future<void> _saveBulkWorkers() async {
     if (_validWorkers.isEmpty) {
-      FlashySnackBar.show(context, message: 'No valid workers found in CSV.', isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'No valid workers found in CSV.',
+        isError: true,
+      );
       return;
     }
 
@@ -159,10 +188,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     try {
       if (isGuest) {
-        final ts = DateTime.now().millisecondsSinceEpoch;
         for (var i = 0; i < _validWorkers.length; i++) {
           final data = _validWorkers[i];
-          final newId = 'dummy_${ts}_${i}_${data['name']}';
+          final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
           DummyData.workers.insert(0, {...data, 'id': newId});
         }
       } else {
@@ -170,13 +198,20 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       if (mounted) {
-        FlashySnackBar.show(context, message: '${_validWorkers.length} workers added successfully!');
+        FlashySnackBar.show(
+          context,
+          message: '${_validWorkers.length} workers added successfully!',
+        );
         widget.onBack?.call();
       }
     } catch (e) {
       debugPrint('Error saving bulk workers: $e');
       if (mounted) {
-        FlashySnackBar.show(context, message: 'could_not_save_worker'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_save_worker'.tr(),
+          isError: true,
+        );
       }
     } finally {
       if (mounted) {
@@ -239,7 +274,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Upload a CSV to add multiple workers at once',
+                          'Upload a CSV to add multiple workers at once'.tr(),
                           style: const TextStyle(
                             color: Colors.black,
                             fontSize: 13,
@@ -251,41 +286,47 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                     ),
                   ],
                 ),
-                Builder(builder: (context) {
-                  final bool isSaveReady = _validWorkers.isNotEmpty;
-                  final bool canSave = isSaveReady && !_isSaving;
-                  
-                  return GestureDetector(
-                    onTap: canSave ? _saveBulkWorkers : null,
-                    child: Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: BoxDecoration(
-                        color: isSaveReady ? const Color(0xFF0B50C3) : const Color(0xFFE6EAEF),
-                        borderRadius: BorderRadius.circular(6),
+                Builder(
+                  builder: (context) {
+                    final bool isSaveReady = _validWorkers.isNotEmpty;
+                    final bool canSave = isSaveReady && !_isSaving;
+
+                    return GestureDetector(
+                      onTap: canSave ? _saveBulkWorkers : null,
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: isSaveReady
+                              ? const Color(0xFF0B50C3)
+                              : const Color(0xFFE6EAEF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        alignment: Alignment.center,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                'Save All',
+                                style: TextStyle(
+                                  color: isSaveReady
+                                      ? const Color(0xFFFFFFFF)
+                                      : const Color(0xFF000000),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
                       ),
-                      alignment: Alignment.center,
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              'Save All',
-                              style: TextStyle(
-                                color: isSaveReady ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                    ),
-                  );
-                }),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -308,7 +349,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           foregroundColor: const Color(0xFF0B50C3),
                           elevation: 0,
                           side: const BorderSide(color: Color(0xFF0B50C3)),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                           textStyle: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -325,7 +369,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           backgroundColor: const Color(0xFF0B50C3),
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                           textStyle: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -355,7 +402,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFFF7F8FA)),
+                          headingRowColor: WidgetStateProperty.all(
+                            const Color(0xFFF7F8FA),
+                          ),
                           columns: const [
                             DataColumn(label: Text('Name')),
                             DataColumn(label: Text('Phone')),
@@ -364,13 +413,27 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             DataColumn(label: Text('Salary')),
                           ],
                           rows: _validWorkers.map((worker) {
-                            return DataRow(cells: [
-                              DataCell(Text(worker['name']?.toString() ?? '')),
-                              DataCell(Text(worker['phone']?.toString() ?? '')),
-                              DataCell(Text(worker['email']?.toString() ?? '')),
-                              DataCell(Text(worker['position']?.toString() ?? '')),
-                              DataCell(Text(worker['salaryAmount']?.toString() ?? '')),
-                            ]);
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(worker['name']?.toString() ?? ''),
+                                ),
+                                DataCell(
+                                  Text(worker['phone']?.toString() ?? ''),
+                                ),
+                                DataCell(
+                                  Text(worker['email']?.toString() ?? ''),
+                                ),
+                                DataCell(
+                                  Text(worker['position']?.toString() ?? ''),
+                                ),
+                                DataCell(
+                                  Text(
+                                    worker['salaryAmount']?.toString() ?? '',
+                                  ),
+                                ),
+                              ],
+                            );
                           }).toList(),
                         ),
                       ),

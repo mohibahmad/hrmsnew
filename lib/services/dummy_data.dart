@@ -330,7 +330,8 @@ class DummyData {
       'attendanceType': 'Remote',
       'workType': 'Part Time',
       'type': 'Sick Leave',
-      'desc': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabuyweeygewegecechvchvecjjecbejcbecbcbygeygeyeccugewgyugwgfygygweyg',
+      'desc':
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabuyweeygewegecechvchvecjjecbejcbecbcbygeygeyeccugewgyugwgfygygweyg',
     },
     {
       'id': 'dummy_a12',
@@ -869,4 +870,3 @@ class DummyData {
     },
   ];
 }
-

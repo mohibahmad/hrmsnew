@@ -261,7 +261,9 @@ class FirestoreService {
     required String displayName,
     required String email,
   }) async {
-    final userKey = email.trim().toLowerCase();
+    final userKey = email.trim().toLowerCase().isNotEmpty
+        ? email.trim().toLowerCase()
+        : uid;
     final docRef = _db.collection('hrms_user').doc(userKey);
     final userSnap = await docRef.get();
 

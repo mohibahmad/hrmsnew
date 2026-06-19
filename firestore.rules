@@ -26,8 +26,8 @@ service cloud.firestore {
     match /hrms_user/{userKey} {
       allow read, write: if isOwner(userKey);
 
-      // All HRMS subcollections inherit the same per-owner restriction.
-      match /{subcollection}/{docId} {
+      // All HRMS subcollections inherit the same per-owner restriction recursively.
+      match /{document=**} {
         allow read, write: if isOwner(userKey);
       }
     }
