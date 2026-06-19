@@ -853,6 +853,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   flex: 2,
                   child: _tableHeader('date_returned_header'.tr()),
                 ),
+                const SizedBox(width: 48), // Match the action menu size
               ],
             ),
           ),
