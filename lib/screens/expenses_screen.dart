@@ -91,9 +91,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       _isLoading = false;
       _adjustDummyDatesForPeriod(_selectedPeriod);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showAddExpenseModal(context);
-    });
   }
 
   double get _totalExpenseSum {

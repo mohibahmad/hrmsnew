@@ -144,10 +144,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         },
       );
     }
-    // Automatically show the dialog after the screen renders to match the mockup
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showAddHolidayModal(context);
-    });
   }
 
   void _showAddHolidayModal(BuildContext context) {

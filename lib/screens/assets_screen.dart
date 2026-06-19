@@ -109,10 +109,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
         },
       );
     }
-    // Automatically show the dialog after the screen renders to match the mockup
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showAddAssetModal(context);
-    });
   }
 
   List<AssetData> get _filteredAssets {
