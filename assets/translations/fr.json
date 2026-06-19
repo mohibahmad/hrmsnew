@@ -195,6 +195,7 @@
   "search_workers_name_position": "Rechercher par nom / position",
   "add_worker": "Ajouter un travailleur",
   "add_bulk_workers": "Ajouter en masse",
+  "worker_template": "Modèle de travailleur",
   "bulk_add_coming_soon": "Fonction d'ajout en masse bientôt disponible !",
   "worker_name": "Nom du travailleur",
   "work_type": "Type de travail",

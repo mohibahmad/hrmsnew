@@ -195,6 +195,7 @@
   "search_workers_name_position": "Pesquisar por nome / cargo",
   "add_worker": "Adicionar trabalhador",
   "add_bulk_workers": "Adicionar em lote",
+  "worker_template": "Modelo de trabalhador",
   "bulk_add_coming_soon": "Recurso de adição em lote em breve!",
   "worker_name": "Nome do trabalhador",
   "work_type": "Tipo de trabalho",

@@ -195,6 +195,7 @@
   "search_workers_name_position": "Search by workers name / position",
   "add_worker": "Add Worker",
   "add_bulk_workers": "Add Bulk Workers",
+  "worker_template": "Worker Template",
   "bulk_add_coming_soon": "Bulk add feature coming soon!",
   "worker_name": "Worker Name",
   "work_type": "Work Type",

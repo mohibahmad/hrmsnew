@@ -195,6 +195,7 @@
   "search_workers_name_position": "Buscar por nombre / posición",
   "add_worker": "Agregar trabajador",
   "add_bulk_workers": "Agregar trabajadores en lote",
+  "worker_template": "Plantilla de trabajador",
   "bulk_add_coming_soon": "¡Función de agregar en lote próximamente!",
   "worker_name": "Nombre del trabajador",
   "work_type": "Tipo de trabajo",

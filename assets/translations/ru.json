@@ -195,6 +195,7 @@
   "search_workers_name_position": "Поиск по имени / должности",
   "add_worker": "Добавить сотрудника",
   "add_bulk_workers": "Массовое добавление",
+  "worker_template": "Шаблон сотрудника",
   "bulk_add_coming_soon": "Функция массового добавления скоро будет доступна!",
   "worker_name": "Имя сотрудника",
   "work_type": "Тип работы",
