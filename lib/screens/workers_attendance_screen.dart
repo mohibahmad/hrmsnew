@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import 'home_screen.dart';
 import '../utils/logout_dialog.dart';
+import '../utils/snackbar_utils.dart';
 
 // --- STYLING CONSTANTS ---
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -822,15 +823,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     final reason = reasonController.text.trim();
                                     if (selectedStatus != 'Present' &&
                                         reason.isEmpty) {
-                                      ScaffoldMessenger.of(
+                                      FlashySnackBar.show(
                                         context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'please_enter_reason'.tr(),
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
+                                        message: 'please_enter_reason'.tr(),
+                                        isError: true,
                                       );
                                       return;
                                     }
@@ -940,33 +936,22 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
                                       if (!context.mounted) return;
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(
+                                      FlashySnackBar.show(
                                         context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'attendance_updated_success'.tr(
-                                              namedArgs: {'name': name},
-                                            ),
-                                          ),
-                                          backgroundColor: Colors.green,
+                                        message: 'attendance_updated_success'.tr(
+                                          namedArgs: {'name': name},
                                         ),
                                       );
                                     } catch (e) {
                                       if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
+                                      FlashySnackBar.show(
                                         context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'attendance_update_failed'.tr(
-                                              namedArgs: {
-                                                'error': e.toString(),
-                                              },
-                                            ),
-                                          ),
-                                          backgroundColor: Colors.red,
+                                        message: 'attendance_update_failed'.tr(
+                                          namedArgs: {
+                                            'error': e.toString(),
+                                          },
                                         ),
+                                        isError: true,
                                       );
                                     }
                                   },

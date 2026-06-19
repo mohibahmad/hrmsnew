@@ -180,6 +180,28 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       final today = DateTime.now();
       _joiningDate = '${_months[today.month - 1]} ${today.day}, ${today.year}';
     }
+
+    _nameController.addListener(_onControllerChanged);
+    _fatherNameController.addListener(_onControllerChanged);
+    _emailController.addListener(_onControllerChanged);
+    _phoneController.addListener(_onControllerChanged);
+    _nationalIdController.addListener(_onControllerChanged);
+    _religionController.addListener(_onControllerChanged);
+    _dobController.addListener(_onControllerChanged);
+    _genderController.addListener(_onControllerChanged);
+    _addressController.addListener(_onControllerChanged);
+    _positionController.addListener(_onControllerChanged);
+    _type1Controller.addListener(_onControllerChanged);
+    _type2Controller.addListener(_onControllerChanged);
+    _experienceLevelController.addListener(_onControllerChanged);
+    _educationController.addListener(_onControllerChanged);
+    _salaryTypeController.addListener(_onControllerChanged);
+    _currencyController.addListener(_onControllerChanged);
+    _salaryAmountController.addListener(_onControllerChanged);
+    _leavePolicyController.addListener(_onControllerChanged);
+    _annualLeavesController.addListener(_onControllerChanged);
+    _sickLeavesController.addListener(_onControllerChanged);
+    _casualLeavesController.addListener(_onControllerChanged);
   }
 
   Future<String?> _uploadToStorage(
@@ -294,6 +316,54 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     } catch (e) {
       debugPrint('Error picking CV: $e');
     }
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool _hasChanges() {
+    if (widget.workerToEdit == null) return true;
+    final edit = widget.workerToEdit!;
+
+    if (_nameController.text.trim() != (edit['name'] ?? '').toString().trim()) return true;
+    if (_fatherNameController.text.trim() != (edit['fatherName'] ?? '').toString().trim()) return true;
+    if (_emailController.text.trim() != (edit['email'] ?? '').toString().trim()) return true;
+    if (_phoneController.text.trim() != (edit['phone'] ?? '').toString().trim()) return true;
+    if (_nationalIdController.text.trim() != (edit['nationalId'] ?? '').toString().trim()) return true;
+    if (_religionController.text.trim() != (edit['religion'] ?? '').toString().trim()) return true;
+    if (_dobController.text.trim() != (edit['dob'] ?? '').toString().trim()) return true;
+    if (_genderController.text.trim() != (edit['gender'] ?? '').toString().trim()) return true;
+    if (_addressController.text.trim() != (edit['address'] ?? '').toString().trim()) return true;
+    if (_relationshipStatus != (edit['relationshipStatus'] ?? 'Single')) return true;
+
+    if (_positionController.text.trim() != (edit['position'] ?? '').toString().trim()) return true;
+    if (_type1Controller.text.trim() != (edit['type1'] ?? '').toString().trim()) return true;
+    if (_type2Controller.text.trim() != (edit['type2'] ?? '').toString().trim()) return true;
+    if (_experienceLevelController.text.trim() != (edit['experienceLevel'] ?? '').toString().trim()) return true;
+    if (_educationController.text.trim() != (edit['education'] ?? '').toString().trim()) return true;
+    if (_salaryTypeController.text.trim() != (edit['salaryType'] ?? '').toString().trim()) return true;
+    if (_currencyController.text.trim() != (edit['currency'] ?? '').toString().trim()) return true;
+    if (_salaryAmountController.text.trim() != (edit['salaryAmount'] ?? '').toString().trim()) return true;
+    if (_leavePolicyController.text.trim() != (edit['leavePolicy'] ?? '').toString().trim()) return true;
+    if (_annualLeavesController.text.trim() != (edit['annualLeaves'] ?? '').toString().trim()) return true;
+    if (_sickLeavesController.text.trim() != (edit['sickLeaves'] ?? '').toString().trim()) return true;
+    if (_casualLeavesController.text.trim() != (edit['casualLeaves'] ?? '').toString().trim()) return true;
+
+    final editJoiningDate = edit['joiningDate']?.toString();
+    if (_joiningDate != editJoiningDate) return true;
+
+    if (_profileImageBytes != null) return true;
+    if (_frontIdBytes != null) return true;
+    if (_backIdBytes != null) return true;
+    if (_cvBytes != null) return true;
+
+    final editCv = (edit['cv'] ?? '').toString();
+    if (_isCvUploaded == false && editCv.isNotEmpty) return true;
+
+    return false;
   }
 
   Future<void> _saveWorker() async {
@@ -635,9 +705,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                 ),
                 // Save Button (Blue state based on image 2)
                 Builder(builder: (context) {
+                  final bool isEditMode = widget.workerToEdit != null;
+                  final bool hasChanges = _hasChanges();
+
                   final bool hasFrontId = _frontIdBytes != null || (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
                   final bool hasCv = _cvBytes != null || (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
-                  final bool isSaveReady = _activeTabIndex == 2 && hasFrontId && hasCv;
+                  final bool isSaveReady = isEditMode
+                      ? hasChanges
+                      : (_activeTabIndex == 2 && hasFrontId && hasCv);
                   final bool canSave = isSaveReady && !_isSaving;
                   
                   return GestureDetector(
@@ -662,7 +737,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                           : Text(
                               'save'.tr(),
                               style: TextStyle(
-                                color: isSaveReady ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+                                color: isSaveReady ? const Color(0xFFFFFFFF) : const Color(0xFF555555),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                                 fontFamily: 'SF Pro Display',

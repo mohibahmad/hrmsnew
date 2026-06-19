@@ -239,7 +239,10 @@ class _HomeScreenState extends State<HomeScreen> {
           int fCount = 0;
           for (final doc in snap.docs) {
             final data = doc.data() as Map<String, dynamic>?;
-            final genderStr = (data?['gender'] ?? '').toString().trim().toLowerCase();
+            final genderStr = (data?['gender'] ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
             if (genderStr == 'female') {
               fCount++;
             } else {
@@ -756,7 +759,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
+      width: 270,
       color: const Color(0xFF0247C4),
       child: Column(
         children: [
@@ -770,9 +773,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 );
               },
               child: Container(
-                width: 220,
-                height: 181,
-                margin: const EdgeInsets.only(top: 29, left: 19, right: 19),
+                width: 238,
+                margin: const EdgeInsets.only(top: 29, left: 16, right: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
@@ -784,7 +786,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0xFFFFFFFF),
-                      blurRadius: 3.0,
+                      blurRadius: 0.5,
                       spreadRadius: 0.0,
                     ),
                   ],
@@ -805,31 +807,29 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           'upgrade_pro'.tr(),
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                             fontFamily: 'SF Pro Display',
-                            height: 1.0,
-                            letterSpacing: 0,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 10),
                     _buildCheckText('unlock_all_features'.tr()),
                     _buildCheckText('no_commitment'.tr()),
                     _buildCheckText('cancel_anytime'.tr()),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 10),
                     Stack(
                       clipBehavior: Clip.none,
                       alignment: Alignment.centerRight,
                       children: [
                         Container(
                           width: double.infinity,
-                          height: 40,
-                          padding: const EdgeInsets.only(left: 14, right: 46),
+                          height: 46,
+                          padding: const EdgeInsets.only(left: 16, right: 52),
                           decoration: BoxDecoration(
                             color: Color(0xFF000000),
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(23),
                             border: Border.all(
                               color: Color(0xFFFFFFFF),
                               width: 1.0,
@@ -846,13 +846,11 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.bold,
                                   fontFamily: 'SF Pro',
                                   height: 1.1,
-                                  letterSpacing: 0,
                                 ),
                               ),
-                              const SizedBox(height: 2),
                               Text(
                                 'subscribe_now'.tr(),
                                 maxLines: 1,
@@ -860,21 +858,21 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.bold,
                                   fontFamily: 'SF Pro',
                                   height: 1.1,
-                                  letterSpacing: 0,
                                 ),
                               ),
                             ],
                           ),
                         ),
                         Positioned(
-                          top: -6,
-                          bottom: -6,
+                          right: -5,
+                          top: -3,
+                          bottom: -3,
                           child: Container(
-                            width: 40,
-                            height: 40,
+                            width: 52,
+                            height: 52,
                             decoration: const BoxDecoration(
                               color: Color(0xFFFFFFFF),
                               shape: BoxShape.circle,
@@ -882,8 +880,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                             alignment: Alignment.center,
                             child: Image.asset(
                               "assets/right_back_arrow.png",
-                              width: 16,
-                              height: 16,
+                              width: 20,
+                              height: 20,
                               fit: BoxFit.contain,
                             ),
                           ),
@@ -1324,7 +1322,8 @@ class TotalWorkersCard extends StatelessWidget {
     final double malePercent = count > 0 ? (maleCount / count) : 0.0;
     final double femalePercent = count > 0 ? (femaleCount / count) : 0.0;
     final String malePercentStr = '${(malePercent * 100).toStringAsFixed(0)}%';
-    final String femalePercentStr = '${(femalePercent * 100).toStringAsFixed(0)}%';
+    final String femalePercentStr =
+        '${(femalePercent * 100).toStringAsFixed(0)}%';
 
     return Card(
       elevation: 0,
@@ -1448,12 +1447,16 @@ class TotalWorkersCard extends StatelessWidget {
                       _buildLegendItem(
                         Color(0xFF155ED5),
                         'male'.tr(),
-                        'workers_count'.tr(namedArgs: {'count': maleCount.toString()}),
+                        'workers_count'.tr(
+                          namedArgs: {'count': maleCount.toString()},
+                        ),
                       ),
                       _buildLegendItem(
                         Color(0xFFFF2D2D),
                         'female'.tr(),
-                        'workers_count'.tr(namedArgs: {'count': femaleCount.toString()}),
+                        'workers_count'.tr(
+                          namedArgs: {'count': femaleCount.toString()},
+                        ),
                       ),
                     ],
                   ),

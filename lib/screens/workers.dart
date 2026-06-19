@@ -60,7 +60,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
         children: [
           // --- LEFT SIDEBAR ---
           Container(
-            width: 290,
+            width: 270,
             color: sidebarBlue,
             child: Column(
               children: [
@@ -77,12 +77,11 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                       );
                     },
                     child: Container(
-                      width: 252,
-                      height: 218,
+                      width: 238,
                       margin: const EdgeInsets.only(
                         top: 29,
-                        left: 19,
-                        right: 19,
+                        left: 16,
+                        right: 16,
                       ),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -182,7 +181,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                 ),
                               ),
                               Positioned(
-                                right: 0,
+                                right: -5,
                                 top: -3,
                                 bottom: -3,
                                 child: Container(
