@@ -480,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
-                  height: 270,
+                  height: 220,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1380,9 +1380,9 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 3),
                   SizedBox(
-                    height: 130,
+                    height: 100,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -1460,7 +1460,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 3),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
