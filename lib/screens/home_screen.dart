@@ -1380,87 +1380,86 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  SizedBox(
-                    height: 100,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        RoundedDonutChart(
-                          malePercent: malePercent,
-                          femalePercent: femalePercent,
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Transform.translate(
-                              offset: const Offset(0, -8),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    malePercentStr,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF000000),
-                                      fontFamily: 'SF Pro Display',
+                  Expanded(
+                    child: Center(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          RoundedDonutChart(
+                            malePercent: malePercent,
+                            femalePercent: femalePercent,
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      malePercentStr,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    'male'.tr(),
-                                    style: const TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF000000),
-                                      fontFamily: 'SF Pro Display',
+                                    Text(
+                                      'male'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Transform.rotate(
-                              angle: 0.45,
-                              child: Container(
-                                width: 1.5,
-                                height: 30,
-                                color: const Color(0xFF000000),
+                              const SizedBox(width: 4),
+                              Transform.rotate(
+                                angle: 0.45,
+                                child: Container(
+                                  width: 1.5,
+                                  height: 30,
+                                  color: const Color(0xFF000000),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Transform.translate(
-                              offset: const Offset(0, 8),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    femalePercentStr,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF000000),
-                                      fontFamily: 'SF Pro Display',
+                              const SizedBox(width: 4),
+                              Transform.translate(
+                                offset: const Offset(0, 8),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      femalePercentStr,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    'female'.tr(),
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF000000),
-                                      fontFamily: 'SF Pro Display',
+                                    Text(
+                                      'female'.tr(),
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 3),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
