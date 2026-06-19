@@ -480,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
-                  height: 240,
+                  height: 270,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1346,18 +1346,25 @@ class TotalWorkersCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          SvgPicture.asset(
-                            'assets/workers_icon_slidebar.svg',
-                            height: 22,
-                            width: 22,
-                            color: const Color(0xFF155ED5),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/workers_icon_slidebar.svg',
+                              height: 20,
+                              width: 20,
+                              color: const Color(0xFF155ED5),
+                            ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Text(
                             'total_workers'.tr(),
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1367,7 +1374,7 @@ class TotalWorkersCard extends StatelessWidget {
                         '$count',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 22,
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
@@ -1386,61 +1393,67 @@ class TotalWorkersCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  malePercentStr,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF000000),
-                                    fontFamily: 'SF Pro Display',
+                            Transform.translate(
+                              offset: const Offset(0, -8),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    malePercentStr,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF000000),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  'male'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF64748B),
-                                    fontFamily: 'SF Pro Display',
+                                  Text(
+                                    'male'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF000000),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 2),
-                            Transform.rotate(
-                              angle: 0.35,
-                              child: Container(
-                                width: 1,
-                                height: 22,
-                                color: const Color(0xFF64748B),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 2),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  femalePercentStr,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF000000),
-                                    fontFamily: 'SF Pro Display',
+                            const SizedBox(width: 4),
+                            Transform.rotate(
+                              angle: 0.45,
+                              child: Container(
+                                width: 1.5,
+                                height: 30,
+                                color: const Color(0xFF000000),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Transform.translate(
+                              offset: const Offset(0, 8),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    femalePercentStr,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF000000),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  'female'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF64748B),
-                                    fontFamily: 'SF Pro Display',
+                                  Text(
+                                    'female'.tr(),
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF000000),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -1448,24 +1461,27 @@ class TotalWorkersCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildLegendItem(
-                        Color(0xFF155ED5),
-                        'male'.tr(),
-                        'workers_count'.tr(
-                          namedArgs: {'count': maleCount.toString()},
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildLegendItem(
+                          Color(0xFF155ED5),
+                          'male'.tr(),
+                          'workers_count'.tr(
+                            namedArgs: {'count': maleCount.toString()},
+                          ),
                         ),
-                      ),
-                      _buildLegendItem(
-                        Color(0xFFFF2D2D),
-                        'female'.tr(),
-                        'workers_count'.tr(
-                          namedArgs: {'count': femaleCount.toString()},
+                        _buildLegendItem(
+                          Color(0xFFFF2D2D),
+                          'female'.tr(),
+                          'workers_count'.tr(
+                            namedArgs: {'count': femaleCount.toString()},
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               )
@@ -1501,10 +1517,10 @@ class TotalWorkersCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: CircleAvatar(radius: 4, backgroundColor: color),
+          padding: const EdgeInsets.only(top: 6),
+          child: CircleAvatar(radius: 5, backgroundColor: color),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1513,15 +1529,17 @@ class TotalWorkersCard extends StatelessWidget {
               title,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 16,
                 fontFamily: 'SF Pro Display',
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               subtitle,
               style: const TextStyle(
-                fontSize: 10,
-                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -1646,32 +1664,40 @@ class SparklineCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: Color(0xFFFFFFFF),
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: !isEmpty
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      child: !isEmpty
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          SvgPicture.asset(
-                            lineColor == const Color(0xFF8BB1F3)
-                                ? 'assets/total_salary.svg'
-                                : 'assets/total_expense.svg',
-                            height: 22,
-                            width: 22,
-                            color: const Color(0xFF155ED5),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: SvgPicture.asset(
+                              lineColor == const Color(0xFF8BB1F3)
+                                  ? 'assets/total_salary.svg'
+                                  : 'assets/total_expense.svg',
+                              height: 20,
+                              width: 20,
+                              color: const Color(0xFF155ED5),
+                            ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Text(
                             title,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1684,7 +1710,7 @@ class SparklineCard extends StatelessWidget {
                             amount,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 22,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1700,10 +1726,10 @@ class SparklineCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 130,
-                    child: TweenAnimationBuilder<double>(
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: 1),
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.easeInOutCubic,
@@ -1811,7 +1837,6 @@ class SparklineCard extends StatelessWidget {
                   ],
                 ),
               ),
-      ),
     );
   }
 }
@@ -2127,22 +2152,30 @@ class AttendanceLineChart extends StatelessWidget {
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 45,
+                                  reservedSize: 55,
                                   interval: range.interval,
                                   getTitlesWidget: (value, meta) {
                                     const style = TextStyle(
-                                      color: Color(0xFF155ED5),
+                                      color: Color(0xFF0247C4),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'SF Pro Display',
                                     );
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
-                                      child: Text(
-                                        value.toInt().toString(),
-                                        style: style,
-                                        textAlign: TextAlign.right,
-                                      ),
+                                    return Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          value.toInt().toString(),
+                                          style: style,
+                                          textAlign: TextAlign.right,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 6,
+                                          height: 1.5,
+                                          color: const Color(0xFF939393),
+                                        ),
+                                      ],
                                     );
                                   },
                                 ),
@@ -2150,6 +2183,7 @@ class AttendanceLineChart extends StatelessWidget {
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
+                                  reservedSize: 32,
                                   interval: 1,
                                   getTitlesWidget: (value, meta) {
                                     final idx = value.toInt();
@@ -2157,17 +2191,25 @@ class AttendanceLineChart extends StatelessWidget {
                                       return const SizedBox.shrink();
                                     }
                                     const style = TextStyle(
-                                      color: Color(0xFF155ED5),
+                                      color: Color(0xFF0247C4),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'SF Pro Display',
                                     );
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 10.0),
-                                      child: Text(
-                                        chartData.labels[idx],
-                                        style: style,
-                                      ),
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 1.5,
+                                          height: 6,
+                                          color: const Color(0xFF939393),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          chartData.labels[idx],
+                                          style: style,
+                                        ),
+                                      ],
                                     );
                                   },
                                 ),
@@ -2177,10 +2219,10 @@ class AttendanceLineChart extends StatelessWidget {
                               show: true,
                               border: const Border(
                                 bottom: BorderSide(
-                                  color: Colors.black,
+                                  color: Color(0xFF939393),
                                   width: 1,
                                 ),
-                                left: BorderSide(color: Colors.black, width: 1),
+                                left: BorderSide(color: Color(0xFF939393), width: 1),
                               ),
                             ),
                             lineBarsData: [
@@ -2189,7 +2231,7 @@ class AttendanceLineChart extends StatelessWidget {
                                     .map((s) => FlSpot(s.x, s.y * animValue))
                                     .toList(),
                                 isCurved: false,
-                                color: const Color(0xFF23447F),
+                                color: const Color(0xFF21367E),
                                 barWidth: 2,
                                 dotData: FlDotData(
                                   show: true,
@@ -2197,14 +2239,14 @@ class AttendanceLineChart extends StatelessWidget {
                                       (spot, percent, barData, index) {
                                         return FlDotCirclePainter(
                                           radius: 4,
-                                          color: const Color(0xFF23447F),
+                                          color: const Color(0xFF21367E),
                                           strokeWidth: 0,
                                         );
                                       },
                                 ),
                                 belowBarData: BarAreaData(
                                   show: true,
-                                  color: const Color(0xFFDFE6FA),
+                                  color: const Color(0xFFDEE6FF),
                                 ),
                               ),
                             ],

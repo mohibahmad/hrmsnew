@@ -328,29 +328,66 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (widget.workerToEdit == null) return true;
     final edit = widget.workerToEdit!;
 
-    if (_nameController.text.trim() != (edit['name'] ?? '').toString().trim()) return true;
-    if (_fatherNameController.text.trim() != (edit['fatherName'] ?? '').toString().trim()) return true;
-    if (_emailController.text.trim() != (edit['email'] ?? '').toString().trim()) return true;
-    if (_phoneController.text.trim() != (edit['phone'] ?? '').toString().trim()) return true;
-    if (_nationalIdController.text.trim() != (edit['nationalId'] ?? '').toString().trim()) return true;
-    if (_religionController.text.trim() != (edit['religion'] ?? '').toString().trim()) return true;
-    if (_dobController.text.trim() != (edit['dob'] ?? '').toString().trim()) return true;
-    if (_genderController.text.trim() != (edit['gender'] ?? '').toString().trim()) return true;
-    if (_addressController.text.trim() != (edit['address'] ?? '').toString().trim()) return true;
-    if (_relationshipStatus != (edit['relationshipStatus'] ?? 'Single')) return true;
+    if (_nameController.text.trim() != (edit['name'] ?? '').toString().trim())
+      return true;
+    if (_fatherNameController.text.trim() !=
+        (edit['fatherName'] ?? '').toString().trim())
+      return true;
+    if (_emailController.text.trim() != (edit['email'] ?? '').toString().trim())
+      return true;
+    if (_phoneController.text.trim() != (edit['phone'] ?? '').toString().trim())
+      return true;
+    if (_nationalIdController.text.trim() !=
+        (edit['nationalId'] ?? '').toString().trim())
+      return true;
+    if (_religionController.text.trim() !=
+        (edit['religion'] ?? '').toString().trim())
+      return true;
+    if (_dobController.text.trim() != (edit['dob'] ?? '').toString().trim())
+      return true;
+    if (_genderController.text.trim() !=
+        (edit['gender'] ?? '').toString().trim())
+      return true;
+    if (_addressController.text.trim() !=
+        (edit['address'] ?? '').toString().trim())
+      return true;
+    if (_relationshipStatus != (edit['relationshipStatus'] ?? 'Single'))
+      return true;
 
-    if (_positionController.text.trim() != (edit['position'] ?? '').toString().trim()) return true;
-    if (_type1Controller.text.trim() != (edit['type1'] ?? '').toString().trim()) return true;
-    if (_type2Controller.text.trim() != (edit['type2'] ?? '').toString().trim()) return true;
-    if (_experienceLevelController.text.trim() != (edit['experienceLevel'] ?? '').toString().trim()) return true;
-    if (_educationController.text.trim() != (edit['education'] ?? '').toString().trim()) return true;
-    if (_salaryTypeController.text.trim() != (edit['salaryType'] ?? '').toString().trim()) return true;
-    if (_currencyController.text.trim() != (edit['currency'] ?? '').toString().trim()) return true;
-    if (_salaryAmountController.text.trim() != (edit['salaryAmount'] ?? '').toString().trim()) return true;
-    if (_leavePolicyController.text.trim() != (edit['leavePolicy'] ?? '').toString().trim()) return true;
-    if (_annualLeavesController.text.trim() != (edit['annualLeaves'] ?? '').toString().trim()) return true;
-    if (_sickLeavesController.text.trim() != (edit['sickLeaves'] ?? '').toString().trim()) return true;
-    if (_casualLeavesController.text.trim() != (edit['casualLeaves'] ?? '').toString().trim()) return true;
+    if (_positionController.text.trim() !=
+        (edit['position'] ?? '').toString().trim())
+      return true;
+    if (_type1Controller.text.trim() != (edit['type1'] ?? '').toString().trim())
+      return true;
+    if (_type2Controller.text.trim() != (edit['type2'] ?? '').toString().trim())
+      return true;
+    if (_experienceLevelController.text.trim() !=
+        (edit['experienceLevel'] ?? '').toString().trim())
+      return true;
+    if (_educationController.text.trim() !=
+        (edit['education'] ?? '').toString().trim())
+      return true;
+    if (_salaryTypeController.text.trim() !=
+        (edit['salaryType'] ?? '').toString().trim())
+      return true;
+    if (_currencyController.text.trim() !=
+        (edit['currency'] ?? '').toString().trim())
+      return true;
+    if (_salaryAmountController.text.trim() !=
+        (edit['salaryAmount'] ?? '').toString().trim())
+      return true;
+    if (_leavePolicyController.text.trim() !=
+        (edit['leavePolicy'] ?? '').toString().trim())
+      return true;
+    if (_annualLeavesController.text.trim() !=
+        (edit['annualLeaves'] ?? '').toString().trim())
+      return true;
+    if (_sickLeavesController.text.trim() !=
+        (edit['sickLeaves'] ?? '').toString().trim())
+      return true;
+    if (_casualLeavesController.text.trim() !=
+        (edit['casualLeaves'] ?? '').toString().trim())
+      return true;
 
     final editJoiningDate = edit['joiningDate']?.toString();
     if (_joiningDate != editJoiningDate) return true;
@@ -704,48 +741,59 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   ],
                 ),
                 // Save Button (Blue state based on image 2)
-                Builder(builder: (context) {
-                  final bool isEditMode = widget.workerToEdit != null;
-                  final bool hasChanges = _hasChanges();
+                Builder(
+                  builder: (context) {
+                    final bool isEditMode = widget.workerToEdit != null;
+                    final bool hasChanges = _hasChanges();
 
-                  final bool hasFrontId = _frontIdBytes != null || (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
-                  final bool hasCv = _cvBytes != null || (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
-                  final bool isSaveReady = isEditMode
-                      ? hasChanges
-                      : (_activeTabIndex == 2 && hasFrontId && hasCv);
-                  final bool canSave = isSaveReady && !_isSaving;
-                  
-                  return GestureDetector(
-                    onTap: canSave ? _saveWorker : null,
-                    child: Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: BoxDecoration(
-                        color: isSaveReady ? const Color(0xFF0B50C3) : const Color(0xFFE6EAEF),
-                        borderRadius: BorderRadius.circular(6),
+                    final bool hasFrontId =
+                        _frontIdBytes != null ||
+                        (_existingFrontIdUrl != null &&
+                            _existingFrontIdUrl!.isNotEmpty);
+                    final bool hasCv =
+                        _cvBytes != null ||
+                        (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
+                    final bool isSaveReady = isEditMode
+                        ? hasChanges
+                        : (_activeTabIndex == 2 && hasFrontId && hasCv);
+                    final bool canSave = isSaveReady && !_isSaving;
+
+                    return GestureDetector(
+                      onTap: canSave ? _saveWorker : null,
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: isSaveReady
+                              ? const Color(0xFF0B50C3)
+                              : const Color(0xFFE6EAEF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        alignment: Alignment.center,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                'save'.tr(),
+                                style: TextStyle(
+                                  color: isSaveReady
+                                      ? const Color(0xFFFFFFFF)
+                                      : const Color(0xFF555555),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
                       ),
-                      alignment: Alignment.center,
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              'save'.tr(),
-                              style: TextStyle(
-                                color: isSaveReady ? const Color(0xFFFFFFFF) : const Color(0xFF555555),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                    ),
-                  );
-                }),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -1055,7 +1103,6 @@ class WorkerDetailFormSection extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // === LEFT: Input Form Area ===
             Expanded(
               flex: 2,
               child: Container(
