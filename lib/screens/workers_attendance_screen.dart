@@ -10,6 +10,7 @@ import '../services/dummy_data.dart';
 import 'home_screen.dart';
 import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/image_utils.dart';
 
 // --- STYLING CONSTANTS ---
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -248,13 +249,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         ),
                                                       )
                                                     else
-                                                      ...filteredWorkers.map(
-                                                        (worker) => WorkerListItem(
-                                                          data: worker,
+                                                      ...filteredWorkers.asMap().entries.map(
+                                                        (entry) => WorkerListItem(
+                                                          data: entry.value,
+                                                          index: entry.key,
                                                           onMarkAttendance: () =>
                                                               _showMarkAttendanceDialog(
                                                                 context,
-                                                                worker,
+                                                                entry.value,
                                                               ),
                                                         ),
                                                       ),
@@ -320,10 +322,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             : SingleChildScrollView(
                                                 child: Column(
                                                   children: _todayAttendance
+                                                      .asMap()
+                                                      .entries
                                                       .map(
-                                                        (att) =>
+                                                        (entry) =>
                                                             TodayAttendanceItem(
-                                                              data: att,
+                                                              data: entry.value,
+                                                              index: entry.key,
                                                             ),
                                                       )
                                                       .toList(),
@@ -613,7 +618,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             // Profile Image: 140x140, circular with 2px border
-                            Container(
+                             Container(
                               width: 140,
                               height: 140,
                               decoration: BoxDecoration(
@@ -622,9 +627,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   color: Color(0xFFFFFFFF),
                                   width: 2,
                                 ),
-                                image: const DecorationImage(
-                                  image: AssetImage(
-                                    'assets/profile_placeholder.png',
+                                image: DecorationImage(
+                                  image: _getProfileImage(
+                                    data['profileImage']?.toString(),
+                                    data['email']?.toString(),
+                                    0,
                                   ),
                                   fit: BoxFit.cover,
                                 ),
@@ -671,17 +678,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 10),
-                                    const Row(
+                                    Row(
                                       children: [
-                                        Icon(
+                                        const Icon(
                                           Icons.phone,
                                           color: Color(0xFFFFFFFF),
                                           size: 16,
                                         ),
-                                        SizedBox(width: 10),
+                                        const SizedBox(width: 10),
                                         Text(
-                                          '123 5434567',
-                                          style: TextStyle(
+                                          (data['phone'] ?? data['contact'] ?? '').toString(),
+                                          style: const TextStyle(
                                             color: Color(0xFFFFFFFF),
                                             fontSize: 14,
                                             fontFamily: 'SF Pro Display',
@@ -914,6 +921,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                       'Full Time',
                                                   'type': type,
                                                   'desc': desc,
+                                                  'profileImage':
+                                                      data['profileImage'],
                                                 },
                                               );
                                         } else {
@@ -931,6 +940,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 data['type1'] ?? 'Full Time',
                                             'type': type,
                                             'desc': desc,
+                                            'profileImage':
+                                                data['profileImage'],
                                           });
                                         }
                                       }
@@ -1031,11 +1042,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
 class WorkerListItem extends StatelessWidget {
   final Map<String, dynamic> data;
+  final int index;
   final VoidCallback onMarkAttendance;
 
   const WorkerListItem({
     super.key,
     required this.data,
+    required this.index,
     required this.onMarkAttendance,
   });
 
@@ -1052,7 +1065,11 @@ class WorkerListItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundImage: const AssetImage('assets/profile_placeholder.png'),
+            backgroundImage: _getProfileImage(
+              data['profileImage']?.toString(),
+              data['email']?.toString(),
+              index,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -1146,8 +1163,13 @@ class WorkerListItem extends StatelessWidget {
 
 class TodayAttendanceItem extends StatelessWidget {
   final Map<String, dynamic> data;
+  final int index;
 
-  const TodayAttendanceItem({super.key, required this.data});
+  const TodayAttendanceItem({
+    super.key,
+    required this.data,
+    required this.index,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1165,8 +1187,10 @@ class TodayAttendanceItem extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundImage: const AssetImage(
-                  'assets/profile_placeholder.png',
+                backgroundImage: _getProfileImage(
+                  data['profileImage']?.toString(),
+                  data['email']?.toString(),
+                  index,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1298,4 +1322,8 @@ class PaginationWidget extends StatelessWidget {
       ],
     );
   }
+}
+
+ImageProvider _getProfileImage(String? url, String? email, int index) {
+  return getProfileImage(url, email, index);
 }

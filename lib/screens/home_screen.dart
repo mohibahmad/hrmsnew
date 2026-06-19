@@ -4,6 +4,7 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -145,6 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _timeoffSub;
   int _totalAttendanceCount = 0;
   int _totalTimeoffCount = 0;
+  List<Map<String, dynamic>> _attendanceDocs = [];
 
   @override
   void dispose() {
@@ -210,6 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
+        _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
         _totalAttendanceCount = DummyData.attendance.length;
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
@@ -260,6 +263,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _attendanceSub = firestore.attendanceStream.listen((snap) {
         if (mounted) {
           setState(() {
+            _attendanceDocs = snap.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
             _totalAttendanceCount = snap.docs.length;
           });
         }
@@ -552,6 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: AttendanceLineChart(
                           period: _selectedPeriod,
                           isEmpty: _totalAttendanceCount == 0,
+                          attendanceDocs: _attendanceDocs,
                         ),
                       ),
                       const SizedBox(width: 20),
@@ -1809,14 +1816,234 @@ class SparklineCard extends StatelessWidget {
   }
 }
 
+class ChartData {
+  final List<String> labels;
+  final List<double> values;
+  ChartData(this.labels, this.values);
+}
+
+class NiceChartRange {
+  final double maxY;
+  final double interval;
+  NiceChartRange(this.maxY, this.interval);
+}
+
+NiceChartRange getNiceRange(double rawMax) {
+  if (rawMax <= 0) {
+    return NiceChartRange(5, 1);
+  }
+  if (rawMax <= 5) {
+    return NiceChartRange(5, 1);
+  } else if (rawMax <= 10) {
+    return NiceChartRange(10, 2);
+  } else if (rawMax <= 25) {
+    return NiceChartRange(25, 5);
+  } else if (rawMax <= 50) {
+    return NiceChartRange(50, 10);
+  } else if (rawMax <= 100) {
+    return NiceChartRange(100, 20);
+  } else if (rawMax <= 250) {
+    return NiceChartRange(250, 50);
+  } else if (rawMax <= 500) {
+    return NiceChartRange(500, 100);
+  } else if (rawMax <= 1000) {
+    return NiceChartRange(1000, 200);
+  } else if (rawMax <= 2500) {
+    return NiceChartRange(2500, 500);
+  } else if (rawMax <= 5000) {
+    return NiceChartRange(5000, 1000);
+  } else {
+    double roughStep = rawMax / 5.0;
+    double log10Val = (roughStep.truncate().toString().length - 1).toDouble();
+    double power = 1.0;
+    for (int i = 0; i < log10Val; i++) {
+      power *= 10;
+    }
+    double normalized = roughStep / power;
+    double step;
+    if (normalized < 1.5) {
+      step = 1.0 * power;
+    } else if (normalized < 3.5) {
+      step = 2.0 * power;
+    } else if (normalized < 7.5) {
+      step = 5.0 * power;
+    } else {
+      step = 10.0 * power;
+    }
+    double maxY = ((rawMax / step).ceil() * step);
+    return NiceChartRange(maxY, step);
+  }
+}
+
+ChartData getChartData(String period, List<Map<String, dynamic>> docs, bool isGuest) {
+  final now = DateTime.now();
+  
+  if (isGuest || docs.isEmpty) {
+    switch (period) {
+      case 'Week':
+        final labels = <String>[];
+        final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
+        for (int i = 6; i >= 0; i--) {
+          final date = now.subtract(Duration(days: i));
+          labels.add(DateFormat('E').format(date).toUpperCase());
+        }
+        return ChartData(labels, values);
+        
+      case 'Month':
+        final labels = ['W1', 'W2', 'W3', 'W4'];
+        final values = [48.0, 55.0, 50.0, 62.0];
+        return ChartData(labels, values);
+        
+      case '3 Month':
+        final labels = <String>[];
+        final values = [210.0, 245.0, 230.0];
+        for (int i = 2; i >= 0; i--) {
+          final date = DateTime(now.year, now.month - i, 1);
+          labels.add(DateFormat('MMM').format(date).toUpperCase());
+        }
+        return ChartData(labels, values);
+        
+      case '6 Month':
+        final labels = <String>[];
+        final values = [420.0, 450.0, 480.0, 510.0, 490.0, 530.0];
+        for (int i = 5; i >= 0; i--) {
+          final date = DateTime(now.year, now.month - i, 1);
+          labels.add(DateFormat('MMM').format(date).toUpperCase());
+        }
+        return ChartData(labels, values);
+        
+      case 'Yearly':
+      default:
+        final labels = <String>[];
+        final dummyValues = [95.0, 120.0, 240.0, 330.0, 290.0, 510.0, 960.0, 850.0, 910.0, 980.0, 1020.0, 1050.0];
+        final values = <double>[];
+        for (int i = 0; i < 12; i++) {
+          final date = DateTime(now.year, i + 1, 1);
+          labels.add(DateFormat('MMM').format(date).toUpperCase());
+          values.add(dummyValues[i]);
+        }
+        return ChartData(labels, values);
+    }
+  }
+
+  final parsedRecords = <DateTime>[];
+  for (final doc in docs) {
+    final createdAt = doc['createdAt'];
+    DateTime? dt;
+    if (createdAt is Timestamp) {
+      dt = createdAt.toDate();
+    } else if (createdAt is String) {
+      dt = DateTime.tryParse(createdAt);
+    }
+    if (dt != null) {
+      parsedRecords.add(dt);
+    }
+  }
+
+  switch (period) {
+    case 'Week':
+      final labels = <String>[];
+      final values = List.filled(7, 0.0);
+      final startOfWeek = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+      
+      for (int i = 6; i >= 0; i--) {
+        final date = now.subtract(Duration(days: i));
+        labels.add(DateFormat('E').format(date).toUpperCase());
+      }
+      
+      for (final dt in parsedRecords) {
+        final difference = dt.difference(startOfWeek).inDays;
+        if (difference >= 0 && difference < 7) {
+          values[difference] += 1.0;
+        }
+      }
+      return ChartData(labels, values);
+
+    case 'Month':
+      final labels = ['W1', 'W2', 'W3', 'W4'];
+      final values = List.filled(4, 0.0);
+      final startOfPeriod = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 27));
+      
+      for (final dt in parsedRecords) {
+        final difference = dt.difference(startOfPeriod).inDays;
+        if (difference >= 0 && difference < 28) {
+          final weekIdx = difference ~/ 7;
+          if (weekIdx >= 0 && weekIdx < 4) {
+            values[weekIdx] += 1.0;
+          }
+        }
+      }
+      return ChartData(labels, values);
+
+    case '3 Month':
+      final labels = <String>[];
+      final values = List.filled(3, 0.0);
+      
+      for (int i = 2; i >= 0; i--) {
+        final date = DateTime(now.year, now.month - i, 1);
+        labels.add(DateFormat('MMM').format(date).toUpperCase());
+      }
+      
+      for (final dt in parsedRecords) {
+        for (int i = 0; i < 3; i++) {
+          final targetDate = DateTime(now.year, now.month - (2 - i), 1);
+          if (dt.year == targetDate.year && dt.month == targetDate.month) {
+            values[i] += 1.0;
+            break;
+          }
+        }
+      }
+      return ChartData(labels, values);
+
+    case '6 Month':
+      final labels = <String>[];
+      final values = List.filled(6, 0.0);
+      
+      for (int i = 5; i >= 0; i--) {
+        final date = DateTime(now.year, now.month - i, 1);
+        labels.add(DateFormat('MMM').format(date).toUpperCase());
+      }
+      
+      for (final dt in parsedRecords) {
+        for (int i = 0; i < 6; i++) {
+          final targetDate = DateTime(now.year, now.month - (5 - i), 1);
+          if (dt.year == targetDate.year && dt.month == targetDate.month) {
+            values[i] += 1.0;
+            break;
+          }
+        }
+      }
+      return ChartData(labels, values);
+
+    case 'Yearly':
+    default:
+      final labels = <String>[];
+      final values = List.filled(12, 0.0);
+      
+      for (int i = 0; i < 12; i++) {
+        final date = DateTime(now.year, i + 1, 1);
+        labels.add(DateFormat('MMM').format(date).toUpperCase());
+      }
+      
+      for (final dt in parsedRecords) {
+        if (dt.year == now.year) {
+          values[dt.month - 1] += 1.0;
+        }
+      }
+      return ChartData(labels, values);
+  }
+}
+
 class AttendanceLineChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
+  final List<Map<String, dynamic>> attendanceDocs;
 
   const AttendanceLineChart({
     super.key,
     required this.period,
     this.isEmpty = false,
+    this.attendanceDocs = const [],
   });
 
   @override
@@ -1847,30 +2074,22 @@ class AttendanceLineChart extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeInOutCubic,
                       builder: (context, animValue, child) {
-                        final double m = period == 'Week'
-                            ? 0.4
-                            : period == 'Month'
-                            ? 0.6
-                            : period == '3 Month'
-                            ? 0.8
-                            : period == '6 Month'
-                            ? 0.9
-                            : 1.0;
-                        final spots = [
-                          FlSpot(0, 0),
-                          FlSpot(1, 0.4 * m),
-                          FlSpot(2, 1.8 * m),
-                          FlSpot(3, 2.8 * m),
-                          FlSpot(4, 2.4 * m),
-                          FlSpot(5, 5 * m),
-                          FlSpot(6, 7 * m),
-                        ];
+                        final chartData = getChartData(period, attendanceDocs, AuthService().currentUser?.isAnonymous ?? false);
+                        final double rawMaxY = chartData.values.isEmpty
+                            ? 1.0
+                            : chartData.values.reduce((a, b) => a > b ? a : b);
+                        final range = getNiceRange(rawMaxY);
+                        final spots = List.generate(
+                          chartData.values.length,
+                          (i) => FlSpot(i.toDouble(), chartData.values[i]),
+                        );
+
                         return LineChart(
                           LineChartData(
                             minX: 0,
-                            maxX: 6,
+                            maxX: (spots.length - 1).toDouble(),
                             minY: 0,
-                            maxY: 7,
+                            maxY: range.maxY,
                             lineTouchData: LineTouchData(
                               touchTooltipData: LineTouchTooltipData(
                                 getTooltipColor: (spot) =>
@@ -1908,7 +2127,8 @@ class AttendanceLineChart extends StatelessWidget {
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 40,
+                                  reservedSize: 45,
+                                  interval: range.interval,
                                   getTitlesWidget: (value, meta) {
                                     const style = TextStyle(
                                       color: Color(0xFF155ED5),
@@ -1916,78 +2136,38 @@ class AttendanceLineChart extends StatelessWidget {
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'SF Pro Display',
                                     );
-                                    String text;
-                                    switch (value.toInt()) {
-                                      case 0:
-                                        text = '0';
-                                        break;
-                                      case 1:
-                                        text = '20';
-                                        break;
-                                      case 2:
-                                        text = '40';
-                                        break;
-                                      case 3:
-                                        text = '60';
-                                        break;
-                                      case 4:
-                                        text = '80';
-                                        break;
-                                      case 5:
-                                        text = '100';
-                                        break;
-                                      case 6:
-                                        text = '120';
-                                        break;
-                                      case 7:
-                                        text = '140';
-                                        break;
-                                      default:
-                                        return Container();
-                                    }
-                                    return Text(text, style: style);
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8.0),
+                                      child: Text(
+                                        value.toInt().toString(),
+                                        style: style,
+                                        textAlign: TextAlign.right,
+                                      ),
+                                    );
                                   },
                                 ),
                               ),
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
+                                  interval: 1,
                                   getTitlesWidget: (value, meta) {
+                                    final idx = value.toInt();
+                                    if (idx < 0 || idx >= chartData.labels.length) {
+                                      return const SizedBox.shrink();
+                                    }
                                     const style = TextStyle(
                                       color: Color(0xFF155ED5),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'SF Pro Display',
                                     );
-                                    String text;
-                                    switch (value.toInt()) {
-                                      case 0:
-                                        text = 'JAN';
-                                        break;
-                                      case 1:
-                                        text = 'FEB';
-                                        break;
-                                      case 2:
-                                        text = 'MAR';
-                                        break;
-                                      case 3:
-                                        text = 'APR';
-                                        break;
-                                      case 4:
-                                        text = 'MAY';
-                                        break;
-                                      case 5:
-                                        text = 'JUN';
-                                        break;
-                                      case 6:
-                                        text = 'JUL';
-                                        break;
-                                      default:
-                                        return Container();
-                                    }
                                     return Padding(
                                       padding: const EdgeInsets.only(top: 10.0),
-                                      child: Text(text, style: style),
+                                      child: Text(
+                                        chartData.labels[idx],
+                                        style: style,
+                                      ),
                                     );
                                   },
                                 ),

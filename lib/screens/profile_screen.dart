@@ -133,10 +133,7 @@ class ProfileTopHeader extends StatelessWidget {
                 ),
               ),
             ],
-            child: CircleAvatar(
-              radius: 21,
-              backgroundImage: const AssetImage('assets/profile_pic.png'),
-            ),
+            child: const UserAvatar(radius: 21),
           ),
         ],
       ),

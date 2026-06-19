@@ -11,6 +11,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../utils/image_utils.dart';
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -57,6 +58,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
           data['dateLoaned'] ?? '',
           data['dateReturned'] ?? '',
           data['isReturned'] ?? false,
+          profileImage: data['profileImage']?.toString(),
+          email: data['email']?.toString(),
         );
       }).toList();
     } else {
@@ -89,6 +92,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   data['dateReturned'] ?? '',
                   data['isReturned'] ?? false,
                   id: doc.id,
+                  profileImage: data['profileImage']?.toString(),
+                  email: data['email']?.toString(),
                 );
               }).toList();
               _isLoading = false;
@@ -226,11 +231,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   isReturned
                                       ? formatDate(returnedDate)
                                       : 'in_use'.tr(),
-                                      isReturned,
-                                    ),
-                                  );
-                                  DummyData.assets.insert(0, newAsset);
-                                });
+                                  isReturned,
+                                ),
+                              );
+                              DummyData.assets.insert(0, newAsset);
+                            });
                               } else {
                                 await FirestoreService().addAsset(assetMap);
                               }
@@ -951,11 +956,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: AssetImage(
-                    index % 2 == 0
-                        ? 'assets/profileimage.png'
-                        : 'assets/boy.png',
-                  ),
+                  backgroundImage: getProfileImage(data.profileImage, data.email, index),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1292,6 +1293,9 @@ class AssetData {
   final String dateReturned;
   final bool isReturned;
 
+  final String? profileImage;
+  final String? email;
+
   AssetData(
     this.name,
     this.position,
@@ -1300,5 +1304,7 @@ class AssetData {
     this.dateReturned,
     this.isReturned, {
     this.id,
+    this.profileImage,
+    this.email,
   });
 }

@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../utils/image_utils.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -29,32 +30,119 @@ class _PayrollScreenState extends State<PayrollScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _payrollDocs = [];
+  List<Map<String, dynamic>> _workersList = [];
+  List<Map<String, dynamic>> _rawPayrollDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 4;
   StreamSubscription? _payrollSub;
+  StreamSubscription? _workersSub;
 
   @override
   void dispose() {
     _payrollSub?.cancel();
+    _workersSub?.cancel();
     super.dispose();
+  }
+
+  void _combinePayroll() {
+    if (_workersList.isEmpty) {
+      _payrollDocs = _rawPayrollDocs;
+      _isLoading = false;
+      return;
+    }
+
+    final combined = <Map<String, dynamic>>[];
+    for (var worker in _workersList) {
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+      final payrollRecord = _rawPayrollDocs.firstWhere(
+        (p) {
+          final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+          final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+          return (email.isNotEmpty && pEmail == email) || (name.isNotEmpty && pName == name);
+        },
+        orElse: () => {},
+      );
+
+      if (payrollRecord.isNotEmpty) {
+        combined.add({
+          ...payrollRecord,
+          'profileImage': worker['profileImage'] ?? payrollRecord['profileImage'],
+          'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
+        });
+      } else {
+        final hash = email.hashCode.abs();
+        final days = 200 + (hash % 50);
+        final abs = 1 + (hash % 10);
+        final lvs = 2 + (hash % 12);
+        final ot = hash % 15;
+        final salaries = ['\$ 45,000', '\$ 55,000', '\$ 65,000', '\$ 75,000', '\$ 85,000', '\$ 95,000', '\$ 110,000'];
+        final sal = salaries[hash % salaries.length];
+
+        combined.add({
+          'name': worker['name'] ?? '',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? '',
+          'contact': worker['phone'] ?? '',
+          'profileImage': worker['profileImage'],
+          'phone': worker['phone'] ?? '',
+          'status': 'Active',
+          'totalWorkDays': '$days',
+          'absents': abs < 10 ? '0$abs' : '$abs',
+          'leaves': lvs < 10 ? '0$lvs' : '$lvs',
+          'overtimeDays': ot < 10 ? '0$ot' : '$ot',
+          'salary': sal,
+          'id': 'payroll_${worker['id'] ?? email}',
+        });
+      }
+    }
+
+    for (var p in _rawPayrollDocs) {
+      final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+      final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+      final existsInCombined = combined.any((c) {
+        final cEmail = (c['email'] ?? '').toString().trim().toLowerCase();
+        final cName = (c['name'] ?? '').toString().trim().toLowerCase();
+        return (pEmail.isNotEmpty && cEmail == pEmail) || (pName.isNotEmpty && cName == pName);
+      });
+      if (!existsInCombined) {
+        combined.add(p);
+      }
+    }
+
+    _payrollDocs = combined;
+    _isLoading = false;
   }
 
   @override
   void initState() {
     super.initState();
     _payrollDocs = [];
+    _workersList = [];
+    _rawPayrollDocs = [];
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
+      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workersList = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            _combinePayroll();
+          });
+        }
+      });
       _payrollSub = FirestoreService().payrollStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
-              _payrollDocs = snapshot.docs
+              _rawPayrollDocs = snapshot.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
-              _isLoading = false;
+              _combinePayroll();
             });
           }
         },
@@ -411,10 +499,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: AssetImage(
-                    index % 2 == 0
-                        ? 'assets/profileimage.png'
-                        : 'assets/boy.png',
+                  backgroundImage: getProfileImage(
+                    doc['profileImage']?.toString(),
+                    doc['email']?.toString(),
+                    index,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -457,7 +545,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              (doc['contact'] ?? '').toString(),
+              (doc['phone'] ?? doc['contact'] ?? '').toString(),
               style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black,
@@ -501,15 +589,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data) {
-    final String name = (data['name'] ?? 'Mohib Ahmad').toString();
-    final String email = (data['email'] ?? 'sarakhan65@gmail.com').toString();
-    final String contact = (data['contact'] ?? '123 5434567').toString();
+    final String name = (data['name'] ?? '').toString();
+    final String email = (data['email'] ?? '').toString();
+    final String contact = (data['contact'] ?? '').toString();
     final String status = (data['status'] ?? 'Active').toString();
-    final String totalWorkDays = (data['totalWorkDays'] ?? '224').toString();
-    final String absents = (data['absents'] ?? '09').toString();
-    final String leaves = (data['leaves'] ?? '05').toString();
-    final String overtimeDays = (data['overtimeDays'] ?? '08').toString();
-    final String salary = (data['salary'] ?? '\$ 50,000').toString();
+    final String totalWorkDays = (data['totalWorkDays'] ?? '').toString();
+    final String absents = (data['absents'] ?? '').toString();
+    final String leaves = (data['leaves'] ?? '').toString();
+    final String overtimeDays = (data['overtimeDays'] ?? '').toString();
+    final String salary = (data['salary'] ?? '').toString();
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;

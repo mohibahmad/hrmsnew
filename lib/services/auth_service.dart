@@ -164,31 +164,78 @@ class UserAvatar extends StatelessWidget {
     return ValueListenableBuilder<String?>(
       valueListenable: AuthService.profilePicNotifier,
       builder: (context, photoUrl, _) {
+        final double size = radius * 2;
         final hasImage = photoUrl != null && photoUrl.isNotEmpty;
-        ImageProvider? provider;
+        
+        Widget imageWidget;
         if (hasImage) {
           if (photoUrl.startsWith('http')) {
-            provider = NetworkImage(photoUrl);
+            imageWidget = Image.network(
+              photoUrl,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+            );
           } else if (photoUrl.startsWith('data:image')) {
             try {
               final String base64Content = photoUrl.substring(
                 photoUrl.indexOf(',') + 1,
               );
-              provider = MemoryImage(base64Decode(base64Content));
+              imageWidget = Image.memory(
+                base64Decode(base64Content),
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+              );
             } catch (e) {
-              provider = const AssetImage('assets/profile_pic.png');
+              imageWidget = _buildFallback(size);
             }
           } else {
-            provider = FileImage(File(photoUrl));
+            imageWidget = Image.file(
+              File(photoUrl),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+            );
           }
         } else {
-          provider = const AssetImage('assets/profile_pic.png');
+          imageWidget = _buildFallback(size);
         }
 
-        return CircleAvatar(
-          radius: radius,
-          backgroundColor: Colors.transparent,
-          backgroundImage: provider,
+        return Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.transparent,
+          ),
+          child: ClipOval(
+            child: imageWidget,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFallback(double size) {
+    return Image.asset(
+      'assets/profile_pic.png',
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          width: size,
+          height: size,
+          color: const Color(0xFFE2E8F0),
+          child: Icon(
+            Icons.person,
+            size: size * 0.6,
+            color: const Color(0xFF64748B),
+          ),
         );
       },
     );

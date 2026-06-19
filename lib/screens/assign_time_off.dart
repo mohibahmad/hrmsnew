@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart' hide GestureDetector;
@@ -30,10 +31,100 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   late DateTime _calendarMonth;
   final TextEditingController _notesController = TextEditingController();
 
+  List<Map<String, dynamic>> _workers = [];
+  Map<String, dynamic>? _selectedWorker;
+  bool _loadingWorkers = true;
+  StreamSubscription? _workersSub;
+
   @override
   void initState() {
     super.initState();
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+    _loadWorkers();
+  }
+
+  void _loadWorkers() {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        _workers = DummyData.workers;
+        if (_workers.isNotEmpty) {
+          _selectedWorker = _workers.first;
+        }
+        _loadingWorkers = false;
+      });
+    } else {
+      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workers = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            if (_workers.isNotEmpty) {
+              if (_selectedWorker == null || !_workers.any((w) => w['email'] == _selectedWorker!['email'])) {
+                _selectedWorker = _workers.first;
+              }
+            } else {
+              _selectedWorker = null;
+            }
+            _loadingWorkers = false;
+          });
+        }
+      }, onError: (e) {
+        if (mounted) {
+          setState(() {
+            _loadingWorkers = false;
+          });
+        }
+      });
+    }
+  }
+
+  Widget _buildWorkerDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'select_worker'.tr() == 'select_worker' ? 'Select Worker' : 'select_worker'.tr(),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF000000),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<Map<String, dynamic>>(
+              isExpanded: true,
+              value: _selectedWorker,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
+              hint: const Text('Select a worker'),
+              items: _workers.map((worker) {
+                return DropdownMenuItem<Map<String, dynamic>>(
+                  value: worker,
+                  child: Text('${worker['name'] ?? ''} (${worker['position'] ?? ''})'),
+                );
+              }).toList(),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() {
+                    _selectedWorker = v;
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   // Helper to get month name
@@ -134,6 +225,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   @override
   void dispose() {
     _notesController.dispose();
+    _workersSub?.cancel();
     super.dispose();
   }
 
@@ -302,6 +394,23 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_loadingWorkers)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_workers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                'No workers found. Please add workers first.',
+                style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold),
+              ),
+            )
+          else ...[
+            _buildWorkerDropdown(),
+            const SizedBox(height: 20),
+          ],
           _buildTopForm(),
           const SizedBox(height: 32),
           Row(
@@ -367,12 +476,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 elevation: 0,
               ),
               onPressed: () async {
+                if (_selectedWorker == null) {
+                  FlashySnackBar.show(context, message: 'Please select a worker first');
+                  return;
+                }
                 final isGuest = AuthService().currentUser?.isAnonymous ?? false;
                 final recordMap = {
-                  'name': 'guest_name'.tr(),
-                  'email': 'guest_email'.tr(),
-                  'position': 'guest_position'.tr(),
-                  'contact': 'guest_contact'.tr(),
+                  'name': _selectedWorker!['name'] ?? 'Worker',
+                  'email': _selectedWorker!['email'] ?? '',
+                  'position': _selectedWorker!['position'] ?? 'Worker',
+                  'phone': _selectedWorker!['phone'] ?? '',
                   'action': _timeOffType,
                 };
                 if (isGuest) {

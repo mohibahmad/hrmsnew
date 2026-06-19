@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
@@ -11,6 +10,7 @@ import '../services/dummy_data.dart';
 
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
+import '../utils/image_utils.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/snackbar_utils.dart';
 
@@ -35,6 +35,7 @@ class AttendanceRecord {
   final String attendanceType;
   final String workType;
   final String? profileImage;
+  final String? phone;
 
   AttendanceRecord({
     required this.name,
@@ -44,6 +45,7 @@ class AttendanceRecord {
     this.attendanceType = 'Remote',
     this.workType = 'Full Time',
     this.profileImage,
+    this.phone,
   });
 }
 
@@ -68,44 +70,116 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _selectedTab = 'All';
   String _selectedTimeframe = 'Week';
   List<Map<String, dynamic>> _attendanceDocs = [];
+  List<Map<String, dynamic>> _workersList = [];
+  List<Map<String, dynamic>> _rawAttendanceDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
   StreamSubscription? _attendanceSub;
+  StreamSubscription? _workersSub;
 
   @override
   void dispose() {
     _attendanceSub?.cancel();
+    _workersSub?.cancel();
     super.dispose();
+  }
+
+  void _combineAttendance() {
+    if (_workersList.isEmpty && _rawAttendanceDocs.isEmpty) {
+      _attendanceDocs = [];
+      _isLoading = false;
+      return;
+    }
+
+    final combined = <Map<String, dynamic>>[];
+
+    for (var worker in _workersList) {
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+      final attendanceRecord = _rawAttendanceDocs.firstWhere(
+        (att) {
+          final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+          final attName = (att['name'] ?? '').toString().trim().toLowerCase();
+          return (email.isNotEmpty && attEmail == email) || (name.isNotEmpty && attName == name);
+        },
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (attendanceRecord.isNotEmpty) {
+        combined.add({
+          ...attendanceRecord,
+          'name': worker['name'] ?? attendanceRecord['name'],
+          'role': worker['position'] ?? attendanceRecord['role'] ?? '',
+          'profileImage': worker['profileImage'],
+          'phone': worker['phone'] ?? '',
+        });
+      } else {
+        combined.add({
+          'name': worker['name'] ?? 'Worker',
+          'email': worker['email'] ?? '',
+          'role': worker['position'] ?? '',
+          'attendanceType': worker['type2'] ?? 'On-Site',
+          'workType': worker['type1'] ?? 'Full Time',
+          'profileImage': worker['profileImage'],
+          'phone': worker['phone'] ?? '',
+          'createdAt': null,
+          'id': 'norecord_${worker['id'] ?? email}',
+        });
+      }
+    }
+
+    for (var att in _rawAttendanceDocs) {
+      final exists = combined.any((c) => c['id'] == att['id']);
+      if (!exists) {
+        combined.add(att);
+      }
+    }
+
+    combined.sort((a, b) {
+      final aTime = a['createdAt'];
+      final bTime = b['createdAt'];
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      if (aTime is Timestamp && bTime is Timestamp) {
+        return bTime.compareTo(aTime);
+      }
+      return 0;
+    });
+
+    _attendanceDocs = combined;
+    _isLoading = false;
   }
 
   @override
   void initState() {
     super.initState();
     _attendanceDocs = [];
+    _workersList = [];
+    _rawAttendanceDocs = [];
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
+      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workersList = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            _combineAttendance();
+          });
+        }
+      });
       _attendanceSub = FirestoreService().attendanceStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
-              final sortedList = snapshot.docs
+              _rawAttendanceDocs = snapshot.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
-              sortedList.sort((a, b) {
-                final aTime = a['createdAt'];
-                final bTime = b['createdAt'];
-                if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return -1;
-                if (bTime == null) return 1;
-                if (aTime is Timestamp && bTime is Timestamp) {
-                  return bTime.compareTo(aTime);
-                }
-                return 0;
-              });
-              _attendanceDocs = sortedList;
-              _isLoading = false;
+              _combineAttendance();
             });
           }
         },
@@ -660,6 +734,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
+    final email = (doc['email'] ?? '').toString().trim().toLowerCase();
+    final name = (doc['name'] ?? '').toString().trim().toLowerCase();
+
+    // Compute real attendance stats from raw attendance records
+    final workerRecords = _rawAttendanceDocs.where((att) {
+      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
+      return (email.isNotEmpty && attEmail == email) || (name.isNotEmpty && attName == name);
+    }).toList();
+
+    int totalWorkingDays = workerRecords.length;
+    int absents = workerRecords.where((d) => d['status'] == 'Absent').length;
+    int leaves = workerRecords.where((d) => d['status'] == 'Leave').length;
+    int presents = workerRecords.where((d) => d['status'] == 'Present').length;
+    double percentage = totalWorkingDays > 0 ? (presents / totalWorkingDays) * 100 : 0.0;
+
     final record = AttendanceRecord(
       name: (doc['name'] ?? '').toString(),
       email: (doc['email'] ?? '').toString(),
@@ -668,7 +758,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       attendanceType: (doc['attendanceType'] ?? 'Remote').toString(),
       workType: (doc['workType'] ?? 'Full Time').toString(),
       profileImage: doc['profileImage']?.toString(),
+      phone: doc['phone']?.toString(),
     );
+
     showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -677,7 +769,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-        child: WorkerAttendancePreviewCard(record: record),
+        child: WorkerAttendancePreviewCard(
+          record: record,
+          totalWorkingDays: totalWorkingDays,
+          presents: presents,
+          absents: absents,
+          leaves: leaves,
+          percentage: percentage,
+        ),
       ),
     );
   }
@@ -761,8 +860,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           children: [
                             CircleAvatar(
                               radius: 18,
-                              backgroundImage: _getProfileImage(
+                              backgroundImage: getProfileImage(
                                 doc['profileImage']?.toString(),
+                                email,
                                 index,
                               ),
                             ),
@@ -809,13 +909,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          status,
+                          status.isEmpty ? '-' : status,
                           style: TextStyle(
                             color: status == 'Present'
                                 ? greenPresent
                                 : (status == 'Absent'
                                       ? redAbsent
-                                      : orangeLeave),
+                                      : (status.isEmpty ? Colors.grey : orangeLeave)),
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
@@ -936,8 +1036,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
 class WorkerAttendancePreviewCard extends StatelessWidget {
   final AttendanceRecord record;
+  final int totalWorkingDays;
+  final int presents;
+  final int absents;
+  final int leaves;
+  final double percentage;
 
-  const WorkerAttendancePreviewCard({super.key, required this.record});
+  const WorkerAttendancePreviewCard({
+    super.key,
+    required this.record,
+    required this.totalWorkingDays,
+    required this.presents,
+    required this.absents,
+    required this.leaves,
+    required this.percentage,
+  });
 
   static const Color primaryBlue = Color(0xFF0A51D0);
 
@@ -1041,7 +1154,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                   image: DecorationImage(
-                    image: _getProfileImage(record.profileImage, 0),
+                    image: getProfileImage(record.profileImage, record.email, 0),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -1113,7 +1226,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '123 5434567',
+                          record.phone ?? 'N/A',
                           style: const TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 13,
@@ -1142,7 +1255,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             width: 140,
             child: _buildSummaryCard(
               title: 'total_presents'.tr(),
-              value: '112',
+              value: '$presents',
               bgColor: lightGreenBg,
               iconColor: darkGreen,
               iconBuilder: (color) => _buildPresentIcon(color),
@@ -1153,7 +1266,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             width: 140,
             child: _buildSummaryCard(
               title: 'total_absent'.tr(),
-              value: '10',
+              value: '$absents',
               bgColor: lightRedBg,
               iconColor: darkRed,
               iconBuilder: (color) => _buildAbsentIcon(color),
@@ -1164,7 +1277,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             width: 140,
             child: _buildSummaryCard(
               title: 'total_leaves'.tr(),
-              value: '4',
+              value: '$leaves',
               bgColor: lightOrangeBg,
               iconColor: darkOrange,
               iconBuilder: (color) => _buildLeaveIcon(color),
@@ -1329,15 +1442,15 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 rows: [
                   _buildDetailRow(
                     'total_working_days'.tr(),
-                    '132 Days',
+                    '$totalWorkingDays Days',
                     Color(0xFF000000),
                   ),
-                  _buildDetailRow('total_presents'.tr(), '112 Days', darkGreen),
-                  _buildDetailRow('total_absents'.tr(), '8 Days', darkRed),
-                  _buildDetailRow('total_leaves'.tr(), '12 Days', darkOrange),
+                  _buildDetailRow('total_presents'.tr(), '$presents Days', darkGreen),
+                  _buildDetailRow('total_absents'.tr(), '$absents Days', darkRed),
+                  _buildDetailRow('total_leaves'.tr(), '$leaves Days', darkOrange),
                   _buildDetailRow(
                     'attendance_percentage'.tr(),
-                    '8.5%',
+                    '${percentage.toStringAsFixed(1)}%',
                     primaryBlue,
                   ),
                 ],
@@ -1429,20 +1542,4 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       ),
     );
   }
-}
-
-ImageProvider _getProfileImage(String? url, int index) {
-  if (url == null || url.isEmpty) {
-    return AssetImage(
-      index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
-    );
-  }
-  if (url.startsWith('data:image/')) {
-    final base64Content = url.split(',').last;
-    return MemoryImage(base64Decode(base64Content));
-  }
-  if (url.startsWith('http')) {
-    return NetworkImage(url);
-  }
-  return AssetImage(url);
 }

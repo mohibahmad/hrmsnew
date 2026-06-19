@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -13,6 +14,7 @@ import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/image_utils.dart';
 
 void main() {
   runApp(const WorkerManagementApp());
@@ -24,7 +26,7 @@ class WorkerManagementApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Worker Management',
+      title: 'Worker Management'.tr(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
@@ -36,9 +38,6 @@ class WorkerManagementApp extends StatelessWidget {
   }
 }
 
-// ==========================================
-// MAIN LAYOUT (SIDEBAR + CONTENT SWITCHER)
-// ==========================================
 class MainLayoutScreen extends StatefulWidget {
   const MainLayoutScreen({super.key});
 
@@ -58,13 +57,11 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     return Scaffold(
       body: Row(
         children: [
-          // --- LEFT SIDEBAR ---
           Container(
             width: 270,
             color: sidebarBlue,
             child: Column(
               children: [
-                // Upgrade Pro Card
                 if (!(AuthService().currentUser?.isAnonymous ?? false))
                   GestureDetector(
                     onTap: () {
@@ -359,9 +356,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   }
 }
 
-// ==========================================
-// WORKERS DASHBOARD SCREEN SWITCHER
-// ==========================================
 class WorkersScreen extends StatefulWidget {
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
@@ -430,9 +424,6 @@ class _WorkersScreenState extends State<WorkersScreen> {
   }
 }
 
-// ==========================================
-// DASHBOARD WORKER LIST
-// ==========================================
 class DashboardWorkerList extends StatefulWidget {
   final VoidCallback onAddWorker;
   final VoidCallback? onAddBulkWorker;
@@ -976,7 +967,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: _getProfileImage(profileImage, index),
+                  backgroundImage: getProfileImage(profileImage, email, index),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -1377,7 +1368,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 width: 2.0,
                               ),
                               image: DecorationImage(
-                                image: _getProfileImage(profileImage, 0),
+                                image: getProfileImage(profileImage, email, 0),
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -1656,20 +1647,4 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
       ),
     );
   }
-}
-
-ImageProvider _getProfileImage(String? url, int index) {
-  if (url == null || url.isEmpty) {
-    return AssetImage(
-      index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
-    );
-  }
-  if (url.startsWith('data:image/')) {
-    final base64Content = url.split(',').last;
-    return MemoryImage(base64Decode(base64Content));
-  }
-  if (url.startsWith('http')) {
-    return NetworkImage(url);
-  }
-  return AssetImage(url);
 }
