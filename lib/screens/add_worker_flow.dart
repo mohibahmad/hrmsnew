@@ -948,7 +948,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: Color(0xFFFFFFFF),
+                  color: const Color(0xFFF9F9FD),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
                 ),
@@ -1387,7 +1387,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       height: 40,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
+                        color: const Color(0xFFF9F9FD),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                           color: const Color(0xFFE0E0E0),
@@ -1423,7 +1423,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     height: 40,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFFFF),
+                      color: const Color(0xFFF9F9FD),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: const Color(0xFFE0E0E0),
@@ -2091,7 +2091,7 @@ class DocumentationSection extends StatelessWidget {
                   height: 40,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
+                    color: const Color(0xFFF9F9FD),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: const Color(0xFFE0E0E0),

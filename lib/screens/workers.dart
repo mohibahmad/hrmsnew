@@ -10,6 +10,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
+import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/snackbar_utils.dart';
 
@@ -244,10 +245,14 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
               children: [
                 DashboardWorkerList(
                   onAddWorker: () => setState(() => _currentMenuIndex = 1),
+                  onAddBulkWorker: () => setState(() => _currentMenuIndex = 2),
                 ), // Index 0
                 AddNewWorkerFlow(
                   onBack: () => setState(() => _currentMenuIndex = 0),
                 ), // Index 1
+                AddBulkWorkerScreen(
+                  onBack: () => setState(() => _currentMenuIndex = 0),
+                ), // Index 2
               ],
             ),
           ),
@@ -376,6 +381,7 @@ class WorkersScreen extends StatefulWidget {
 
 class _WorkersScreenState extends State<WorkersScreen> {
   bool _isAddingWorker = false;
+  bool _isAddingBulkWorker = false;
   Map<String, dynamic>? _workerToEdit;
 
   @override
@@ -390,12 +396,25 @@ class _WorkersScreenState extends State<WorkersScreen> {
           });
         },
       );
+    } else if (_isAddingBulkWorker) {
+      return AddBulkWorkerScreen(
+        onBack: () {
+          setState(() {
+            _isAddingBulkWorker = false;
+          });
+        },
+      );
     } else {
       return DashboardWorkerList(
         onAddWorker: () {
           setState(() {
             _isAddingWorker = true;
             _workerToEdit = null;
+          });
+        },
+        onAddBulkWorker: () {
+          setState(() {
+            _isAddingBulkWorker = true;
           });
         },
         onEditWorker: (worker) {
@@ -417,6 +436,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
 // ==========================================
 class DashboardWorkerList extends StatefulWidget {
   final VoidCallback onAddWorker;
+  final VoidCallback? onAddBulkWorker;
   final ValueChanged<Map<String, dynamic>>? onEditWorker;
   final VoidCallback? onLogout;
   final VoidCallback? onProfileTap;
@@ -425,6 +445,7 @@ class DashboardWorkerList extends StatefulWidget {
   const DashboardWorkerList({
     super.key,
     required this.onAddWorker,
+    this.onAddBulkWorker,
     this.onEditWorker,
     this.onLogout,
     this.onProfileTap,
@@ -730,12 +751,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     _buildActionButton(
                       svgPath: 'assets/add_bulk_worker.svg',
                       label: 'add_bulk_workers'.tr(),
-                      onTap: () {
-                        FlashySnackBar.show(
-                          context,
-                          message: 'bulk_add_coming_soon'.tr(),
-                        );
-                      },
+                      onTap: widget.onAddBulkWorker ?? () {},
                     ),
                   ],
                 ),

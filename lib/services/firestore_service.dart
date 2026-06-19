@@ -94,6 +94,35 @@ class FirestoreService {
     return docRef.id;
   }
 
+  Future<void> addBulkWorkers(List<Map<String, dynamic>> workersList) async {
+    var batch = _db.batch();
+    int count = 0;
+    
+    for (var worker in workersList) {
+      try {
+        Validators.validateWorker(worker);
+        final docRef = _workers.doc();
+        batch.set(docRef, {
+          ...worker,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        count++;
+        
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _db.batch();
+        }
+      } catch (e) {
+        // Skip invalid rows
+        continue;
+      }
+    }
+    
+    if (count % 500 != 0 && count > 0) {
+      await batch.commit();
+    }
+  }
+
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {
     Validators.validateWorker(data);
     await _workers.doc(id).update(data);
