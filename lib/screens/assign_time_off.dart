@@ -472,8 +472,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ================= MAIN CONTENT =================
 
   Widget _buildMainCard() {
+    final double minCardHeight = (MediaQuery.of(context).size.height - 190).clamp(600.0, 2000.0);
+
     return Container(
       padding: const EdgeInsets.all(24),
+      constraints: BoxConstraints(minHeight: minCardHeight),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
