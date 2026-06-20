@@ -458,38 +458,21 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         ),
         const SizedBox(height: 16),
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
-            const SizedBox(width: 2),
-            Expanded(
-              child:
-                  _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child:
-                  _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child:
-                  _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child:
-                  _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child:
-                  _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child:
-                  _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
-            ),
+            _buildWeekday('weekday_sun'.tr(), const Color(0xFFFF0004)),
+            const SizedBox(width: 8),
+            _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekday('weekday_fri'.tr(), const Color(0xFF4AC000)),
+            const SizedBox(width: 8),
+            _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
           ],
         ),
         const SizedBox(height: 12),
@@ -502,10 +485,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     String shortDay = day;
     if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
 
-    return Container(
-      height: 18,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      alignment: Alignment.center,
+    return Center(
+      child: Container(
+        width: 54,
+        height: 18,
+        alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(4),
@@ -519,6 +503,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           letterSpacing: 0.5,
           fontFamily: 'SF Pro Display',
         ),
+      ),
       ),
     );
   }
@@ -548,44 +533,40 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       for (int j = 0; j < 7; j++) {
         int index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
+          rowChildren.add(_buildDayCell('', false, null));
         } else if (currentDay <= daysInMonth) {
-          final day = currentDay;
-          rowChildren.add(
-            Expanded(
-              child: _buildDayCell(
-                '$day',
-                day == selectedDay,
-                () => onDaySelected(day),
-              ),
-            ),
-          );
+          final int tapDay = currentDay;
+          final bool isSelected = (currentDay == selectedDay);
+          rowChildren.add(_buildDayCell('$currentDay', isSelected, () {
+            onDaySelected(tapDay);
+          }));
           currentDay++;
         } else {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
+          rowChildren.add(_buildDayCell('', false, null));
         }
-        if (j < 6) rowChildren.add(const SizedBox(width: 2));
+        if (j < 6) rowChildren.add(const SizedBox(width: 8));
       }
-      rows.add(Row(children: rowChildren));
-      if (currentDay > daysInMonth) break;
-      if (i < 5) rows.add(const SizedBox(height: 2));
+      rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
+      if (currentDay > daysInMonth && i >= 4) break;
+      if (i < 5) rows.add(const SizedBox(height: 8));
     }
     return Column(children: rows);
   }
 
   Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
-    if (day.isEmpty) return const SizedBox();
-    return AspectRatio(
-      aspectRatio: 1,
-      child: GestureDetector(
+    if (day.isEmpty) return const SizedBox(width: 54, height: 54);
+    return Center(
+      child: SizedBox(
+        width: 54,
+        height: 54,
+        child: GestureDetector(
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.all(4),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected ? Colors.red : Colors.transparent,
+            color: isSelected ? const Color(0xFFFF0004) : Colors.transparent,
             border: Border.all(
-              color: isSelected ? Colors.red : Colors.grey.shade300,
+              color: isSelected ? const Color(0xFFFF0004) : Colors.grey.shade300,
               width: 1,
             ),
             borderRadius: BorderRadius.circular(6),
@@ -600,6 +581,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

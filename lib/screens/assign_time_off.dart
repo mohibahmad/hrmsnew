@@ -484,17 +484,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         children: [
           _buildTopForm(),
           const SizedBox(height: 32),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _buildCalendar(_calendarMonth)),
-              const SizedBox(width: 24),
-              Expanded(
-                child: _buildCalendar(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCalendar(_calendarMonth),
+                const SizedBox(width: 24),
+                _buildCalendar(
                   DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 32),
           _buildNotesAndSummary(),
@@ -676,99 +677,91 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ==== CALENDARS ====
 
   Widget _buildCalendar(DateTime monthDate) {
-    String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}';
+    String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'.toUpperCase();
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(6),
       ),
       padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _calendarMonth = DateTime(
-                      _calendarMonth.year,
-                      _calendarMonth.month - 1,
-                      1,
-                    );
-                  });
-                },
-                child: const Icon(
-                  Icons.chevron_left,
-                  size: 20,
-                  color: Colors.black,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 318),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _calendarMonth = DateTime(
+                        _calendarMonth.year,
+                        _calendarMonth.month - 1,
+                        1,
+                      );
+                    });
+                  },
+                  child: const Icon(
+                    Icons.chevron_left,
+                    size: 20,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 32),
-              Text(
-                monthYear,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  fontFamily: 'SF Pro Display',
+                const SizedBox(width: 16),
+                Text(
+                  monthYear,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
-              ),
-              const SizedBox(width: 32),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _calendarMonth = DateTime(
-                      _calendarMonth.year,
-                      _calendarMonth.month + 1,
-                      1,
-                    );
-                  });
-                },
-                child: const Icon(
-                  Icons.chevron_right,
-                  size: 20,
-                  color: Colors.black,
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _calendarMonth = DateTime(
+                        _calendarMonth.year,
+                        _calendarMonth.month + 1,
+                        1,
+                      );
+                    });
+                  },
+                  child: const Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildWeekdayRow(),
-          const SizedBox(height: 8),
-          _buildDaysGrid(monthDate),
-        ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildWeekdayRow(),
+            const SizedBox(height: 8),
+            _buildDaysGrid(monthDate),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildWeekdayRow() {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
-        const SizedBox(width: 2),
-        Expanded(
-          child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
-        ),
+        _buildWeekday('weekday_sun'.tr(), const Color(0xFFFF0004)),
+        const SizedBox(width: 4),
+        _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
+        const SizedBox(width: 4),
+        _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
+        const SizedBox(width: 4),
+        _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
+        const SizedBox(width: 4),
+        _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
+        const SizedBox(width: 4),
+        _buildWeekday('weekday_fri'.tr(), const Color(0xFF4AC000)),
+        const SizedBox(width: 4),
+        _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
       ],
     );
   }
@@ -777,10 +770,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     String shortDay = day;
     if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
 
-    return Container(
-      height: 22,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      alignment: Alignment.center,
+    return Center(
+      child: Container(
+        width: 42,
+        height: 22,
+        alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(4),
@@ -794,6 +788,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           letterSpacing: 0.5,
           fontFamily: 'SF Pro Display',
         ),
+      ),
       ),
     );
   }
@@ -810,7 +805,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       List<Widget> rowChildren = [];
       for (int j = 0; j < 7; j++) {
         if (i == 0 && j < startIndex) {
-          rowChildren.add(Expanded(child: _buildDayCell('')));
+          rowChildren.add(_buildDayCell(''));
         } else if (currentDay <= daysInMonth) {
           DateTime cellDate = DateTime(
             monthDate.year,
@@ -836,25 +831,23 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               cellDate.isAfter(startStart) && cellDate.isBefore(endStart);
 
           rowChildren.add(
-            Expanded(
-              child: _buildDayCell(
-                '$currentDay',
-                isSelected: isSelected,
-                inRange: inRange,
-                date: cellDate,
-              ),
+            _buildDayCell(
+              '$currentDay',
+              isSelected: isSelected,
+              inRange: inRange,
+              date: cellDate,
             ),
           );
           currentDay++;
         } else {
-          rowChildren.add(Expanded(child: _buildDayCell('')));
+          rowChildren.add(_buildDayCell(''));
         }
         if (j < 6)
-          rowChildren.add(const SizedBox(width: 2)); // Space between cells
+          rowChildren.add(const SizedBox(width: 4)); // Space between cells
       }
-      rows.add(Row(children: rowChildren));
-      if (currentDay > daysInMonth) break;
-      if (i < 5) rows.add(const SizedBox(height: 2)); // Space between rows
+      rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
+      if (currentDay > daysInMonth && i >= 4) break;
+      if (i < 5) rows.add(const SizedBox(height: 4)); // Space between rows
     }
     return Column(children: rows);
   }
@@ -865,10 +858,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     bool inRange = false,
     DateTime? date,
   }) {
-    if (day.isEmpty) return const SizedBox();
-    return AspectRatio(
-      aspectRatio: 1,
-      child: GestureDetector(
+    if (day.isEmpty) return const SizedBox(width: 42, height: 42);
+    return Center(
+      child: SizedBox(
+        width: 42,
+        height: 42,
+        child: GestureDetector(
         onTap: () {
           if (date != null) {
             setState(() {
@@ -883,19 +878,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           }
         },
         child: Container(
-          margin: const EdgeInsets.all(4),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected
-                ? Colors.red
+                ? const Color(0xFFFF0004)
                 : (inRange
-                      ? Colors.red.withValues(alpha: 0.1)
+                      ? const Color(0xFFFF0004).withValues(alpha: 0.1)
                       : Colors.transparent),
             border: Border.all(
               color: isSelected
-                  ? Colors.red
+                  ? const Color(0xFFFF0004)
                   : (inRange
-                        ? Colors.red.withValues(alpha: 0.3)
+                        ? const Color(0xFFFF0004).withValues(alpha: 0.3)
                         : Colors.grey.shade300),
               width: 1,
             ),
@@ -906,13 +900,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             style: TextStyle(
               color: isSelected
                   ? const Color(0xFFFFFFFF)
-                  : (inRange ? Colors.red : Colors.black),
-              fontSize: 15,
+                  : (inRange ? const Color(0xFFFF0004) : Colors.black),
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
             ),
           ),
         ),
+      ),
       ),
     );
   }
