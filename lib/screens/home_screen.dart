@@ -1860,6 +1860,7 @@ class SparklineCard extends StatelessWidget {
                                             0xFF8DA9F1,
                                           ).withValues(alpha: 0.0),
                                   ],
+                                  stops: [0.0, 0.2, 0.5],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
