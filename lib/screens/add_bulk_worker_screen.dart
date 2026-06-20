@@ -30,10 +30,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   Future<void> _downloadTemplate() async {
     const String templateStr =
-        'Full Name,Contact Number,Email Address,Father Name/Husband Name,National ID,Professed Religion,Date of Birth,Gender,Address,Relationship Status,Job Position,Employee Type,Work Model,Experience Level,Education,Salary Type,Currency,Salary Amount,Leave Policy,Annual Leaves,Sick Leaves,Casual Leaves,Joining Date\n'
-        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026\n'
-        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026\n'
-        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026';
+        'Full Name,Contact Number,Email Address,Father Name/Husband Name,National ID,Professed Religion,Date of Birth,Gender,Address,Relationship Status,Job Position,Employee Type,Work Model,Experience Level,Education,Salary Type,Currency,Salary Amount,Leave Policy,Annual Leaves,Sick Leaves,Casual Leaves,Joining Date,Profile Image URL\n'
+        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,\n'
+        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane\n'
+        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,';
 
     try {
       if (io.Platform.isMacOS || io.Platform.isWindows || io.Platform.isLinux) {
@@ -147,6 +147,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'sick leaves': 'sickLeaves',
       'casual leaves': 'casualLeaves',
       'joining date': 'joiningDate',
+      'profile image url': 'profileImage',
+      'profile image': 'profileImage',
+      'profile pic': 'profileImage',
+      'image url': 'profileImage',
     };
 
     // Check basic required columns
@@ -199,6 +203,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'sickLeaves': '',
         'casualLeaves': '',
         'joiningDate': 'January 9, 2026',
+        'profileImage': '',
       };
 
       for (int j = 0; j < headers.length && j < row.length; j++) {
@@ -581,6 +586,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     _buildHeaderCell('Sick Leaves', 100),
                                     _buildHeaderCell('Casual Leaves', 100),
                                     _buildHeaderCell('Joining Date', 150),
+                                    _buildHeaderCell('Profile Image URL', 200),
                                   ],
                                 ),
                               ),
@@ -601,6 +607,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       worker['salaryAmount']?.toString() ?? '';
                                   final currency =
                                       worker['currency']?.toString() ?? 'USD';
+                                  final profileImageUrl =
+                                      worker['profileImage']?.toString() ?? '';
 
                                   // Generate clean initials for Avatar
                                   String initials = '';
@@ -646,16 +654,21 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                 radius: 18,
                                                 backgroundColor:
                                                     bgColors[colorIdx],
-                                                child: Text(
-                                                  initials,
-                                                  style: TextStyle(
-                                                    color: textColors[colorIdx],
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                    fontFamily:
-                                                        'SF Pro Display',
-                                                  ),
-                                                ),
+                                                backgroundImage: profileImageUrl.isNotEmpty && profileImageUrl.startsWith('http')
+                                                    ? NetworkImage(profileImageUrl)
+                                                    : null,
+                                                child: profileImageUrl.isEmpty || !profileImageUrl.startsWith('http')
+                                                    ? Text(
+                                                        initials,
+                                                        style: TextStyle(
+                                                          color: textColors[colorIdx],
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 13,
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                      )
+                                                    : null,
                                               ),
                                               const SizedBox(width: 12),
                                               Expanded(
@@ -802,6 +815,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           worker['joiningDate']?.toString() ??
                                               '',
                                           150,
+                                        ),
+                                        _buildDataCell(
+                                          profileImageUrl.isEmpty ? '-' : profileImageUrl,
+                                          200,
                                         ),
                                       ],
                                     ),
