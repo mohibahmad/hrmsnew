@@ -1406,7 +1406,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 40),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1424,14 +1424,14 @@ class TotalWorkersCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Transform.translate(
-                                  offset: const Offset(0, -5),
+                                  offset: const Offset(0, -6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
                                         malePercentStr,
                                         style: const TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF000000),
                                           fontFamily: 'SF Pro Display',
@@ -1440,7 +1440,7 @@ class TotalWorkersCard extends StatelessWidget {
                                       Text(
                                         'male'.tr(),
                                         style: const TextStyle(
-                                          fontSize: 8,
+                                          fontSize: 8.5,
                                           fontWeight: FontWeight.w500,
                                           color: Color(0xFF000000),
                                           fontFamily: 'SF Pro Display',
@@ -1449,25 +1449,25 @@ class TotalWorkersCard extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 3),
+                                const SizedBox(width: 5),
                                 Transform.rotate(
-                                  angle: 0.45,
+                                  angle: 0.3,
                                   child: Container(
-                                    width: 1.2,
-                                    height: 20,
+                                    width: 1.5,
+                                    height: 42,
                                     color: const Color(0xFF000000),
                                   ),
                                 ),
-                                const SizedBox(width: 3),
+                                const SizedBox(width: 5),
                                 Transform.translate(
-                                  offset: const Offset(0, 5),
+                                  offset: const Offset(0, 6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
                                         femalePercentStr,
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF000000),
                                           fontFamily: 'SF Pro Display',
@@ -1476,7 +1476,7 @@ class TotalWorkersCard extends StatelessWidget {
                                       Text(
                                         'female'.tr(),
                                         style: TextStyle(
-                                          fontSize: 8,
+                                          fontSize: 8.5,
                                           fontWeight: FontWeight.w500,
                                           color: Color(0xFF000000),
                                           fontFamily: 'SF Pro Display',
