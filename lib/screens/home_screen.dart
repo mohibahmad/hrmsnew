@@ -523,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
@@ -580,7 +580,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 16),
 
                 // ==========================================
                 // TOP HEADER SECTION (UPCOMING HOLIDAYS)
