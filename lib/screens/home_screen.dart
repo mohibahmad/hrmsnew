@@ -681,9 +681,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: activeHolidays.map((h) {
                                 final remainingDaysStr = h['remainingDays'] ?? '';
                                 final remainingDaysInt = int.tryParse(remainingDaysStr) ?? -1;
-                                final isUrgent = remainingDaysInt == 1 ||
-                                    remainingDaysInt == 2 ||
-                                    remainingDaysInt == 3;
+                                final isUrgent = remainingDaysInt >= 1 && remainingDaysInt <= 5;
 
                                 return SizedBox(
                                   width: itemWidth,
@@ -2757,11 +2755,11 @@ class HolidayCard extends StatelessWidget {
     // Define exact colors based on state
 
     // Active (Red) State Colors
-    final Color activeLeftBg = const Color(0xFFFA6668); // Soft coral red
-    final Color activeRightBg = const Color(0xFFFF0000); // Pure bright red
+    final Color activeLeftBg = const Color(0xFFFF5F65); // #FF5F65 left bg
+    final Color activeRightBg = const Color(0xFFFF000A); // #FF000A right bg
     final Color activeTextColor = Color(0xFFFFFFFF);
     final Color activeSubTextColor = Color(0xFFFFFFFF).withValues(alpha: 0.9);
-    final Color activeBadgeBg = const Color(0xFFFA6668); // Matches left bg
+    final Color activeBadgeBg = const Color(0xFFFF5F65); // Matches left bg
 
     // Inactive (Grey) State Colors
     final Color inactiveLeftBg = const Color(0xFFE2E4E4); // Darker grey left
