@@ -176,6 +176,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         continue;
 
       Map<String, dynamic> workerData = {
+        'name': '',
+        'phone': '',
         'fatherName': '',
         'email': '',
         'nationalId': '',
@@ -560,6 +562,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     _buildHeaderCell('Contact Number', 120),
                                     _buildHeaderCell('Email Address', 200),
                                     _buildHeaderCell('Job Position', 150),
+                                    _buildHeaderCell('Salary Type', 120),
+                                    _buildHeaderCell('Currency', 100),
                                     _buildHeaderCell('Salary Amount', 120),
                                     _buildHeaderCell('Father Name', 150),
                                     _buildHeaderCell('National ID', 150),
@@ -580,18 +584,12 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   ],
                                 ),
                               ),
-                              // Table Body (ListView of items)
-                              ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _validWorkers.length,
-                                separatorBuilder: (context, index) =>
-                                    const Divider(
-                                      height: 1,
-                                      color: Color(0xFFF1F5F9),
-                                    ),
-                                itemBuilder: (context, index) {
-                                  final worker = _validWorkers[index];
+                              // Table Body
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: _validWorkers.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final worker = entry.value;
                                   final name = worker['name']?.toString() ?? '';
                                   final phone =
                                       worker['phone']?.toString() ?? '';
@@ -632,7 +630,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   final colorIdx =
                                       name.length % bgColors.length;
 
-                                  return Padding(
+                                  final rowWidget = Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 24,
                                       vertical: 14,
@@ -712,11 +710,20 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             ),
                                           ),
                                         ),
-                                        // Salary
+                                        // Salary Type
                                         _buildDataCell(
-                                          salary.isEmpty
-                                              ? '-'
-                                              : '$currency $salary',
+                                          worker['salaryType']?.toString() ??
+                                              '',
+                                          120,
+                                        ),
+                                        // Currency
+                                        _buildDataCell(
+                                          worker['currency']?.toString() ?? '',
+                                          100,
+                                        ),
+                                        // Salary Amount
+                                        _buildDataCell(
+                                          salary.isEmpty ? '-' : salary,
                                           120,
                                           isBold: true,
                                         ),
@@ -799,7 +806,21 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       ],
                                     ),
                                   );
-                                },
+
+                                  if (index < _validWorkers.length - 1) {
+                                    return Column(
+                                      children: [
+                                        rowWidget,
+                                        const Divider(
+                                          height: 1,
+                                          color: Color(0xFFF1F5F9),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  
+                                  return rowWidget;
+                                }).toList(),
                               ),
                             ],
                           ),
