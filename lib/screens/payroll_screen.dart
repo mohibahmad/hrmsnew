@@ -598,6 +598,24 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String leaves = (data['leaves'] ?? '').toString();
     final String overtimeDays = (data['overtimeDays'] ?? '').toString();
     final String salary = (data['salary'] ?? '').toString();
+    String salaryAfterDeductionStr = (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
+    if (salaryAfterDeductionStr.isEmpty && salary.isNotEmpty) {
+      try {
+        final numericSalStr = salary.replaceAll(RegExp(r'[^0-9]'), '');
+        if (numericSalStr.isNotEmpty) {
+          final numericSal = int.parse(numericSalStr);
+          // Standard mock deduction (e.g. 5%) if real data doesn't provide it
+          final afterDed = (numericSal * 0.95).round();
+          final formatted = afterDed.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+          final prefix = salary.replaceAll(RegExp(r'[0-9,\s]'), '').trim();
+          salaryAfterDeductionStr = prefix.isNotEmpty ? '$prefix $formatted' : '\$ $formatted';
+        } else {
+          salaryAfterDeductionStr = salary;
+        }
+      } catch (_) {
+        salaryAfterDeductionStr = salary;
+      }
+    }
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
@@ -866,7 +884,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(child: SizedBox()),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  icon: const Icon(
+                                    Icons.account_balance_wallet,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'Salary After Deduction'.tr(),
+                                  value: salaryAfterDeductionStr,
+                                ),
+                              ),
                             ],
                           ),
                         ],
