@@ -165,9 +165,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
     String? selectedWorkerName;
     final typeController = TextEditingController();
     final positionController = TextEditingController();
-    DateTime loanedDate = DateTime(2022, 2, 1);
-    DateTime returnedDate = DateTime(2026, 10, 9);
-    bool isReturned = true;
+    DateTime loanedDate = DateTime.now();
+    DateTime returnedDate = DateTime.now();
+    bool isReturned = false;
 
     // Helper to format date
     String formatDate(DateTime date) {
