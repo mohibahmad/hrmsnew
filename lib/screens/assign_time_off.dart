@@ -754,7 +754,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
           const SizedBox(height: 8),
           _buildWeekdayRow(),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           _buildDaysGrid(monthDate),
         ],
       ),
@@ -765,27 +765,27 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return Row(
       children: [
         Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
-        const SizedBox(width: 8),
+        const SizedBox(width: 2),
         Expanded(
           child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 2),
         Expanded(
           child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 2),
         Expanded(
           child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 2),
         Expanded(
           child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 2),
         Expanded(
           child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 2),
         Expanded(
           child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
         ),
@@ -798,7 +798,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
 
     return Container(
-      height: 18,
+      height: 22,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
@@ -869,11 +870,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           rowChildren.add(Expanded(child: _buildDayCell('')));
         }
         if (j < 6)
-          rowChildren.add(const SizedBox(width: 8)); // Space between cells
+          rowChildren.add(const SizedBox(width: 2)); // Space between cells
       }
       rows.add(Row(children: rowChildren));
       if (currentDay > daysInMonth) break;
-      if (i < 5) rows.add(const SizedBox(height: 8)); // Space between rows
+      if (i < 5) rows.add(const SizedBox(height: 2)); // Space between rows
     }
     return Column(children: rows);
   }
@@ -902,6 +903,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           }
         },
         child: Container(
+          margin: const EdgeInsets.all(4),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected
@@ -925,7 +927,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               color: isSelected
                   ? const Color(0xFFFFFFFF)
                   : (inRange ? Colors.red : Colors.black),
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: isSelected || inRange
                   ? FontWeight.w600
                   : FontWeight.normal,

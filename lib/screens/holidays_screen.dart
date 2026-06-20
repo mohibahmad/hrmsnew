@@ -460,29 +460,35 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         Row(
           children: [
             Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Expanded(
-              child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
+              child:
+                  _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Expanded(
-              child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
+              child:
+                  _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Expanded(
-              child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
+              child:
+                  _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Expanded(
-              child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
+              child:
+                  _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Expanded(
-              child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
+              child:
+                  _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 2),
             Expanded(
-              child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
+              child:
+                  _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
             ),
           ],
         ),
@@ -498,6 +504,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
     return Container(
       height: 18,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
@@ -557,11 +564,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         } else {
           rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
         }
-        if (j < 6) rowChildren.add(const SizedBox(width: 8));
+        if (j < 6) rowChildren.add(const SizedBox(width: 2));
       }
       rows.add(Row(children: rowChildren));
       if (currentDay > daysInMonth) break;
-      if (i < 5) rows.add(const SizedBox(height: 8));
+      if (i < 5) rows.add(const SizedBox(height: 2));
     }
     return Column(children: rows);
   }
@@ -573,6 +580,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
+          margin: const EdgeInsets.all(4),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? Colors.red : Colors.transparent,
