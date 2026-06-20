@@ -1831,7 +1831,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 0.5,
+                              barWidth: 1.5,
                               isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -1839,19 +1839,14 @@ class SparklineCard extends StatelessWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.18)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.18),
+                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.16)
+                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.16),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.0)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.0),
+                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.04)
+                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.04),
+                                    lineColor == const Color(0xFF0EA5E9)
+                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.0)
+                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.0),
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
