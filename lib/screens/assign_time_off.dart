@@ -482,26 +482,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_loadingWorkers)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_workers.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Text(
-                'No workers found. Please add workers first.',
-                style: TextStyle(
-                  color: Colors.red[700],
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-          else ...[
-            _buildWorkerDropdown(),
-            const SizedBox(height: 20),
-          ],
           _buildTopForm(),
           const SizedBox(height: 32),
           Row(
