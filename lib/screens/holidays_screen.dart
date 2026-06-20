@@ -803,6 +803,16 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   await FirestoreService().updateHoliday(item.id!, {
                     'isEnabled': value,
                   });
+                } else if (isGuest) {
+                  final monthList = DummyData.holidays[item.month];
+                  if (monthList != null) {
+                    for (var h in monthList) {
+                      if (h['day'] == item.day && h['name'] == item.name) {
+                        h['isEnabled'] = value;
+                        break;
+                      }
+                    }
+                  }
                 }
               },
             ),

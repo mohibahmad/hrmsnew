@@ -155,8 +155,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
         },
       );
     } else {
-      _payrollDocs = DummyData.payroll;
-      _isLoading = false;
+      _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+      _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
+      _combinePayroll();
     }
   }
 

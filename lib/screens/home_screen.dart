@@ -623,75 +623,85 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: _holidays.isNotEmpty
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'overview'.tr(),
-                              style: TextStyle(
-                                color: Color(0xFF000000),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'SF Pro Display',
+                  child: () {
+                    final activeHolidays = _holidays.where((h) => h['isEnabled'] == true).toList();
+                    if (activeHolidays.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SvgPicture.asset(
+                                'assets/holidays_icon.svg',
+                                height: 50,
+                                width: 50,
+                                color: const Color(0xFF9CA3AF),
                               ),
-                            ),
-                            const SizedBox(height: 24),
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                double spacing = 10.0;
-                                double itemWidth =
-                                    (constraints.maxWidth - (spacing * 4)) / 5;
-
-                                return Wrap(
-                                  spacing: spacing,
-                                  runSpacing: spacing,
-                                  children: _holidays.map((h) {
-                                    final isActive = h['isEnabled'] == true;
-                                    return SizedBox(
-                                      width: itemWidth,
-                                      child: HolidayCard(
-                                        day: h['day'] != null
-                                            ? '${h['day']}'.padLeft(2, '0')
-                                            : '',
-                                        month: h['month'] ?? 'May',
-                                        remainingDays: h['remainingDays'] ?? '',
-                                        dayOfWeek: h['dayOfWeek'] ?? '',
-                                        holidayName: h['name'] ?? '',
-                                        isActive: isActive,
-                                      ),
-                                    );
-                                  }).toList(),
-                                );
-                              },
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SvgPicture.asset(
-                                  'assets/holidays_icon.svg',
-                                  height: 50,
-                                  width: 50,
-                                  color: const Color(0xFF9CA3AF),
+                              const SizedBox(height: 12),
+                              Text(
+                                'no_holidays_yet'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF9CA3AF),
+                                  fontFamily: 'SF Pro Display',
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'no_holidays_yet'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF9CA3AF),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'overview'.tr(),
+                          style: const TextStyle(
+                            color: Color(0xFF000000),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            double spacing = 10.0;
+                            double itemWidth =
+                                (constraints.maxWidth - (spacing * 4)) / 5;
+
+                            return Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: activeHolidays.map((h) {
+                                final remainingDaysStr = h['remainingDays'] ?? '';
+                                final remainingDaysInt = int.tryParse(remainingDaysStr) ?? -1;
+                                final isUrgent = remainingDaysInt == 1 ||
+                                    remainingDaysInt == 2 ||
+                                    remainingDaysInt == 3;
+
+                                return SizedBox(
+                                  width: itemWidth,
+                                  child: HolidayCard(
+                                    day: h['day'] != null
+                                        ? '${h['day']}'.padLeft(2, '0')
+                                        : '',
+                                    month: h['month'] ?? 'May',
+                                    remainingDays: h['remainingDays'] ?? '',
+                                    dayOfWeek: h['dayOfWeek'] ?? '',
+                                    holidayName: h['name'] ?? '',
+                                    isActive: isUrgent,
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  }(),
                 ),
               ],
             ),

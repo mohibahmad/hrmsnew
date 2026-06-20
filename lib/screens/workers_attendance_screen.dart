@@ -60,8 +60,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
-        _workers = DummyData.attendance;
-        _todayAttendance = DummyData.attendance;
+        _workers = List<Map<String, dynamic>>.from(DummyData.workers);
+        _todayAttendance = List<Map<String, dynamic>>.from(DummyData.attendance);
         _isLoading = false;
       });
       return;
@@ -854,37 +854,47 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           ? (reason.isEmpty ? null : reason)
                                           : reason;
 
-                                      if (isGuest) {
-                                        final index = DummyData.attendance
-                                            .indexWhere(
-                                              (element) =>
-                                                  element['email'] == email,
-                                            );
-                                        if (index != -1) {
-                                          DummyData
-                                                  .attendance[index]['status'] =
-                                              selectedStatus;
-                                          if (type != null) {
-                                            DummyData
-                                                    .attendance[index]['type'] =
-                                                type;
-                                          } else {
-                                            DummyData.attendance[index].remove(
-                                              'type',
-                                            );
-                                          }
-                                          if (desc != null && desc.isNotEmpty) {
-                                            DummyData
-                                                    .attendance[index]['desc'] =
-                                                desc;
-                                          } else {
-                                            DummyData.attendance[index].remove(
-                                              'desc',
-                                            );
-                                          }
-                                        }
-                                        setState(() {});
-                                      } else {
+                                       if (isGuest) {
+                                         final wIdx = DummyData.workers.indexWhere((w) => w['email'] == email);
+                                         if (wIdx != -1) {
+                                           DummyData.workers[wIdx]['status'] = selectedStatus;
+                                         }
+                                         final index = DummyData.attendance
+                                             .indexWhere(
+                                               (element) =>
+                                                   element['email'] == email,
+                                             );
+                                         if (index != -1) {
+                                           DummyData.attendance[index]['status'] = selectedStatus;
+                                           if (type != null) {
+                                             DummyData.attendance[index]['type'] = type;
+                                           } else {
+                                             DummyData.attendance[index].remove('type');
+                                           }
+                                           if (desc != null && desc.isNotEmpty) {
+                                             DummyData.attendance[index]['desc'] = desc;
+                                           } else {
+                                             DummyData.attendance[index].remove('desc');
+                                           }
+                                         } else {
+                                           final newRecord = {
+                                             'id': 'dummy_a${DateTime.now().millisecondsSinceEpoch}',
+                                             'name': name,
+                                             'email': email,
+                                             'role': data['position'] ?? data['role'] ?? '',
+                                             'status': selectedStatus,
+                                             'attendanceType': data['attendanceType'] ?? data['type2'] ?? 'On-Site',
+                                             'workType': data['workType'] ?? data['type1'] ?? 'Full Time',
+                                           };
+                                           if (type != null) newRecord['type'] = type;
+                                           if (desc != null && desc.isNotEmpty) newRecord['desc'] = desc;
+                                           DummyData.attendance.add(newRecord);
+                                         }
+                                         setState(() {
+                                           _workers = List<Map<String, dynamic>>.from(DummyData.workers);
+                                           _todayAttendance = List<Map<String, dynamic>>.from(DummyData.attendance);
+                                         });
+                                       } else {
                                         // 1. Update the worker document in Firestore to update status pill
                                         final workerId = data['id'];
                                         if (workerId != null) {

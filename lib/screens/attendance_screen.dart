@@ -192,8 +192,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         },
       );
     } else {
-      _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
-      _isLoading = false;
+      _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+      _rawAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+      _combineAttendance();
     }
   }
 
@@ -724,8 +725,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       if (isGuest) {
         setState(() {
+          final doc = _attendanceDocs.firstWhere((a) => a['id'] == docId, orElse: () => {});
+          final email = doc['email'];
+          if (email != null) {
+            final wIdx = DummyData.workers.indexWhere((w) => w['email'] == email);
+            if (wIdx != -1) {
+              DummyData.workers[wIdx].remove('status');
+            }
+          }
           _attendanceDocs.removeWhere((a) => a['id'] == docId);
           DummyData.attendance.removeWhere((a) => a['id'] == docId);
+          _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+          _rawAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+          _combineAttendance();
         });
       } else {
         await FirestoreService().deleteAttendanceRecord(docId);
