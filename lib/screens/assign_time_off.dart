@@ -928,9 +928,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   ? const Color(0xFFFFFFFF)
                   : (inRange ? Colors.red : Colors.black),
               fontSize: 15,
-              fontWeight: isSelected || inRange
-                  ? FontWeight.w600
-                  : FontWeight.normal,
+              fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
             ),
           ),

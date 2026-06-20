@@ -594,8 +594,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             day,
             style: TextStyle(
               color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
             ),
           ),
