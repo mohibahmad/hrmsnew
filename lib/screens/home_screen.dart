@@ -636,7 +636,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 'assets/holidays_icon.svg',
                                 height: 50,
                                 width: 50,
-                                color: const Color(0xFF9CA3AF),
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0xFF9CA3AF),
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               const SizedBox(height: 12),
                               Text(

@@ -339,10 +339,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       alignment: Alignment.centerLeft,
-                  child: TextField(
-                    controller: holidayNameController,
-                    decoration: InputDecoration.collapsed(
-                      hintText: 'holiday_name_hint'.tr(),
+                      child: TextField(
+                        controller: holidayNameController,
+                        decoration: InputDecoration.collapsed(
+                          hintText: 'holiday_name_hint'.tr(),
                           hintStyle: TextStyle(
                             color: Colors.grey.shade400,
                             fontSize: 14,
@@ -461,17 +461,29 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           children: [
             Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
             const SizedBox(width: 6),
-            Expanded(child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4))),
+            Expanded(
+              child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
+            ),
             const SizedBox(width: 6),
-            Expanded(child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4))),
+            Expanded(
+              child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
+            ),
             const SizedBox(width: 6),
-            Expanded(child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4))),
+            Expanded(
+              child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
+            ),
             const SizedBox(width: 6),
-            Expanded(child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4))),
+            Expanded(
+              child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
+            ),
             const SizedBox(width: 6),
-            Expanded(child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50))),
+            Expanded(
+              child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
+            ),
             const SizedBox(width: 6),
-            Expanded(child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4))),
+            Expanded(
+              child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
+            ),
           ],
         ),
         const SizedBox(height: 12),
