@@ -693,7 +693,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       ),
       padding: const EdgeInsets.all(16),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 346),
+        constraints: const BoxConstraints(maxWidth: 374),
         child: Column(
           children: [
             Row(
@@ -780,8 +780,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
     return Center(
       child: Container(
-        width: 46,
-        height: 23,
+        width: 50,
+        height: 25,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: color,
@@ -866,11 +866,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     bool inRange = false,
     DateTime? date,
   }) {
-    if (day.isEmpty) return const SizedBox(width: 46, height: 46);
+    if (day.isEmpty) return const SizedBox(width: 50, height: 50);
     return Center(
       child: SizedBox(
-        width: 46,
-        height: 46,
+        width: 50,
+        height: 50,
         child: GestureDetector(
           onTap: () {
             if (date != null) {
