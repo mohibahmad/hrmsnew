@@ -1406,7 +1406,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 28),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1416,72 +1416,77 @@ class TotalWorkersCard extends StatelessWidget {
                             malePercent: malePercent,
                             femalePercent: femalePercent,
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Transform.translate(
-                                offset: const Offset(0, -8),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      malePercentStr,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF000000),
-                                        fontFamily: 'SF Pro Display',
+                          MediaQuery(
+                            data: MediaQuery.of(context).copyWith(
+                              textScaler: const TextScaler.linear(1.0),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: const Offset(0, -5),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        malePercentStr,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF000000),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      'male'.tr(),
-                                      style: const TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                        fontFamily: 'SF Pro Display',
+                                      Text(
+                                        'male'.tr(),
+                                        style: const TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF000000),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Transform.rotate(
-                                angle: 0.45,
-                                child: Container(
-                                  width: 1.5,
-                                  height: 30,
-                                  color: const Color(0xFF000000),
+                                const SizedBox(width: 3),
+                                Transform.rotate(
+                                  angle: 0.45,
+                                  child: Container(
+                                    width: 1.2,
+                                    height: 20,
+                                    color: const Color(0xFF000000),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Transform.translate(
-                                offset: const Offset(0, 8),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      femalePercentStr,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF000000),
-                                        fontFamily: 'SF Pro Display',
+                                const SizedBox(width: 3),
+                                Transform.translate(
+                                  offset: const Offset(0, 5),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        femalePercentStr,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF000000),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      'female'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                        fontFamily: 'SF Pro Display',
+                                      Text(
+                                        'female'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF000000),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -1489,27 +1494,22 @@ class TotalWorkersCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Flexible(
-                          child: _buildLegendItem(
-                            Color(0xFF155ED5),
-                            'male'.tr(),
-                            'workers_count'.tr(
-                              namedArgs: {'count': maleCount.toString()},
-                            ),
+                        _buildLegendItem(
+                          Color(0xFF155ED5),
+                          'male'.tr(),
+                          'workers_count'.tr(
+                            namedArgs: {'count': maleCount.toString()},
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Flexible(
-                          child: _buildLegendItem(
-                            Color(0xFFFF2D2D),
-                            'female'.tr(),
-                            'workers_count'.tr(
-                              namedArgs: {'count': femaleCount.toString()},
-                            ),
+                        _buildLegendItem(
+                          Color(0xFFFF2D2D),
+                          'female'.tr(),
+                          'workers_count'.tr(
+                            namedArgs: {'count': femaleCount.toString()},
                           ),
                         ),
                       ],
@@ -1546,45 +1546,37 @@ class TotalWorkersCard extends StatelessWidget {
   Widget _buildLegendItem(Color color, String title, String subtitle) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  fontFamily: 'SF Pro Display',
-                ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                fontFamily: 'SF Pro Display',
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
@@ -1609,7 +1601,7 @@ class RoundedDonutChart extends StatelessWidget {
       curve: Curves.easeInOutCubic,
       builder: (context, value, child) {
         return CustomPaint(
-          size: const Size(115, 115),
+          size: const Size(130, 130),
           painter: _DonutChartPainter(
             progress: value,
             malePercent: malePercent,
