@@ -277,7 +277,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _shareApp() {
-    final String appLink = 'https://hrms.example.com/download';
+    final String appLink =
+        'https://apps.apple.com/app/hrms-workforce-manager/id6743024022';
     final String text =
         'Manage your workforce efficiently with our new HRMS App!\nDownload here: $appLink';
     Share.share(text);

@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../utils/snackbar_utils.dart';
 
 import 'assign_time_off.dart';
 
@@ -127,6 +128,82 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       }
       return position.contains(_selectedTab.toLowerCase());
     }).toList();
+  }
+
+  Future<void> _handleDelete(Map<String, dynamic> doc) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          'delete'.tr() == 'delete' ? 'Delete Time Off' : 'delete'.tr(),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        content: Text(
+          '${doc['name'] ?? ''} — ${doc['action'] ?? doc['type'] ?? ''}',
+          style: const TextStyle(fontFamily: 'SF Pro Display'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'cancel'.tr() == 'cancel' ? 'Cancel' : 'cancel'.tr(),
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'delete'.tr() == 'delete' ? 'Delete' : 'delete'.tr(),
+              style: const TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        setState(() {
+          DummyData.timeoff.removeWhere(
+            (e) =>
+                e['id'] == doc['id'] &&
+                e['name'] == doc['name'] &&
+                e['action'] == doc['action'],
+          );
+          _timeoffDocs.removeWhere(
+            (e) =>
+                e['id'] == doc['id'] &&
+                e['name'] == doc['name'] &&
+                e['action'] == doc['action'],
+          );
+        });
+      } else {
+        final id = doc['id'] as String?;
+        if (id != null && id.isNotEmpty) {
+          await FirestoreService().deleteTimeOffRecord(id);
+        }
+      }
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'Time off record deleted');
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Failed to delete: $e',
+          isError: true,
+        );
+      }
+    }
   }
 
   @override
@@ -445,115 +522,119 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     final contact = (doc['contact'] ?? '').toString();
                     final action = (doc['action'] ?? 'payroll_data'.tr())
                         .toString();
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          // Worker Name with Avatar
-                          Expanded(
-                            flex: 3,
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 18,
-                                  backgroundImage: AssetImage(
-                                    index % 2 == 0
-                                        ? 'assets/profileimage.png'
-                                        : 'assets/boy.png',
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: Color(0xFF000000),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                      Text(
-                                        email,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF64748B),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Position
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              position,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF000000),
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                          // Contact
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              contact,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF000000),
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                          // Time Off Action
-                          Expanded(
-                            flex: 2,
-                            child: GestureDetector(
-                              onTap: () {
-                                if (widget.onAssignTimeOff != null) {
-                                  widget.onAssignTimeOff!(doc);
-                                } else {
-                                  // Fallback if rendered as standalone
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => AssignTimeOffScreen(
-                                        onBack: () =>
-                                            Navigator.of(context).pop(),
-                                        initialWorker: doc,
-                                      ),
+                    return GestureDetector(
+                      onLongPress: () => _handleDelete(doc),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: [
+                            // Worker Name with Avatar
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundImage: AssetImage(
+                                      index % 2 == 0
+                                          ? 'assets/profileimage.png'
+                                          : 'assets/boy.png',
                                     ),
-                                  );
-                                }
-                              },
-                              child: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: Text(
-                                  action,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF0247C4),
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: Color(0xFF000000),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                        Text(
+                                          email,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF64748B),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Position
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                position,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF000000),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ),
+                            // Contact
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                contact,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF000000),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ),
+                            // Time Off Action
+                            Expanded(
+                              flex: 2,
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (widget.onAssignTimeOff != null) {
+                                    widget.onAssignTimeOff!(doc);
+                                  } else {
+                                    // Fallback if rendered as standalone
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AssignTimeOffScreen(
+                                              onBack: () =>
+                                                  Navigator.of(context).pop(),
+                                              initialWorker: doc,
+                                            ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    action,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF0247C4),
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },

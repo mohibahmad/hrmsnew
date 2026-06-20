@@ -200,9 +200,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _editExpense(Map<String, dynamic> doc) {
-    final categoryController = TextEditingController(text: doc['category']?.toString() ?? '');
-    final amountController = TextEditingController(text: doc['amount']?.toString() ?? '0.00');
-    final descriptionController = TextEditingController(text: doc['description']?.toString() ?? '');
+    final categoryController = TextEditingController(
+      text: doc['category']?.toString() ?? '',
+    );
+    final amountController = TextEditingController(
+      text: doc['amount']?.toString() ?? '0.00',
+    );
+    final descriptionController = TextEditingController(
+      text: doc['description']?.toString() ?? '',
+    );
     final docId = doc['id'] as String;
 
     showDialog(
@@ -249,17 +255,30 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             minimumSize: const Size(0, 32),
                           ),
                           onPressed: () async {
                             if (categoryController.text.trim().isEmpty) {
-                              FlashySnackBar.show(context, message: 'please_enter_category'.tr(), isError: true);
+                              FlashySnackBar.show(
+                                context,
+                                message: 'please_enter_category'.tr(),
+                                isError: true,
+                              );
                               return;
                             }
-                            final double? amt = double.tryParse(amountController.text.trim());
+                            final double? amt = double.tryParse(
+                              amountController.text.trim(),
+                            );
                             if (amt == null) {
-                              FlashySnackBar.show(context, message: 'please_enter_valid_amount'.tr(), isError: true);
+                              FlashySnackBar.show(
+                                context,
+                                message: 'please_enter_valid_amount'.tr(),
+                                isError: true,
+                              );
                               return;
                             }
                             final updatedMap = {
@@ -268,20 +287,39 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               'category': categoryController.text,
                               'amount': amt,
                             };
-                            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                            final isGuest =
+                                AuthService().currentUser?.isAnonymous ?? false;
                             if (isGuest) {
                               setState(() {
-                                final idx = _expensesDocs.indexWhere((e) => e['id'] == docId);
-                                if (idx != -1) _expensesDocs[idx] = {...updatedMap, 'id': docId};
-                                final dummyIdx = DummyData.expenses.indexWhere((e) => e['id'] == docId);
-                                if (dummyIdx != -1) DummyData.expenses[dummyIdx] = {...updatedMap, 'id': docId};
+                                final idx = _expensesDocs.indexWhere(
+                                  (e) => e['id'] == docId,
+                                );
+                                if (idx != -1)
+                                  _expensesDocs[idx] = {
+                                    ...updatedMap,
+                                    'id': docId,
+                                  };
+                                final dummyIdx = DummyData.expenses.indexWhere(
+                                  (e) => e['id'] == docId,
+                                );
+                                if (dummyIdx != -1)
+                                  DummyData.expenses[dummyIdx] = {
+                                    ...updatedMap,
+                                    'id': docId,
+                                  };
                               });
                             } else {
-                              await FirestoreService().updateExpense(docId, updatedMap);
+                              await FirestoreService().updateExpense(
+                                docId,
+                                updatedMap,
+                              );
                             }
                             if (!context.mounted) return;
                             Navigator.of(context).pop();
-                            FlashySnackBar.show(context, message: 'Expense updated');
+                            FlashySnackBar.show(
+                              context,
+                              message: 'Expense updated',
+                            );
                           },
                           child: Text(
                             'save'.tr(),
@@ -392,7 +430,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final isGuest =
                                 AuthService().currentUser?.isAnonymous ?? false;
                             final expenseMap = {
-                              'name': 'Ali Ahmad',
+                              'name':
+                                  AuthService().currentUser?.displayName ??
+                                  'Expense',
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
@@ -670,17 +710,47 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             children: [
               Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
               const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4))),
+              Expanded(
+                child: _buildWeekday(
+                  'weekday_mon'.tr(),
+                  const Color(0xFF0247C4),
+                ),
+              ),
               const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4))),
+              Expanded(
+                child: _buildWeekday(
+                  'weekday_tue'.tr(),
+                  const Color(0xFF0247C4),
+                ),
+              ),
               const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4))),
+              Expanded(
+                child: _buildWeekday(
+                  'weekday_wed'.tr(),
+                  const Color(0xFF0247C4),
+                ),
+              ),
               const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4))),
+              Expanded(
+                child: _buildWeekday(
+                  'weekday_thu'.tr(),
+                  const Color(0xFF0247C4),
+                ),
+              ),
               const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50))),
+              Expanded(
+                child: _buildWeekday(
+                  'weekday_fri'.tr(),
+                  const Color(0xFF4CAF50),
+                ),
+              ),
               const SizedBox(width: 6),
-              Expanded(child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4))),
+              Expanded(
+                child: _buildWeekday(
+                  'weekday_sat'.tr(),
+                  const Color(0xFF0247C4),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),

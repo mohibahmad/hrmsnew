@@ -165,7 +165,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (!hasName || !hasPhone) {
       FlashySnackBar.show(
         context,
-        message: 'CSV must contain at least "Full Name" and "Contact Number" columns.',
+        message:
+            'CSV must contain at least "Full Name" and "Contact Number" columns.',
         isError: true,
       );
       return;
@@ -202,7 +203,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'annualLeaves': '',
         'sickLeaves': '',
         'casualLeaves': '',
-        'joiningDate': 'January 9, 2026',
+        'joiningDate':
+            '${DateTime.now().month}/${DateTime.now().day}/${DateTime.now().year}',
         'profileImage': '',
       };
 
@@ -576,7 +578,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     _buildHeaderCell('Date of Birth', 120),
                                     _buildHeaderCell('Gender', 100),
                                     _buildHeaderCell('Address', 250),
-                                    _buildHeaderCell('Relationship Status', 140),
+                                    _buildHeaderCell(
+                                      'Relationship Status',
+                                      140,
+                                    ),
                                     _buildHeaderCell('Employee Type', 120),
                                     _buildHeaderCell('Work Model', 120),
                                     _buildHeaderCell('Experience Level', 130),
@@ -593,7 +598,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               // Table Body
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _validWorkers.asMap().entries.map((entry) {
+                                children: _validWorkers.asMap().entries.map((
+                                  entry,
+                                ) {
                                   final index = entry.key;
                                   final worker = entry.value;
                                   final name = worker['name']?.toString() ?? '';
@@ -654,15 +661,26 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                 radius: 18,
                                                 backgroundColor:
                                                     bgColors[colorIdx],
-                                                backgroundImage: profileImageUrl.isNotEmpty && profileImageUrl.startsWith('http')
-                                                    ? NetworkImage(profileImageUrl)
+                                                backgroundImage:
+                                                    profileImageUrl
+                                                            .isNotEmpty &&
+                                                        profileImageUrl
+                                                            .startsWith('http')
+                                                    ? NetworkImage(
+                                                        profileImageUrl,
+                                                      )
                                                     : null,
-                                                child: profileImageUrl.isEmpty || !profileImageUrl.startsWith('http')
+                                                child:
+                                                    profileImageUrl.isEmpty ||
+                                                        !profileImageUrl
+                                                            .startsWith('http')
                                                     ? Text(
                                                         initials,
                                                         style: TextStyle(
-                                                          color: textColors[colorIdx],
-                                                          fontWeight: FontWeight.bold,
+                                                          color:
+                                                              textColors[colorIdx],
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                           fontSize: 13,
                                                           fontFamily:
                                                               'SF Pro Display',
@@ -817,7 +835,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           150,
                                         ),
                                         _buildDataCell(
-                                          profileImageUrl.isEmpty ? '-' : profileImageUrl,
+                                          profileImageUrl.isEmpty
+                                              ? '-'
+                                              : profileImageUrl,
                                           200,
                                         ),
                                       ],
@@ -835,7 +855,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       ],
                                     );
                                   }
-                                  
+
                                   return rowWidget;
                                 }).toList(),
                               ),

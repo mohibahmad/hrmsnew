@@ -202,6 +202,13 @@ class _SignupScreenState extends State<SignupScreen> {
         phone: "",
       );
 
+      // Seed demo data for new users so they don't see empty screens
+      await FirestoreService().seedDummyDataForUser(
+        uid: credential.user?.uid ?? '',
+        displayName: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+      );
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -215,14 +222,7 @@ class _SignupScreenState extends State<SignupScreen> {
             email: _emailController.text,
             password: _passwordController.text,
           );
-          await credential.user?.updateDisplayName(
-            _usernameController.text.trim(),
-          );
-          await FirestoreService().createUserProfile(
-            username: _usernameController.text.trim(),
-            email: _emailController.text.trim(),
-            phone: "",
-          );
+          // Don't overwrite existing profile — just sign in and navigate
           if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const HomeScreen()),

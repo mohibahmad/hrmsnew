@@ -57,46 +57,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-      final payrollRecord = _rawPayrollDocs.firstWhere(
-        (p) {
-          final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-          final pName = (p['name'] ?? '').toString().trim().toLowerCase();
-          return (email.isNotEmpty && pEmail == email) || (name.isNotEmpty && pName == name);
-        },
-        orElse: () => {},
-      );
+      final payrollRecord = _rawPayrollDocs.firstWhere((p) {
+        final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+        final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+        return (email.isNotEmpty && pEmail == email) ||
+            (name.isNotEmpty && pName == name);
+      }, orElse: () => {});
 
       if (payrollRecord.isNotEmpty) {
         combined.add({
           ...payrollRecord,
-          'profileImage': worker['profileImage'] ?? payrollRecord['profileImage'],
+          'profileImage':
+              worker['profileImage'] ?? payrollRecord['profileImage'],
           'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
         });
-      } else {
-        final hash = email.hashCode.abs();
-        final days = 200 + (hash % 50);
-        final abs = 1 + (hash % 10);
-        final lvs = 2 + (hash % 12);
-        final ot = hash % 15;
-        final salaries = ['\$ 45,000', '\$ 55,000', '\$ 65,000', '\$ 75,000', '\$ 85,000', '\$ 95,000', '\$ 110,000'];
-        final sal = salaries[hash % salaries.length];
-
-        combined.add({
-          'name': worker['name'] ?? '',
-          'email': worker['email'] ?? '',
-          'position': worker['position'] ?? '',
-          'contact': worker['phone'] ?? '',
-          'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
-          'status': 'Active',
-          'totalWorkDays': '$days',
-          'absents': abs < 10 ? '0$abs' : '$abs',
-          'leaves': lvs < 10 ? '0$lvs' : '$lvs',
-          'overtimeDays': ot < 10 ? '0$ot' : '$ot',
-          'salary': sal,
-          'id': 'payroll_${worker['id'] ?? email}',
-        });
       }
+      // Skip workers without payroll records — don't generate fake data
     }
 
     for (var p in _rawPayrollDocs) {
@@ -105,7 +81,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final existsInCombined = combined.any((c) {
         final cEmail = (c['email'] ?? '').toString().trim().toLowerCase();
         final cName = (c['name'] ?? '').toString().trim().toLowerCase();
-        return (pEmail.isNotEmpty && cEmail == pEmail) || (pName.isNotEmpty && cName == pName);
+        return (pEmail.isNotEmpty && cEmail == pEmail) ||
+            (pName.isNotEmpty && cName == pName);
       });
       if (!existsInCombined) {
         combined.add(p);
@@ -599,7 +576,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String leaves = (data['leaves'] ?? '').toString();
     final String overtimeDays = (data['overtimeDays'] ?? '').toString();
     final String salary = (data['salary'] ?? '').toString();
-    String salaryAfterDeductionStr = (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
+    String salaryAfterDeductionStr =
+        (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
     if (salaryAfterDeductionStr.isEmpty && salary.isNotEmpty) {
       try {
         final numericSalStr = salary.replaceAll(RegExp(r'[^0-9]'), '');
@@ -607,9 +585,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
           final numericSal = int.parse(numericSalStr);
           // Standard mock deduction (e.g. 5%) if real data doesn't provide it
           final afterDed = (numericSal * 0.95).round();
-          final formatted = afterDed.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+          final formatted = afterDed.toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (Match m) => '${m[1]},',
+          );
           final prefix = salary.replaceAll(RegExp(r'[0-9,\s]'), '').trim();
-          salaryAfterDeductionStr = prefix.isNotEmpty ? '$prefix $formatted' : '\$ $formatted';
+          salaryAfterDeductionStr = prefix.isNotEmpty
+              ? '$prefix $formatted'
+              : '\$ $formatted';
         } else {
           salaryAfterDeductionStr = salary;
         }

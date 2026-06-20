@@ -5,6 +5,7 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
 import '../utils/snackbar_utils.dart';
+import '../services/firestore_service.dart';
 
 class WorkerManagementApp extends StatelessWidget {
   const WorkerManagementApp({super.key});
@@ -78,19 +79,21 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     });
 
     try {
-      // Pushing data to Firestore Collection 'workers'
-      await FirebaseFirestore.instance.collection('workers').add({
+      // Pushing data via FirestoreService (user-scoped collection)
+      await FirestoreService().addWorker({
         'name': nameController.text.trim(),
         'fatherName': fatherNameController.text.trim(),
         'email': emailController.text.trim(),
-        'contact': contactController.text.trim(),
+        'phone': contactController.text.trim(),
         'nationalId': nationalIdController.text.trim(),
         'religion': religionController.text.trim(),
         'dob': dobController.text.trim(),
         'address': addressController.text.trim(),
         'relationshipStatus': isMarried ? 'Married' : 'Single',
-        'gender': 'Male', // Static in UI for now
-        'createdAt': FieldValue.serverTimestamp(),
+        'gender': isMarried ? 'Male' : 'Male', // TODO: add gender selector
+        'position': 'Employee',
+        'type1': 'Full-Time',
+        'type2': 'On-Site',
       });
 
       // Show Success Message

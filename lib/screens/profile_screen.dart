@@ -333,17 +333,25 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.dispose();
   }
 
+  /// In-memory guest profile cache (persists during session)
+  static Map<String, String>? _guestProfileCache;
+
   Future<void> _loadProfile() async {
     if (AuthService().currentUser?.isAnonymous ?? false) {
       if (mounted) {
         setState(() {
-          _businessNameController.text = 'Guest Company Ltd.';
-          _companyIdController.text = 'GUEST-001';
-          _emailController.text = 'guest@example.com';
-          _currencyController.text = 'USD';
-          _contact1Controller.text = '+1 415-555-0198';
-          _contact2Controller.text = '';
-          _addressController.text = '123 Demo Street, Test City';
+          _businessNameController.text =
+              _guestProfileCache?['businessName'] ?? 'Guest Company Ltd.';
+          _companyIdController.text =
+              _guestProfileCache?['companyId'] ?? 'GUEST-001';
+          _emailController.text =
+              _guestProfileCache?['email'] ?? 'guest@example.com';
+          _currencyController.text = _guestProfileCache?['currency'] ?? 'USD';
+          _contact1Controller.text =
+              _guestProfileCache?['contact1'] ?? '+1 415-555-0198';
+          _contact2Controller.text = _guestProfileCache?['contact2'] ?? '';
+          _addressController.text =
+              _guestProfileCache?['address'] ?? '123 Demo Street, Test City';
           _profilePicUrl = AuthService.profilePicNotifier.value;
           _isLoading = false;
         });
@@ -462,6 +470,17 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newProfileImageBytes = null;
           _newProfileImagePath = null;
         }
+
+        // Cache guest profile data in memory for session persistence
+        _guestProfileCache = {
+          'businessName': _businessNameController.text,
+          'companyId': _companyIdController.text,
+          'email': _emailController.text,
+          'currency': _currencyController.text,
+          'contact1': _contact1Controller.text,
+          'contact2': _contact2Controller.text,
+          'address': _addressController.text,
+        };
       }
 
       setState(() {

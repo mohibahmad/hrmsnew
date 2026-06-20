@@ -98,14 +98,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-      final attendanceRecord = _rawAttendanceDocs.firstWhere(
-        (att) {
-          final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-          final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-          return (email.isNotEmpty && attEmail == email) || (name.isNotEmpty && attName == name);
-        },
-        orElse: () => <String, dynamic>{},
-      );
+      final attendanceRecord = _rawAttendanceDocs.firstWhere((att) {
+        final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+        final attName = (att['name'] ?? '').toString().trim().toLowerCase();
+        return (email.isNotEmpty && attEmail == email) ||
+            (name.isNotEmpty && attName == name);
+      }, orElse: () => <String, dynamic>{});
 
       if (attendanceRecord.isNotEmpty) {
         combined.add({
@@ -193,7 +191,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     } else {
       _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-      _rawAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+      _rawAttendanceDocs = List<Map<String, dynamic>>.from(
+        DummyData.attendance,
+      );
       _combineAttendance();
     }
   }
@@ -578,7 +578,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               if (isGuest) {
                 _attendanceDocs = List<Map<String, dynamic>>.from(
                   DummyData.attendance,
-                )..shuffle();
+                );
               }
             });
           },
@@ -725,10 +725,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       if (isGuest) {
         setState(() {
-          final doc = _attendanceDocs.firstWhere((a) => a['id'] == docId, orElse: () => {});
+          final doc = _attendanceDocs.firstWhere(
+            (a) => a['id'] == docId,
+            orElse: () => {},
+          );
           final email = doc['email'];
           if (email != null) {
-            final wIdx = DummyData.workers.indexWhere((w) => w['email'] == email);
+            final wIdx = DummyData.workers.indexWhere(
+              (w) => w['email'] == email,
+            );
             if (wIdx != -1) {
               DummyData.workers[wIdx].remove('status');
             }
@@ -736,7 +741,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _attendanceDocs.removeWhere((a) => a['id'] == docId);
           DummyData.attendance.removeWhere((a) => a['id'] == docId);
           _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-          _rawAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+          _rawAttendanceDocs = List<Map<String, dynamic>>.from(
+            DummyData.attendance,
+          );
           _combineAttendance();
         });
       } else {
@@ -753,14 +760,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final workerRecords = _rawAttendanceDocs.where((att) {
       final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
       final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-      return (email.isNotEmpty && attEmail == email) || (name.isNotEmpty && attName == name);
+      return (email.isNotEmpty && attEmail == email) ||
+          (name.isNotEmpty && attName == name);
     }).toList();
 
     int totalWorkingDays = workerRecords.length;
     int absents = workerRecords.where((d) => d['status'] == 'Absent').length;
     int leaves = workerRecords.where((d) => d['status'] == 'Leave').length;
     int presents = workerRecords.where((d) => d['status'] == 'Present').length;
-    double percentage = totalWorkingDays > 0 ? (presents / totalWorkingDays) * 100 : 0.0;
+    double percentage = totalWorkingDays > 0
+        ? (presents / totalWorkingDays) * 100
+        : 0.0;
 
     final record = AttendanceRecord(
       name: (doc['name'] ?? '').toString(),
@@ -927,7 +937,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 ? greenPresent
                                 : (status == 'Absent'
                                       ? redAbsent
-                                      : (status.isEmpty ? Colors.grey : orangeLeave)),
+                                      : (status.isEmpty
+                                            ? Colors.grey
+                                            : orangeLeave)),
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
@@ -1166,7 +1178,11 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                   image: DecorationImage(
-                    image: getProfileImage(record.profileImage, record.email, 0),
+                    image: getProfileImage(
+                      record.profileImage,
+                      record.email,
+                      0,
+                    ),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -1457,9 +1473,21 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     '$totalWorkingDays Days',
                     Color(0xFF000000),
                   ),
-                  _buildDetailRow('total_presents'.tr(), '$presents Days', darkGreen),
-                  _buildDetailRow('total_absents'.tr(), '$absents Days', darkRed),
-                  _buildDetailRow('total_leaves'.tr(), '$leaves Days', darkOrange),
+                  _buildDetailRow(
+                    'total_presents'.tr(),
+                    '$presents Days',
+                    darkGreen,
+                  ),
+                  _buildDetailRow(
+                    'total_absents'.tr(),
+                    '$absents Days',
+                    darkRed,
+                  ),
+                  _buildDetailRow(
+                    'total_leaves'.tr(),
+                    '$leaves Days',
+                    darkOrange,
+                  ),
                   _buildDetailRow(
                     'attendance_percentage'.tr(),
                     '${percentage.toStringAsFixed(1)}%',

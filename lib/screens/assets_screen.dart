@@ -72,50 +72,50 @@ class _AssetsScreenState extends State<AssetsScreen> {
           .toList();
     } else {
       _isLoading = true;
-      _assetsSub = FirestoreService().assetsStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              final sortedDocs = snapshot.docs.toList();
-              sortedDocs.sort((a, b) {
-                final aData = a.data() as Map<String, dynamic>;
-                final bData = b.data() as Map<String, dynamic>;
-                final aTime = aData['createdAt'];
-                final bTime = bData['createdAt'];
-                if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return -1;
-                if (bTime == null) return 1;
-                if (aTime is Timestamp && bTime is Timestamp) {
-                  return bTime.compareTo(aTime);
-                }
-                return 0;
-              });
-              _assets = sortedDocs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return AssetData(
-                  data['name'] ?? '',
-                  data['position'] ?? '',
-                  data['type'] ?? '',
-                  data['dateLoaned'] ?? '',
-                  data['dateReturned'] ?? '',
-                  data['isReturned'] ?? false,
-                  id: doc.id,
-                  profileImage: data['profileImage']?.toString(),
-                  email: data['email']?.toString(),
-                );
-              }).toList();
-              _isLoading = false;
+      _assetsSub = FirestoreService().assetsStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            final sortedDocs = snapshot.docs.toList();
+            sortedDocs.sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              final aTime = aData['createdAt'];
+              final bTime = bData['createdAt'];
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return -1;
+              if (bTime == null) return 1;
+              if (aTime is Timestamp && bTime is Timestamp) {
+                return bTime.compareTo(aTime);
+              }
+              return 0;
             });
-          }
-        },
-        onError: (e) {
-        },
-      );
+            _assets = sortedDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return AssetData(
+                data['name'] ?? '',
+                data['position'] ?? '',
+                data['type'] ?? '',
+                data['dateLoaned'] ?? '',
+                data['dateReturned'] ?? '',
+                data['isReturned'] ?? false,
+                id: doc.id,
+                profileImage: data['profileImage']?.toString(),
+                email: data['email']?.toString(),
+              );
+            }).toList();
+            _isLoading = false;
+          });
+        }
+      }, onError: (e) {});
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _workerNames = snapshot.docs
-                .map((doc) => (doc.data() as Map<String, dynamic>)['name'] as String? ?? '')
+                .map(
+                  (doc) =>
+                      (doc.data() as Map<String, dynamic>)['name'] as String? ??
+                      '',
+                )
                 .where((n) => n.isNotEmpty)
                 .toSet()
                 .toList();
@@ -252,26 +252,26 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   'type': typeController.text,
                                   'dateLoaned': formatDate(loanedDate),
                                   'dateReturned': isReturned
-                                  ? formatDate(returnedDate)
-                                  : 'in_use'.tr(),
-                              'isReturned': isReturned,
-                            };
-                            setState(() {
-                              _assets.insert(
-                                0,
-                                AssetData(
-                                  selectedWorkerName!,
-                                  positionController.text,
-                                  typeController.text,
-                                  formatDate(loanedDate),
-                                  isReturned
                                       ? formatDate(returnedDate)
                                       : 'in_use'.tr(),
-                                  isReturned,
-                                ),
-                              );
-                              DummyData.assets.insert(0, newAsset);
-                            });
+                                  'isReturned': isReturned,
+                                };
+                                setState(() {
+                                  _assets.insert(
+                                    0,
+                                    AssetData(
+                                      selectedWorkerName!,
+                                      positionController.text,
+                                      typeController.text,
+                                      formatDate(loanedDate),
+                                      isReturned
+                                          ? formatDate(returnedDate)
+                                          : 'in_use'.tr(),
+                                      isReturned,
+                                    ),
+                                  );
+                                  DummyData.assets.insert(0, newAsset);
+                                });
                               } else {
                                 await FirestoreService().addAsset(assetMap);
                               }
@@ -616,7 +616,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
   ) {
     final bool isEmpty = items.isEmpty;
     final displayItems = isEmpty ? ['no_workers_found'.tr()] : items;
-    final displayValue = isEmpty ? 'no_workers_found'.tr() : (items.contains(value) ? value : null);
+    final displayValue = isEmpty
+        ? 'no_workers_found'.tr()
+        : (items.contains(value) ? value : null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,7 +653,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 ),
               ),
               isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
+              icon: const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.black,
+                size: 24,
+              ),
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.black,
@@ -1076,76 +1082,80 @@ class _AssetsScreenState extends State<AssetsScreen> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: getProfileImage(data.profileImage, data.email, index),
+                  backgroundImage: getProfileImage(
+                    data.profileImage,
+                    data.email,
+                    index,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     data.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                data.position,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
                 ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              data.position,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
               ),
             ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                data.type,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              data.type,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
               ),
             ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                data.dateLoaned,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              data.dateLoaned,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
               ),
             ),
-            // Date Returned (Colored)
-            Expanded(
-              flex: 2,
-              child: Text(
-                data.dateReturned,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: data.isReturned ? Colors.red : Colors.green,
-                  fontFamily: 'SF Pro Display',
-                ),
+          ),
+          // Date Returned (Colored)
+          Expanded(
+            flex: 2,
+            child: Text(
+              data.dateReturned,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: data.isReturned ? Colors.red : Colors.green,
+                fontFamily: 'SF Pro Display',
               ),
             ),
-            _buildAssetActionMenu(data),
-          ],
-        ),
-      );
+          ),
+          _buildAssetActionMenu(data),
+        ],
+      ),
+    );
   }
 
   Widget _buildAssetActionMenu(AssetData data) {
@@ -1172,9 +1182,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
             if (!confirmed) return;
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (isGuest) {
-              setState(() { _assets.remove(data); });
+              setState(() {
+                _assets.remove(data);
+              });
+              DummyData.assets.removeWhere(
+                (a) => a['name'] == data.name && a['type'] == data.type,
+              );
             } else {
-              if (data.id != null) await FirestoreService().deleteAsset(data.id!);
+              if (data.id != null)
+                await FirestoreService().deleteAsset(data.id!);
             }
           }
         },
@@ -1238,12 +1254,27 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
+  DateTime? _parseDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty || dateStr == 'In use') return null;
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length == 3) {
+        return DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+      }
+    } catch (_) {}
+    return null;
+  }
+
   void _showEditAssetModal(AssetData data) {
     String? selectedWorkerName = data.name;
     final typeController = TextEditingController(text: data.type);
     final positionController = TextEditingController(text: data.position);
-    DateTime loanedDate = DateTime(2022, 2, 1);
-    DateTime returnedDate = DateTime(2026, 10, 9);
+    DateTime loanedDate = _parseDate(data.dateLoaned) ?? DateTime(2025, 1, 1);
+    DateTime returnedDate = _parseDate(data.dateReturned) ?? DateTime.now();
     bool isReturned = data.isReturned;
 
     String formatDate(DateTime date) {
@@ -1297,7 +1328,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             minimumSize: const Size(0, 36),
                           ),
                           onPressed: () async {
@@ -1309,33 +1343,51 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'position': positionController.text,
                                 'type': typeController.text,
                                 'dateLoaned': formatDate(loanedDate),
-                                'dateReturned': isReturned ? formatDate(returnedDate) : 'in_use'.tr(),
+                                'dateReturned': isReturned
+                                    ? formatDate(returnedDate)
+                                    : 'in_use'.tr(),
                                 'isReturned': isReturned,
                               };
-                              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                              final isGuest =
+                                  AuthService().currentUser?.isAnonymous ??
+                                  false;
                               if (isGuest) {
                                 setState(() {
-                                  final idx = _assets.indexWhere((a) => a.id == data.id);
+                                  final idx = _assets.indexWhere(
+                                    (a) => a.id == data.id,
+                                  );
                                   if (idx != -1) {
                                     _assets[idx] = AssetData(
                                       selectedWorkerName!,
                                       positionController.text,
                                       typeController.text,
                                       formatDate(loanedDate),
-                                      isReturned ? formatDate(returnedDate) : 'in_use'.tr(),
+                                      isReturned
+                                          ? formatDate(returnedDate)
+                                          : 'in_use'.tr(),
                                       isReturned,
                                       id: data.id,
                                     );
                                   }
-                                  final dummyIdx = DummyData.assets.indexWhere((a) => a['name'] == data.name);
-                                  if (dummyIdx != -1) DummyData.assets[dummyIdx] = assetMap;
+                                  final dummyIdx = DummyData.assets.indexWhere(
+                                    (a) => a['name'] == data.name,
+                                  );
+                                  if (dummyIdx != -1)
+                                    DummyData.assets[dummyIdx] = assetMap;
                                 });
                               } else {
-                                if (data.id != null) await FirestoreService().updateAsset(data.id!, assetMap);
+                                if (data.id != null)
+                                  await FirestoreService().updateAsset(
+                                    data.id!,
+                                    assetMap,
+                                  );
                               }
                               if (!context.mounted) return;
                               Navigator.of(context).pop();
-                              FlashySnackBar.show(context, message: 'Asset updated');
+                              FlashySnackBar.show(
+                                context,
+                                message: 'Asset updated',
+                              );
                             }
                           },
                           child: Text(
@@ -1368,9 +1420,17 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       },
                     ),
                     const SizedBox(height: 14),
-                    _buildModalTextField('Asset Type', typeController, 'Enter asset type'),
+                    _buildModalTextField(
+                      'Asset Type',
+                      typeController,
+                      'Enter asset type',
+                    ),
                     const SizedBox(height: 14),
-                    _buildModalTextField('Position', positionController, 'Enter position'),
+                    _buildModalTextField(
+                      'Position',
+                      positionController,
+                      'Enter position',
+                    ),
                   ],
                 ),
               ),

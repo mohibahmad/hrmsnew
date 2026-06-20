@@ -537,7 +537,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       'annualLeaves': _annualLeavesController.text.trim(),
       'sickLeaves': _sickLeavesController.text.trim(),
       'casualLeaves': _casualLeavesController.text.trim(),
-      'joiningDate': _joiningDate ?? 'January 9, 2026',
+      'joiningDate':
+          _joiningDate ?? DateFormat('MMMM d, yyyy').format(DateTime.now()),
       'profileImage': profileImageUrl,
       'frontId': frontIdUrl,
       'backId': backIdUrl,
@@ -2825,7 +2826,9 @@ Widget _buildInputField(
 }) {
   final isAmount = label.toLowerCase().contains('amount');
   final isLeaves = label.toLowerCase().contains('leaves');
-  final isContact = label.toLowerCase().contains('contact') || label.toLowerCase().contains('phone');
+  final isContact =
+      label.toLowerCase().contains('contact') ||
+      label.toLowerCase().contains('phone');
   final isNumeric = isAmount || isLeaves || isContact;
 
   return Column(

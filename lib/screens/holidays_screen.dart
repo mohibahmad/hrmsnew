@@ -460,27 +460,27 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         Row(
           children: [
             Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
             ),
@@ -493,19 +493,23 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildWeekday(String day, Color color) {
+    String shortDay = day;
+    if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
+
     return Container(
-      height: 22,
+      height: 26,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        day,
+        shortDay.toUpperCase(),
         style: const TextStyle(
           color: Color(0xFFFFFFFF),
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
           fontFamily: 'SF Pro Display',
         ),
       ),
@@ -553,11 +557,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         } else {
           rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
         }
-        if (j < 6) rowChildren.add(const SizedBox(width: 6));
+        if (j < 6) rowChildren.add(const SizedBox(width: 8));
       }
       rows.add(Row(children: rowChildren));
       if (currentDay > daysInMonth) break;
-      if (i < 5) rows.add(const SizedBox(height: 6));
+      if (i < 5) rows.add(const SizedBox(height: 8));
     }
     return Column(children: rows);
   }

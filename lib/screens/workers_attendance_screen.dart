@@ -61,7 +61,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     if (isGuest) {
       setState(() {
         _workers = List<Map<String, dynamic>>.from(DummyData.workers);
-        _todayAttendance = List<Map<String, dynamic>>.from(DummyData.attendance);
+        _todayAttendance = List<Map<String, dynamic>>.from(
+          DummyData.attendance,
+        );
         _isLoading = false;
       });
       return;
@@ -123,11 +125,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> get _filteredWorkers {
     return _workers.where((worker) {
       final name = (worker["name"] ?? "").toString().toLowerCase();
-      final role = (worker["role"] ?? "").toString().toLowerCase();
+      final role = (worker["position"] ?? worker["role"] ?? "")
+          .toString()
+          .toLowerCase();
       final query = _searchQuery.toLowerCase();
       final matchesSearch = name.contains(query) || role.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch && (worker["status"] ?? "") == _selectedStatusFilter;
+      return matchesSearch &&
+          ((worker["status"] ?? worker["type1"] ?? "") ==
+              _selectedStatusFilter);
     }).toList();
   }
 
@@ -230,18 +236,22 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   children: [
                                                     if (filteredWorkers.isEmpty)
                                                       Padding(
-                                                        padding: const EdgeInsets.all(
-                                                          40.0,
-                                                        ),
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              40.0,
+                                                            ),
                                                         child: Center(
                                                           child: Text(
                                                             'no_workers_found_title'
                                                                 .tr(),
                                                             style: TextStyle(
-                                                              color: Color(0xFF000000),
+                                                              color: Color(
+                                                                0xFF000000,
+                                                              ),
                                                               fontSize: 15,
                                                               fontWeight:
-                                                                  FontWeight.w500,
+                                                                  FontWeight
+                                                                      .w500,
                                                               fontFamily:
                                                                   'SF Pro Display',
                                                             ),
@@ -249,17 +259,22 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         ),
                                                       )
                                                     else
-                                                      ...filteredWorkers.asMap().entries.map(
-                                                        (entry) => WorkerListItem(
-                                                          data: entry.value,
-                                                          index: entry.key,
-                                                          onMarkAttendance: () =>
-                                                              _showMarkAttendanceDialog(
-                                                                context,
-                                                                entry.value,
-                                                              ),
-                                                        ),
-                                                      ),
+                                                      ...filteredWorkers
+                                                          .asMap()
+                                                          .entries
+                                                          .map(
+                                                            (
+                                                              entry,
+                                                            ) => WorkerListItem(
+                                                              data: entry.value,
+                                                              index: entry.key,
+                                                              onMarkAttendance: () =>
+                                                                  _showMarkAttendanceDialog(
+                                                                    context,
+                                                                    entry.value,
+                                                                  ),
+                                                            ),
+                                                          ),
                                                   ],
                                                 ),
                                               ),
@@ -305,15 +320,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         child: _todayAttendance.isEmpty
                                             ? Center(
                                                 child: Text(
-                                                  'no_attendance_records'
-                                                      .tr(),
+                                                  'no_attendance_records'.tr(),
                                                   style: TextStyle(
-                                                    color: Color(
-                                                      0xFF000000,
-                                                    ),
+                                                    color: Color(0xFF000000),
                                                     fontSize: 15,
-                                                    fontWeight:
-                                                        FontWeight.w500,
+                                                    fontWeight: FontWeight.w500,
                                                     fontFamily:
                                                         'SF Pro Display',
                                                   ),
@@ -618,7 +629,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             // Profile Image: 140x140, circular with 2px border
-                             Container(
+                            Container(
                               width: 140,
                               height: 140,
                               decoration: BoxDecoration(
@@ -687,7 +698,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         ),
                                         const SizedBox(width: 10),
                                         Text(
-                                          (data['phone'] ?? data['contact'] ?? '').toString(),
+                                          (data['phone'] ??
+                                                  data['contact'] ??
+                                                  '')
+                                              .toString(),
                                           style: const TextStyle(
                                             color: Color(0xFFFFFFFF),
                                             fontSize: 14,
@@ -854,47 +868,79 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           ? (reason.isEmpty ? null : reason)
                                           : reason;
 
-                                       if (isGuest) {
-                                         final wIdx = DummyData.workers.indexWhere((w) => w['email'] == email);
-                                         if (wIdx != -1) {
-                                           DummyData.workers[wIdx]['status'] = selectedStatus;
-                                         }
-                                         final index = DummyData.attendance
-                                             .indexWhere(
-                                               (element) =>
-                                                   element['email'] == email,
-                                             );
-                                         if (index != -1) {
-                                           DummyData.attendance[index]['status'] = selectedStatus;
-                                           if (type != null) {
-                                             DummyData.attendance[index]['type'] = type;
-                                           } else {
-                                             DummyData.attendance[index].remove('type');
-                                           }
-                                           if (desc != null && desc.isNotEmpty) {
-                                             DummyData.attendance[index]['desc'] = desc;
-                                           } else {
-                                             DummyData.attendance[index].remove('desc');
-                                           }
-                                         } else {
-                                           final newRecord = {
-                                             'id': 'dummy_a${DateTime.now().millisecondsSinceEpoch}',
-                                             'name': name,
-                                             'email': email,
-                                             'role': data['position'] ?? data['role'] ?? '',
-                                             'status': selectedStatus,
-                                             'attendanceType': data['attendanceType'] ?? data['type2'] ?? 'On-Site',
-                                             'workType': data['workType'] ?? data['type1'] ?? 'Full Time',
-                                           };
-                                           if (type != null) newRecord['type'] = type;
-                                           if (desc != null && desc.isNotEmpty) newRecord['desc'] = desc;
-                                           DummyData.attendance.add(newRecord);
-                                         }
-                                         setState(() {
-                                           _workers = List<Map<String, dynamic>>.from(DummyData.workers);
-                                           _todayAttendance = List<Map<String, dynamic>>.from(DummyData.attendance);
-                                         });
-                                       } else {
+                                      if (isGuest) {
+                                        final wIdx = DummyData.workers
+                                            .indexWhere(
+                                              (w) => w['email'] == email,
+                                            );
+                                        if (wIdx != -1) {
+                                          DummyData.workers[wIdx]['status'] =
+                                              selectedStatus;
+                                        }
+                                        final index = DummyData.attendance
+                                            .indexWhere(
+                                              (element) =>
+                                                  element['email'] == email,
+                                            );
+                                        if (index != -1) {
+                                          DummyData
+                                                  .attendance[index]['status'] =
+                                              selectedStatus;
+                                          if (type != null) {
+                                            DummyData
+                                                    .attendance[index]['type'] =
+                                                type;
+                                          } else {
+                                            DummyData.attendance[index].remove(
+                                              'type',
+                                            );
+                                          }
+                                          if (desc != null && desc.isNotEmpty) {
+                                            DummyData
+                                                    .attendance[index]['desc'] =
+                                                desc;
+                                          } else {
+                                            DummyData.attendance[index].remove(
+                                              'desc',
+                                            );
+                                          }
+                                        } else {
+                                          final newRecord = {
+                                            'id':
+                                                'dummy_a${DateTime.now().millisecondsSinceEpoch}',
+                                            'name': name,
+                                            'email': email,
+                                            'role':
+                                                data['position'] ??
+                                                data['role'] ??
+                                                '',
+                                            'status': selectedStatus,
+                                            'attendanceType':
+                                                data['attendanceType'] ??
+                                                data['type2'] ??
+                                                'On-Site',
+                                            'workType':
+                                                data['workType'] ??
+                                                data['type1'] ??
+                                                'Full Time',
+                                          };
+                                          if (type != null)
+                                            newRecord['type'] = type;
+                                          if (desc != null && desc.isNotEmpty)
+                                            newRecord['desc'] = desc;
+                                          DummyData.attendance.add(newRecord);
+                                        }
+                                        setState(() {
+                                          _workers =
+                                              List<Map<String, dynamic>>.from(
+                                                DummyData.workers,
+                                              );
+                                          _todayAttendance =
+                                              List<Map<String, dynamic>>.from(
+                                                DummyData.attendance,
+                                              );
+                                        });
+                                      } else {
                                         // 1. Update the worker document in Firestore to update status pill
                                         final workerId = data['id'];
                                         if (workerId != null) {
@@ -960,18 +1006,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       Navigator.pop(context);
                                       FlashySnackBar.show(
                                         context,
-                                        message: 'attendance_updated_success'.tr(
-                                          namedArgs: {'name': name},
-                                        ),
+                                        message: 'attendance_updated_success'
+                                            .tr(namedArgs: {'name': name}),
                                       );
                                     } catch (e) {
                                       if (!context.mounted) return;
                                       FlashySnackBar.show(
                                         context,
                                         message: 'attendance_update_failed'.tr(
-                                          namedArgs: {
-                                            'error': e.toString(),
-                                          },
+                                          namedArgs: {'error': e.toString()},
                                         ),
                                         isError: true,
                                       );

@@ -752,9 +752,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _buildWeekdayRow(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           _buildDaysGrid(monthDate),
         ],
       ),
@@ -794,18 +794,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildWeekday(String day, Color color) {
+    String shortDay = day;
+    if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
+
     return Container(
-      height: 22,
+      height: 26,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        day,
+        shortDay.toUpperCase(),
         style: const TextStyle(
           color: Color(0xFFFFFFFF),
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
           fontFamily: 'SF Pro Display',
@@ -882,22 +885,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     DateTime? date,
   }) {
     if (day.isEmpty) return const SizedBox();
-    return GestureDetector(
-      onTap: () {
-        if (date != null) {
-          setState(() {
-            // Simple logic: if click is before start date, update start date
-            // else update end date
-            if (date.isBefore(_startDate)) {
-              _startDate = date;
-            } else {
-              _endDate = date;
-            }
-          });
-        }
-      },
-      child: AspectRatio(
-        aspectRatio: 1,
+    return AspectRatio(
+      aspectRatio: 1,
+      child: GestureDetector(
+        onTap: () {
+          if (date != null) {
+            setState(() {
+              // Simple logic: if click is before start date, update start date
+              // else update end date
+              if (date.isBefore(_startDate)) {
+                _startDate = date;
+              } else {
+                _endDate = date;
+              }
+            });
+          }
+        },
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
@@ -1041,39 +1044,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
-    return SizedBox(
-      height: 40,
-      width: 140,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF0247C4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          elevation: 0,
-        ),
-        onPressed: _isLoading ? null : _handleSave,
-        child: _isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : Text(
-                'save'.tr(),
-                style: const TextStyle(
-                  color: Color(0xFFFFFFFF),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-      ),
-    );
-  }
-
   /// Robust helper: reads 'phone' or 'contact' from a worker map,
   /// falling through empty strings as well as nulls.
   String _getWorkerPhone(Map<String, dynamic> w) {
@@ -1117,7 +1087,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       };
 
       if (isGuest) {
-        DummyData.timeoff.insert(0, recordMap);
+        DummyData.timeoff.insert(0, {
+          ...recordMap,
+          'id': 'guest_to_${DateTime.now().millisecondsSinceEpoch}',
+        });
       } else {
         await FirestoreService().addTimeOffRecord(recordMap);
       }
