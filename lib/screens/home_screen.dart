@@ -1825,10 +1825,10 @@ class SparklineCard extends StatelessWidget {
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD).withValues(alpha: 0.18)
-                                        : lineColor.withValues(alpha: 0.18),
+                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.18),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD).withValues(alpha: 0.0)
-                                        : lineColor.withValues(alpha: 0.0),
+                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.0),
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
