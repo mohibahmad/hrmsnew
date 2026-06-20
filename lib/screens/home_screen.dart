@@ -2412,9 +2412,9 @@ class LeaveTypesPieChart extends StatelessWidget {
       sickPath: [Offset(230, 110), Offset(275, 60), Offset(325, 60)],
       sickRight: 65,
       sickTop: 36,
-      medicalPath: [Offset(220, 160), Offset(170, 220), Offset(100, 220)],
-      medicalLeft: 110,
-      medicalBottom: 43,
+      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
+      medicalLeft: 90,
+      medicalBottom: 18,
     ),
     'Month': LeavePeriodConfig(
       casualVal: 50,
@@ -2426,9 +2426,9 @@ class LeaveTypesPieChart extends StatelessWidget {
       sickPath: [Offset(226.4, 103.5), Offset(275, 60), Offset(325, 60)],
       sickRight: 65,
       sickTop: 36,
-      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
-      medicalLeft: 110,
-      medicalBottom: 43,
+      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
+      medicalLeft: 90,
+      medicalBottom: 18,
     ),
     '3 Month': LeavePeriodConfig(
       casualVal: 45,
@@ -2440,9 +2440,9 @@ class LeaveTypesPieChart extends StatelessWidget {
       sickPath: [Offset(222, 98), Offset(275, 60), Offset(325, 60)],
       sickRight: 65,
       sickTop: 36,
-      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
-      medicalLeft: 110,
-      medicalBottom: 43,
+      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
+      medicalLeft: 90,
+      medicalBottom: 18,
     ),
     '6 Month': LeavePeriodConfig(
       casualVal: 40,
@@ -2454,9 +2454,9 @@ class LeaveTypesPieChart extends StatelessWidget {
       sickPath: [Offset(212, 91), Offset(275, 60), Offset(325, 60)],
       sickRight: 65,
       sickTop: 36,
-      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
-      medicalLeft: 110,
-      medicalBottom: 43,
+      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
+      medicalLeft: 90,
+      medicalBottom: 18,
     ),
     'Yearly': LeavePeriodConfig(
       casualVal: 35,
@@ -2465,12 +2465,12 @@ class LeaveTypesPieChart extends StatelessWidget {
       casualPath: [Offset(146, 118), Offset(95, 60), Offset(55, 60)],
       casualLeft: 65,
       casualTop: 36,
-      sickPath: [Offset(205, 88), Offset(275, 60), Offset(325, 60)],
+      sickPath: [Offset(215, 83), Offset(275, 60), Offset(325, 60)],
       sickRight: 65,
       sickTop: 36,
-      medicalPath: [Offset(200, 165), Offset(170, 220), Offset(100, 220)],
-      medicalLeft: 110,
-      medicalBottom: 43,
+      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
+      medicalLeft: 90,
+      medicalBottom: 18,
     ),
   };
 
@@ -2519,7 +2519,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                                 sectionsSpace: 0.0,
                                 centerSpaceRadius: 0,
                                 startDegreeOffset:
-                                    90, // Draw from 6 o'clock (Left half)
+                                    108,
                                 sections: [
                                   PieChartSectionData(
                                     color: const Color(
