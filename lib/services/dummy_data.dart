@@ -684,7 +684,7 @@ class DummyData {
         'remainingDays': '07',
         'dayOfWeek': 'Monday',
         'name': 'Eid-ul-Fitr Holiday',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 6,
@@ -692,7 +692,7 @@ class DummyData {
         'remainingDays': '10',
         'dayOfWeek': 'Thursday',
         'name': 'Memorial Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 10,
@@ -700,7 +700,7 @@ class DummyData {
         'remainingDays': '14',
         'dayOfWeek': 'Monday',
         'name': 'Eid-ul-Adha Holiday',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 14,
@@ -708,7 +708,7 @@ class DummyData {
         'remainingDays': '18',
         'dayOfWeek': 'Sunday',
         'name': 'Mother\'s Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 15,
@@ -716,7 +716,7 @@ class DummyData {
         'remainingDays': '19',
         'dayOfWeek': 'Monday',
         'name': 'Independence Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 18,
@@ -724,7 +724,7 @@ class DummyData {
         'remainingDays': '22',
         'dayOfWeek': 'Thursday',
         'name': 'Founder\'s Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 20,
@@ -732,7 +732,7 @@ class DummyData {
         'remainingDays': '24',
         'dayOfWeek': 'Saturday',
         'name': 'Spring Break',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 22,
@@ -740,7 +740,7 @@ class DummyData {
         'remainingDays': '26',
         'dayOfWeek': 'Monday',
         'name': 'Youth Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 25,
@@ -748,7 +748,7 @@ class DummyData {
         'remainingDays': '29',
         'dayOfWeek': 'Thursday',
         'name': 'National Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 26,
@@ -756,7 +756,7 @@ class DummyData {
         'remainingDays': '30',
         'dayOfWeek': 'Friday',
         'name': 'Victoria Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 28,
@@ -764,7 +764,7 @@ class DummyData {
         'remainingDays': '32',
         'dayOfWeek': 'Sunday',
         'name': 'Bank Holiday',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 29,
@@ -772,7 +772,7 @@ class DummyData {
         'remainingDays': '33',
         'dayOfWeek': 'Monday',
         'name': 'Ascension Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 30,
@@ -780,7 +780,7 @@ class DummyData {
         'remainingDays': '34',
         'dayOfWeek': 'Tuesday',
         'name': 'Unity Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 31,
@@ -788,7 +788,7 @@ class DummyData {
         'remainingDays': '35',
         'dayOfWeek': 'Wednesday',
         'name': 'Memorial Feast',
-        'isEnabled': false,
+        'isEnabled': true,
       },
     ],
     'Feb': [
@@ -798,7 +798,7 @@ class DummyData {
         'remainingDays': '02',
         'dayOfWeek': 'Wednesday',
         'name': 'Groundhog Day',
-        'isEnabled': false,
+        'isEnabled': true,
       },
       {
         'day': 6,
