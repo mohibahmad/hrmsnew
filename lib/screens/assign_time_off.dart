@@ -61,34 +61,40 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         _loadingWorkers = false;
       });
     } else {
-      _workersSub = FirestoreService().workersStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _workers = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-            if (widget.initialWorker != null) {
-              _selectedWorker = _workers.firstWhere(
-                (w) => w['email'] == widget.initialWorker!['email'],
-                orElse: () => widget.initialWorker!,
-              );
-            } else if (_workers.isNotEmpty) {
-              if (_selectedWorker == null || !_workers.any((w) => w['email'] == _selectedWorker!['email'])) {
-                _selectedWorker = _workers.first;
+      _workersSub = FirestoreService().workersStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _workers = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              if (widget.initialWorker != null) {
+                _selectedWorker = _workers.firstWhere(
+                  (w) => w['email'] == widget.initialWorker!['email'],
+                  orElse: () => widget.initialWorker!,
+                );
+              } else if (_workers.isNotEmpty) {
+                if (_selectedWorker == null ||
+                    !_workers.any(
+                      (w) => w['email'] == _selectedWorker!['email'],
+                    )) {
+                  _selectedWorker = _workers.first;
+                }
+              } else {
+                _selectedWorker = null;
               }
-            } else {
-              _selectedWorker = null;
-            }
-            _loadingWorkers = false;
-          });
-        }
-      }, onError: (e) {
-        if (mounted) {
-          setState(() {
-            _loadingWorkers = false;
-          });
-        }
-      });
+              _loadingWorkers = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() {
+              _loadingWorkers = false;
+            });
+          }
+        },
+      );
     }
   }
 
@@ -98,7 +104,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'select_worker'.tr() == 'select_worker' ? 'Select Worker' : 'select_worker'.tr(),
+            'select_worker'.tr() == 'select_worker'
+                ? 'Select Worker'
+                : 'select_worker'.tr(),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -135,7 +143,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'select_worker'.tr() == 'select_worker' ? 'Select Worker' : 'select_worker'.tr(),
+          'select_worker'.tr() == 'select_worker'
+              ? 'Select Worker'
+              : 'select_worker'.tr(),
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -160,7 +170,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               items: _workers.map((worker) {
                 return DropdownMenuItem<Map<String, dynamic>>(
                   value: worker,
-                  child: Text('${worker['name'] ?? ''} (${worker['position'] ?? ''})'),
+                  child: Text(
+                    '${worker['name'] ?? ''} (${worker['position'] ?? ''})',
+                  ),
                 );
               }).toList(),
               onChanged: (v) {
@@ -179,7 +191,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   // Helper to get month name
   String _getMonthName(int month) {
-    return DateFormat('MMMM', context.locale.toString()).format(DateTime(2024, month));
+    return DateFormat(
+      'MMMM',
+      context.locale.toString(),
+    ).format(DateTime(2024, month));
   }
 
   // Helper to format date as DD/MM/YYYY
@@ -477,7 +492,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Text(
                 'No workers found. Please add workers first.',
-                style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.red[700],
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             )
           else ...[
@@ -750,17 +768,29 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       children: [
         Expanded(child: _buildWeekday('weekday_sun'.tr(), Colors.red)),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4))),
+        Expanded(
+          child: _buildWeekday('weekday_mon'.tr(), const Color(0xFF0247C4)),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4))),
+        Expanded(
+          child: _buildWeekday('weekday_tue'.tr(), const Color(0xFF0247C4)),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4))),
+        Expanded(
+          child: _buildWeekday('weekday_wed'.tr(), const Color(0xFF0247C4)),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4))),
+        Expanded(
+          child: _buildWeekday('weekday_thu'.tr(), const Color(0xFF0247C4)),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50))),
+        Expanded(
+          child: _buildWeekday('weekday_fri'.tr(), const Color(0xFF4CAF50)),
+        ),
         const SizedBox(width: 8),
-        Expanded(child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4))),
+        Expanded(
+          child: _buildWeekday('weekday_sat'.tr(), const Color(0xFF0247C4)),
+        ),
       ],
     );
   }
@@ -1046,6 +1076,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
+  /// Robust helper: reads 'phone' or 'contact' from a worker map,
+  /// falling through empty strings as well as nulls.
+  String _getWorkerPhone(Map<String, dynamic> w) {
+    for (final key in ['phone', 'contact']) {
+      final val = w[key];
+      if (val != null && val.toString().trim().isNotEmpty) {
+        return val.toString().trim();
+      }
+    }
+    return '';
+  }
+
   Future<void> _handleSave() async {
     if (_isLoading) return;
     if (_selectedWorker == null) {
@@ -1061,7 +1103,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'name': _selectedWorker!['name'] ?? 'Worker',
         'email': _selectedWorker!['email'] ?? '',
         'position': _selectedWorker!['position'] ?? 'Worker',
-        'contact': _selectedWorker!['phone'] ?? _selectedWorker!['contact'] ?? '',
+        'contact': _getWorkerPhone(_selectedWorker!),
         'action': _timeOffType,
         'type': _timeOffType,
         'startDate':
@@ -1072,7 +1114,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'requestedDays': _requestedDays,
         'status': 'Approved',
         'workerName': _selectedWorker!['name'] ?? 'Worker',
-        'workerAvatar': _selectedWorker!['profileImage'] ?? 'assets/profileimage.png',
+        'workerAvatar':
+            _selectedWorker!['profileImage'] ?? 'assets/profileimage.png',
       };
 
       if (isGuest) {
