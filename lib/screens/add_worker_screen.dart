@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter/services.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
@@ -397,7 +398,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                           Expanded(
                                             child: _buildInputField(
                                               'contact_no_label'.tr(),
-                                              '0000000000',
+                                              'enter_contact_number'.tr(),
                                               controller: contactController,
                                             ),
                                           ),
@@ -607,6 +608,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     bool isTextArea = false,
     TextEditingController? controller,
   }) {
+    final isNumeric =
+        label.toLowerCase().contains('contact') ||
+        label.toLowerCase().contains('phone');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -631,6 +636,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           child: TextField(
             controller: controller,
             maxLines: isTextArea ? 4 : 1,
+            keyboardType: isNumeric ? TextInputType.number : null,
+            inputFormatters: isNumeric
+                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*'))]
+                : null,
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF000000),

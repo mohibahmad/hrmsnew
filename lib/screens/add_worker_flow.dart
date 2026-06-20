@@ -1147,7 +1147,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         Expanded(
                           child: _buildInputField(
                             'contact_no_label'.tr(),
-                            '0000000000',
+                            'enter_contact_number'.tr(),
                             controller: phoneController,
                           ),
                         ),
@@ -2815,7 +2815,8 @@ Widget _buildInputField(
 }) {
   final isAmount = label.toLowerCase().contains('amount');
   final isLeaves = label.toLowerCase().contains('leaves');
-  final isNumeric = isAmount || isLeaves;
+  final isContact = label.toLowerCase().contains('contact') || label.toLowerCase().contains('phone');
+  final isNumeric = isAmount || isLeaves || isContact;
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,

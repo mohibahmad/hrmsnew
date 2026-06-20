@@ -38,10 +38,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
   List<AssetData> _assets = [];
   bool _isLoading = false;
   StreamSubscription? _assetsSub;
+  StreamSubscription? _workersSub;
+  List<String> _workerNames = [];
 
   @override
   void dispose() {
     _assetsSub?.cancel();
+    _workersSub?.cancel();
     super.dispose();
   }
 
@@ -62,6 +65,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
           email: data['email']?.toString(),
         );
       }).toList();
+      _workerNames = DummyData.workers
+          .map((w) => (w['name'] ?? '').toString())
+          .where((n) => n.isNotEmpty)
+          .toSet()
+          .toList();
     } else {
       _isLoading = true;
       _assetsSub = FirestoreService().assetsStream.listen(
@@ -101,13 +109,45 @@ class _AssetsScreenState extends State<AssetsScreen> {
           }
         },
         onError: (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
         },
       );
+      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workerNames = snapshot.docs
+                .map((doc) => (doc.data() as Map<String, dynamic>)['name'] as String? ?? '')
+                .where((n) => n.isNotEmpty)
+                .toSet()
+                .toList();
+          });
+        }
+      });
+    }
+  }
+
+  Stream<List<String>> get _workerNamesStream {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      final names = DummyData.workers
+          .map((w) => (w['name'] ?? '').toString())
+          .where((n) => n.isNotEmpty)
+          .toSet()
+          .toList();
+      debugPrint('Guest mode worker names for dropdown: $names');
+      return Stream.value(names);
+    } else {
+      return FirestoreService().workersStream.map((snapshot) {
+        final list = snapshot.docs
+            .map((doc) {
+              final data = doc.data() as Map<String, dynamic>?;
+              return data?['name'] as String? ?? '';
+            })
+            .where((n) => n.isNotEmpty)
+            .toSet()
+            .toList();
+        debugPrint('Fetched worker names for dropdown: $list');
+        return list;
+      });
     }
   }
 
@@ -122,7 +162,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   void _showAddAssetModal(BuildContext context) {
-    final nameController = TextEditingController();
+    String? selectedWorkerName;
     final typeController = TextEditingController();
     final positionController = TextEditingController();
     DateTime loanedDate = DateTime(2022, 2, 1);
@@ -189,11 +229,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             minimumSize: const Size(0, 36),
                           ),
                           onPressed: () async {
-                            if (nameController.text.isNotEmpty &&
+                            if (selectedWorkerName != null &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
                               final assetMap = {
-                                'name': nameController.text,
+                                'name': selectedWorkerName!,
                                 'position': positionController.text,
                                 'type': typeController.text,
                                 'dateLoaned': formatDate(loanedDate),
@@ -207,7 +247,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   false;
                               if (isGuest) {
                                 final newAsset = {
-                                  'name': nameController.text,
+                                  'name': selectedWorkerName!,
                                   'position': positionController.text,
                                   'type': typeController.text,
                                   'dateLoaned': formatDate(loanedDate),
@@ -220,7 +260,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               _assets.insert(
                                 0,
                                 AssetData(
-                                  nameController.text,
+                                  selectedWorkerName!,
                                   positionController.text,
                                   typeController.text,
                                   formatDate(loanedDate),
@@ -240,7 +280,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               FlashySnackBar.show(
                                 context,
                                 message: 'successfully_added_asset'.tr(
-                                  namedArgs: {'name': nameController.text},
+                                  namedArgs: {'name': selectedWorkerName!},
                                 ),
                               );
                             }
@@ -259,10 +299,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     const SizedBox(height: 24),
 
                     // Form Fields
-                    _buildModalTextField(
-                      'worker_name'.tr(),
-                      nameController,
-                      'worker_name_hint'.tr(),
+                    StreamBuilder<List<String>>(
+                      stream: _workerNamesStream,
+                      initialData: _workerNames,
+                      builder: (context, snapshot) {
+                        final items = snapshot.data ?? [];
+                        return _buildModalDropdown(
+                          'worker_name'.tr(),
+                          selectedWorkerName,
+                          items,
+                          'worker_name_hint'.tr(),
+                          (val) {
+                            setModalState(() => selectedWorkerName = val);
+                          },
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
@@ -549,6 +600,78 @@ class _AssetsScreenState extends State<AssetsScreen> {
               color: Colors.black,
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModalDropdown(
+    String label,
+    String? value,
+    List<String> items,
+    String hintText,
+    ValueChanged<String?> onChanged,
+  ) {
+    final bool isEmpty = items.isEmpty;
+    final displayItems = isEmpty ? ['no_workers_found'.tr()] : items;
+    final displayValue = isEmpty ? 'no_workers_found'.tr() : (items.contains(value) ? value : null);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF000000),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 44,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: displayValue,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              hint: Text(
+                hintText,
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 24),
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+              items: displayItems.map((String val) {
+                return DropdownMenuItem<String>(
+                  value: val,
+                  child: Text(
+                    val,
+                    style: TextStyle(
+                      color: isEmpty ? Colors.red.shade600 : Colors.black,
+                      fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w500,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: isEmpty ? (val) {} : onChanged,
             ),
           ),
         ),
@@ -1116,7 +1239,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   void _showEditAssetModal(AssetData data) {
-    final nameController = TextEditingController(text: data.name);
+    String? selectedWorkerName = data.name;
     final typeController = TextEditingController(text: data.type);
     final positionController = TextEditingController(text: data.position);
     DateTime loanedDate = DateTime(2022, 2, 1);
@@ -1178,11 +1301,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             minimumSize: const Size(0, 36),
                           ),
                           onPressed: () async {
-                            if (nameController.text.isNotEmpty &&
+                            if (selectedWorkerName != null &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
                               final assetMap = {
-                                'name': nameController.text,
+                                'name': selectedWorkerName!,
                                 'position': positionController.text,
                                 'type': typeController.text,
                                 'dateLoaned': formatDate(loanedDate),
@@ -1195,7 +1318,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   final idx = _assets.indexWhere((a) => a.id == data.id);
                                   if (idx != -1) {
                                     _assets[idx] = AssetData(
-                                      nameController.text,
+                                      selectedWorkerName!,
                                       positionController.text,
                                       typeController.text,
                                       formatDate(loanedDate),
@@ -1228,7 +1351,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _buildModalTextField('Worker Name', nameController, 'Enter worker name'),
+                    StreamBuilder<List<String>>(
+                      stream: _workerNamesStream,
+                      initialData: _workerNames,
+                      builder: (context, snapshot) {
+                        final items = snapshot.data ?? [];
+                        return _buildModalDropdown(
+                          'worker_name'.tr(),
+                          selectedWorkerName,
+                          items,
+                          'worker_name_hint'.tr(),
+                          (val) {
+                            setModalState(() => selectedWorkerName = val);
+                          },
+                        );
+                      },
+                    ),
                     const SizedBox(height: 14),
                     _buildModalTextField('Asset Type', typeController, 'Enter asset type'),
                     const SizedBox(height: 14),
