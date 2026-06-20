@@ -798,7 +798,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
 
     return Container(
-      height: 26,
+      height: 18,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
