@@ -507,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           amount:
                               '\$${NumberFormat.compact().format(_totalSalarySum)}',
                           period: _selectedPeriod,
-                          lineColor: const Color(0xFF8BB1F3),
+                          lineColor: const Color(0xFF4C84E0),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -517,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           amount:
                               '\$${NumberFormat.compact().format(_totalExpensesSum)}',
                           period: _selectedPeriod,
-                          lineColor: const Color(0xFFAFE0FE),
+                          lineColor: const Color(0xFF0EA5E9),
                         ),
                       ),
                     ],
@@ -1805,6 +1805,8 @@ class SparklineCard extends StatelessWidget {
                           gridData: FlGridData(show: false),
                           titlesData: FlTitlesData(show: false),
                           borderData: FlBorderData(show: false),
+                          minX: -0.3,
+                          maxX: 8.3,
                           minY: 0,
                           maxY: 10,
                           lineBarsData: [
@@ -1814,15 +1816,19 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 1,
+                              barWidth: 0.5,
                               isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
                                 show: true,
                                 gradient: LinearGradient(
                                   colors: [
-                                    lineColor.withValues(alpha: 0.3),
-                                    Colors.transparent,
+                                    lineColor == const Color(0xFF0EA5E9)
+                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.18)
+                                        : lineColor.withValues(alpha: 0.18),
+                                    lineColor == const Color(0xFF0EA5E9)
+                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.0)
+                                        : lineColor.withValues(alpha: 0.0),
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
@@ -2207,7 +2213,7 @@ class AttendanceLineChart extends StatelessWidget {
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 55,
+                                  reservedSize: 70,
                                   interval: range.interval,
                                   getTitlesWidget: (value, meta) {
                                     const style = TextStyle(
@@ -2518,8 +2524,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                               PieChartData(
                                 sectionsSpace: 0.0,
                                 centerSpaceRadius: 0,
-                                startDegreeOffset:
-                                    108,
+                                startDegreeOffset: 108,
                                 sections: [
                                   PieChartSectionData(
                                     color: const Color(
