@@ -487,17 +487,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         children: [
           _buildTopForm(),
           const SizedBox(height: 32),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCalendar(_calendarMonth),
-                const SizedBox(width: 24),
-                _buildCalendar(
-                  DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.only(left: 40.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCalendar(_calendarMonth),
+                  const SizedBox(width: 24),
+                  _buildCalendar(
+                    DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -689,7 +692,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       ),
       padding: const EdgeInsets.all(16),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 318),
+        constraints: const BoxConstraints(maxWidth: 346),
         child: Column(
           children: [
             Row(
@@ -776,8 +779,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
     return Center(
       child: Container(
-        width: 42,
-        height: 22,
+        width: 46,
+        height: 23,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: color,
@@ -862,11 +865,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     bool inRange = false,
     DateTime? date,
   }) {
-    if (day.isEmpty) return const SizedBox(width: 42, height: 42);
+    if (day.isEmpty) return const SizedBox(width: 46, height: 46);
     return Center(
       child: SizedBox(
-        width: 42,
-        height: 42,
+        width: 46,
+        height: 46,
         child: GestureDetector(
           onTap: () {
             if (date != null) {
