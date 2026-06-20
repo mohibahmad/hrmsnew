@@ -1406,7 +1406,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 45),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1487,23 +1487,29 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildLegendItem(
-                          Color(0xFF155ED5),
-                          'male'.tr(),
-                          'workers_count'.tr(
-                            namedArgs: {'count': maleCount.toString()},
+                        Flexible(
+                          child: _buildLegendItem(
+                            Color(0xFF155ED5),
+                            'male'.tr(),
+                            'workers_count'.tr(
+                              namedArgs: {'count': maleCount.toString()},
+                            ),
                           ),
                         ),
-                        _buildLegendItem(
-                          Color(0xFFFF2D2D),
-                          'female'.tr(),
-                          'workers_count'.tr(
-                            namedArgs: {'count': femaleCount.toString()},
+                        const SizedBox(width: 16),
+                        Flexible(
+                          child: _buildLegendItem(
+                            Color(0xFFFF2D2D),
+                            'female'.tr(),
+                            'workers_count'.tr(
+                              namedArgs: {'count': femaleCount.toString()},
+                            ),
                           ),
                         ),
                       ],
@@ -1544,32 +1550,41 @@ class TotalWorkersCard extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: CircleAvatar(radius: 5, backgroundColor: color),
+          child: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
         ),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                fontFamily: 'SF Pro Display',
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1594,7 +1609,7 @@ class RoundedDonutChart extends StatelessWidget {
       curve: Curves.easeInOutCubic,
       builder: (context, value, child) {
         return CustomPaint(
-          size: const Size(130, 130),
+          size: const Size(115, 115),
           painter: _DonutChartPainter(
             progress: value,
             malePercent: malePercent,
@@ -1832,11 +1847,19 @@ class SparklineCard extends StatelessWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.18)
-                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.18),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.18)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.18),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.0)
-                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.0),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.0)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.0),
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
