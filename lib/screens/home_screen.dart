@@ -2837,13 +2837,13 @@ class HolidayCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(
-                        width: 20,
+                        width: 22,
                         child: Text(
                           remainingDays,
                           textAlign: TextAlign.end,
                           style: TextStyle(
                             color: mainTextColor,
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                             fontFamily: 'SF Pro Display',
                             height: 1.0,
