@@ -1199,7 +1199,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             child: AbsorbPointer(
                               child: _buildInputField(
                                 'worker_dob'.tr(),
-                                '00/00/0000',
+                                'date_format'.tr(),
                                 suffixIcon: Icons.calendar_month,
                                 controller: dobController,
                               ),
