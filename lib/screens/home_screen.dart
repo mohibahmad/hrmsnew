@@ -1709,14 +1709,22 @@ class SparklineCard extends StatelessWidget {
                               color: const Color(0xFFF3F4F6),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: SvgPicture.asset(
-                              lineColor == const Color(0xFF4C84E0)
-                                  ? 'assets/total_salary.svg'
-                                  : 'assets/total_expense.svg',
-                              height: 20,
-                              width: 20,
-                              color: const Color(0xFF155ED5),
-                            ),
+                            child: lineColor == const Color(0xFF4C84E0)
+                                ? SvgPicture.asset(
+                                    'assets/total_salary.svg',
+                                    height: 20,
+                                    width: 20,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFF155ED5),
+                                      BlendMode.srcIn,
+                                    ),
+                                  )
+                                : Image.asset(
+                                    'assets/expense.png',
+                                    height: 20,
+                                    width: 20,
+                                    color: const Color(0xFF155ED5),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           Text(
@@ -1847,14 +1855,22 @@ class SparklineCard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SvgPicture.asset(
-                    lineColor == const Color(0xFF4C84E0)
-                        ? 'assets/total_salary.svg'
-                        : 'assets/total_expense.svg',
-                    height: 40,
-                    width: 40,
-                    color: const Color(0xFF9CA3AF),
-                  ),
+                  lineColor == const Color(0xFF4C84E0)
+                      ? SvgPicture.asset(
+                          'assets/total_salary.svg',
+                          height: 40,
+                          width: 40,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFF9CA3AF),
+                            BlendMode.srcIn,
+                          ),
+                        )
+                      : Image.asset(
+                          'assets/expense.png',
+                          height: 40,
+                          width: 40,
+                          color: const Color(0xFF9CA3AF),
+                        ),
                   const SizedBox(height: 8),
                   Text(
                     lineColor == const Color(0xFF4C84E0)
