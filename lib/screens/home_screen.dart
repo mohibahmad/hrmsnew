@@ -500,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           femaleCount: _femaleWorkersCount,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: SparklineCard(
                           title: 'total_salary'.tr(),
@@ -510,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           lineColor: const Color(0xFF4C84E0),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: SparklineCard(
                           title: 'expenses'.tr(),
@@ -570,7 +570,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           attendanceDocs: _attendanceDocs,
                         ),
                       ),
-                      const SizedBox(width: 20),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: LeaveTypesPieChart(
                           period: _selectedPeriod,
@@ -1831,7 +1831,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 1.5,
+                              barWidth: 0.7,
                               isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -1841,17 +1841,17 @@ class SparklineCard extends StatelessWidget {
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(
                                             0xFF93D7FD,
-                                          ).withValues(alpha: 0.16)
+                                          ).withValues(alpha: 0.45)
                                         : const Color(
                                             0xFF8DA9F1,
-                                          ).withValues(alpha: 0.16),
+                                          ).withValues(alpha: 0.45),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(
                                             0xFF93D7FD,
-                                          ).withValues(alpha: 0.04)
+                                          ).withValues(alpha: 0.15)
                                         : const Color(
                                             0xFF8DA9F1,
-                                          ).withValues(alpha: 0.04),
+                                          ).withValues(alpha: 0.15),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(
                                             0xFF93D7FD,
