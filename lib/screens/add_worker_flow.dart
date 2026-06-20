@@ -202,6 +202,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _annualLeavesController.addListener(_onControllerChanged);
     _sickLeavesController.addListener(_onControllerChanged);
     _casualLeavesController.addListener(_onControllerChanged);
+
+    _autoCalcAnnualLeaves();
+    _sickLeavesController.addListener(_autoCalcAnnualLeaves);
+    _casualLeavesController.addListener(_autoCalcAnnualLeaves);
+  }
+
+  void _autoCalcAnnualLeaves() {
+    final sick = int.tryParse(_sickLeavesController.text) ?? 0;
+    final casual = int.tryParse(_casualLeavesController.text) ?? 0;
+    _annualLeavesController.text = (sick + casual).toString();
   }
 
   Future<String?> _uploadToStorage(

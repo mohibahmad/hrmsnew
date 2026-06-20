@@ -55,6 +55,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
+  static const double _tableMinWidth = 900.0;
   StreamSubscription? _timeoffSub;
 
   @override
@@ -355,252 +356,267 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       1200.0,
     );
 
-    return Container(
-      height: tableHeight,
-      decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
-      child: Column(
-        children: [
-          // Table Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'worker_name_header'.tr(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'position'.tr(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'contact_no'.tr(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'time_off'.tr(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: _tableMinWidth,
+        child: Container(
+          height: tableHeight,
+          decoration: BoxDecoration(
+            color: Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          // Table Rows
-          Expanded(
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: paginatedWorkers.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
-              itemBuilder: (context, index) {
-                final doc = paginatedWorkers[index];
-                final name = (doc['name'] ?? '').toString();
-                final email = (doc['email'] ?? '').toString();
-                final position = (doc['position'] ?? '').toString();
-                final contact = (doc['contact'] ?? '').toString();
-                final action = (doc['action'] ?? 'payroll_data'.tr()).toString();
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  child: Row(
-                    children: [
-                      // Worker Name with Avatar
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundImage: AssetImage(
-                                index % 2 == 0
-                                    ? 'assets/profileimage.png'
-                                    : 'assets/boy.png',
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Color(0xFF000000),
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  Text(
-                                    email,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF64748B),
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+          child: Column(
+            children: [
+              // Table Header
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        'worker_name_header'.tr(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
-                      // Position
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          position,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'position'.tr(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
-                      // Contact
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          contact,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF000000),
-                            fontFamily: 'SF Pro Display',
-                          ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'contact_no'.tr(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
-                      // Time Off Action
-                      Expanded(
-                        flex: 2,
-                        child: GestureDetector(
-                          onTap: () {
-                            if (widget.onAssignTimeOff != null) {
-                              widget.onAssignTimeOff!(doc);
-                            } else {
-                              // Fallback if rendered as standalone
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => AssignTimeOffScreen(
-                                    onBack: () => Navigator.of(context).pop(),
-                                    initialWorker: doc,
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'time_off'.tr(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              // Table Rows
+              Expanded(
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: paginatedWorkers.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  itemBuilder: (context, index) {
+                    final doc = paginatedWorkers[index];
+                    final name = (doc['name'] ?? '').toString();
+                    final email = (doc['email'] ?? '').toString();
+                    final position = (doc['position'] ?? '').toString();
+                    final contact = (doc['contact'] ?? '').toString();
+                    final action = (doc['action'] ?? 'payroll_data'.tr())
+                        .toString();
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          // Worker Name with Avatar
+                          Expanded(
+                            flex: 3,
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundImage: AssetImage(
+                                    index % 2 == 0
+                                        ? 'assets/profileimage.png'
+                                        : 'assets/boy.png',
                                   ),
                                 ),
-                              );
-                            }
-                          },
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Color(0xFF000000),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      Text(
+                                        email,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF64748B),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Position
+                          Expanded(
+                            flex: 2,
                             child: Text(
-                              action,
+                              position,
                               style: const TextStyle(
                                 fontSize: 14,
-                                color: Color(0xFF0247C4),
                                 fontWeight: FontWeight.w500,
+                                color: Color(0xFF000000),
                                 fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
+                          // Contact
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              contact,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF000000),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                          // Time Off Action
+                          Expanded(
+                            flex: 2,
+                            child: GestureDetector(
+                              onTap: () {
+                                if (widget.onAssignTimeOff != null) {
+                                  widget.onAssignTimeOff!(doc);
+                                } else {
+                                  // Fallback if rendered as standalone
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => AssignTimeOffScreen(
+                                        onBack: () =>
+                                            Navigator.of(context).pop(),
+                                        initialWorker: doc,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: Text(
+                                  action,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF0247C4),
+                                    fontWeight: FontWeight.w500,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              // Pagination
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: _currentPage > 1
+                          ? () => setState(() => _currentPage--)
+                          : null,
+                      behavior: HitTestBehavior.opaque,
+                      child: Icon(
+                        Icons.chevron_left,
+                        color: _currentPage > 1
+                            ? Colors.black
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0247C4),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '$_currentPage',
+                        style: const TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: _currentPage > 1
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: _currentPage > 1
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$_currentPage',
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.bold,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _currentPage < totalPages
+                          ? () => setState(() => _currentPage++)
+                          : null,
+                      behavior: HitTestBehavior.opaque,
+                      child: Icon(
+                        Icons.chevron_right,
+                        color: _currentPage < totalPages
+                            ? Colors.black
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _currentPage < totalPages
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_right,
-                    color: _currentPage < totalPages
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

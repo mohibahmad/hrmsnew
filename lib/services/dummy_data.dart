@@ -577,6 +577,9 @@ class DummyData {
       'position': 'Senior Web Developer',
       'contact': '+1 555-0101',
       'action': 'Annual Leave',
+      'startDate': '2026-06-01',
+      'endDate': '2026-06-10',
+      'requestedDays': 10,
     },
     {
       'id': 'dummy_t2',
@@ -585,6 +588,9 @@ class DummyData {
       'position': 'UI/UX Designer',
       'contact': '+1 555-0102',
       'action': 'Sick Leave',
+      'startDate': '2026-06-05',
+      'endDate': '2026-06-07',
+      'requestedDays': 3,
     },
     {
       'id': 'dummy_t3',
@@ -593,6 +599,9 @@ class DummyData {
       'position': 'DevOps Engineer',
       'contact': '+1 555-0103',
       'action': 'Casual Leave',
+      'startDate': '2026-06-15',
+      'endDate': '2026-06-16',
+      'requestedDays': 2,
     },
     {
       'id': 'dummy_t4',
@@ -601,6 +610,9 @@ class DummyData {
       'position': 'Marketing Specialist',
       'contact': '+1 555-0105',
       'action': 'Maternity Leave',
+      'startDate': '2026-06-20',
+      'endDate': '2026-07-20',
+      'requestedDays': 30,
     },
     {
       'id': 'dummy_t5',
@@ -609,6 +621,9 @@ class DummyData {
       'position': 'Backend Engineer',
       'contact': '+1 555-0106',
       'action': 'Annual Leave',
+      'startDate': '2026-06-10',
+      'endDate': '2026-06-14',
+      'requestedDays': 5,
     },
     {
       'id': 'dummy_t6',
@@ -617,6 +632,9 @@ class DummyData {
       'position': 'HR Manager',
       'contact': '+1 555-0107',
       'action': 'Sick Leave',
+      'startDate': '2026-06-18',
+      'endDate': '2026-06-18',
+      'requestedDays': 1,
     },
     {
       'id': 'dummy_t7',
@@ -625,6 +643,9 @@ class DummyData {
       'position': 'Frontend Developer',
       'contact': '+1 555-0108',
       'action': 'Casual Leave',
+      'startDate': '2026-06-22',
+      'endDate': '2026-06-23',
+      'requestedDays': 2,
     },
     {
       'id': 'dummy_t8',
@@ -633,6 +654,9 @@ class DummyData {
       'position': 'QA Engineer',
       'contact': '+1 555-0109',
       'action': 'Maternity Leave',
+      'startDate': '2026-06-01',
+      'endDate': '2026-07-01',
+      'requestedDays': 30,
     },
     {
       'id': 'dummy_t9',
@@ -641,6 +665,9 @@ class DummyData {
       'position': 'Solutions Architect',
       'contact': '+1 555-0110',
       'action': 'Annual Leave',
+      'startDate': '2026-06-25',
+      'endDate': '2026-07-05',
+      'requestedDays': 11,
     },
     {
       'id': 'dummy_t10',
@@ -649,6 +676,9 @@ class DummyData {
       'position': 'Graphic Designer',
       'contact': '+1 555-0111',
       'action': 'Sick Leave',
+      'startDate': '2026-06-12',
+      'endDate': '2026-06-14',
+      'requestedDays': 3,
     },
     {
       'id': 'dummy_t11',
@@ -657,6 +687,9 @@ class DummyData {
       'position': 'Mobile Developer',
       'contact': '+1 555-0112',
       'action': 'Annual Leave',
+      'startDate': '2026-06-08',
+      'endDate': '2026-06-12',
+      'requestedDays': 5,
     },
     {
       'id': 'dummy_t12',
@@ -665,6 +698,9 @@ class DummyData {
       'position': 'Cyber Security Analyst',
       'contact': '+1 555-0113',
       'action': 'Sick Leave',
+      'startDate': '2026-06-19',
+      'endDate': '2026-06-20',
+      'requestedDays': 2,
     },
   ];
 

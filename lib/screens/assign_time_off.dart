@@ -272,6 +272,29 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return _endDate.difference(_startDate).inDays + 1;
   }
 
+  int get _availableDays {
+    if (_selectedWorker == null) return 0;
+    switch (_timeOffType) {
+      case 'Annual Leave':
+        return int.tryParse(
+              (_selectedWorker!['annualLeaves'] ?? '').toString(),
+            ) ??
+            0;
+      case 'Sick Leave':
+        return int.tryParse(
+              (_selectedWorker!['sickLeaves'] ?? '').toString(),
+            ) ??
+            0;
+      case 'Casual Leave':
+        return int.tryParse(
+              (_selectedWorker!['casualLeaves'] ?? '').toString(),
+            ) ??
+            0;
+      default:
+        return 0;
+    }
+  }
+
   @override
   void dispose() {
     _notesController.dispose();
@@ -525,50 +548,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
                 elevation: 0,
               ),
-              onPressed: () async {
-                if (_selectedWorker == null) {
-                  FlashySnackBar.show(context, message: 'Please select a worker first');
-                  return;
-                }
-                final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-                final recordMap = {
-                  'name': _selectedWorker!['name'] ?? 'Worker',
-                  'email': _selectedWorker!['email'] ?? '',
-                  'position': _selectedWorker!['position'] ?? 'Worker',
-                  'phone': _selectedWorker!['phone'] ?? '',
-                  'action': _timeOffType,
-                };
-                if (isGuest) {
-                  final newId =
-                      'dummy_t${DateTime.now().millisecondsSinceEpoch}';
-                  DummyData.timeoff.insert(0, {...recordMap, 'id': newId});
-                } else {
-                  try {
-                    await FirestoreService().addTimeOffRecord(recordMap);
-                  } catch (e) {
-                    debugPrint('Error saving time off record: $e');
-                  }
-                }
-
-                // Show assign success confirmation
-                FlashySnackBar.show(
-                  context,
-                  message: 'assign_success'.tr(
-                    namedArgs: {
-                      'type': _timeOffType,
-                      'start': _formatDate(_startDate),
-                      'end': _formatDate(_endDate),
-                      'days': '$_requestedDays',
-                    },
-                  ),
-                );
-                // Return to Time Off screen after a short delay
-                Future.delayed(const Duration(milliseconds: 1500), () {
-                  if (mounted) {
-                    widget.onBack();
-                  }
-                });
-              },
+              onPressed: (_selectedWorker == null || _isLoading)
+                  ? null
+                  : () => _handleSave(),
               child: Text(
                 'assign'.tr(),
                 style: const TextStyle(
@@ -980,8 +962,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               children: [
                 _buildSummaryRow(
                   'available_annual_leave'.tr(),
-                  '-1',
-                  Colors.red,
+                  '$_availableDays',
+                  _availableDays > 0 ? Colors.black : Colors.red,
                 ),
                 _buildSummaryRow(
                   'requested_days'.tr(),
@@ -990,8 +972,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
                 _buildSummaryRow(
                   'remaining_days'.tr(),
-                  '${-1 - _requestedDays}',
-                  Colors.red,
+                  '${_availableDays - _requestedDays}',
+                  _availableDays - _requestedDays >= 0
+                      ? Colors.black
+                      : Colors.red,
                 ),
               ],
             ),
@@ -1063,6 +1047,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Future<void> _handleSave() async {
+    if (_isLoading) return;
     if (_selectedWorker == null) {
       FlashySnackBar.show(context, message: 'Please select a worker first');
       return;

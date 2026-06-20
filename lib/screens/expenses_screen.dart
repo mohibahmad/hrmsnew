@@ -306,11 +306,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _showAddExpenseModal(BuildContext context) {
-    final categoryController = TextEditingController(text: 'Dinner');
-    final amountController = TextEditingController(text: '0.00');
-    final descriptionController = TextEditingController(
-      text: 'Client meeting dinner',
-    );
+    final categoryController = TextEditingController();
+    final amountController = TextEditingController();
+    final descriptionController = TextEditingController();
     int selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
 
@@ -444,6 +442,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'expense_category'.tr(),
                             categoryController,
+                            hintText: 'e.g. Dinner',
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -451,6 +450,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'amount_dollar'.tr(),
                             amountController,
+                            hintText: '0.00',
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
@@ -491,7 +491,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   controller: descriptionController,
                                   maxLines: null,
                                   decoration: const InputDecoration.collapsed(
-                                    hintText: '',
+                                    hintText: 'e.g. Client meeting dinner',
                                   ),
                                   style: const TextStyle(
                                     fontSize: 14,
@@ -544,6 +544,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     String label,
     TextEditingController controller, {
     TextInputType? keyboardType,
+    String hintText = '',
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -577,7 +578,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
                 : null,
             decoration: InputDecoration(
-              hintText: '',
+              hintText: hintText,
               border: InputBorder.none,
               isDense: true,
               contentPadding: EdgeInsets.zero,
