@@ -624,7 +624,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   child: () {
-                    final activeHolidays = _holidays.where((h) => h['isEnabled'] == true).toList();
+                    final activeHolidays = _holidays
+                        .where((h) => h['isEnabled'] == true)
+                        .toList();
                     if (activeHolidays.isEmpty) {
                       return Center(
                         child: Padding(
@@ -671,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 24),
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            double spacing = 10.0;
+                            double spacing = 16.0;
                             double itemWidth =
                                 (constraints.maxWidth - (spacing * 4)) / 5;
 
@@ -679,9 +681,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               spacing: spacing,
                               runSpacing: spacing,
                               children: activeHolidays.map((h) {
-                                final remainingDaysStr = h['remainingDays'] ?? '';
-                                final remainingDaysInt = int.tryParse(remainingDaysStr) ?? -1;
-                                final isUrgent = remainingDaysInt >= 1 && remainingDaysInt <= 5;
+                                final remainingDaysStr =
+                                    h['remainingDays'] ?? '';
+                                final remainingDaysInt =
+                                    int.tryParse(remainingDaysStr) ?? -1;
+                                final isUrgent =
+                                    remainingDaysInt >= 1 &&
+                                    remainingDaysInt <= 5;
 
                                 return SizedBox(
                                   width: itemWidth,
