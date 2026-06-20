@@ -518,8 +518,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
           const SizedBox(height: 32),
           _buildNotesAndSummary(),
-          const SizedBox(height: 32),
-          Align(alignment: Alignment.centerRight, child: _buildSaveButton()),
         ],
       ),
     );
