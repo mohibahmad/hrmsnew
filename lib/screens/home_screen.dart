@@ -1400,7 +1400,7 @@ class TotalWorkersCard extends StatelessWidget {
                         '$count',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 22,
+                          fontSize: 18,
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
@@ -1751,7 +1751,7 @@ class SparklineCard extends StatelessWidget {
                             amount,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 22,
+                              fontSize: 18,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1839,14 +1839,26 @@ class SparklineCard extends StatelessWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.16)
-                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.16),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.16)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.16),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.04)
-                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.04),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.04)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.04),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD).withValues(alpha: 0.0)
-                                        : const Color(0xFF8DA9F1).withValues(alpha: 0.0),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.0)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.0),
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
