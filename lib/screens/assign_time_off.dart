@@ -677,7 +677,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ==== CALENDARS ====
 
   Widget _buildCalendar(DateTime monthDate) {
-    String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'.toUpperCase();
+    String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'
+        .toUpperCase();
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
@@ -775,20 +776,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         width: 42,
         height: 22,
         alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        shortDay.toUpperCase(),
-        style: const TextStyle(
-          color: Color(0xFFFFFFFF),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          fontFamily: 'SF Pro Display',
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
         ),
-      ),
+        child: Text(
+          shortDay.toUpperCase(),
+          style: const TextStyle(
+            color: Color(0xFFFFFFFF),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
       ),
     );
   }
@@ -864,50 +865,50 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         width: 42,
         height: 42,
         child: GestureDetector(
-        onTap: () {
-          if (date != null) {
-            setState(() {
-              // Simple logic: if click is before start date, update start date
-              // else update end date
-              if (date.isBefore(_startDate)) {
-                _startDate = date;
-              } else {
-                _endDate = date;
-              }
-            });
-          }
-        },
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFFFF0004)
-                : (inRange
-                      ? const Color(0xFFFF0004).withValues(alpha: 0.1)
-                      : Colors.transparent),
-            border: Border.all(
+          onTap: () {
+            if (date != null) {
+              setState(() {
+                // Simple logic: if click is before start date, update start date
+                // else update end date
+                if (date.isBefore(_startDate)) {
+                  _startDate = date;
+                } else {
+                  _endDate = date;
+                }
+              });
+            }
+          },
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
               color: isSelected
                   ? const Color(0xFFFF0004)
                   : (inRange
-                        ? const Color(0xFFFF0004).withValues(alpha: 0.3)
-                        : Colors.grey.shade300),
-              width: 1,
+                        ? const Color(0xFFFF0004).withValues(alpha: 0.1)
+                        : Colors.transparent),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFFFF0004)
+                    : (inRange
+                          ? const Color(0xFFFF0004).withValues(alpha: 0.3)
+                          : Colors.grey.shade300),
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(6),
             ),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            day,
-            style: TextStyle(
-              color: isSelected
-                  ? const Color(0xFFFFFFFF)
-                  : (inRange ? const Color(0xFFFF0004) : Colors.black),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
+            child: Text(
+              day,
+              style: TextStyle(
+                color: isSelected
+                    ? const Color(0xFFFFFFFF)
+                    : (inRange ? const Color(0xFFFF0004) : Colors.black),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
