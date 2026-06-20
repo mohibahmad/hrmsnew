@@ -1710,7 +1710,7 @@ class SparklineCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: SvgPicture.asset(
-                              lineColor == const Color(0xFF8BB1F3)
+                              lineColor == const Color(0xFF4C84E0)
                                   ? 'assets/total_salary.svg'
                                   : 'assets/total_expense.svg',
                               height: 20,
@@ -1848,7 +1848,7 @@ class SparklineCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SvgPicture.asset(
-                    lineColor == const Color(0xFF8BB1F3)
+                    lineColor == const Color(0xFF4C84E0)
                         ? 'assets/total_salary.svg'
                         : 'assets/total_expense.svg',
                     height: 40,
@@ -1857,7 +1857,7 @@ class SparklineCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    lineColor == const Color(0xFF8BB1F3)
+                    lineColor == const Color(0xFF4C84E0)
                         ? 'no_salary_records_yet'.tr()
                         : 'no_expenses_recorded_yet'.tr(),
                     style: const TextStyle(
