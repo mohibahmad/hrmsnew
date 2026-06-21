@@ -325,24 +325,41 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         children: [
           _buildHeader(context),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'assign_time_off'.tr(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const double minWidth = 900;
+                final double contentWidth = constraints.maxWidth < minWidth
+                    ? minWidth
+                    : constraints.maxWidth;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 24,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'assign_time_off'.tr(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF000000),
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          _buildMainCard(),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  _buildMainCard(),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -923,81 +940,87 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ==== BOTTOM NOTES & SUMMARY ====
 
   Widget _buildNotesAndSummary() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 772),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 55,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'notes_label'.tr(),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  child: TextField(
-                    controller: _notesController,
-                    maxLines: null,
-                    decoration: InputDecoration.collapsed(
-                      hintText: 'please_enter_notes'.tr(),
-                      hintStyle: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
+    return Padding(
+      padding: const EdgeInsets.only(left: 32),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 772),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 55,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'notes_label'.tr(),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      child: TextField(
+                        controller: _notesController,
+                        maxLines: null,
+                        decoration: InputDecoration.collapsed(
+                          hintText: 'please_enter_notes'.tr(),
+                          hintStyle: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 45,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 32),
+                  child: Column(
+                    children: [
+                      _buildSummaryRow(
+                        'available_annual_leave'.tr(),
+                        '$_availableDays',
+                        _availableDays > 0 ? Colors.black : Colors.red,
+                      ),
+                      _buildSummaryRow(
+                        'requested_days'.tr(),
+                        '$_requestedDays',
+                        Colors.black,
+                      ),
+                      _buildSummaryRow(
+                        'remaining_days'.tr(),
+                        '${_availableDays - _requestedDays}',
+                        _availableDays - _requestedDays >= 0
+                            ? Colors.black
+                            : Colors.red,
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            flex: 45,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 32),
-              child: Column(
-                children: [
-                  _buildSummaryRow(
-                    'available_annual_leave'.tr(),
-                    '$_availableDays',
-                    _availableDays > 0 ? Colors.black : Colors.red,
-                  ),
-                  _buildSummaryRow(
-                    'requested_days'.tr(),
-                    '$_requestedDays',
-                    Colors.black,
-                  ),
-                  _buildSummaryRow(
-                    'remaining_days'.tr(),
-                    '${_availableDays - _requestedDays}',
-                    _availableDays - _requestedDays >= 0
-                        ? Colors.black
-                        : Colors.red,
-                  ),
-                ],
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
