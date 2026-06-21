@@ -35,7 +35,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   List<Map<String, dynamic>> _workers = [];
   Map<String, dynamic>? _selectedWorker;
-  bool _loadingWorkers = true;
   StreamSubscription? _workersSub;
 
   @override
@@ -56,9 +55,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             orElse: () => widget.initialWorker!,
           );
         } else if (_workers.isNotEmpty) {
-          _selectedWorker = _workers.first;
+          if (_selectedWorker == null) {
+            _selectedWorker = _workers.first;
+          } else {
+            _selectedWorker = _workers.firstWhere(
+              (w) => w['email'] == _selectedWorker!['email'],
+              orElse: () => _workers.first,
+            );
+          }
+        } else {
+          _selectedWorker = null;
         }
-        _loadingWorkers = false;
       });
     } else {
       _workersSub = FirestoreService().workersStream.listen(
@@ -74,25 +81,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   orElse: () => widget.initialWorker!,
                 );
               } else if (_workers.isNotEmpty) {
-                if (_selectedWorker == null ||
-                    !_workers.any(
-                      (w) => w['email'] == _selectedWorker!['email'],
-                    )) {
+                if (_selectedWorker == null) {
                   _selectedWorker = _workers.first;
+                } else {
+                  _selectedWorker = _workers.firstWhere(
+                    (w) => w['email'] == _selectedWorker!['email'],
+                    orElse: () => _workers.first,
+                  );
                 }
               } else {
                 _selectedWorker = null;
               }
-              _loadingWorkers = false;
             });
           }
         },
         onError: (e) {
-          if (mounted) {
-            setState(() {
-              _loadingWorkers = false;
-            });
-          }
+          // Stream error handling
         },
       );
     }
@@ -166,12 +170,29 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               isExpanded: true,
               value: _selectedWorker,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
-              hint: const Text('Select a worker'),
+              hint: const Text(
+                'Select a worker',
+                style: TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontSize: 14,
+                  color: Colors.black54,
+                ),
+              ),
+              style: const TextStyle(
+                fontFamily: 'SF Pro Display',
+                fontSize: 14,
+                color: Colors.black,
+              ),
               items: _workers.map((worker) {
                 return DropdownMenuItem<Map<String, dynamic>>(
                   value: worker,
                   child: Text(
                     '${worker['name'] ?? ''} (${worker['position'] ?? ''})',
+                    style: const TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
                   ),
                 );
               }).toList(),
@@ -242,6 +263,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                         setState(() {
                           if (isStartDate) {
                             _startDate = tempPickedDate;
+                            _calendarMonth = DateTime(
+                              _startDate.year,
+                              _startDate.month,
+                              1,
+                            );
                             if (_endDate.isBefore(_startDate)) {
                               _endDate = _startDate.add(
                                 const Duration(days: 9),
@@ -487,20 +513,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildWorkerDropdown(),
+            const SizedBox(height: 24),
             _buildTopForm(),
             const SizedBox(height: 32),
-            Padding(
-              padding: const EdgeInsets.only(left: 32),
-              child: Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                children: [
-                  _buildCalendar(_calendarMonth),
-                  _buildCalendar(
-                    DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
-                  ),
-                ],
-              ),
+            Wrap(
+              spacing: 24,
+              runSpacing: 24,
+              children: [
+                _buildCalendar(_calendarMonth),
+                _buildCalendar(
+                  DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
+                ),
+              ],
             ),
             const Spacer(),
             const SizedBox(height: 32),
@@ -597,22 +622,55 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               isExpanded: true,
               value: value,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
+              style: const TextStyle(
+                fontFamily: 'SF Pro Display',
+                fontSize: 14,
+                color: Colors.black,
+              ),
               items: [
                 DropdownMenuItem(
                   value: 'Annual Leave',
-                  child: Text('annual_leave'.tr()),
+                  child: Text(
+                    'annual_leave'.tr(),
+                    style: const TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'Sick Leave',
-                  child: Text('sick_leave_type'.tr()),
+                  child: Text(
+                    'sick_leave_type'.tr(),
+                    style: const TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'Casual Leave',
-                  child: Text('leaves_tab'.tr()),
+                  child: Text(
+                    'leaves_tab'.tr(),
+                    style: const TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'Maternity Leave',
-                  child: Text('maternity_leave'.tr()),
+                  child: Text(
+                    'maternity_leave'.tr(),
+                    style: const TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
               ],
               onChanged: (v) {
@@ -850,12 +908,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         } else {
           rowChildren.add(_buildDayCell(''));
         }
-        if (j < 6)
+        if (j < 6) {
           rowChildren.add(const SizedBox(width: 4)); // Space between cells
+        }
       }
       rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
-      if (currentDay > daysInMonth && i >= 4) break;
-      if (i < 5) rows.add(const SizedBox(height: 4)); // Space between rows
+      if (currentDay > daysInMonth && i >= 4) {
+        break;
+      }
+      if (i < 5) {
+        rows.add(const SizedBox(height: 4)); // Space between rows
+      }
     }
     return Column(children: rows);
   }
@@ -866,7 +929,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     bool inRange = false,
     DateTime? date,
   }) {
-    if (day.isEmpty) return const SizedBox(width: 50, height: 50);
+    if (day.isEmpty) {
+      return const SizedBox(width: 50, height: 50);
+    }
     return Center(
       child: SizedBox(
         width: 50,
@@ -923,56 +988,55 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ==== BOTTOM NOTES & SUMMARY ====
 
   Widget _buildNotesAndSummary() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 0),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 830),
-          child: Row(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 70,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 70,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'notes_label'.tr(),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 130,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      child: TextField(
-                        controller: _notesController,
-                        maxLines: null,
-                        decoration: InputDecoration.collapsed(
-                          hintText: 'please_enter_notes'.tr(),
-                          hintStyle: TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              Text(
+                'notes_label'.tr(),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
+              const SizedBox(height: 12),
+              Container(
+                height: 130,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                child: TextField(
+                  controller: _notesController,
+                  maxLines: null,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  decoration: InputDecoration.collapsed(
+                    hintText: 'please_enter_notes'.tr(),
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 14,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
               const SizedBox(width: 24),
               Expanded(
                 flex: 30,
@@ -1002,10 +1066,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
+          );
   }
 
   Widget _buildSummaryRow(String label, String value, Color valueColor) {
