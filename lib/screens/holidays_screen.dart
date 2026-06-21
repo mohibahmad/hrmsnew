@@ -458,7 +458,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         ),
         const SizedBox(height: 16),
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             _buildWeekday('weekday_sun'.tr(), const Color(0xFFFF0004)),
             const SizedBox(width: 8),
@@ -485,25 +484,24 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     String shortDay = day;
     if (shortDay.length > 3) shortDay = shortDay.substring(0, 3);
 
-    return Center(
+    return Expanded(
       child: Container(
-        width: 54,
         height: 18,
         alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        shortDay.toUpperCase(),
-        style: const TextStyle(
-          color: Color(0xFFFFFFFF),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          fontFamily: 'SF Pro Display',
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
         ),
-      ),
+        child: Text(
+          shortDay.toUpperCase(),
+          style: const TextStyle(
+            color: Color(0xFFFFFFFF),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
       ),
     );
   }
@@ -546,7 +544,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 8));
       }
-      rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
+      rows.add(Row(children: rowChildren));
       if (currentDay > daysInMonth && i >= 4) break;
       if (i < 5) rows.add(const SizedBox(height: 8));
     }
@@ -554,34 +552,40 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
-    if (day.isEmpty) return const SizedBox(width: 54, height: 54);
-    return Center(
-      child: SizedBox(
-        width: 54,
-        height: 54,
+    if (day.isEmpty) {
+      return const Expanded(
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: SizedBox(),
+        ),
+      );
+    }
+    return Expanded(
+      child: AspectRatio(
+        aspectRatio: 1,
         child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFF0004) : Colors.transparent,
-            border: Border.all(
-              color: isSelected ? const Color(0xFFFF0004) : Colors.grey.shade300,
-              width: 1,
+          onTap: onTap,
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFFFF0004) : Colors.transparent,
+              border: Border.all(
+                color: isSelected ? const Color(0xFFFF0004) : Colors.grey.shade300,
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(6),
             ),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            day,
-            style: TextStyle(
-              color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
+            child: Text(
+              day,
+              style: TextStyle(
+                color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
