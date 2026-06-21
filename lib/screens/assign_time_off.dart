@@ -928,12 +928,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       child: Align(
         alignment: Alignment.centerLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 772),
+          constraints: const BoxConstraints(maxWidth: 830),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                flex: 55,
+                flex: 70,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -975,7 +975,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
               const SizedBox(width: 24),
               Expanded(
-                flex: 45,
+                flex: 30,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 32),
                   child: Column(
