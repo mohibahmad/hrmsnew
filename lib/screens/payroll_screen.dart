@@ -406,7 +406,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     return Container(
       height: tableHeight,
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(12),
@@ -414,7 +413,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
                 Expanded(
@@ -436,9 +435,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          Container(height: 1, color: const Color(0xFFF7F8FC)),
           Expanded(
             child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: _currentPageItems.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
@@ -446,8 +446,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   _buildEmployeeRow(_currentPageItems[index], index),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildPagination(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            child: _buildPagination(),
+          ),
         ],
       ),
     );

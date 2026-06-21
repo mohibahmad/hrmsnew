@@ -774,65 +774,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ),
                 const SizedBox(height: 22),
 
-                // Table Header
-                if (!_isLoading && _filteredWorkers.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'worker_name'.tr(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            'work_type'.tr(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            'position'.tr(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            'work_type'.tr(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 48),
-                      ],
-                    ),
-                  ),
-
-                // List Items
+                // Unified Table Layout or Loading/Empty states
                 if (_isLoading)
                   const Padding(
                     padding: EdgeInsets.all(40.0),
@@ -876,70 +818,157 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     },
                   )
                 else
-                  ..._currentPageItems.asMap().entries.map((entry) {
-                    return _buildListItem(entry.value, entry.key);
-                  }),
-
-                // Pagination
-                if (_filteredWorkers.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      GestureDetector(
-                        onTap: _currentPage > 1
-                            ? () => setState(() => _currentPage--)
-                            : null,
-                        behavior: HitTestBehavior.opaque,
-                        child: Icon(
-                          Icons.keyboard_arrow_left,
-                          size: 20,
-                          color: _currentPage > 1
-                              ? Colors.black
-                              : Colors.grey.shade400,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: actionBtnBlue,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '$_currentPage',
-                          style: const TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: _currentPage < _totalPages
-                            ? () => setState(() => _currentPage++)
-                            : null,
-                        behavior: HitTestBehavior.opaque,
-                        child: Icon(
-                          Icons.keyboard_arrow_right,
-                          size: 20,
-                          color: _currentPage < _totalPages
-                              ? Colors.black
-                              : Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  _buildTable(),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTable() {
+    final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
+      495.0,
+      1200.0,
+    );
+
+    return Container(
+      height: tableHeight,
+      decoration: BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // Table Headers
+          Padding(
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'worker_name'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontFamily: 'SF Pro Display',
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'work_type'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontFamily: 'SF Pro Display',
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'position'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontFamily: 'SF Pro Display',
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'work_type'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontFamily: 'SF Pro Display',
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 48),
+              ],
+            ),
+          ),
+          Container(height: 1, color: const Color(0xFFF7F8FC)),
+          // List Items
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _currentPageItems.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _buildListItem(_currentPageItems[index], index);
+              },
+            ),
+          ),
+          // Pagination
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GestureDetector(
+                  onTap: _currentPage > 1
+                      ? () => setState(() => _currentPage--)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.keyboard_arrow_left,
+                    size: 20,
+                    color: _currentPage > 1
+                        ? Colors.black
+                        : Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: actionBtnBlue,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$_currentPage',
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: _currentPage < _totalPages
+                      ? () => setState(() => _currentPage++)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.keyboard_arrow_right,
+                    size: 20,
+                    color: _currentPage < _totalPages
+                        ? Colors.black
+                        : Colors.grey.shade400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -953,10 +982,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final docId = worker['id'] as String;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: const Color(0xFFF6F8FA),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -966,10 +994,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 18,
+                  radius: 20,
                   backgroundImage: getProfileImage(profileImage, email, index),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1006,7 +1034,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               type1,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
-                fontSize: 14,
+                fontSize: 15,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -1017,7 +1045,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               position,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
-                fontSize: 14,
+                fontSize: 15,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -1028,7 +1056,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               type2,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
-                fontSize: 14,
+                fontSize: 15,
                 fontFamily: 'SF Pro Display',
               ),
             ),

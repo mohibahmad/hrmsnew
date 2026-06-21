@@ -431,280 +431,273 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final double tableHeight = (MediaQuery.of(context).size.height - 339).clamp(
       495.0,
       1200.0,
-    );
-
-    return Container(
+    );    return Container(
       height: tableHeight,
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-              // Table Header
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+          // Table Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'worker_name_header'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        'worker_name_header'.tr(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'position'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'position'.tr(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'contact_no'.tr(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'time_off'.tr(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              // Table Rows
-              Expanded(
-                child: ListView.separated(
-                  padding: EdgeInsets.zero,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: paginatedWorkers.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final doc = paginatedWorkers[index];
-                    final name = (doc['name'] ?? '').toString();
-                    final email = (doc['email'] ?? '').toString();
-                    final position = (doc['position'] ?? '').toString();
-                    final contact = (doc['contact'] ?? doc['phone'] ?? '').toString();
-                    final action = (doc['action'] ?? 'payroll_data'.tr())
-                        .toString();
-                    return GestureDetector(
-                      onLongPress: () => _handleDelete(doc),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF6F8FA),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            // Worker Name with Avatar
-                            Expanded(
-                              flex: 3,
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundImage: getProfileImage(
-                                      doc['profileImage']?.toString(),
-                                      doc['email']?.toString(),
-                                      index,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            color: Color(0xFF000000),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          email,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Position
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                position,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
-                                  fontFamily: 'SF Pro Display',
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'contact_no'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'time_off'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: const Color(0xFFF7F8FC)),
+          // Table Rows
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: paginatedWorkers.length,
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final doc = paginatedWorkers[index];
+                final name = (doc['name'] ?? '').toString();
+                final email = (doc['email'] ?? '').toString();
+                final position = (doc['position'] ?? '').toString();
+                final contact = (doc['contact'] ?? doc['phone'] ?? '').toString();
+                final action = (doc['action'] ?? 'payroll_data'.tr())
+                    .toString();
+                return GestureDetector(
+                  onLongPress: () => _handleDelete(doc),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F8FA),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        // Worker Name with Avatar
+                        Expanded(
+                          flex: 3,
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundImage: getProfileImage(
+                                  doc['profileImage']?.toString(),
+                                  doc['email']?.toString(),
+                                  index,
                                 ),
                               ),
-                            ),
-                            // Contact
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                contact,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ),
-                            // Time Off Action
-                            Expanded(
-                              flex: 2,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: InkWell(
-                                  onTap: () {
-                                    if (widget.onAssignTimeOff != null) {
-                                      widget.onAssignTimeOff!(doc);
-                                    } else {
-                                      // Fallback if rendered as standalone
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AssignTimeOffScreen(
-                                                onBack: () =>
-                                                    Navigator.of(context).pop(),
-                                                initialWorker: doc,
-                                              ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  mouseCursor: SystemMouseCursors.click,
-                                  borderRadius: BorderRadius.circular(6),
-                                  splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
-                                  highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: Text(
-                                        action,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: Color(0xFF0D4CC6),
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Color(0xFF000000),
+                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      email,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Position
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            position,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        // Contact
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            contact,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        // Time Off Action
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: InkWell(
+                              onTap: () {
+                                if (widget.onAssignTimeOff != null) {
+                                  widget.onAssignTimeOff!(doc);
+                                } else {
+                                  // Fallback if rendered as standalone
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AssignTimeOffScreen(
+                                            onBack: () =>
+                                                Navigator.of(context).pop(),
+                                            initialWorker: doc,
+                                          ),
+                                    ),
+                                  );
+                                }
+                              },
+                              mouseCursor: SystemMouseCursors.click,
+                              borderRadius: BorderRadius.circular(6),
+                              splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
+                              highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    action,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF0D4CC6),
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Pagination
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: _currentPage > 1
-                          ? () => setState(() => _currentPage--)
-                          : null,
-                      behavior: HitTestBehavior.opaque,
-                      child: Icon(
-                        Icons.chevron_left,
-                        color: _currentPage > 1
-                            ? Colors.black
-                            : Colors.grey.shade400,
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 28,
-                      height: 28,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0247C4),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '$_currentPage',
-                        style: const TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _currentPage < totalPages
-                          ? () => setState(() => _currentPage++)
-                          : null,
-                      behavior: HitTestBehavior.opaque,
-                      child: Icon(
-                        Icons.chevron_right,
-                        color: _currentPage < totalPages
-                            ? Colors.black
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                );
+              },
+            ),
           ),
-        );
+          // Pagination
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GestureDetector(
+                  onTap: _currentPage > 1
+                      ? () => setState(() => _currentPage--)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: _currentPage > 1
+                        ? Colors.black
+                        : Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0247C4),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$_currentPage',
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _currentPage < totalPages
+                      ? () => setState(() => _currentPage++)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: _currentPage < totalPages
+                        ? Colors.black
+                        : Colors.grey.shade400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyState() {

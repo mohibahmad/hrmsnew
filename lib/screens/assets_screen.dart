@@ -964,14 +964,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           // Table Headers
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
                 Expanded(flex: 3, child: _tableHeader('worker_name'.tr())),
@@ -986,24 +985,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Container(height: 1, color: const Color(0xFFF7F8FC)),
           // Table Rows
           Expanded(
             child: ListView.separated(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const NeverScrollableScrollPhysics(),
               itemCount: paginatedAssets.length,
               separatorBuilder: (context, index) =>
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 return _buildDataRow(paginatedAssets[index], index);
               },
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -1063,7 +1061,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       title,
       style: const TextStyle(
         fontWeight: FontWeight.bold,
-        fontSize: 15,
+        fontSize: 16,
         color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
@@ -1071,8 +1069,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   Widget _buildDataRow(AssetData data, int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F8FA),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Row(
         children: [
           // Name and Avatar (Placeholder image)
@@ -1081,7 +1083,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 18,
+                  radius: 20,
                   backgroundImage: getProfileImage(
                     data.profileImage,
                     data.email,
@@ -1096,7 +1098,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 15,
                       color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
@@ -1110,7 +1112,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Text(
               data.position,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
@@ -1122,7 +1124,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Text(
               data.type,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
@@ -1133,7 +1135,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Text(
               data.dateLoaned,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
@@ -1145,7 +1147,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Text(
               data.dateReturned,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: data.isReturned ? Colors.red : Colors.green,
                 fontFamily: 'SF Pro Display',

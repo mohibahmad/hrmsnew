@@ -828,14 +828,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           // Table Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
                 Expanded(
@@ -850,15 +849,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Container(height: 1, color: const Color(0xFFF7F8FC)),
           // Table Rows
           Expanded(
             child: ListView.separated(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const NeverScrollableScrollPhysics(),
               itemCount: paginatedRecords.length,
               separatorBuilder: (context, index) =>
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final doc = paginatedRecords[index];
                 final name = (doc['name'] ?? '').toString();
@@ -869,10 +868,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     .toString();
                 final workType = (doc['workType'] ?? 'Full Time').toString();
 
-                return Padding(
+                return Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF6F8FA),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     children: [
@@ -881,7 +884,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Row(
                           children: [
                             CircleAvatar(
-                              radius: 18,
+                              radius: 20,
                               backgroundImage: getProfileImage(
                                 doc['profileImage']?.toString(),
                                 email,
@@ -896,18 +899,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   Text(
                                     name,
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                       color: textDark,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 4),
                                   Text(
                                     email,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade600,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
@@ -922,7 +925,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Text(
                           attendanceType,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: textDark,
                             fontFamily: 'SF Pro Display',
                           ),
@@ -940,7 +943,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       : (status.isEmpty
                                             ? Colors.grey
                                             : orangeLeave)),
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
                           ),
@@ -951,7 +954,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Text(
                           workType,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: textDark,
                             fontFamily: 'SF Pro Display',
                           ),
@@ -962,7 +965,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Text(
                           role,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: textDark,
                             fontFamily: 'SF Pro Display',
                           ),
@@ -988,10 +991,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               },
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
-            padding: const EdgeInsets.only(right: 24, bottom: 16, top: 12),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -1049,9 +1051,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Text(
       title,
       style: const TextStyle(
-        fontWeight: FontWeight.w700,
-        fontSize: 15,
-        color: textDark,
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+        color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
     );

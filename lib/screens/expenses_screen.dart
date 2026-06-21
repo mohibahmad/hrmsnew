@@ -1185,14 +1185,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           // Table Headers
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
                 Expanded(
@@ -1206,23 +1205,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Container(height: 1, color: const Color(0xFFF7F8FC)),
+          // Table Rows
           Expanded(
             child: ListView.separated(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const NeverScrollableScrollPhysics(),
               itemCount: paginatedExpenses.length,
               separatorBuilder: (context, index) =>
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 return _buildDataRow(paginatedExpenses[index], index);
               },
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
           // Pagination
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -1282,7 +1281,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       title,
       style: const TextStyle(
         fontWeight: FontWeight.bold,
-        fontSize: 15,
+        fontSize: 16,
         color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
@@ -1296,8 +1295,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final amount = (doc['amount'] ?? 0).toDouble();
     final docId = doc['id'] as String;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F8FA),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -1305,7 +1308,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 18,
+                  radius: 20,
                   backgroundImage: AssetImage(
                     index % 2 == 0
                         ? 'assets/profileimage.png'
@@ -1317,7 +1320,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   name,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 15,
                     color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
@@ -1330,7 +1333,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Text(
               date,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
@@ -1341,7 +1344,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Text(
               category,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
@@ -1352,7 +1355,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Text(
               _formatCurrency(amount),
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 color: Color(0xFF0247C4),
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
