@@ -390,38 +390,31 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ================= MAIN CONTENT =================
 
   Widget _buildMainCard() {
-    final double minCardHeight = (MediaQuery.of(context).size.height - 190)
-        .clamp(600.0, 2000.0);
-
     return Container(
       padding: const EdgeInsets.all(24),
-      constraints: BoxConstraints(minHeight: minCardHeight),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
-      child: IntrinsicHeight(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTopForm(),
-            const SizedBox(height: 32),
-            Wrap(
-              spacing: 24,
-              runSpacing: 24,
-              children: [
-                _buildCalendar(_calendarMonth),
-                _buildCalendar(
-                  DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const SizedBox(height: 32),
-            _buildNotesAndSummary(),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTopForm(),
+          const SizedBox(height: 32),
+          Wrap(
+            spacing: 24,
+            runSpacing: 24,
+            children: [
+              _buildCalendar(_calendarMonth),
+              _buildCalendar(
+                DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _buildNotesAndSummary(),
+        ],
       ),
     );
   }
@@ -878,85 +871,106 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   // ==== BOTTOM NOTES & SUMMARY ====
 
   Widget _buildNotesAndSummary() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 70,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'notes_label'.tr(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isNarrow = constraints.maxWidth < 700;
+
+        Widget notesWidget = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'notes_label'.tr(),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF000000),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 130,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              child: TextField(
+                controller: _notesController,
+                maxLines: null,
                 style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF000000),
+                  fontSize: 14,
+                  color: Colors.black,
                   fontFamily: 'SF Pro Display',
                 ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 130,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                child: TextField(
-                  controller: _notesController,
-                  maxLines: null,
-                  style: const TextStyle(
+                decoration: InputDecoration.collapsed(
+                  hintText: 'please_enter_notes'.tr(),
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade500,
                     fontSize: 14,
-                    color: Colors.black,
                     fontFamily: 'SF Pro Display',
                   ),
-                  decoration: InputDecoration.collapsed(
-                    hintText: 'please_enter_notes'.tr(),
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 14,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-              const SizedBox(width: 24),
-              Expanded(
-                flex: 30,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 32),
-                  child: Column(
-                    children: [
-                      _buildSummaryRow(
-                        'available_annual_leave'.tr(),
-                        '$_availableDays',
-                        _availableDays > 0 ? Colors.black : Colors.red,
-                      ),
-                      _buildSummaryRow(
-                        'requested_days'.tr(),
-                        '$_requestedDays',
-                        Colors.black,
-                      ),
-                      _buildSummaryRow(
-                        'remaining_days'.tr(),
-                        '${_availableDays - _requestedDays}',
-                        _availableDays - _requestedDays >= 0
-                            ? Colors.black
-                            : Colors.red,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            ),
+          ],
+        );
+
+        Widget summaryWidget = Column(
+          children: [
+            _buildSummaryRow(
+              'available_annual_leave'.tr(),
+              '$_availableDays',
+              _availableDays > 0 ? Colors.black : Colors.red,
+            ),
+            _buildSummaryRow(
+              'requested_days'.tr(),
+              '$_requestedDays',
+              Colors.black,
+            ),
+            _buildSummaryRow(
+              'remaining_days'.tr(),
+              '${_availableDays - _requestedDays}',
+              _availableDays - _requestedDays >= 0
+                  ? Colors.black
+                  : Colors.red,
+            ),
+          ],
+        );
+
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              notesWidget,
+              const SizedBox(height: 24),
+              summaryWidget,
             ],
           );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 70,
+              child: notesWidget,
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 30,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 32),
+                child: summaryWidget,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildSummaryRow(String label, String value, Color valueColor) {

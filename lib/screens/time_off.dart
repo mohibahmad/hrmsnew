@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/image_utils.dart';
 
 import 'assign_time_off.dart';
 
@@ -56,7 +57,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 5;
-  static const double _tableMinWidth = 900.0;
   StreamSubscription? _timeoffSub;
 
   @override
@@ -433,24 +433,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       1200.0,
     );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: _tableMinWidth,
-        child: Container(
-          height: tableHeight,
-          decoration: BoxDecoration(
-            color: Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFFEEEEEE)),
-          ),
-          child: Column(
-            children: [
+    return Container(
+      height: tableHeight,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
               // Table Header
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
+                  horizontal: 16,
+                  vertical: 8,
                 ),
                 child: Row(
                   children: [
@@ -458,9 +454,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       flex: 3,
                       child: Text(
                         'worker_name_header'.tr(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                           color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
@@ -470,9 +466,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       flex: 2,
                       child: Text(
                         'position'.tr(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                           color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
@@ -482,9 +478,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       flex: 2,
                       child: Text(
                         'contact_no'.tr(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                           color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
@@ -494,9 +490,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       flex: 2,
                       child: Text(
                         'time_off'.tr(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                           color: Color(0xFF000000),
                           fontFamily: 'SF Pro Display',
                         ),
@@ -505,7 +501,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              const SizedBox(height: 8),
               // Table Rows
               Expanded(
                 child: ListView.separated(
@@ -513,21 +509,25 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: paginatedWorkers.length,
                   separatorBuilder: (context, index) =>
-                      const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                      const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final doc = paginatedWorkers[index];
                     final name = (doc['name'] ?? '').toString();
                     final email = (doc['email'] ?? '').toString();
                     final position = (doc['position'] ?? '').toString();
-                    final contact = (doc['contact'] ?? '').toString();
+                    final contact = (doc['contact'] ?? doc['phone'] ?? '').toString();
                     final action = (doc['action'] ?? 'payroll_data'.tr())
                         .toString();
                     return GestureDetector(
                       onLongPress: () => _handleDelete(doc),
-                      child: Padding(
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8FA),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           children: [
@@ -537,11 +537,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               child: Row(
                                 children: [
                                   CircleAvatar(
-                                    radius: 18,
-                                    backgroundImage: AssetImage(
-                                      index % 2 == 0
-                                          ? 'assets/profileimage.png'
-                                          : 'assets/boy.png',
+                                    radius: 20,
+                                    backgroundImage: getProfileImage(
+                                      doc['profileImage']?.toString(),
+                                      doc['email']?.toString(),
+                                      index,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -554,16 +554,17 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                           name,
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                            fontSize: 15,
                                             color: Color(0xFF000000),
                                             fontFamily: 'SF Pro Display',
                                           ),
                                         ),
+                                        const SizedBox(height: 4),
                                         Text(
                                           email,
                                           style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF64748B),
+                                            fontSize: 14,
+                                            color: Colors.black,
                                             fontFamily: 'SF Pro Display',
                                           ),
                                         ),
@@ -579,9 +580,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               child: Text(
                                 position,
                                 style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF000000),
+                                  fontSize: 15,
+                                  color: Colors.black,
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
@@ -592,8 +592,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               child: Text(
                                 contact,
                                 style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF000000),
+                                  fontSize: 15,
+                                  color: Colors.black,
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
@@ -601,33 +601,43 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             // Time Off Action
                             Expanded(
                               flex: 2,
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (widget.onAssignTimeOff != null) {
-                                    widget.onAssignTimeOff!(doc);
-                                  } else {
-                                    // Fallback if rendered as standalone
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            AssignTimeOffScreen(
-                                              onBack: () =>
-                                                  Navigator.of(context).pop(),
-                                              initialWorker: doc,
-                                            ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: InkWell(
+                                  onTap: () {
+                                    if (widget.onAssignTimeOff != null) {
+                                      widget.onAssignTimeOff!(doc);
+                                    } else {
+                                      // Fallback if rendered as standalone
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AssignTimeOffScreen(
+                                                onBack: () =>
+                                                    Navigator.of(context).pop(),
+                                                initialWorker: doc,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  mouseCursor: SystemMouseCursors.click,
+                                  borderRadius: BorderRadius.circular(6),
+                                  splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
+                                  highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        action,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          color: Color(0xFF0D4CC6),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    );
-                                  }
-                                },
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Text(
-                                    action,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF0247C4),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
@@ -640,13 +650,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   },
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFEEEEEE)),
+              const SizedBox(height: 16),
               // Pagination
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.only(top: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -697,9 +704,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildEmptyState() {
