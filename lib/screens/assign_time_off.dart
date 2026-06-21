@@ -325,41 +325,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         children: [
           _buildHeader(context),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const double minWidth = 900;
-                final double contentWidth = constraints.maxWidth < minWidth
-                    ? minWidth
-                    : constraints.maxWidth;
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: contentWidth,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 24,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'assign_time_off'.tr(),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF000000),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          _buildMainCard(),
-                        ],
-                      ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'assign_time_off'.tr(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
-                );
-              },
+                  const SizedBox(height: 24),
+                  _buildMainCard(),
+                ],
+              ),
             ),
           ),
         ],
@@ -941,7 +924,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   Widget _buildNotesAndSummary() {
     return Padding(
-      padding: const EdgeInsets.only(left: 32),
+      padding: const EdgeInsets.only(left: 0),
       child: Align(
         alignment: Alignment.centerLeft,
         child: ConstrainedBox(
@@ -965,7 +948,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     ),
                     const SizedBox(height: 12),
                     Container(
-                      height: 100,
+                      height: 130,
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(6),

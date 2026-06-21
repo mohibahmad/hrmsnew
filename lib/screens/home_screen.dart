@@ -401,63 +401,78 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      body: Row(
-        children: [
-          SidebarWidget(
-            selectedIndex: _showProfile ? -1 : _selectedIndex,
-            selectedSubIndex: _selectedSubIndex,
-            isGuest: AuthService().currentUser?.isAnonymous ?? false,
-            onItemSelected: (index, {subIndex}) => setState(() {
-              _selectedIndex = index;
-              if (subIndex != null) {
-                _selectedSubIndex = subIndex;
-              }
-              _showProfile = false;
-              _showAssignTimeOff = false;
-              _selectedTimeOffWorker = null;
-            }),
-            onBackToLogin: _handleBackToLogin,
-          ),
-          Expanded(
-            child: Builder(
-              builder: (context) {
-                final int stackIndex = _getStackIndex();
-                _activatedScreens[stackIndex] = true;
-                return IndexedStack(
-                  index: stackIndex,
-                  children: [
-                    // 0: Dashboard View
-                    _activatedScreens[0]
-                        ? _buildDashboardView()
-                        : const SizedBox.shrink(),
-                    // 1: Workers Screen
-                    _getScreen(1),
-                    // 2: Attendance Screen
-                    _getScreen(2),
-                    // 3: Payroll Screen
-                    _getScreen(3),
-                    // 4: Time Off Screen
-                    _getScreen(4),
-                    // 5: Assets Screen
-                    _getScreen(5),
-                    // 6: Holidays Screen
-                    _getScreen(6),
-                    // 7: Expenses Screen
-                    _getScreen(7),
-                    // 8: Settings Screen
-                    _getScreen(8),
-                    // 9: Assign Time Off
-                    _getScreen(9),
-                    // 10: Profile View
-                    _activatedScreens[10]
-                        ? _buildProfileView()
-                        : const SizedBox.shrink(),
-                  ],
-                );
-              },
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          const double minWidth = 1200;
+          final double bodyWidth = constraints.maxWidth < minWidth
+              ? minWidth
+              : constraints.maxWidth;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: bodyWidth,
+              height: constraints.maxHeight,
+              child: Row(
+                children: [
+                  SidebarWidget(
+                    selectedIndex: _showProfile ? -1 : _selectedIndex,
+                    selectedSubIndex: _selectedSubIndex,
+                    isGuest: AuthService().currentUser?.isAnonymous ?? false,
+                    onItemSelected: (index, {subIndex}) => setState(() {
+                      _selectedIndex = index;
+                      if (subIndex != null) {
+                        _selectedSubIndex = subIndex;
+                      }
+                      _showProfile = false;
+                      _showAssignTimeOff = false;
+                      _selectedTimeOffWorker = null;
+                    }),
+                    onBackToLogin: _handleBackToLogin,
+                  ),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final int stackIndex = _getStackIndex();
+                        _activatedScreens[stackIndex] = true;
+                        return IndexedStack(
+                          index: stackIndex,
+                          children: [
+                            // 0: Dashboard View
+                            _activatedScreens[0]
+                                ? _buildDashboardView()
+                                : const SizedBox.shrink(),
+                            // 1: Workers Screen
+                            _getScreen(1),
+                            // 2: Attendance Screen
+                            _getScreen(2),
+                            // 3: Payroll Screen
+                            _getScreen(3),
+                            // 4: Time Off Screen
+                            _getScreen(4),
+                            // 5: Assets Screen
+                            _getScreen(5),
+                            // 6: Holidays Screen
+                            _getScreen(6),
+                            // 7: Expenses Screen
+                            _getScreen(7),
+                            // 8: Settings Screen
+                            _getScreen(8),
+                            // 9: Assign Time Off
+                            _getScreen(9),
+                            // 10: Profile View
+                            _activatedScreens[10]
+                                ? _buildProfileView()
+                                : const SizedBox.shrink(),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
