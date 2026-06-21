@@ -431,7 +431,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final double tableHeight = (MediaQuery.of(context).size.height - 339).clamp(
       495.0,
       1200.0,
-    );    return Container(
+    );
+    return Container(
       height: tableHeight,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -502,14 +503,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const NeverScrollableScrollPhysics(),
               itemCount: paginatedWorkers.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final doc = paginatedWorkers[index];
                 final name = (doc['name'] ?? '').toString();
                 final email = (doc['email'] ?? '').toString();
                 final position = (doc['position'] ?? '').toString();
-                final contact = (doc['contact'] ?? doc['phone'] ?? '').toString();
+                final contact = (doc['contact'] ?? doc['phone'] ?? '')
+                    .toString();
                 final action = (doc['action'] ?? 'payroll_data'.tr())
                     .toString();
                 return GestureDetector(
@@ -541,8 +542,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       name,
@@ -605,22 +605,28 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   // Fallback if rendered as standalone
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          AssignTimeOffScreen(
-                                            onBack: () =>
-                                                Navigator.of(context).pop(),
-                                            initialWorker: doc,
-                                          ),
+                                      builder: (context) => AssignTimeOffScreen(
+                                        onBack: () =>
+                                            Navigator.of(context).pop(),
+                                        initialWorker: doc,
+                                      ),
                                     ),
                                   );
                                 }
                               },
                               mouseCursor: SystemMouseCursors.click,
                               borderRadius: BorderRadius.circular(6),
-                              splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
-                              highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
+                              splashColor: const Color(
+                                0xFF0D4CC6,
+                              ).withValues(alpha: 0.15),
+                              highlightColor: const Color(
+                                0xFF0D4CC6,
+                              ).withValues(alpha: 0.05),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 child: MouseRegion(
                                   cursor: SystemMouseCursors.click,
                                   child: Text(

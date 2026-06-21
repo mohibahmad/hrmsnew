@@ -53,6 +53,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    final currentUser = AuthService().currentUser;
+    if (currentUser != null && !currentUser.isAnonymous) {
+      _firestore.getUserProfile().then((profile) {
+        if (profile != null && mounted) {
+          final pic = profile['profilePic'];
+          if (pic != null && pic.toString().isNotEmpty) {
+            AuthService.profilePicNotifier.value = pic.toString();
+          }
+        }
+      }).catchError((_) {});
+    }
     _loadData();
   }
 

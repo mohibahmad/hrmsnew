@@ -170,6 +170,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     AuthService.profilePicNotifier.value = AuthService().currentUser?.photoURL;
+    final currentUser = AuthService().currentUser;
+    if (currentUser != null && !currentUser.isAnonymous) {
+      FirestoreService().getUserProfile().then((profile) {
+        if (profile != null && mounted) {
+          final pic = profile['profilePic'];
+          if (pic != null && pic.toString().isNotEmpty) {
+            AuthService.profilePicNotifier.value = pic.toString();
+          }
+        }
+      }).catchError((_) {});
+    }
     _selectedIndex = 0;
     _loadDashboardData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -180,17 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadDashboardData() {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      final now = DateTime.now();
-      final currentMonthLong = DateFormat('MMMM').format(now);
-      final currentMonthShort = DateFormat('MMM').format(now);
-      String targetKey = 'May';
-      for (final key in DummyData.holidays.keys) {
-        if (key.toLowerCase() == currentMonthLong.toLowerCase() ||
-            key.toLowerCase() == currentMonthShort.toLowerCase()) {
-          targetKey = key;
-          break;
-        }
-      }
       setState(() {
         final workersList = DummyData.workers;
         _totalWorkersCount = workersList.length;
@@ -223,8 +223,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _totalAttendanceCount = DummyData.attendance.length;
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
-        _holidays = (DummyData.holidays[targetKey] ?? [])
-            .cast<Map<String, dynamic>>();
+        _holidays = DummyData.holidays.values
+            .expand((list) => list)
+            .cast<Map<String, dynamic>>()
+            .toList();
       });
     } else {
       final firestore = FirestoreService();
