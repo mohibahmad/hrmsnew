@@ -102,114 +102,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
   }
 
-  Widget _buildWorkerDropdown() {
-    if (widget.initialWorker != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'select_worker'.tr() == 'select_worker'
-                ? 'Select Worker'
-                : 'select_worker'.tr(),
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 48,
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.centerLeft,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              '${_selectedWorker?['name'] ?? widget.initialWorker!['name'] ?? ''} (${_selectedWorker?['position'] ?? widget.initialWorker!['position'] ?? ''})',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'select_worker'.tr() == 'select_worker'
-              ? 'Select Worker'
-              : 'select_worker'.tr(),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Map<String, dynamic>>(
-              isExpanded: true,
-              value: _selectedWorker,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
-              hint: const Text(
-                'Select a worker',
-                style: TextStyle(
-                  fontFamily: 'SF Pro Display',
-                  fontSize: 14,
-                  color: Colors.black54,
-                ),
-              ),
-              style: const TextStyle(
-                fontFamily: 'SF Pro Display',
-                fontSize: 14,
-                color: Colors.black,
-              ),
-              items: _workers.map((worker) {
-                return DropdownMenuItem<Map<String, dynamic>>(
-                  value: worker,
-                  child: Text(
-                    '${worker['name'] ?? ''} (${worker['position'] ?? ''})',
-                    style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (v) {
-                if (v != null) {
-                  setState(() {
-                    _selectedWorker = v;
-                  });
-                }
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   // Helper to get month name
   String _getMonthName(int month) {
     return DateFormat(
@@ -513,8 +405,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildWorkerDropdown(),
-            const SizedBox(height: 24),
             _buildTopForm(),
             const SizedBox(height: 32),
             Wrap(
