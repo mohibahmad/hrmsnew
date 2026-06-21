@@ -172,14 +172,17 @@ class _HomeScreenState extends State<HomeScreen> {
     AuthService.profilePicNotifier.value = AuthService().currentUser?.photoURL;
     final currentUser = AuthService().currentUser;
     if (currentUser != null && !currentUser.isAnonymous) {
-      FirestoreService().getUserProfile().then((profile) {
-        if (profile != null && mounted) {
-          final pic = profile['profilePic'];
-          if (pic != null && pic.toString().isNotEmpty) {
-            AuthService.profilePicNotifier.value = pic.toString();
-          }
-        }
-      }).catchError((_) {});
+      FirestoreService()
+          .getUserProfile()
+          .then((profile) {
+            if (profile != null && mounted) {
+              final pic = profile['profilePic'];
+              if (pic != null && pic.toString().isNotEmpty) {
+                AuthService.profilePicNotifier.value = pic.toString();
+              }
+            }
+          })
+          .catchError((_) {});
     }
     _selectedIndex = 0;
     _loadDashboardData();
@@ -1380,7 +1383,7 @@ class TotalWorkersCard extends StatelessWidget {
       color: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: count > 0
             ? Column(
                 children: [
@@ -1423,7 +1426,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1509,7 +1512,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 0),
                     child: Row(

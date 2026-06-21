@@ -14,6 +14,8 @@ class FlashySnackBar {
     String? title,
     bool isError = false,
   }) {
+    if (!context.mounted) return;
+
     final messageKey = '$isError:$title:$message';
     final now = DateTime.now();
     final isDuplicate =

@@ -54,8 +54,6 @@ class FirestoreService {
     final profile = await getUserProfile();
     if (profile?['hasDummyData'] != true) return;
 
-    final batch = _db.batch();
-
     for (final collectionName in [
       'hrms_workers',
       'hrms_expenses',
@@ -66,13 +64,22 @@ class FirestoreService {
       'hrms_holidays',
     ]) {
       final snapshot = await _userDoc.collection(collectionName).get();
+      var batch = _db.batch();
+      int count = 0;
       for (final doc in snapshot.docs) {
         batch.delete(doc.reference);
+        count++;
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _db.batch();
+        }
+      }
+      if (count % 500 != 0 && count > 0) {
+        await batch.commit();
       }
     }
 
-    batch.update(_userDoc, {'hasDummyData': false});
-    await batch.commit();
+    await _userDoc.update({'hasDummyData': false});
   }
 
   Future<bool> isCurrentUserDeleted() async {
@@ -186,6 +193,10 @@ class FirestoreService {
     return docRef.id;
   }
 
+  Future<void> updatePayrollRecord(String id, Map<String, dynamic> data) async {
+    await _payroll.doc(id).update(data);
+  }
+
   Future<void> deletePayrollRecord(String id) async {
     await _payroll.doc(id).delete();
   }
@@ -200,6 +211,10 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
     return docRef.id;
+  }
+
+  Future<void> updateTimeOffRecord(String id, Map<String, dynamic> data) async {
+    await _timeoff.doc(id).update(data);
   }
 
   Future<void> deleteTimeOffRecord(String id) async {
@@ -274,10 +289,8 @@ class FirestoreService {
       }
     }
 
-    final batch = _db.batch();
-
     // Create user profile
-    batch.set(docRef, {
+    await docRef.set({
       'username': displayName,
       'email': email,
       'phone': '+1 (555) 019-2834',
@@ -291,57 +304,117 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
+    // Seed Workers
+    var batch = _db.batch();
+    int count = 0;
     final workersColl = docRef.collection('hrms_workers');
-    final attendanceColl = docRef.collection('hrms_attendance');
-    final expensesColl = docRef.collection('hrms_expenses');
-    final payrollColl = docRef.collection('hrms_payroll');
-    final timeoffColl = docRef.collection('hrms_timeoff');
-
-    // 1. Seed Workers
     for (var w in DummyData.workers) {
       final copy = Map<String, dynamic>.from(w)..remove('id');
       batch.set(workersColl.doc(), {
         ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
     }
 
-    // 2. Seed Attendance
+    // Seed Attendance
+    final attendanceColl = docRef.collection('hrms_attendance');
     for (var a in DummyData.attendance) {
       final copy = Map<String, dynamic>.from(a)..remove('id');
       batch.set(attendanceColl.doc(), {
         ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
     }
 
-    // 3. Seed Expenses
+    // Seed Expenses
+    final expensesColl = docRef.collection('hrms_expenses');
     for (var e in DummyData.expenses) {
       final copy = Map<String, dynamic>.from(e)..remove('id');
       batch.set(expensesColl.doc(), {
         ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
     }
 
-    // 4. Seed Payroll
+    // Seed Payroll
+    final payrollColl = docRef.collection('hrms_payroll');
     for (var p in DummyData.payroll) {
       final copy = Map<String, dynamic>.from(p)..remove('id');
       batch.set(payrollColl.doc(), {
         ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
     }
 
-    // 5. Seed Time Off requests
+    // Seed Time Off requests
+    final timeoffColl = docRef.collection('hrms_timeoff');
     for (var t in DummyData.timeoff) {
       final copy = Map<String, dynamic>.from(t)..remove('id');
       batch.set(timeoffColl.doc(), {
         ...copy,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
     }
 
-    await batch.commit();
+    // Seed Holidays
+    final holidaysColl = docRef.collection('hrms_holidays');
+    for (var holidayList in DummyData.holidays.values) {
+      for (var h in holidayList) {
+        final copy = Map<String, dynamic>.from(h)..remove('id');
+        batch.set(holidaysColl.doc(), {
+          ...copy,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        count++;
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _db.batch();
+        }
+      }
+    }
+
+    // Seed Assets
+    final assetsColl = docRef.collection('hrms_assets');
+    for (var a in DummyData.assets) {
+      final copy = Map<String, dynamic>.from(a)..remove('id');
+      batch.set(assetsColl.doc(), {
+        ...copy,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
+    }
+
+    if (count % 500 != 0) {
+      await batch.commit();
+    }
   }
 }

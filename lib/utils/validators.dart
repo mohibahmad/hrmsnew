@@ -109,6 +109,9 @@ class Validators {
     if (_str(p, 'name').isEmpty) {
       throw const ValidationException('Worker name is required', field: 'name');
     }
+    if (_str(p, 'status').isEmpty) {
+      throw const ValidationException('Payment status is required', field: 'status');
+    }
   }
 
   static void validateTimeOff(Map<String, dynamic> t) {
@@ -119,6 +122,18 @@ class Validators {
       throw const ValidationException(
         'Leave type is required',
         field: 'action',
+      );
+    }
+    if (_str(t, 'startDate').isEmpty) {
+      throw const ValidationException(
+        'Start date is required',
+        field: 'startDate',
+      );
+    }
+    if (_str(t, 'endDate').isEmpty) {
+      throw const ValidationException(
+        'End date is required',
+        field: 'endDate',
       );
     }
   }

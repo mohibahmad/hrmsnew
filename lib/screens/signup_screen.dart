@@ -74,6 +74,11 @@ class _SignupScreenState extends State<SignupScreen> {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
         if (await _handleDeletedAccountIfNeeded()) return;
+        FlashySnackBar.show(
+          context,
+          title: 'success'.tr(),
+          message: 'welcome_back'.tr(),
+        );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -124,6 +129,11 @@ class _SignupScreenState extends State<SignupScreen> {
       final userCredential = await _authService.signInWithApple();
       if (userCredential != null && mounted) {
         if (await _handleDeletedAccountIfNeeded()) return;
+        FlashySnackBar.show(
+          context,
+          title: 'success'.tr(),
+          message: 'welcome_back'.tr(),
+        );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
@@ -210,6 +220,11 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (mounted) {
+        FlashySnackBar.show(
+          context,
+          title: 'success'.tr(),
+          message: 'account_created_successfully'.tr(),
+        );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );

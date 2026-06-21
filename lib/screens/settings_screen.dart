@@ -56,14 +56,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'Password reset email sent to $email',
+            message: 'password_reset_email_sent'.tr(namedArgs: {'email': email}),
           );
         }
       } catch (e) {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'Failed to send reset email: $e',
+            message: 'failed_to_send_reset_email'.tr(namedArgs: {'error': e.toString()}),
             isError: true,
           );
         }
@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'No email found for this account.',
+          message: 'no_email_found_for_account'.tr(),
           isError: true,
         );
       }
@@ -248,16 +248,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await AuthService().signOut();
 
         if (context.mounted) {
-          String message = 'Account deleted';
+          String message = 'account_deleted_successfully'.tr();
           if (deleteError == 'requires-recent-login') {
-            message =
-                'Signed out for security. Please sign in again to fully delete your account.';
+            message = 'signed_out_for_security_delete_again'.tr();
           }
           FlashySnackBar.show(
             context,
             message: message,
-            title: 'Account Deleted',
-            isError: true,
+            title: 'account_deleted'.tr(),
+            isError: deleteError == 'requires-recent-login',
           );
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -269,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Failed to delete account. $e',
+          message: 'failed_to_delete_account'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
       }
@@ -449,6 +448,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSimpleSettingItem(
                     'assets/privacy_policy.svg',
                     'privacy_policy'.tr(),
+                    onTap: () => launchUrl(
+                      Uri.parse('https://your-privacy-policy-url.com'),
+                    ),
                   ),
                   if (!widget.isGuest)
                     _buildSimpleSettingItem(

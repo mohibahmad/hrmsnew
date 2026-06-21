@@ -51,7 +51,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
         if (mounted) {
           await OpenFile.open(file.path);
-          FlashySnackBar.show(context, message: 'Template saved successfully!');
+          FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
         }
       } else {
         final directory = await getTemporaryDirectory();
@@ -63,7 +63,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             XFile(file.path),
           ], text: 'HRMS worker template');
           await OpenFile.open(file.path);
-          FlashySnackBar.show(context, message: 'Template saved successfully!');
+          FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
         }
       }
     } catch (e) {
@@ -112,7 +112,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Error picking CSV',
+          message: 'error_picking_csv'.tr(),
           isError: true,
         );
       }
@@ -165,8 +165,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (!hasName || !hasPhone) {
       FlashySnackBar.show(
         context,
-        message:
-            'CSV must contain at least "Full Name" and "Contact Number" columns.',
+        message: 'csv_required_columns_error'.tr(),
         isError: true,
       );
       return;
@@ -243,7 +242,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (_validWorkers.isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'No valid workers found in CSV.',
+        message: 'no_valid_workers_found_in_csv'.tr(),
         isError: true,
       );
       return;
@@ -269,7 +268,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: '${_validWorkers.length} workers added successfully!',
+          message: 'workers_added_successfully'.tr(namedArgs: {'count': _validWorkers.length.toString()}),
         );
         widget.onBack?.call();
       }
@@ -343,7 +342,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Upload a CSV to add multiple workers at once'.tr(),
+                          'upload_csv_subtitle'.tr(),
                           style: const TextStyle(
                             color: Colors.black,
                             fontSize: 13,
@@ -382,7 +381,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 ),
                               )
                             : Text(
-                                'Save All',
+                                'save_all'.tr(),
                                 style: TextStyle(
                                   color: isSaveReady
                                       ? const Color(0xFFFFFFFF)
@@ -412,7 +411,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       ElevatedButton.icon(
                         onPressed: _downloadTemplate,
                         icon: const Icon(Icons.download, size: 20),
-                        label: const Text("Download Template"),
+                        label: Text('download_template'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF0B50C3),
@@ -433,7 +432,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       ElevatedButton.icon(
                         onPressed: _pickCsvAndParse,
                         icon: const Icon(Icons.upload_file, size: 20),
-                        label: const Text("Upload CSV File"),
+                        label: Text('upload_csv_file'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0B50C3),
                           foregroundColor: Colors.white,
@@ -495,7 +494,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Preview: ${_validWorkers.length} valid workers found.',
+                                'preview_valid_workers_found'.tr(namedArgs: {'count': _validWorkers.length.toString()}),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -504,9 +503,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              const Text(
-                                'Review the details below. Click "Save All" at the top to import them.',
-                                style: TextStyle(
+                              Text(
+                                'review_details_save_all'.tr(),
+                                style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF64748B),
                                   fontWeight: FontWeight.w400,
@@ -565,33 +564,33 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    _buildHeaderCell('Full Name', 200),
-                                    _buildHeaderCell('Contact Number', 120),
-                                    _buildHeaderCell('Email Address', 200),
-                                    _buildHeaderCell('Job Position', 150),
-                                    _buildHeaderCell('Salary Type', 120),
-                                    _buildHeaderCell('Currency', 100),
-                                    _buildHeaderCell('Salary Amount', 120),
-                                    _buildHeaderCell('Father Name', 150),
-                                    _buildHeaderCell('National ID', 150),
-                                    _buildHeaderCell('Religion', 120),
-                                    _buildHeaderCell('Date of Birth', 120),
-                                    _buildHeaderCell('Gender', 100),
-                                    _buildHeaderCell('Address', 250),
+                                    _buildHeaderCell('full_name'.tr(), 200),
+                                    _buildHeaderCell('contact_number'.tr(), 120),
+                                    _buildHeaderCell('email_address'.tr(), 200),
+                                    _buildHeaderCell('job_position'.tr(), 150),
+                                    _buildHeaderCell('salary_type'.tr(), 120),
+                                    _buildHeaderCell('currency_title'.tr(), 100),
+                                    _buildHeaderCell('salary_amount'.tr(), 120),
+                                    _buildHeaderCell('father_name'.tr(), 150),
+                                    _buildHeaderCell('national_id_title'.tr(), 150),
+                                    _buildHeaderCell('religion_title'.tr(), 120),
+                                    _buildHeaderCell('date_of_birth'.tr(), 120),
+                                    _buildHeaderCell('gender_title'.tr(), 100),
+                                    _buildHeaderCell('address_title'.tr(), 250),
                                     _buildHeaderCell(
-                                      'Relationship Status',
+                                      'relationship_status_title'.tr(),
                                       140,
                                     ),
-                                    _buildHeaderCell('Employee Type', 120),
-                                    _buildHeaderCell('Work Model', 120),
-                                    _buildHeaderCell('Experience Level', 130),
-                                    _buildHeaderCell('Education', 150),
-                                    _buildHeaderCell('Leave Policy', 120),
-                                    _buildHeaderCell('Annual Leaves', 100),
-                                    _buildHeaderCell('Sick Leaves', 100),
-                                    _buildHeaderCell('Casual Leaves', 100),
-                                    _buildHeaderCell('Joining Date', 150),
-                                    _buildHeaderCell('Profile Image URL', 200),
+                                    _buildHeaderCell('employee_type'.tr(), 120),
+                                    _buildHeaderCell('work_model'.tr(), 120),
+                                    _buildHeaderCell('experience_level_title'.tr(), 130),
+                                    _buildHeaderCell('education_title'.tr(), 150),
+                                    _buildHeaderCell('leave_policy'.tr(), 120),
+                                    _buildHeaderCell('annual_leaves_title'.tr(), 100),
+                                    _buildHeaderCell('sick_leaves_title'.tr(), 100),
+                                    _buildHeaderCell('casual_leaves_title'.tr(), 100),
+                                    _buildHeaderCell('joining_date_title'.tr(), 150),
+                                    _buildHeaderCell('profile_image_url'.tr(), 200),
                                   ],
                                 ),
                               ),
@@ -728,7 +727,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               ),
                                               child: Text(
                                                 position.isEmpty
-                                                    ? 'Employee'
+                                                    ? 'employee_default_chip'.tr()
                                                     : position,
                                                 style: const TextStyle(
                                                   fontSize: 12,

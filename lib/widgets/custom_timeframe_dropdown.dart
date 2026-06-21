@@ -183,9 +183,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                widget.selectedPeriod == 'Week'
-                    ? 'Today'
-                    : widget.selectedPeriod,
+                widget.selectedPeriod,
                 style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,

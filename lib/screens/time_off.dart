@@ -143,7 +143,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ),
         ),
         content: Text(
-          '${doc['name'] ?? ''} — ${doc['action'] ?? doc['type'] ?? ''}',
+          () {
+            final rawAction = (doc['action'] ?? doc['type'] ?? '').toString();
+            String localizedAction = rawAction;
+            if (rawAction == 'Annual Leave') {
+              localizedAction = 'annual_leave'.tr();
+            } else if (rawAction == 'Sick Leave') {
+              localizedAction = 'sick_leave_type'.tr();
+            } else if (rawAction == 'Casual Leave') {
+              localizedAction = 'casual_leave_type'.tr();
+            } else if (rawAction == 'Maternity Leave') {
+              localizedAction = 'maternity_leave'.tr();
+            }
+            return '${doc['name'] ?? ''} — $localizedAction';
+          }(),
           style: const TextStyle(fontFamily: 'SF Pro Display'),
         ),
         actions: [
@@ -193,13 +206,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         }
       }
       if (mounted) {
-        FlashySnackBar.show(context, message: 'Time off record deleted');
+        FlashySnackBar.show(context, message: 'time_off_record_deleted'.tr());
       }
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Failed to delete: $e',
+          message: 'failed_to_delete_record'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
       }
@@ -511,8 +524,16 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 final position = (doc['position'] ?? '').toString();
                 final contact = (doc['contact'] ?? doc['phone'] ?? '')
                     .toString();
-                final action = (doc['action'] ?? 'payroll_data'.tr())
-                    .toString();
+                String action = (doc['action'] ?? 'payroll_data'.tr()).toString();
+                if (action == 'Annual Leave') {
+                  action = 'annual_leave'.tr();
+                } else if (action == 'Sick Leave') {
+                  action = 'sick_leave_type'.tr();
+                } else if (action == 'Casual Leave') {
+                  action = 'casual_leave_type'.tr();
+                } else if (action == 'Maternity Leave') {
+                  action = 'maternity_leave'.tr();
+                }
                 return GestureDetector(
                   onLongPress: () => _handleDelete(doc),
                   child: Container(

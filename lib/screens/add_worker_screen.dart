@@ -2,10 +2,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import '../widgets/clickable_gesture_detector.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
 import '../utils/snackbar_utils.dart';
 import '../services/firestore_service.dart';
+import 'add_worker_flow.dart' show CustomDropdownField;
 
 class WorkerManagementApp extends StatelessWidget {
   const WorkerManagementApp({super.key});
@@ -48,6 +48,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   // States
   bool isMarried = true;
   bool isLoading = false; // Loading state for Firebase operation
+  String selectedGender = 'Male';
 
   @override
   void dispose() {
@@ -90,7 +91,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         'dob': dobController.text.trim(),
         'address': addressController.text.trim(),
         'relationshipStatus': isMarried ? 'Married' : 'Single',
-        'gender': isMarried ? 'Male' : 'Male', // TODO: add gender selector
+        'gender': selectedGender,
         'position': 'Employee',
         'type1': 'Full-Time',
         'type2': 'On-Site',
@@ -130,6 +131,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     addressController.clear();
     setState(() {
       isMarried = true;
+      selectedGender = 'Male';
     });
   }
 
@@ -440,10 +442,18 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                           ),
                                           const SizedBox(width: 24),
                                           Expanded(
-                                            child: _buildInputField(
-                                              'gender_label'.tr(),
-                                              'male'.tr(),
-                                              suffixIcon: Icons.arrow_drop_down,
+                                            child: CustomDropdownField(
+                                              label: 'gender_label'.tr(),
+                                              selectedValue: selectedGender,
+                                              hint: 'enter_gender'.tr(),
+                                              items: const ['Male', 'Female', 'Other'],
+                                              onChanged: (val) {
+                                                if (val != null) {
+                                                  setState(() {
+                                                    selectedGender = val;
+                                                  });
+                                                }
+                                              },
                                             ),
                                           ),
                                         ],

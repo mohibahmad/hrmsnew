@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
@@ -37,7 +38,11 @@ Future<void> showLogoutDialog(BuildContext context) async {
   );
 
   if (confirmed == true) {
-    await AuthService().signOut();
+    try {
+      await AuthService().signOut();
+    } catch (e) {
+      debugPrint('Error during sign out: $e');
+    }
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),

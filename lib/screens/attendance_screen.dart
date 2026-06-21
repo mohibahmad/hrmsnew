@@ -856,8 +856,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const NeverScrollableScrollPhysics(),
               itemCount: paginatedRecords.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final doc = paginatedRecords[index];
                 final name = (doc['name'] ?? '').toString();

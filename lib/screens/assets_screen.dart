@@ -1257,7 +1257,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   DateTime? _parseDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty || dateStr == 'In use') return null;
+    if (dateStr == null || dateStr.isEmpty || dateStr == 'in_use'.tr()) return null;
     try {
       final parts = dateStr.split('/');
       if (parts.length == 3) {
@@ -1388,7 +1388,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
                                 context,
-                                message: 'Asset updated',
+                                message: 'asset_updated'.tr(),
                               );
                             }
                           },

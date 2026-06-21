@@ -228,6 +228,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return await snapshot.ref.getDownloadURL();
     } catch (e) {
       debugPrint('Firebase Storage upload failed: $e');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'file_upload_failed'.tr(namedArgs: {'file': fileName}),
+          isError: true,
+        );
+      }
       return null;
     }
   }
@@ -239,7 +246,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         allowMultiple: false,
         withData: true,
       );
-      if (result != null && result.files.isNotEmpty) {
+      if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
@@ -252,6 +259,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       }
     } catch (e) {
       debugPrint('Error picking profile image: $e');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_pick_image'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -263,7 +277,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         allowMultiple: false,
         withData: true,
       );
-      if (result != null && result.files.isNotEmpty) {
+      if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
@@ -276,6 +290,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       }
     } catch (e) {
       debugPrint('Error picking front ID: $e');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_pick_file'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -287,7 +308,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         allowMultiple: false,
         withData: true,
       );
-      if (result != null && result.files.isNotEmpty) {
+      if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
@@ -300,6 +321,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       }
     } catch (e) {
       debugPrint('Error picking back ID: $e');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_pick_file'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -311,7 +339,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         allowMultiple: false,
         withData: true,
       );
-      if (result != null && result.files.isNotEmpty) {
+      if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
@@ -325,6 +353,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       }
     } catch (e) {
       debugPrint('Error picking CV: $e');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_pick_file'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -481,7 +516,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _profileImageName ?? 'profile.jpg',
           _profileImageBytes!,
         );
-        profileImageUrl ??= 'mock://profile_images/$_profileImageName';
+        profileImageUrl ??= 'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
       }
 
       if (_frontIdBytes != null) {
@@ -490,7 +525,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _frontIdName ?? 'front.jpg',
           _frontIdBytes!,
         );
-        frontIdUrl ??= 'mock://id_cards/$_frontIdName';
+        frontIdUrl ??= 'data:image/jpeg;base64,${base64Encode(_frontIdBytes!)}';
       }
 
       if (_backIdBytes != null) {
@@ -499,12 +534,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _backIdName ?? 'back.jpg',
           _backIdBytes!,
         );
-        backIdUrl ??= 'mock://id_cards/$_backIdName';
+        backIdUrl ??= 'data:image/jpeg;base64,${base64Encode(_backIdBytes!)}';
       }
 
       if (_cvBytes != null) {
         cvUrl = await _uploadToStorage('cvs', _cvName ?? 'cv.pdf', _cvBytes!);
-        cvUrl ??= 'mock://cvs/$_cvName';
+        cvUrl ??= 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
       }
     }
 
@@ -1379,10 +1414,10 @@ class WorkerDetailFormSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Tap to upload a profile image\nPNG or JPG',
+        Text(
+          'tap_to_upload_profile_image'.tr(),
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.black54,
             fontSize: 12,
             fontWeight: FontWeight.w500,

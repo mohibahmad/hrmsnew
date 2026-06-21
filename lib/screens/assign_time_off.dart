@@ -330,12 +330,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
-            child: SvgPicture.asset(
-              'assets/app_icon.svg',
-              width: 42,
-              height: 42,
-              fit: BoxFit.contain,
-            ),
+            child: const UserAvatar(radius: 21),
             itemBuilder: (context) => [
               PopupMenuItem<String>(
                 enabled: false,
@@ -536,7 +531,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 DropdownMenuItem(
                   value: 'Casual Leave',
                   child: Text(
-                    'leaves_tab'.tr(),
+                    'casual_leave_type'.tr(),
                     style: const TextStyle(
                       fontFamily: 'SF Pro Display',
                       fontSize: 14,
@@ -922,7 +917,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         Widget summaryWidget = Column(
           children: [
             _buildSummaryRow(
-              'available_annual_leave'.tr(),
+              _timeOffType == 'Sick Leave'
+                  ? 'available_sick_leave'.tr()
+                  : _timeOffType == 'Casual Leave'
+                      ? 'available_casual_leave'.tr()
+                      : 'available_annual_leave'.tr(),
               '$_availableDays',
               _availableDays > 0 ? Colors.black : Colors.red,
             ),
@@ -1016,7 +1015,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Future<void> _handleSave() async {
     if (_isLoading) return;
     if (_selectedWorker == null) {
-      FlashySnackBar.show(context, message: 'Please select a worker first');
+      FlashySnackBar.show(context, message: 'please_select_worker_first'.tr(), isError: true);
       return;
     }
 

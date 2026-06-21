@@ -163,6 +163,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 height: 50,
                                 child: ElevatedButton(
                                   onPressed: () async {
+                                    // TODO: Implement real In-App Purchase
+                                    // Current implementation is fake - just sets premium to true
                                     await PreferencesService.setPremium(true);
                                     if (context.mounted) {
                                       Navigator.of(context).pop(true);
@@ -224,9 +226,19 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _buildFooterLink('privacy_policy'.tr()),
+                                  _buildFooterLink(
+                                    'privacy_policy'.tr(),
+                                    onTap: () => launchUrl(
+                                      Uri.parse('https://your-privacy-policy-url.com'),
+                                    ),
+                                  ),
                                   _buildFooterDivider(),
-                                  _buildFooterLink('restore'.tr()),
+                                  _buildFooterLink(
+                                    'restore'.tr(),
+                                    onTap: () {
+                                      // TODO: Implement restore purchases
+                                    },
+                                  ),
                                   _buildFooterDivider(),
                                   GestureDetector(
                                     onTap: () => launchUrl(
@@ -410,14 +422,17 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     );
   }
 
-  Widget _buildFooterLink(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: primaryBlue,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        fontFamily: 'SF Pro Display',
+  Widget _buildFooterLink(String text, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        text,
+        style: TextStyle(
+          color: primaryBlue,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          fontFamily: 'SF Pro Display',
+        ),
       ),
     );
   }

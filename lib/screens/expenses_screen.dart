@@ -286,6 +286,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               'date': doc['date'],
                               'category': categoryController.text,
                               'amount': amt,
+                              'description': descriptionController.text,
                             };
                             final isGuest =
                                 AuthService().currentUser?.isAnonymous ?? false;
@@ -318,7 +319,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             Navigator.of(context).pop();
                             FlashySnackBar.show(
                               context,
-                              message: 'Expense updated',
+                              message: 'expense_updated'.tr(),
                             );
                           },
                           child: Text(
@@ -436,6 +437,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
+                              'description': descriptionController.text,
                             };
                             if (isGuest) {
                               final newId =

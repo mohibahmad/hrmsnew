@@ -885,7 +885,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'work_type'.tr(),
+                    'attendance_type'.tr(),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

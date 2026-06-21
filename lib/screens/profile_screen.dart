@@ -392,7 +392,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         allowMultiple: false,
       );
 
-      if (result == null) return;
+      if (result == null || !mounted) return;
 
       setState(() {
         _newProfileImageBytes = result.files.single.bytes;
@@ -483,18 +483,17 @@ class _ProfileBodyState extends State<ProfileBody> {
         };
       }
 
-      setState(() {
-        _isLoading = false;
-      });
-
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         FlashySnackBar.show(context, message: 'profile_saved'.tr());
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         FlashySnackBar.show(
           context,
           message: 'error_saving_profile'.tr(
