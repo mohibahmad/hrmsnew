@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -179,7 +180,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               Form(
                                 key: _formKey,
                                 autovalidateMode: _submitted
-                                    ? AutovalidateMode.onUserInteraction
+                                    ? AutovalidateMode.always
                                     : AutovalidateMode.disabled,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,32 +259,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                               const SizedBox(height: 18),
                               Center(
-                                child: TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFF000000),
-                                  ),
-                                  child: RichText(
-                                    text: TextSpan(
-                                      text: 'dont_need_this'.tr(),
-                                      style: const TextStyle(
-                                        color: Color(0xFF000000),
-                                        fontSize: 13,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: 'back_to_login'.tr(),
-                                          style: TextStyle(
-                                            color: Color(0xFFFF1014),
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ],
+                                child: RichText(
+                                  text: TextSpan(
+                                    text: 'dont_need_this'.tr(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF000000),
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
                                     ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'back_to_login'.tr(),
+                                        style: const TextStyle(
+                                          color: Color(0xFFFF1014),
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.of(context).pop();
+                                          },
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
