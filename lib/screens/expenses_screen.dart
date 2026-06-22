@@ -211,6 +211,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     final docId = doc['id'] as String;
 
+    final dateParts = (doc['date']?.toString() ?? '').split('/');
+    int selectedDay = dateParts.isNotEmpty ? int.tryParse(dateParts[0]) ?? DateTime.now().day : DateTime.now().day;
+    DateTime calendarDate = DateTime.now();
+
     showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -234,7 +238,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.black),
+                          icon: const Icon(Icons.close, color: Colors.black, size: 20),
                           onPressed: () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -281,9 +285,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               );
                               return;
                             }
+                            final dateStr =
+                                '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
                             final updatedMap = {
                               'name': doc['name'],
-                              'date': doc['date'],
+                              'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
                               'description': descriptionController.text,
@@ -330,6 +336,104 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildModalTextField(
+                            'expense_category'.tr(),
+                            categoryController,
+                            hintText: 'expense_category_hint'.tr(),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildModalTextField(
+                            'amount_dollar'.tr(),
+                            amountController,
+                            hintText: '0.00',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'expense_title'.tr(),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF000000),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                height: 215,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: TextField(
+                                  controller: descriptionController,
+                                  maxLines: null,
+                                  decoration: InputDecoration(
+                                    hintText: 'expense_title_hint'.tr(),
+                                    contentPadding: const EdgeInsets.only(top: 1),
+                                    hintStyle: const TextStyle(color: Colors.grey),
+                                    border: InputBorder.none,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildModalCalendar(
+                            calendarDate,
+                            selectedDay,
+                            (day) {
+                              setModalState(() {
+                                selectedDay = day;
+                              });
+                            },
+                            (newDate) {
+                              setModalState(() {
+                                calendarDate = newDate;
+                                int daysInNewMonth = DateTime(
+                                  newDate.year,
+                                  newDate.month + 1,
+                                  0,
+                                ).day;
+                                if (selectedDay > daysInNewMonth) {
+                                  selectedDay = daysInNewMonth;
+                                }
+                              });
+                            },
                           ),
                         ),
                       ],
