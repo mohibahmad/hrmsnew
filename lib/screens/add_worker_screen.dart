@@ -1,10 +1,16 @@
+import 'dart:io' as io;
+import 'dart:typed_data';
+import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
 import '../utils/snackbar_utils.dart';
 import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
 import 'add_worker_flow.dart' show CustomDropdownField;
 
 class WorkerManagementApp extends StatelessWidget {
@@ -48,6 +54,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   // States
   bool isMarried = true;
   bool isLoading = false; // Loading state for Firebase operation
+
+  // Profile image state
+  Uint8List? _profileImageBytes;
+  String? _profileImageName;
   String selectedGender = 'Male';
 
   @override
@@ -61,6 +71,53 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     dobController.dispose();
     addressController.dispose();
     super.dispose();
+  }
+
+  // Profile image picking
+  Future<void> _pickProfileImage() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty && mounted) {
+        final file = result.files.first;
+        Uint8List? bytes = file.bytes;
+        if (bytes == null && file.path != null) {
+          bytes = io.File(file.path!).readAsBytesSync();
+        }
+        setState(() {
+          _profileImageBytes = bytes;
+          _profileImageName = file.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking profile image: $e');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_pick_image'.tr(),
+          isError: true,
+        );
+      }
+    }
+  }
+
+  Future<String?> _uploadToStorage(
+    String folder, String fileName, Uint8List fileBytes,
+  ) async {
+    try {
+      final ref = FirebaseStorage.instance.ref().child(
+        'hrms_documents/$folder/${DateTime.now().millisecondsSinceEpoch}_$fileName',
+      );
+      final uploadTask = ref.putData(fileBytes);
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Firebase Storage upload failed: $e');
+      return null;
+    }
   }
 
   // FIREBASE SAVE LOGIC
@@ -80,6 +137,25 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     });
 
     try {
+      // Upload profile image if selected
+      String? profileImageUrl;
+      if (_profileImageBytes != null) {
+        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+        if (isGuest) {
+          profileImageUrl =
+              'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
+        } else {
+          profileImageUrl = await _uploadToStorage(
+            'profile_images',
+            _profileImageName ?? 'profile.jpg',
+            _profileImageBytes!,
+          );
+          // Fallback to base64 if upload fails
+          profileImageUrl ??=
+              'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
+        }
+      }
+
       // Pushing data via FirestoreService (user-scoped collection)
       await FirestoreService().addWorker({
         'name': nameController.text.trim(),
@@ -95,6 +171,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         'position': 'Employee',
         'type1': 'Full-Time',
         'type2': 'On-Site',
+        'profileImage': profileImageUrl,
       });
 
       // Show Success Message
@@ -132,6 +209,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     setState(() {
       isMarried = true;
       selectedGender = 'Male';
+      _profileImageBytes = null;
+      _profileImageName = null;
     });
   }
 
@@ -487,61 +566,97 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    Container(
-                                      height: 240,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: Color(0xFFFFFFFF),
-                                        borderRadius: BorderRadius.circular(16),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Color(
-                                              0xFF000000,
-                                            ).withOpacity(0.01),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 5),
+                                    GestureDetector(
+                                      onTap: _pickProfileImage,
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Container(
+                                          height: 240,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(16),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Color(
+                                                  0xFF000000,
+                                                ).withOpacity(0.01),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 5),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Image.asset(
-                                            'assets/profileimage.png',
-                                            height: 64,
-                                            width: 64,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) =>
-                                                    const Icon(
-                                                      Icons.person,
-                                                      size: 64,
-                                                      color: Colors.grey,
+                                          child: _profileImageBytes != null
+                                              ? Stack(
+                                                  children: [
+                                                    ClipRRect(
+                                                      borderRadius: BorderRadius.circular(16),
+                                                      child: Image.memory(
+                                                        _profileImageBytes!,
+                                                        height: 240,
+                                                        width: double.infinity,
+                                                        fit: BoxFit.cover,
+                                                      ),
                                                     ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'upload_profile'.tr(),
-                                            style: TextStyle(
-                                              color: Color(0xFF000000),
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            'upload_profile_hint'.tr(),
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
+                                                    Positioned(
+                                                      bottom: 8,
+                                                      right: 8,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(6),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black.withOpacity(0.6),
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.edit,
+                                                          color: Colors.white,
+                                                          size: 18,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                )
+                                              : Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Image.asset(
+                                                      'assets/profileimage.png',
+                                                      height: 64,
+                                                      width: 64,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder:
+                                                          (context, error, stackTrace) =>
+                                                              const Icon(
+                                                                Icons.person,
+                                                                size: 64,
+                                                                color: Colors.grey,
+                                                              ),
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    Text(
+                                                      'upload_profile'.tr(),
+                                                      style: TextStyle(
+                                                        color: Color(0xFF000000),
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 14,
+                                                        fontFamily: 'SF Pro Display',
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      'upload_profile_hint'.tr(),
+                                                      textAlign: TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: Colors.black,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w500,
+                                                        fontFamily: 'SF Pro Display',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 32),

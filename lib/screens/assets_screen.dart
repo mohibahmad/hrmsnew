@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart'
@@ -40,6 +41,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   StreamSubscription? _assetsSub;
   StreamSubscription? _workersSub;
   List<String> _workerNames = [];
+  Map<String, Map<String, dynamic>> _workersMap = {};
 
   @override
   void dispose() {
@@ -63,6 +65,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
           data['isReturned'] ?? false,
           profileImage: data['profileImage']?.toString(),
           email: data['email']?.toString(),
+          phone: data['phone']?.toString(),
+          cnic: data['cnic']?.toString(),
+          dateOfJoining: data['dateOfJoining']?.toString(),
         );
       }).toList();
       _workerNames = DummyData.workers
@@ -70,6 +75,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
           .where((n) => n.isNotEmpty)
           .toSet()
           .toList();
+      _workersMap = {
+        for (var w in DummyData.workers)
+          (w['name'] ?? '').toString(): Map<String, dynamic>.from(w),
+      };
     } else {
       _isLoading = true;
       _assetsSub = FirestoreService().assetsStream.listen((snapshot) {
@@ -101,6 +110,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 id: doc.id,
                 profileImage: data['profileImage']?.toString(),
                 email: data['email']?.toString(),
+                phone: data['phone']?.toString(),
+                cnic: data['cnic']?.toString(),
+                dateOfJoining: data['dateOfJoining']?.toString(),
               );
             }).toList();
             _isLoading = false;
@@ -119,6 +131,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 .where((n) => n.isNotEmpty)
                 .toSet()
                 .toList();
+            _workersMap = {
+              for (var doc in snapshot.docs)
+                (doc.data() as Map<String, dynamic>)['name'] as String? ?? '':
+                    doc.data() as Map<String, dynamic>,
+            };
           });
         }
       });
@@ -232,6 +249,17 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             if (selectedWorkerName != null &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
+                              final workerData =
+                                  _workersMap[selectedWorkerName] ?? {};
+                              final workerProfileImage =
+                                  workerData['profileImage']?.toString();
+                              final workerEmail = workerData['email']
+                                  ?.toString();
+                              final workerPhone = workerData['phone']
+                                  ?.toString();
+                              final workerCnic = workerData['cnic']?.toString();
+                              final workerDateOfJoining =
+                                  workerData['dateOfJoining']?.toString();
                               final assetMap = {
                                 'name': selectedWorkerName!,
                                 'position': positionController.text,
@@ -241,6 +269,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                     ? formatDate(returnedDate)
                                     : 'in_use'.tr(),
                                 'isReturned': isReturned,
+                                'profileImage': workerProfileImage ?? '',
+                                'email': workerEmail ?? '',
+                                'phone': workerPhone ?? '',
+                                'cnic': workerCnic ?? '',
+                                'dateOfJoining': workerDateOfJoining ?? '',
                               };
                               final isGuest =
                                   AuthService().currentUser?.isAnonymous ??
@@ -255,6 +288,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       ? formatDate(returnedDate)
                                       : 'in_use'.tr(),
                                   'isReturned': isReturned,
+                                  'profileImage': workerProfileImage ?? '',
+                                  'email': workerEmail ?? '',
+                                  'phone': workerPhone ?? '',
+                                  'cnic': workerCnic ?? '',
+                                  'dateOfJoining': workerDateOfJoining ?? '',
                                 };
                                 setState(() {
                                   _assets.insert(
@@ -268,6 +306,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                           ? formatDate(returnedDate)
                                           : 'in_use'.tr(),
                                       isReturned,
+                                      profileImage: workerProfileImage,
+                                      email: workerEmail,
+                                      phone: workerPhone,
+                                      cnic: workerCnic,
+                                      dateOfJoining: workerDateOfJoining,
                                     ),
                                   );
                                   DummyData.assets.insert(0, newAsset);
@@ -310,7 +353,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           items,
                           'worker_name_hint'.tr(),
                           (val) {
-                            setModalState(() => selectedWorkerName = val);
+                            setModalState(() {
+                              selectedWorkerName = val;
+                              if (val != null && _workersMap.containsKey(val)) {
+                                final workerData = _workersMap[val]!;
+                                positionController.text =
+                                    (workerData['position'] ?? '').toString();
+                              } else {
+                                positionController.text = '';
+                              }
+                            });
+                            if (val != null) {
+                              _showWorkerInfoDialog(val);
+                            }
                           },
                         );
                       },
@@ -326,6 +381,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'position'.tr(),
                       positionController,
                       'position_hint'.tr(),
+                      readOnly: true,
                     ),
                     const SizedBox(height: 16),
 
@@ -562,8 +618,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
   Widget _buildModalTextField(
     String label,
     TextEditingController controller,
-    String hintText,
-  ) {
+    String hintText, {
+    bool readOnly = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -582,11 +639,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(6),
+            color: readOnly ? Colors.grey.shade50 : null,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
           child: TextField(
             controller: controller,
+            readOnly: readOnly,
             decoration: InputDecoration.collapsed(
               hintText: hintText,
               hintStyle: TextStyle(
@@ -992,8 +1051,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: paginatedAssets.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 return _buildDataRow(paginatedAssets[index], index);
               },
@@ -1214,12 +1272,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 const SizedBox(width: 8),
                 Text(
                   'edit_asset'.tr(),
-                   style: TextStyle(
-                     color: Color(0xFF0247C4),
-                     fontSize: 13,
-                     fontWeight: FontWeight.w500,
-                     fontFamily: 'SF Pro Display',
-                   ),
+                  style: TextStyle(
+                    color: Color(0xFF0247C4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
               ],
             ),
@@ -1257,7 +1315,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   DateTime? _parseDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty || dateStr == 'in_use'.tr()) return null;
+    if (dateStr == null || dateStr.isEmpty || dateStr == 'in_use'.tr())
+      return null;
     try {
       final parts = dateStr.split('/');
       if (parts.length == 3) {
@@ -1340,6 +1399,17 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             if (selectedWorkerName != null &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
+                              final workerData =
+                                  _workersMap[selectedWorkerName] ?? {};
+                              final workerProfileImage =
+                                  workerData['profileImage']?.toString();
+                              final workerEmail = workerData['email']
+                                  ?.toString();
+                              final workerPhone = workerData['phone']
+                                  ?.toString();
+                              final workerCnic = workerData['cnic']?.toString();
+                              final workerDateOfJoining =
+                                  workerData['dateOfJoining']?.toString();
                               final assetMap = {
                                 'name': selectedWorkerName!,
                                 'position': positionController.text,
@@ -1349,6 +1419,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                     ? formatDate(returnedDate)
                                     : 'in_use'.tr(),
                                 'isReturned': isReturned,
+                                'profileImage': workerProfileImage ?? '',
+                                'email': workerEmail ?? '',
+                                'phone': workerPhone ?? '',
+                                'cnic': workerCnic ?? '',
+                                'dateOfJoining': workerDateOfJoining ?? '',
                               };
                               final isGuest =
                                   AuthService().currentUser?.isAnonymous ??
@@ -1369,6 +1444,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                           : 'in_use'.tr(),
                                       isReturned,
                                       id: data.id,
+                                      profileImage: workerProfileImage,
+                                      email: workerEmail,
+                                      phone: workerPhone,
+                                      cnic: workerCnic,
+                                      dateOfJoining: workerDateOfJoining,
                                     );
                                   }
                                   final dummyIdx = DummyData.assets.indexWhere(
@@ -1416,7 +1496,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           items,
                           'worker_name_hint'.tr(),
                           (val) {
-                            setModalState(() => selectedWorkerName = val);
+                            setModalState(() {
+                              selectedWorkerName = val;
+                              if (val != null && _workersMap.containsKey(val)) {
+                                final workerData = _workersMap[val]!;
+                                positionController.text =
+                                    (workerData['position'] ?? '').toString();
+                              } else {
+                                positionController.text = '';
+                              }
+                            });
+                            if (val != null) {
+                              _showWorkerInfoDialog(val);
+                            }
                           },
                         );
                       },
@@ -1438,6 +1530,214 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showWorkerInfoDialog(String workerName) {
+    final workerData = _workersMap[workerName] ?? {};
+    final profileImage = workerData['profileImage']?.toString() ?? '';
+    final position = (workerData['position'] ?? '').toString();
+    final phone = (workerData['phone'] ?? '').toString();
+    final email = (workerData['email'] ?? '').toString();
+    final cnic = (workerData['cnic'] ?? '').toString();
+    final dateOfJoining = (workerData['dateOfJoining'] ?? '').toString();
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          child: Container(
+            width: 340,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Profile Image
+                CircleAvatar(
+                  radius: 45,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: profileImage.isNotEmpty
+                      ? (profileImage.startsWith('data:image/')
+                            ? MemoryImage(
+                                    base64Decode(profileImage.split(',').last),
+                                  )
+                                  as ImageProvider
+                            : profileImage.startsWith('http')
+                            ? NetworkImage(profileImage)
+                            : null)
+                      : null,
+                  child: profileImage.isEmpty
+                      ? Text(
+                          workerName.isNotEmpty
+                              ? workerName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontSize: 32,
+                            color: Color(0xFF0247C4),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                // Name
+                Text(
+                  workerName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                // Position
+                if (position.isNotEmpty)
+                  Text(
+                    position,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                const SizedBox(height: 8),
+                // Phone
+                if (phone.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.phone,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          phone,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Email
+                if (email.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.email,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            email,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // CNIC
+                if (cnic.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.badge,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          cnic,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Date of Joining
+                if (dateOfJoining.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          dateOfJoining,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0247C4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 10,
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'ok'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -1492,6 +1792,9 @@ class AssetData {
 
   final String? profileImage;
   final String? email;
+  final String? phone;
+  final String? cnic;
+  final String? dateOfJoining;
 
   AssetData(
     this.name,
@@ -1503,5 +1806,8 @@ class AssetData {
     this.id,
     this.profileImage,
     this.email,
+    this.phone,
+    this.cnic,
+    this.dateOfJoining,
   });
 }

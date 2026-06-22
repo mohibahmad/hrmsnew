@@ -510,37 +510,63 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         cvUrl = 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
       }
     } else {
+      final uploads = <Future<String?>>[];
+
+      Future<String?> uploadWithFallback(
+          String folder, String name, Uint8List bytes, String mime) async {
+        final url = await _uploadToStorage(folder, name, bytes);
+        return url ?? 'data:$mime;base64,${base64Encode(bytes)}';
+      }
+
       if (_profileImageBytes != null) {
-        profileImageUrl = await _uploadToStorage(
+        uploads.add(uploadWithFallback(
           'profile_images',
           _profileImageName ?? 'profile.jpg',
           _profileImageBytes!,
-        );
-        profileImageUrl ??= 'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
+          'image/jpeg',
+        ));
+      } else {
+        uploads.add(Future.value(profileImageUrl));
       }
 
       if (_frontIdBytes != null) {
-        frontIdUrl = await _uploadToStorage(
+        uploads.add(uploadWithFallback(
           'id_cards',
           _frontIdName ?? 'front.jpg',
           _frontIdBytes!,
-        );
-        frontIdUrl ??= 'data:image/jpeg;base64,${base64Encode(_frontIdBytes!)}';
+          'image/jpeg',
+        ));
+      } else {
+        uploads.add(Future.value(frontIdUrl));
       }
 
       if (_backIdBytes != null) {
-        backIdUrl = await _uploadToStorage(
+        uploads.add(uploadWithFallback(
           'id_cards',
           _backIdName ?? 'back.jpg',
           _backIdBytes!,
-        );
-        backIdUrl ??= 'data:image/jpeg;base64,${base64Encode(_backIdBytes!)}';
+          'image/jpeg',
+        ));
+      } else {
+        uploads.add(Future.value(backIdUrl));
       }
 
       if (_cvBytes != null) {
-        cvUrl = await _uploadToStorage('cvs', _cvName ?? 'cv.pdf', _cvBytes!);
-        cvUrl ??= 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
+        uploads.add(uploadWithFallback(
+          'cvs',
+          _cvName ?? 'cv.pdf',
+          _cvBytes!,
+          'application/pdf',
+        ));
+      } else {
+        uploads.add(Future.value(cvUrl));
       }
+
+      final results = await Future.wait(uploads);
+      profileImageUrl = results[0];
+      frontIdUrl = results[1];
+      backIdUrl = results[2];
+      cvUrl = results[3];
     }
 
     final data = {

@@ -51,7 +51,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
         if (mounted) {
           await OpenFile.open(file.path);
-          FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
+          FlashySnackBar.show(
+            context,
+            message: 'template_saved_successfully'.tr(),
+          );
         }
       } else {
         final directory = await getTemporaryDirectory();
@@ -63,7 +66,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             XFile(file.path),
           ], text: 'hrms_worker_template'.tr());
           await OpenFile.open(file.path);
-          FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
+          FlashySnackBar.show(
+            context,
+            message: 'template_saved_successfully'.tr(),
+          );
         }
       }
     } catch (e) {
@@ -189,11 +195,25 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       try {
         final snapshot = await FirestoreService().getWorkersOnce();
         existingEmails = snapshot.docs
-            .map((d) => (d.data() as Map<String, dynamic>)['email']?.toString().toLowerCase().trim() ?? '')
+            .map(
+              (d) =>
+                  (d.data() as Map<String, dynamic>)['email']
+                      ?.toString()
+                      .toLowerCase()
+                      .trim() ??
+                  '',
+            )
             .where((e) => e.isNotEmpty)
             .toSet();
         existingNames = snapshot.docs
-            .map((d) => (d.data() as Map<String, dynamic>)['name']?.toString().toLowerCase().trim() ?? '')
+            .map(
+              (d) =>
+                  (d.data() as Map<String, dynamic>)['name']
+                      ?.toString()
+                      .toLowerCase()
+                      .trim() ??
+                  '',
+            )
             .where((n) => n.isNotEmpty)
             .toSet();
       } catch (e) {
@@ -266,10 +286,12 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final name = workerData['name']?.toString().toLowerCase().trim() ?? '';
 
       bool isDuplicate = false;
-      if (email.isNotEmpty && (existingEmails.contains(email) || csvEmails.contains(email))) {
+      if (email.isNotEmpty &&
+          (existingEmails.contains(email) || csvEmails.contains(email))) {
         isDuplicate = true;
       }
-      if (name.isNotEmpty && (existingNames.contains(name) || csvNames.contains(name))) {
+      if (name.isNotEmpty &&
+          (existingNames.contains(name) || csvNames.contains(name))) {
         isDuplicate = true;
       }
 
@@ -287,7 +309,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (duplicateCount > 0 && mounted) {
       FlashySnackBar.show(
         context,
-        message: 'skipped_duplicates_message'.tr(namedArgs: {'count': duplicateCount.toString()}),
+        message: 'skipped_duplicates_message'.tr(
+          namedArgs: {'count': duplicateCount.toString()},
+        ),
       );
     }
 
@@ -327,7 +351,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'workers_added_successfully'.tr(namedArgs: {'count': _validWorkers.length.toString()}),
+          message: 'workers_added_successfully'.tr(
+            namedArgs: {'count': _validWorkers.length.toString()},
+          ),
         );
         widget.onBack?.call();
       }
@@ -553,7 +579,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'preview_valid_workers_found'.tr(namedArgs: {'count': _validWorkers.length.toString()}),
+                                'preview_valid_workers_found'.tr(
+                                  namedArgs: {
+                                    'count': _validWorkers.length.toString(),
+                                  },
+                                ),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -624,15 +654,27 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 child: Row(
                                   children: [
                                     _buildHeaderCell('full_name'.tr(), 200),
-                                    _buildHeaderCell('contact_number'.tr(), 120),
+                                    _buildHeaderCell(
+                                      'contact_number'.tr(),
+                                      120,
+                                    ),
                                     _buildHeaderCell('email_address'.tr(), 200),
                                     _buildHeaderCell('job_position'.tr(), 150),
                                     _buildHeaderCell('salary_type'.tr(), 120),
-                                    _buildHeaderCell('currency_title'.tr(), 100),
+                                    _buildHeaderCell(
+                                      'currency_title'.tr(),
+                                      100,
+                                    ),
                                     _buildHeaderCell('salary_amount'.tr(), 120),
                                     _buildHeaderCell('father_name'.tr(), 150),
-                                    _buildHeaderCell('national_id_title'.tr(), 150),
-                                    _buildHeaderCell('religion_title'.tr(), 120),
+                                    _buildHeaderCell(
+                                      'national_id_title'.tr(),
+                                      150,
+                                    ),
+                                    _buildHeaderCell(
+                                      'religion_title'.tr(),
+                                      120,
+                                    ),
                                     _buildHeaderCell('date_of_birth'.tr(), 120),
                                     _buildHeaderCell('gender_title'.tr(), 100),
                                     _buildHeaderCell('address_title'.tr(), 250),
@@ -642,14 +684,35 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     ),
                                     _buildHeaderCell('employee_type'.tr(), 120),
                                     _buildHeaderCell('work_model'.tr(), 120),
-                                    _buildHeaderCell('experience_level_title'.tr(), 130),
-                                    _buildHeaderCell('education_title'.tr(), 150),
+                                    _buildHeaderCell(
+                                      'experience_level_title'.tr(),
+                                      130,
+                                    ),
+                                    _buildHeaderCell(
+                                      'education_title'.tr(),
+                                      150,
+                                    ),
                                     _buildHeaderCell('leave_policy'.tr(), 120),
-                                    _buildHeaderCell('annual_leaves_title'.tr(), 100),
-                                    _buildHeaderCell('sick_leaves_title'.tr(), 100),
-                                    _buildHeaderCell('casual_leaves_title'.tr(), 100),
-                                    _buildHeaderCell('joining_date_title'.tr(), 150),
-                                    _buildHeaderCell('profile_image_url'.tr(), 200),
+                                    _buildHeaderCell(
+                                      'annual_leaves_title'.tr(),
+                                      100,
+                                    ),
+                                    _buildHeaderCell(
+                                      'sick_leaves_title'.tr(),
+                                      100,
+                                    ),
+                                    _buildHeaderCell(
+                                      'casual_leaves_title'.tr(),
+                                      100,
+                                    ),
+                                    _buildHeaderCell(
+                                      'joining_date_title'.tr(),
+                                      150,
+                                    ),
+                                    _buildHeaderCell(
+                                      'profile_image_url'.tr(),
+                                      200,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -786,7 +849,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               ),
                                               child: Text(
                                                 position.isEmpty
-                                                    ? 'employee_default_chip'.tr()
+                                                    ? 'employee_default_chip'
+                                                          .tr()
                                                     : position,
                                                 style: const TextStyle(
                                                   fontSize: 12,

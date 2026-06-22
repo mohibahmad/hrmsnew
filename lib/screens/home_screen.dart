@@ -656,7 +656,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         final activeHolidays = _holidays.where((h) {
                           if (h['isEnabled'] != true) return false;
                           final remainingStr = h['remainingDays'] ?? '';
-                          final remaining = int.tryParse(remainingStr.toString()) ?? -1;
+                          final remaining =
+                              int.tryParse(remainingStr.toString()) ?? -1;
                           if (remaining < 0) return false;
                           switch (holidaysPeriod) {
                             case 'Week':
@@ -672,88 +673,88 @@ class _HomeScreenState extends State<HomeScreen> {
                               return true;
                           }
                         }).toList();
-                    if (activeHolidays.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 40),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SvgPicture.asset(
-                                'assets/holidays_icon.svg',
-                                height: 50,
-                                width: 50,
-                                colorFilter: const ColorFilter.mode(
-                                  Color(0xFF9CA3AF),
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'no_holidays_yet'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF9CA3AF),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'overview'.tr(),
-                          style: const TextStyle(
-                            color: Color(0xFF000000),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            double spacing = 16.0;
-                            double itemWidth =
-                                (constraints.maxWidth - (spacing * 4)) / 5;
-
-                            return Wrap(
-                              spacing: spacing,
-                              runSpacing: spacing,
-                              children: activeHolidays.map((h) {
-                                final remainingDaysStr =
-                                    h['remainingDays'] ?? '';
-                                final remainingDaysInt =
-                                    int.tryParse(remainingDaysStr) ?? -1;
-                                final isUrgent =
-                                    remainingDaysInt >= 1 &&
-                                    remainingDaysInt <= 5;
-
-                                return SizedBox(
-                                  width: itemWidth,
-                                  child: HolidayCard(
-                                    day: h['day'] != null
-                                        ? '${h['day']}'.padLeft(2, '0')
-                                        : '',
-                                    month: h['month'] ?? 'May',
-                                    remainingDays: h['remainingDays'] ?? '',
-                                    dayOfWeek: h['dayOfWeek'] ?? '',
-                                    holidayName: h['name'] ?? '',
-                                    isActive: isUrgent,
+                        if (activeHolidays.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 40),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/holidays_icon.svg',
+                                    height: 50,
+                                    width: 50,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFF9CA3AF),
+                                      BlendMode.srcIn,
+                                    ),
                                   ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'no_holidays_yet'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF9CA3AF),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'overview'.tr(),
+                              style: const TextStyle(
+                                color: Color(0xFF000000),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                double spacing = 16.0;
+                                double itemWidth =
+                                    (constraints.maxWidth - (spacing * 4)) / 5;
+
+                                return Wrap(
+                                  spacing: spacing,
+                                  runSpacing: spacing,
+                                  children: activeHolidays.map((h) {
+                                    final remainingDaysStr =
+                                        h['remainingDays'] ?? '';
+                                    final remainingDaysInt =
+                                        int.tryParse(remainingDaysStr) ?? -1;
+                                    final isUrgent =
+                                        remainingDaysInt >= 1 &&
+                                        remainingDaysInt <= 5;
+
+                                    return SizedBox(
+                                      width: itemWidth,
+                                      child: HolidayCard(
+                                        day: h['day'] != null
+                                            ? '${h['day']}'.padLeft(2, '0')
+                                            : '',
+                                        month: h['month'] ?? 'May',
+                                        remainingDays: h['remainingDays'] ?? '',
+                                        dayOfWeek: h['dayOfWeek'] ?? '',
+                                        holidayName: h['name'] ?? '',
+                                        isActive: isUrgent,
+                                      ),
+                                    );
+                                  }).toList(),
                                 );
-                              }).toList(),
-                            );
-                          },
-                        ),
-                      ],
-                    );
-                  }(),
+                              },
+                            ),
+                          ],
+                        );
+                      }(),
                     );
                   },
                 ),
@@ -1453,7 +1454,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 40),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1471,7 +1472,7 @@ class TotalWorkersCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Transform.translate(
-                                  offset: const Offset(2, -6),
+                                  offset: const Offset(4, -6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -1496,7 +1497,7 @@ class TotalWorkersCard extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 5),
+                                const SizedBox(width: 8),
                                 Transform.rotate(
                                   angle: 0.3,
                                   child: Container(
@@ -2038,7 +2039,12 @@ ChartData getChartData(
         return ChartData(labels, values);
 
       case 'Month':
-        final labels = ['week_label_1'.tr(), 'week_label_2'.tr(), 'week_label_3'.tr(), 'week_label_4'.tr()];
+        final labels = [
+          'week_label_1'.tr(),
+          'week_label_2'.tr(),
+          'week_label_3'.tr(),
+          'week_label_4'.tr(),
+        ];
         final values = [48.0, 55.0, 50.0, 62.0];
         return ChartData(labels, values);
 
@@ -2125,7 +2131,12 @@ ChartData getChartData(
       return ChartData(labels, values);
 
     case 'Month':
-      final labels = ['week_label_1'.tr(), 'week_label_2'.tr(), 'week_label_3'.tr(), 'week_label_4'.tr()];
+      final labels = [
+        'week_label_1'.tr(),
+        'week_label_2'.tr(),
+        'week_label_3'.tr(),
+        'week_label_4'.tr(),
+      ];
       final values = List.filled(4, 0.0);
       final startOfPeriod = DateTime(
         now.year,
@@ -2689,13 +2700,21 @@ class LeaveTypesPieChart extends StatelessWidget {
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFF84A9FF),
-                                'casual_leave'.tr(namedArgs: {'value': '${config.casualVal.toInt()}'}),
+                                'casual_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${config.casualVal.toInt()}',
+                                  },
+                                ),
                               ),
                             ),
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFFFF4A5E),
-                                'sick_leave'.tr(namedArgs: {'value': '${config.sickVal.toInt()}'}),
+                                'sick_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${config.sickVal.toInt()}',
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -2706,7 +2725,11 @@ class LeaveTypesPieChart extends StatelessWidget {
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFF97FFA9),
-                                'medical_leave'.tr(namedArgs: {'value': '${config.medicalVal.toInt()}'}),
+                                'medical_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${config.medicalVal.toInt()}',
+                                  },
+                                ),
                               ),
                             ),
                             const Expanded(child: SizedBox()),
@@ -2854,32 +2877,53 @@ class HolidayCard extends StatelessWidget {
 
   static String _localizeMonth(String month) {
     switch (month) {
-      case 'January': return 'month_january'.tr();
-      case 'February': return 'month_february'.tr();
-      case 'March': return 'month_march'.tr();
-      case 'April': return 'month_april'.tr();
-      case 'May': return 'month_may'.tr();
-      case 'June': return 'month_june'.tr();
-      case 'July': return 'month_july'.tr();
-      case 'August': return 'month_august'.tr();
-      case 'September': return 'month_september'.tr();
-      case 'October': return 'month_october'.tr();
-      case 'November': return 'month_november'.tr();
-      case 'December': return 'month_december'.tr();
-      default: return month;
+      case 'January':
+        return 'month_january'.tr();
+      case 'February':
+        return 'month_february'.tr();
+      case 'March':
+        return 'month_march'.tr();
+      case 'April':
+        return 'month_april'.tr();
+      case 'May':
+        return 'month_may'.tr();
+      case 'June':
+        return 'month_june'.tr();
+      case 'July':
+        return 'month_july'.tr();
+      case 'August':
+        return 'month_august'.tr();
+      case 'September':
+        return 'month_september'.tr();
+      case 'October':
+        return 'month_october'.tr();
+      case 'November':
+        return 'month_november'.tr();
+      case 'December':
+        return 'month_december'.tr();
+      default:
+        return month;
     }
   }
 
   static String _localizeDayOfWeek(String day) {
     switch (day) {
-      case 'Monday': return 'weekday_monday'.tr();
-      case 'Tuesday': return 'weekday_tuesday'.tr();
-      case 'Wednesday': return 'weekday_wednesday'.tr();
-      case 'Thursday': return 'weekday_thursday'.tr();
-      case 'Friday': return 'weekday_friday'.tr();
-      case 'Saturday': return 'weekday_saturday'.tr();
-      case 'Sunday': return 'weekday_sunday'.tr();
-      default: return day;
+      case 'Monday':
+        return 'weekday_monday'.tr();
+      case 'Tuesday':
+        return 'weekday_tuesday'.tr();
+      case 'Wednesday':
+        return 'weekday_wednesday'.tr();
+      case 'Thursday':
+        return 'weekday_thursday'.tr();
+      case 'Friday':
+        return 'weekday_friday'.tr();
+      case 'Saturday':
+        return 'weekday_saturday'.tr();
+      case 'Sunday':
+        return 'weekday_sunday'.tr();
+      default:
+        return day;
     }
   }
 

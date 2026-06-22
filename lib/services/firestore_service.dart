@@ -96,7 +96,7 @@ class FirestoreService {
     Validators.validateWorker(worker);
     final docRef = await _workers.add({
       ...worker,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
@@ -104,17 +104,17 @@ class FirestoreService {
   Future<void> addBulkWorkers(List<Map<String, dynamic>> workersList) async {
     var batch = _db.batch();
     int count = 0;
-    
+
     for (var worker in workersList) {
       try {
         Validators.validateWorker(worker);
         final docRef = _workers.doc();
         batch.set(docRef, {
           ...worker,
-          'createdAt': FieldValue.serverTimestamp(),
+          'createdAt': DateTime.now().toUtc().toIso8601String(),
         });
         count++;
-        
+
         if (count % 500 == 0) {
           await batch.commit();
           batch = _db.batch();
@@ -124,7 +124,7 @@ class FirestoreService {
         continue;
       }
     }
-    
+
     if (count % 500 != 0 && count > 0) {
       await batch.commit();
     }
@@ -150,7 +150,7 @@ class FirestoreService {
     Validators.validateExpense(expense);
     final docRef = await _expenses.add({
       ...expense,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
@@ -171,12 +171,15 @@ class FirestoreService {
     Validators.validateAttendance(record);
     final docRef = await _attendance.add({
       ...record,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
 
-  Future<void> updateAttendanceRecord(String id, Map<String, dynamic> data) async {
+  Future<void> updateAttendanceRecord(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     Validators.validateAttendance(data);
     await _attendance.doc(id).update(data);
   }
@@ -192,7 +195,7 @@ class FirestoreService {
     Validators.validatePayroll(record);
     final docRef = await _payroll.add({
       ...record,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
@@ -212,7 +215,7 @@ class FirestoreService {
     Validators.validateTimeOff(record);
     final docRef = await _timeoff.add({
       ...record,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
@@ -233,7 +236,7 @@ class FirestoreService {
     Validators.validateAsset(asset);
     final docRef = await _assets.add({
       ...asset,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
@@ -255,7 +258,7 @@ class FirestoreService {
     Validators.validateHoliday(holiday);
     final docRef = await _holidays.add({
       ...holiday,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
     return docRef.id;
   }
@@ -273,7 +276,6 @@ class FirestoreService {
 
   Stream<QuerySnapshot> get holidaysStream =>
       _holidays.orderBy('createdAt', descending: true).snapshots();
-
 
   Future<void> seedDummyDataForUser({
     required String uid,
@@ -305,7 +307,7 @@ class FirestoreService {
       'contact2': '+1 (555) 019-5678',
       'address': '10880 Malibu Point, Malibu, CA',
       'hasDummyData': true,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     }, SetOptions(merge: true));
 
     // Seed Workers
