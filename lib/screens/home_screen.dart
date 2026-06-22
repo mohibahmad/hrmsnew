@@ -1456,7 +1456,9 @@ class TotalWorkersCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   Expanded(
                     child: Center(
-                      child: Stack(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Stack(
                         alignment: Alignment.center,
                         children: [
                           RoundedDonutChart(
@@ -1536,6 +1538,7 @@ class TotalWorkersCard extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
                       ),
                     ),
                   ),
