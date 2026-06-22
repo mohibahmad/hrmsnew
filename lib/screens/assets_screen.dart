@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart'
@@ -362,6 +363,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 positionController.text = '';
                               }
                             });
+                            if (val != null) {
+                              _showWorkerInfoDialog(val);
+                            }
                           },
                         );
                       },
@@ -1507,6 +1511,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 positionController.text = '';
                               }
                             });
+                            if (val != null) {
+                              _showWorkerInfoDialog(val);
+                            }
                           },
                         );
                       },
@@ -1528,6 +1535,189 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showWorkerInfoDialog(String workerName) {
+    final workerData = _workersMap[workerName] ?? {};
+    final profileImage = workerData['profileImage']?.toString() ?? '';
+    final position = (workerData['position'] ?? '').toString();
+    final phone = (workerData['phone'] ?? '').toString();
+    final email = (workerData['email'] ?? '').toString();
+    final dateOfJoining = (workerData['dateOfJoining'] ?? '').toString();
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          child: Container(
+            width: 340,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Profile Image
+                CircleAvatar(
+                  radius: 45,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: profileImage.isNotEmpty
+                      ? (profileImage.startsWith('data:image/')
+                            ? MemoryImage(
+                                    base64Decode(profileImage.split(',').last),
+                                  )
+                                  as ImageProvider
+                            : profileImage.startsWith('http')
+                            ? NetworkImage(profileImage)
+                            : null)
+                      : null,
+                  child: profileImage.isEmpty
+                      ? Text(
+                          workerName.isNotEmpty
+                              ? workerName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontSize: 32,
+                            color: Color(0xFF0247C4),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                // Name
+                Text(
+                  workerName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                // Position
+                if (position.isNotEmpty)
+                  Text(
+                    position,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                const SizedBox(height: 8),
+                // Email
+                if (email.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.email,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            email,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Phone
+                if (phone.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.phone,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          phone,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Date of Joining
+                if (dateOfJoining.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          dateOfJoining,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0247C4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 10,
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'ok'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
