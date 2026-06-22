@@ -903,7 +903,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: _currentPageItems.length,
               separatorBuilder: (context, index) =>
                   const SizedBox(height: 12),
@@ -1512,7 +1512,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
               // ==========================================
               Expanded(
                 child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [

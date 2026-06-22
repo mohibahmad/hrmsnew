@@ -841,7 +841,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   flex: 3,
                   child: _tableHeader('worker_name_header'.tr()),
                 ),
-                Expanded(flex: 2, child: _tableHeader('attendance_type'.tr())),
                 Expanded(flex: 2, child: _tableHeader('status_header'.tr())),
                 Expanded(flex: 2, child: _tableHeader('work_type'.tr())),
                 Expanded(flex: 2, child: _tableHeader('position'.tr())),
@@ -917,17 +916,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          attendanceType,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: textDark,
-                            fontFamily: 'SF Pro Display',
-                          ),
                         ),
                       ),
                       Expanded(
