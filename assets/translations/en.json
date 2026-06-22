@@ -334,6 +334,8 @@
 
   "time_off_list": "Time off List",
   "no_time_off_requests": "No Time Off Requests",
+  "no_time_off": "No Time Off",
+  "no_time_off_record_to_delete": "No time off record to delete",
   "time_off": "Time Off",
   "assign_time_off": "Assign Time Off",
   "assign": "Assign",

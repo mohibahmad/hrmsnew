@@ -54,24 +54,86 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   String _searchQuery = '';
   String _selectedTab = 'All';
   List<Map<String, dynamic>> _timeoffDocs = [];
+  List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
   StreamSubscription? _timeoffSub;
+  StreamSubscription? _workersSub;
 
   @override
   void dispose() {
     _timeoffSub?.cancel();
+    _workersSub?.cancel();
     super.dispose();
+  }
+
+  void _combineTimeOff() {
+    if (_workersList.isEmpty) {
+      _isLoading = false;
+      return;
+    }
+
+    final combined = <Map<String, dynamic>>[];
+    for (var worker in _workersList) {
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+      final timeoffRecord = _timeoffDocs.firstWhere((t) {
+        final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
+        final tName = (t['name'] ?? '').toString().trim().toLowerCase();
+        return (email.isNotEmpty && tEmail == email) ||
+            (name.isNotEmpty && tName == name);
+      }, orElse: () => {});
+
+      if (timeoffRecord.isNotEmpty) {
+        combined.add({
+          ...timeoffRecord,
+          'profileImage':
+              worker['profileImage'] ?? timeoffRecord['profileImage'],
+          'phone': worker['phone'] ?? timeoffRecord['phone'] ?? '',
+          'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
+        });
+      } else {
+        // Include workers without timeoff records with default empty values
+        combined.add({
+          'id': worker['id'] ?? '',
+          'name': worker['name'] ?? '',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? '',
+          'phone': worker['phone'] ?? '',
+          'contact': worker['phone'] ?? '',
+          'profileImage': worker['profileImage'] ?? '',
+          'action': '',
+          'startDate': '',
+          'endDate': '',
+          'requestedDays': 0,
+        });
+      }
+    }
+
+    _timeoffDocs = combined;
+    _isLoading = false;
   }
 
   @override
   void initState() {
     super.initState();
     _timeoffDocs = [];
+    _workersList = [];
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
+      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workersList = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            _combineTimeOff();
+          });
+        }
+      });
       _timeoffSub = FirestoreService().timeoffStream.listen(
         (snapshot) {
           if (mounted) {
@@ -91,7 +153,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 return 0;
               });
               _timeoffDocs = sortedList;
-              _isLoading = false;
+              _combineTimeOff();
             });
           }
         },
@@ -104,8 +166,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         },
       );
     } else {
-      _timeoffDocs = DummyData.timeoff;
-      _isLoading = false;
+      _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+      _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
+      _combineTimeOff();
     }
   }
 
@@ -131,6 +194,19 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Future<void> _handleDelete(Map<String, dynamic> doc) async {
+    // Don't allow deletion of workers without timeoff records
+    final action = (doc['action'] ?? '').toString();
+    if (action.isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'no_time_off_record_to_delete'.tr(),
+          isError: true,
+        );
+      }
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -144,15 +220,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         ),
         content: Text(
           () {
-            final rawAction = (doc['action'] ?? doc['type'] ?? '').toString();
-            String localizedAction = rawAction;
-            if (rawAction == 'Annual Leave') {
+            String localizedAction = action;
+            if (action == 'Annual Leave') {
               localizedAction = 'annual_leave'.tr();
-            } else if (rawAction == 'Sick Leave') {
+            } else if (action == 'Sick Leave') {
               localizedAction = 'sick_leave_type'.tr();
-            } else if (rawAction == 'Casual Leave') {
+            } else if (action == 'Casual Leave') {
               localizedAction = 'casual_leave_type'.tr();
-            } else if (rawAction == 'Maternity Leave') {
+            } else if (action == 'Maternity Leave') {
               localizedAction = 'maternity_leave'.tr();
             }
             return '${doc['name'] ?? ''} — $localizedAction';
@@ -524,7 +599,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 final position = (doc['position'] ?? '').toString();
                 final contact = (doc['contact'] ?? doc['phone'] ?? '')
                     .toString();
-                String action = (doc['action'] ?? 'payroll_data'.tr()).toString();
+                String action = (doc['action'] ?? '').toString();
                 if (action == 'Annual Leave') {
                   action = 'annual_leave'.tr();
                 } else if (action == 'Sick Leave') {
@@ -533,9 +608,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   action = 'casual_leave_type'.tr();
                 } else if (action == 'Maternity Leave') {
                   action = 'maternity_leave'.tr();
+                } else if (action.isEmpty) {
+                  action = 'no_time_off'.tr();
                 }
                 return GestureDetector(
-                  onLongPress: () => _handleDelete(doc),
+                  onLongPress: (doc['action'] ?? '').toString().isNotEmpty
+                      ? () => _handleDelete(doc)
+                      : null,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,

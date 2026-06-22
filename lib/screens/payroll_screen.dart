@@ -71,8 +71,24 @@ class _PayrollScreenState extends State<PayrollScreen> {
               worker['profileImage'] ?? payrollRecord['profileImage'],
           'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
         });
+      } else {
+        // Include workers without payroll records with default empty values
+        combined.add({
+          'id': worker['id'] ?? '',
+          'name': worker['name'] ?? '',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? '',
+          'phone': worker['phone'] ?? '',
+          'profileImage': worker['profileImage'] ?? '',
+          'status': 'Active',
+          'totalWorkDays': '',
+          'absents': '',
+          'leaves': '',
+          'overtimeDays': '',
+          'salary': '',
+          'netSalary': '',
+        });
       }
-      // Skip workers without payroll records — don't generate fake data
     }
 
     for (var p in _rawPayrollDocs) {
