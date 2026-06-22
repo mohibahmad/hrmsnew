@@ -1507,7 +1507,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 5),
                                 Transform.translate(
-                                  offset: const Offset(0, 6),
+                                  offset: const Offset(-4, 6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -2753,13 +2753,16 @@ class LeaveTypesPieChart extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 10),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
+        Flexible(
+          child: Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF000000),
+              fontFamily: 'SF Pro Display',
+            ),
           ),
         ),
       ],
