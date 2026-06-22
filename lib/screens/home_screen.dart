@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   int _selectedSubIndex = 0;
   String _selectedPeriod = 'Yearly';
+  final ValueNotifier<String> _selectedHolidaysPeriod = ValueNotifier('Yearly');
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
   final List<bool> _activatedScreens = List.filled(11, false);
@@ -618,9 +619,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     // Period Dropdown Button
-                    CustomTimeframeDropdown(
-                      selectedPeriod: _selectedPeriod,
-                      onChanged: _handlePeriodChanged,
+                    ValueListenableBuilder<String>(
+                      valueListenable: _selectedHolidaysPeriod,
+                      builder: (context, period, _) {
+                        return CustomTimeframeDropdown(
+                          selectedPeriod: period,
+                          onChanged: (p) => _selectedHolidaysPeriod.value = p,
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -629,24 +635,43 @@ class _HomeScreenState extends State<HomeScreen> {
                 // ==========================================
                 // MAIN WHITE CONTAINER
                 // ==========================================
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF000000).withValues(alpha: 0.02),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                ValueListenableBuilder<String>(
+                  valueListenable: _selectedHolidaysPeriod,
+                  builder: (context, holidaysPeriod, _) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF000000).withValues(alpha: 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: () {
-                    final activeHolidays = _holidays
-                        .where((h) => h['isEnabled'] == true)
-                        .toList();
+                      child: () {
+                        final activeHolidays = _holidays.where((h) {
+                          if (h['isEnabled'] != true) return false;
+                          final remainingStr = h['remainingDays'] ?? '';
+                          final remaining = int.tryParse(remainingStr.toString()) ?? -1;
+                          if (remaining < 0) return false;
+                          switch (holidaysPeriod) {
+                            case 'Week':
+                              return remaining <= 7;
+                            case 'Month':
+                              return remaining <= 30;
+                            case '3 Month':
+                              return remaining <= 90;
+                            case '6 Month':
+                              return remaining <= 180;
+                            case 'Yearly':
+                            default:
+                              return true;
+                          }
+                        }).toList();
                     if (activeHolidays.isEmpty) {
                       return Center(
                         child: Padding(
@@ -729,6 +754,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     );
                   }(),
+                    );
+                  },
                 ),
               ],
             ),
