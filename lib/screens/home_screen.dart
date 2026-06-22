@@ -2687,13 +2687,13 @@ class LeaveTypesPieChart extends StatelessWidget {
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFF84A9FF),
-                                'Casual Leave: ${config.casualVal.toInt()}%',
+                                'casual_leave'.tr(namedArgs: {'value': '${config.casualVal.toInt()}'}),
                               ),
                             ),
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFFFF4A5E),
-                                'Sick Leave: ${config.sickVal.toInt()}%',
+                                'sick_leave'.tr(namedArgs: {'value': '${config.sickVal.toInt()}'}),
                               ),
                             ),
                           ],
@@ -2704,7 +2704,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                             Expanded(
                               child: _buildLegendItem(
                                 const Color(0xFF97FFA9),
-                                'Medical Leave: ${config.medicalVal.toInt()}%',
+                                'medical_leave'.tr(namedArgs: {'value': '${config.medicalVal.toInt()}'}),
                               ),
                             ),
                             const Expanded(child: SizedBox()),
@@ -2847,6 +2847,37 @@ class HolidayCard extends StatelessWidget {
     this.isActive = false,
   });
 
+  static String _localizeMonth(String month) {
+    switch (month) {
+      case 'January': return 'month_january'.tr();
+      case 'February': return 'month_february'.tr();
+      case 'March': return 'month_march'.tr();
+      case 'April': return 'month_april'.tr();
+      case 'May': return 'month_may'.tr();
+      case 'June': return 'month_june'.tr();
+      case 'July': return 'month_july'.tr();
+      case 'August': return 'month_august'.tr();
+      case 'September': return 'month_september'.tr();
+      case 'October': return 'month_october'.tr();
+      case 'November': return 'month_november'.tr();
+      case 'December': return 'month_december'.tr();
+      default: return month;
+    }
+  }
+
+  static String _localizeDayOfWeek(String day) {
+    switch (day) {
+      case 'Monday': return 'weekday_monday'.tr();
+      case 'Tuesday': return 'weekday_tuesday'.tr();
+      case 'Wednesday': return 'weekday_wednesday'.tr();
+      case 'Thursday': return 'weekday_thursday'.tr();
+      case 'Friday': return 'weekday_friday'.tr();
+      case 'Saturday': return 'weekday_saturday'.tr();
+      case 'Sunday': return 'weekday_sunday'.tr();
+      default: return day;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Define exact colors based on state
@@ -2896,7 +2927,7 @@ class HolidayCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  month,
+                  _localizeMonth(month),
                   style: TextStyle(
                     color: mainTextColor,
                     fontSize: 12, // Reduced from 14
@@ -2923,7 +2954,7 @@ class HolidayCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          'Remaining Days',
+                          'remaining_days'.tr(),
                           style: TextStyle(
                             color: subTextColor,
                             fontSize: 12,
@@ -2962,7 +2993,7 @@ class HolidayCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      dayOfWeek,
+                      _localizeDayOfWeek(dayOfWeek),
                       style: const TextStyle(
                         color: Color(0xFFFFFFFF),
                         fontSize: 9,

@@ -508,5 +508,26 @@
   "hybrid": "Гибридный",
   "expense_category_hint": "например, ужин",
   "amount_hint": "0.00",
-  "expense_title_hint": "например, ужин с клиентом"
+  "expense_title_hint": "например, ужин с клиентом",
+
+  "month_january": "Январь",
+  "month_february": "Февраль",
+  "month_march": "Март",
+  "month_april": "Апрель",
+  "month_may": "Май",
+  "month_june": "Июнь",
+  "month_july": "Июль",
+  "month_august": "Август",
+  "month_september": "Сентябрь",
+  "month_october": "Октябрь",
+  "month_november": "Ноябрь",
+  "month_december": "Декабрь",
+
+  "weekday_monday": "Понедельник",
+  "weekday_tuesday": "Вторник",
+  "weekday_wednesday": "Среда",
+  "weekday_thursday": "Четверг",
+  "weekday_friday": "Пятница",
+  "weekday_saturday": "Суббота",
+  "weekday_sunday": "Воскресенье"
 }

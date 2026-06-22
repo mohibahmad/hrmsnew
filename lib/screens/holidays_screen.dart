@@ -398,20 +398,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
     String monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 

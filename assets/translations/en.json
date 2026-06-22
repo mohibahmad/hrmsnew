@@ -508,5 +508,26 @@
   "hybrid": "Hybrid",
   "expense_category_hint": "e.g. Dinner",
   "amount_hint": "0.00",
-  "expense_title_hint": "e.g. Client meeting dinner"
+  "expense_title_hint": "e.g. Client meeting dinner",
+
+  "month_january": "January",
+  "month_february": "February",
+  "month_march": "March",
+  "month_april": "April",
+  "month_may": "May",
+  "month_june": "June",
+  "month_july": "July",
+  "month_august": "August",
+  "month_september": "September",
+  "month_october": "October",
+  "month_november": "November",
+  "month_december": "December",
+
+  "weekday_monday": "Monday",
+  "weekday_tuesday": "Tuesday",
+  "weekday_wednesday": "Wednesday",
+  "weekday_thursday": "Thursday",
+  "weekday_friday": "Friday",
+  "weekday_saturday": "Saturday",
+  "weekday_sunday": "Sunday"
 }

@@ -508,5 +508,26 @@
   "hybrid": "Híbrido",
   "expense_category_hint": "ex. Jantar",
   "amount_hint": "0.00",
-  "expense_title_hint": "ex. Jantar de reunião de clientes"
+  "expense_title_hint": "ex. Jantar de negócios",
+
+  "month_january": "Janeiro",
+  "month_february": "Fevereiro",
+  "month_march": "Março",
+  "month_april": "Abril",
+  "month_may": "Maio",
+  "month_june": "Junho",
+  "month_july": "Julho",
+  "month_august": "Agosto",
+  "month_september": "Setembro",
+  "month_october": "Outubro",
+  "month_november": "Novembro",
+  "month_december": "Dezembro",
+
+  "weekday_monday": "Segunda-feira",
+  "weekday_tuesday": "Terça-feira",
+  "weekday_wednesday": "Quarta-feira",
+  "weekday_thursday": "Quinta-feira",
+  "weekday_friday": "Sexta-feira",
+  "weekday_saturday": "Sábado",
+  "weekday_sunday": "Domingo"
 }

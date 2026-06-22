@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:easy_localization/easy_localization.dart';
 import 'clickable_gesture_detector.dart';
 
 class CustomTimeframeDropdown extends StatefulWidget {
@@ -28,6 +29,17 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
     '6 Month',
     'Yearly',
   ];
+
+  static String _trKey(String period) {
+    switch (period) {
+      case 'Week': return 'week';
+      case 'Month': return 'month';
+      case '3 Month': return '3_month';
+      case '6 Month': return '6_month';
+      case 'Yearly': return 'yearly_period';
+      default: return period;
+    }
+  }
 
   void _toggleDropdown() {
     if (_isOpen) {
@@ -115,7 +127,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                option,
+                                _trKey(option).tr(),
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: isSelected
@@ -183,7 +195,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                widget.selectedPeriod,
+                _trKey(widget.selectedPeriod).tr(),
                 style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,
