@@ -9,6 +9,8 @@ import '../utils/snackbar_utils.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
+import '../utils/premium_gate.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -674,7 +676,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           ),
         ),
         ElevatedButton.icon(
-          onPressed: () => _showAddHolidayModal(context),
+          onPressed: () async {
+            final isPremium = await PreferencesService.isPremium();
+            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            if (!PremiumGate.canAddEntry(
+              currentEntryCount: _holidaysByMonth.values.fold<int>(0, (sum, list) => sum + list.length),
+              isPremium: isPremium,
+              isGuest: isGuest,
+            )) {
+              await PremiumGate.shouldShowUpgradeDialog(context);
+              return;
+            }
+            if (!mounted) return;
+            _showAddHolidayModal(context);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(140, 44),

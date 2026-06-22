@@ -10,6 +10,8 @@ import '../utils/delete_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/preferences_service.dart';
+import '../utils/premium_gate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../utils/image_utils.dart';
 
@@ -960,7 +962,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
         const SizedBox(width: 16),
         // Add Asset Button
         ElevatedButton.icon(
-          onPressed: () => _showAddAssetModal(context),
+          onPressed: () async {
+            final isPremium = await PreferencesService.isPremium();
+            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            if (!PremiumGate.canAddEntry(
+              currentEntryCount: _assets.length,
+              isPremium: isPremium,
+              isGuest: isGuest,
+            )) {
+              await PremiumGate.shouldShowUpgradeDialog(context);
+              return;
+            }
+            if (!mounted) return;
+            _showAddAssetModal(context);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(140, 50),

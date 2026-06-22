@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -9,11 +7,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/preferences_service.dart';
+import '../utils/premium_gate.dart';
 import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
-import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 
 void main() {
@@ -735,13 +734,39 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     _buildActionButton(
                       svgPath: 'assets/add_worker.svg',
                       label: 'add_worker'.tr(),
-                      onTap: widget.onAddWorker,
+                      onTap: () async {
+                        final isPremium = await PreferencesService.isPremium();
+                        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                        if (!PremiumGate.canAddEntry(
+                          currentEntryCount: _allWorkers.length,
+                          isPremium: isPremium,
+                          isGuest: isGuest,
+                        )) {
+                          await PremiumGate.shouldShowUpgradeDialog(context);
+                          return;
+                        }
+                        if (!mounted) return;
+                        widget.onAddWorker();
+                      },
                     ),
                     const SizedBox(width: 16),
                     _buildActionButton(
                       svgPath: 'assets/add_bulk_worker.svg',
                       label: 'add_bulk_workers'.tr(),
-                      onTap: widget.onAddBulkWorker ?? () {},
+                      onTap: () async {
+                        final isPremium = await PreferencesService.isPremium();
+                        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                        if (!PremiumGate.canAddEntry(
+                          currentEntryCount: _allWorkers.length,
+                          isPremium: isPremium,
+                          isGuest: isGuest,
+                        )) {
+                          await PremiumGate.shouldShowUpgradeDialog(context);
+                          return;
+                        }
+                        if (!mounted) return;
+                        (widget.onAddBulkWorker ?? () {})();
+                      },
                     ),
                   ],
                 ),

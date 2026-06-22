@@ -732,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     final remainingDaysInt =
                                         int.tryParse(remainingDaysStr) ?? -1;
                                     final isUrgent =
-                                        remainingDaysInt >= 1 &&
+                                        remainingDaysInt >= 0 &&
                                         remainingDaysInt <= 5;
 
                                     return SizedBox(
@@ -1501,7 +1501,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 Transform.rotate(
                                   angle: 0.3,
                                   child: Container(
-                                    width: 1.5,
+                                    width: 1.0,
                                     height: 42,
                                     color: const Color(0xFF000000),
                                   ),
@@ -1754,9 +1754,9 @@ class SparklineCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
@@ -1792,32 +1792,37 @@ class SparklineCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
                             amount,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                               fontFamily: 'SF Pro Display',
                             ),
+                            maxLines: 1,
                           ),
-                          Text(
-                            CustomTimeframeDropdown.localizePeriod(period),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        CustomTimeframeDropdown.localizePeriod(period),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 10),
-                Expanded(
+                SizedBox(
+                  height: 90,
                   child: TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0, end: 1),
                     duration: const Duration(milliseconds: 800),

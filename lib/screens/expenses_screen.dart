@@ -13,6 +13,9 @@ import '../services/dummy_data.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
+import '../utils/premium_gate.dart';
+import '../services/preferences_service.dart';
+import '../widgets/amount_text.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -751,7 +754,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    const months = [
+    [
       'January',
       'February',
       'March',
@@ -1124,7 +1127,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ),
         const SizedBox(width: 16),
         ElevatedButton.icon(
-          onPressed: () => _showAddExpenseModal(context),
+          onPressed: () async {
+            final isPremium = await PreferencesService.isPremium();
+            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            if (!PremiumGate.canAddEntry(
+              currentEntryCount: _expensesDocs.length,
+              isPremium: isPremium,
+              isGuest: isGuest,
+            )) {
+              await PremiumGate.shouldShowUpgradeDialog(context);
+              return;
+            }
+            if (!mounted) return;
+            _showAddExpenseModal(context);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(150, 44),
@@ -1403,8 +1419,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final date = (doc['date'] ?? '').toString();
     final category = (doc['category'] ?? '').toString();
     final amount = (doc['amount'] ?? 0).toDouble();
-    final docId = doc['id'] as String;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1462,7 +1476,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           ),
           Expanded(
             flex: 2,
-            child: Text(
+            child: AmountText(
               _formatCurrency(amount),
               style: const TextStyle(
                 fontSize: 15,
