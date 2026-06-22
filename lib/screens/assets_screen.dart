@@ -1123,6 +1123,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   Widget _buildDataRow(AssetData data, int index) {
+    // Fallback: if asset has no profileImage, look up from workers map
+    String? profileImage = data.profileImage;
+    String? email = data.email;
+    if ((profileImage == null || profileImage.isEmpty) &&
+        _workersMap.containsKey(data.name)) {
+      final workerData = _workersMap[data.name]!;
+      profileImage = workerData['profileImage']?.toString();
+      email ??= workerData['email']?.toString();
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1131,18 +1140,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
       ),
       child: Row(
         children: [
-          // Name and Avatar (Placeholder image)
+          // Name and Avatar
           Expanded(
             flex: 3,
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: getProfileImage(
-                    data.profileImage,
-                    data.email,
-                    index,
-                  ),
+                  backgroundImage: getProfileImage(profileImage, email, index),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
