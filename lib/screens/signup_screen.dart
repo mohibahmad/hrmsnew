@@ -204,19 +204,15 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
       );
 
-      await credential.user?.updateDisplayName(_usernameController.text.trim());
+      // updateDisplayName is best-effort — don't let it block profile creation
+      try {
+        await credential.user?.updateDisplayName(_usernameController.text.trim());
+      } catch (_) {}
 
       await FirestoreService().createUserProfile(
         username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
         phone: "",
-      );
-
-      // Seed demo data for new users so they don't see empty screens
-      await FirestoreService().seedDummyDataForUser(
-        uid: credential.user?.uid ?? '',
-        displayName: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
       );
 
       if (mounted) {

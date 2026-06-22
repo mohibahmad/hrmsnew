@@ -40,7 +40,6 @@ class AuthService {
       password: password,
     );
     await PreferencesService.setLoggedIn(true);
-    await _clearSeededDummyDataIfNeeded();
     return credential;
   }
 

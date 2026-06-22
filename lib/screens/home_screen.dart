@@ -1803,7 +1803,7 @@ class SparklineCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            period,
+                            CustomTimeframeDropdown.localizePeriod(period),
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.black,
@@ -2022,6 +2022,7 @@ ChartData getChartData(
   String period,
   List<Map<String, dynamic>> docs,
   bool isGuest,
+  String locale,
 ) {
   final now = DateTime.now();
 
@@ -2032,12 +2033,12 @@ ChartData getChartData(
         final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
         for (int i = 6; i >= 0; i--) {
           final date = now.subtract(Duration(days: i));
-          labels.add(DateFormat('E').format(date).toUpperCase());
+          labels.add(DateFormat('E', locale).format(date).toUpperCase());
         }
         return ChartData(labels, values);
 
       case 'Month':
-        final labels = ['W1', 'W2', 'W3', 'W4'];
+        final labels = ['week_label_1'.tr(), 'week_label_2'.tr(), 'week_label_3'.tr(), 'week_label_4'.tr()];
         final values = [48.0, 55.0, 50.0, 62.0];
         return ChartData(labels, values);
 
@@ -2046,7 +2047,7 @@ ChartData getChartData(
         final values = [210.0, 245.0, 230.0];
         for (int i = 2; i >= 0; i--) {
           final date = DateTime(now.year, now.month - i, 1);
-          labels.add(DateFormat('MMM').format(date).toUpperCase());
+          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
         }
         return ChartData(labels, values);
 
@@ -2055,7 +2056,7 @@ ChartData getChartData(
         final values = [420.0, 450.0, 480.0, 510.0, 490.0, 530.0];
         for (int i = 5; i >= 0; i--) {
           final date = DateTime(now.year, now.month - i, 1);
-          labels.add(DateFormat('MMM').format(date).toUpperCase());
+          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
         }
         return ChartData(labels, values);
 
@@ -2079,7 +2080,7 @@ ChartData getChartData(
         final values = <double>[];
         for (int i = 0; i < 12; i++) {
           final date = DateTime(now.year, i + 1, 1);
-          labels.add(DateFormat('MMM').format(date).toUpperCase());
+          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
           values.add(dummyValues[i]);
         }
         return ChartData(labels, values);
@@ -2112,7 +2113,7 @@ ChartData getChartData(
 
       for (int i = 6; i >= 0; i--) {
         final date = now.subtract(Duration(days: i));
-        labels.add(DateFormat('E').format(date).toUpperCase());
+        labels.add(DateFormat('E', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
@@ -2124,7 +2125,7 @@ ChartData getChartData(
       return ChartData(labels, values);
 
     case 'Month':
-      final labels = ['W1', 'W2', 'W3', 'W4'];
+      final labels = ['week_label_1'.tr(), 'week_label_2'.tr(), 'week_label_3'.tr(), 'week_label_4'.tr()];
       final values = List.filled(4, 0.0);
       final startOfPeriod = DateTime(
         now.year,
@@ -2149,7 +2150,7 @@ ChartData getChartData(
 
       for (int i = 2; i >= 0; i--) {
         final date = DateTime(now.year, now.month - i, 1);
-        labels.add(DateFormat('MMM').format(date).toUpperCase());
+        labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
@@ -2169,7 +2170,7 @@ ChartData getChartData(
 
       for (int i = 5; i >= 0; i--) {
         final date = DateTime(now.year, now.month - i, 1);
-        labels.add(DateFormat('MMM').format(date).toUpperCase());
+        labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
@@ -2190,7 +2191,7 @@ ChartData getChartData(
 
       for (int i = 0; i < 12; i++) {
         final date = DateTime(now.year, i + 1, 1);
-        labels.add(DateFormat('MMM').format(date).toUpperCase());
+        labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
@@ -2227,7 +2228,7 @@ class AttendanceLineChart extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    period,
+                    CustomTimeframeDropdown.localizePeriod(period),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -2246,6 +2247,7 @@ class AttendanceLineChart extends StatelessWidget {
                           period,
                           attendanceDocs,
                           AuthService().currentUser?.isAnonymous ?? false,
+                          context.locale.toString(),
                         );
                         final double rawMaxY = chartData.values.isEmpty
                             ? 1.0
@@ -2581,7 +2583,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    period,
+                    CustomTimeframeDropdown.localizePeriod(period),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

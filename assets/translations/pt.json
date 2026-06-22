@@ -568,5 +568,10 @@
 
   "joining_date_is": "A data de admissão é {date}",
   "hint_enter_national_id": "Digite seu documento de identidade",
-  "this_field": "Este campo"
+  "this_field": "Este campo",
+
+  "week_label_1": "S1",
+  "week_label_2": "S2",
+  "week_label_3": "S3",
+  "week_label_4": "S4"
 }

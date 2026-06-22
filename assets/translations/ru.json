@@ -568,5 +568,10 @@
 
   "joining_date_is": "Дата приема на работу: {date}",
   "hint_enter_national_id": "Введите ваш документ удостоверения личности",
-  "this_field": "Это поле"
+  "this_field": "Это поле",
+
+  "week_label_1": "Н1",
+  "week_label_2": "Н2",
+  "week_label_3": "Н3",
+  "week_label_4": "Н4"
 }

@@ -568,5 +568,10 @@
 
   "joining_date_is": "La date d'embauche est le {date}",
   "hint_enter_national_id": "Entrez votre numéro d'identification",
-  "this_field": "Ce champ"
+  "this_field": "Ce champ",
+
+  "week_label_1": "S1",
+  "week_label_2": "S2",
+  "week_label_3": "S3",
+  "week_label_4": "S4"
 }

@@ -12,6 +12,17 @@ class CustomTimeframeDropdown extends StatefulWidget {
     required this.onChanged,
   });
 
+  static String localizePeriod(String period) {
+    switch (period) {
+      case 'Week': return 'week'.tr();
+      case 'Month': return 'month'.tr();
+      case '3 Month': return '3_month'.tr();
+      case '6 Month': return '6_month'.tr();
+      case 'Yearly': return 'yearly_period'.tr();
+      default: return period;
+    }
+  }
+
   @override
   State<CustomTimeframeDropdown> createState() =>
       _CustomTimeframeDropdownState();
@@ -29,17 +40,6 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
     '6 Month',
     'Yearly',
   ];
-
-  static String _trKey(String period) {
-    switch (period) {
-      case 'Week': return 'week';
-      case 'Month': return 'month';
-      case '3 Month': return '3_month';
-      case '6 Month': return '6_month';
-      case 'Yearly': return 'yearly_period';
-      default: return period;
-    }
-  }
 
   void _toggleDropdown() {
     if (_isOpen) {
@@ -127,7 +127,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                _trKey(option).tr(),
+                                CustomTimeframeDropdown.localizePeriod(option),
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: isSelected
@@ -195,7 +195,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _trKey(widget.selectedPeriod).tr(),
+                CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
                 style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w600,
