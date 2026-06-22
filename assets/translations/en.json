@@ -472,6 +472,8 @@
   "edit_asset": "Edit Asset",
   "enter_asset_type": "Enter asset type",
   "csv_required_columns_error": "CSV must contain at least \"Full Name\" and \"Contact Number\" columns.",
+  "workers_added_successfully": "Successfully added {count} workers.",
+  "skipped_duplicates_message": "Skipped {count} duplicate workers.",
   "save_all": "Save All",
   "download_template": "Download Template",
   "upload_csv_file": "Upload CSV File",

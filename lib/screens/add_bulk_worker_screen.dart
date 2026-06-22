@@ -106,7 +106,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final rows = Csv(dynamicTyping: false).decode(csvString);
 
       if (!mounted) return;
-      _processCsvData(rows);
+      await _processCsvData(rows);
     } catch (e) {
       debugPrint('Error picking CSV: $e');
       if (mounted) {
@@ -119,7 +119,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  void _processCsvData(List<List<dynamic>> rows) {
+  Future<void> _processCsvData(List<List<dynamic>> rows) async {
     if (rows.isEmpty) return;
 
     final headers = rows.first
@@ -171,7 +171,40 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
+    // Fetch existing names and emails
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    Set<String> existingEmails = {};
+    Set<String> existingNames = {};
+
+    if (isGuest) {
+      existingEmails = DummyData.workers
+          .map((w) => w['email']?.toString().toLowerCase().trim() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      existingNames = DummyData.workers
+          .map((w) => w['name']?.toString().toLowerCase().trim() ?? '')
+          .where((n) => n.isNotEmpty)
+          .toSet();
+    } else {
+      try {
+        final snapshot = await FirestoreService().getWorkersOnce();
+        existingEmails = snapshot.docs
+            .map((d) => (d.data() as Map<String, dynamic>)['email']?.toString().toLowerCase().trim() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toSet();
+        existingNames = snapshot.docs
+            .map((d) => (d.data() as Map<String, dynamic>)['name']?.toString().toLowerCase().trim() ?? '')
+            .where((n) => n.isNotEmpty)
+            .toSet();
+      } catch (e) {
+        debugPrint('Error fetching existing workers: $e');
+      }
+    }
+
     List<Map<String, dynamic>> parsedWorkers = [];
+    Set<String> csvEmails = {};
+    Set<String> csvNames = {};
+    int duplicateCount = 0;
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -229,7 +262,33 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (workerData['phone'] == null || workerData['phone'].toString().isEmpty)
         continue;
 
+      final email = workerData['email']?.toString().toLowerCase().trim() ?? '';
+      final name = workerData['name']?.toString().toLowerCase().trim() ?? '';
+
+      bool isDuplicate = false;
+      if (email.isNotEmpty && (existingEmails.contains(email) || csvEmails.contains(email))) {
+        isDuplicate = true;
+      }
+      if (name.isNotEmpty && (existingNames.contains(name) || csvNames.contains(name))) {
+        isDuplicate = true;
+      }
+
+      if (isDuplicate) {
+        duplicateCount++;
+        continue;
+      }
+
+      if (email.isNotEmpty) csvEmails.add(email);
+      if (name.isNotEmpty) csvNames.add(name);
+
       parsedWorkers.add(workerData);
+    }
+
+    if (duplicateCount > 0 && mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'skipped_duplicates_message'.tr(namedArgs: {'count': duplicateCount.toString()}),
+      );
     }
 
     setState(() {

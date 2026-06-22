@@ -472,6 +472,8 @@
   "edit_asset": "Editar Activo",
   "enter_asset_type": "Ingrese el tipo de activo",
   "csv_required_columns_error": "El CSV debe contener al menos las columnas \"Nombre completo\" y \"Número de contacto\".",
+  "workers_added_successfully": "Se agregaron exitosamente {count} trabajadores.",
+  "skipped_duplicates_message": "Se omitieron {count} trabajadores duplicados.",
   "save_all": "Guardar todo",
   "download_template": "Descargar plantilla",
   "upload_csv_file": "Subir archivo CSV",

@@ -142,6 +142,10 @@ class FirestoreService {
   Stream<QuerySnapshot> get workersStream =>
       _workers.orderBy('createdAt', descending: true).snapshots();
 
+  Future<QuerySnapshot> getWorkersOnce() async {
+    return await _workers.get();
+  }
+
   Future<String> addExpense(Map<String, dynamic> expense) async {
     Validators.validateExpense(expense);
     final docRef = await _expenses.add({

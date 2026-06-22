@@ -472,6 +472,8 @@
   "edit_asset": "Редактировать актив",
   "enter_asset_type": "Введите тип актива",
   "csv_required_columns_error": "CSV должен содержать как минимум столбцы «Полное имя» и «Контактный номер».",
+  "workers_added_successfully": "Успешно добавлено {count} работников.",
+  "skipped_duplicates_message": "Пропущено {count} дубликатов работников.",
   "save_all": "Сохранить все",
   "download_template": "Скачать шаблон",
   "upload_csv_file": "Загрузить CSV-файл",
