@@ -1471,7 +1471,7 @@ class TotalWorkersCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Transform.translate(
-                                  offset: const Offset(0, -6),
+                                  offset: const Offset(2, -6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
