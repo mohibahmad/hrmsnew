@@ -1577,42 +1577,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'add_workers_found'.tr(),
+                'add_expenses'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0247C4),
                   fontFamily: 'SF Pro Display',
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () => _showAddExpenseModal(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0247C4),
-                  minimumSize: const Size(150, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  elevation: 0,
-                ),
-                icon: SvgPicture.asset(
-                  'assets/add_expense.svg',
-                  width: 18,
-                  height: 18,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFFFFFFF),
-                    BlendMode.srcIn,
-                  ),
-                ),
-                label: Text(
-                  'add_expenses'.tr(),
-                  style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
-                  ),
                 ),
               ),
             ],

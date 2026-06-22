@@ -1356,7 +1356,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(6),
               ),
-              backgroundColor: Color(0xFFFFFFFF),
+              backgroundColor: const Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
                 width: 450,
@@ -1485,7 +1485,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     StreamBuilder<List<String>>(
                       stream: _workerNamesStream,
                       initialData: _workerNames,
@@ -1511,18 +1511,235 @@ class _AssetsScreenState extends State<AssetsScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _buildModalTextField(
                       'asset_type'.tr(),
                       typeController,
-                      'enter_asset_type'.tr(),
+                      'asset_type_hint'.tr(),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _buildModalTextField(
                       'position'.tr(),
                       positionController,
-                      'enter_position'.tr(),
+                      'position_hint'.tr(),
+                      readOnly: true,
                     ),
+                    const SizedBox(height: 16),
+                    _buildModalDatePicker(
+                      context,
+                      'date_loaned'.tr(),
+                      formatDate(loanedDate),
+                      const Color(0xFF0247C4),
+                      () {
+                        showDialog(
+                          context: context,
+                          barrierColor: Colors.black.withValues(alpha: 0.3),
+                          builder: (BuildContext context) {
+                            DateTime tempDate = loanedDate;
+                            return Dialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              backgroundColor: Colors.white,
+                              child: Container(
+                                width: 320,
+                                height: 320,
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'select_date'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child: CupertinoDatePicker(
+                                        mode: CupertinoDatePickerMode.date,
+                                        initialDateTime: tempDate,
+                                        minimumYear: 2020,
+                                        maximumYear: 2030,
+                                        onDateTimeChanged: (DateTime picked) {
+                                          tempDate = picked;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          child: Text(
+                                            'cancel'.tr(),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(
+                                              0xFF0247C4,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'ok'.tr(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            setModalState(() {
+                                              loanedDate = tempDate;
+                                            });
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text(
+                          'has_been_returned'.tr(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const Spacer(),
+                        Checkbox(
+                          value: isReturned,
+                          activeColor: const Color(0xFF0247C4),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setModalState(() {
+                                isReturned = val;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    if (isReturned) ...[
+                      const SizedBox(height: 8),
+                      _buildModalDatePicker(
+                        context,
+                        'returned_date'.tr(),
+                        formatDate(returnedDate),
+                        Colors.red,
+                        () {
+                          showDialog(
+                            context: context,
+                            barrierColor: Colors.black.withValues(alpha: 0.3),
+                            builder: (BuildContext context) {
+                              DateTime tempDate = returnedDate;
+                              return Dialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                backgroundColor: Colors.white,
+                                child: Container(
+                                  width: 320,
+                                  height: 320,
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'select_date'.tr(),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Expanded(
+                                        child: CupertinoDatePicker(
+                                          mode: CupertinoDatePickerMode.date,
+                                          initialDateTime: tempDate,
+                                          minimumYear: 2020,
+                                          maximumYear: 2030,
+                                          onDateTimeChanged: (DateTime picked) {
+                                            tempDate = picked;
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          TextButton(
+                                            child: Text(
+                                              'cancel'.tr(),
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFF0247C4,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'ok'.tr(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            onPressed: () {
+                                              setModalState(() {
+                                                returnedDate = tempDate;
+                                              });
+                                              Navigator.of(context).pop();
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
