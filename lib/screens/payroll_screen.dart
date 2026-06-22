@@ -34,7 +34,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   List<Map<String, dynamic>> _rawPayrollDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 4;
+  static const int _itemsPerPage = 8;
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
 

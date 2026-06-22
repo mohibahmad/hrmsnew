@@ -33,7 +33,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   bool isDataEmpty = false;
   String _searchQuery = '';
   int _currentPage = 1;
-  static const int _itemsPerPage = 5;
+  static const int _itemsPerPage = 8;
 
   List<AssetData> _assets = [];
   bool _isLoading = false;
@@ -990,7 +990,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: paginatedAssets.length,
               separatorBuilder: (context, index) =>
                   const SizedBox(height: 12),

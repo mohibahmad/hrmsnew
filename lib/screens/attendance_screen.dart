@@ -74,7 +74,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>> _rawAttendanceDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 5;
+  static const int _itemsPerPage = 8;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
 

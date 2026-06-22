@@ -37,7 +37,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _isLoading = true;
   String _selectedPeriod = 'Week';
   int _currentPage = 1;
-  static const int _itemsPerPage = 5;
+  static const int _itemsPerPage = 8;
   StreamSubscription? _expensesSub;
 
   @override

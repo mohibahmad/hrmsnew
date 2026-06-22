@@ -56,7 +56,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   List<Map<String, dynamic>> _timeoffDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 5;
+  static const int _itemsPerPage = 8;
   StreamSubscription? _timeoffSub;
 
   @override
