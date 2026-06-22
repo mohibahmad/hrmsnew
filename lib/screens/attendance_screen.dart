@@ -834,7 +834,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         children: [
           // Table Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
             child: Row(
               children: [
                 Expanded(
@@ -869,7 +869,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                 return Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 24,
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
