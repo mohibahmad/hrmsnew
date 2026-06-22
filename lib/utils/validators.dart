@@ -6,6 +6,8 @@
 /// inline errors before submitting.
 library;
 
+import 'package:easy_localization/easy_localization.dart';
+
 /// Thrown when a record fails validation before being written to Firestore.
 class ValidationException implements Exception {
   final String message;
@@ -35,14 +37,14 @@ class Validators {
   /// Returns null when [value] is a non-empty string, otherwise an error
   /// message. Convenient as a `TextFormField.validator`.
   static String? requiredField(String? value, {String label = 'This field'}) {
-    if (value == null || value.trim().isEmpty) return '$label is required';
+    if (value == null || value.trim().isEmpty) return 'field_is_required'.tr(namedArgs: {'field': label});
     return null;
   }
 
   static String? email(String? value, {bool required = false}) {
     final trimmed = value?.trim() ?? '';
-    if (trimmed.isEmpty) return required ? 'Email is required' : null;
-    if (!isValidEmail(trimmed)) return 'Enter a valid email address';
+    if (trimmed.isEmpty) return required ? 'email_is_required'.tr() : null;
+    if (!isValidEmail(trimmed)) return 'enter_valid_email'.tr();
     return null;
   }
 
@@ -63,7 +65,7 @@ class Validators {
 
   static void validateWorker(Map<String, dynamic> w) {
     if (_str(w, 'name').isEmpty) {
-      throw const ValidationException('Worker name is required', field: 'name');
+      throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
     final emailErr = email(w['email']?.toString());
     if (emailErr != null) {
@@ -73,24 +75,24 @@ class Validators {
 
   static void validateExpense(Map<String, dynamic> e) {
     if (_str(e, 'name').isEmpty) {
-      throw const ValidationException('Expense name is required', field: 'name');
+      throw ValidationException('expense_name_required'.tr(), field: 'name');
     }
     if (_str(e, 'category').isEmpty) {
-      throw const ValidationException(
-        'Expense category is required',
+      throw ValidationException(
+        'expense_category_required'.tr(),
         field: 'category',
       );
     }
     final amount = parseAmount(e['amount']);
     if (amount == null) {
-      throw const ValidationException(
-        'A valid amount is required',
+      throw ValidationException(
+        'valid_amount_required'.tr(),
         field: 'amount',
       );
     }
     if (amount <= 0) {
-      throw const ValidationException(
-        'Amount must be greater than zero',
+      throw ValidationException(
+        'amount_must_be_positive'.tr(),
         field: 'amount',
       );
     }
@@ -98,41 +100,41 @@ class Validators {
 
   static void validateAttendance(Map<String, dynamic> a) {
     if (_str(a, 'name').isEmpty) {
-      throw const ValidationException('Worker name is required', field: 'name');
+      throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
     if (_str(a, 'status').isEmpty) {
-      throw const ValidationException('Status is required', field: 'status');
+      throw ValidationException('status_required'.tr(), field: 'status');
     }
   }
 
   static void validatePayroll(Map<String, dynamic> p) {
     if (_str(p, 'name').isEmpty) {
-      throw const ValidationException('Worker name is required', field: 'name');
+      throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
     if (_str(p, 'status').isEmpty) {
-      throw const ValidationException('Payment status is required', field: 'status');
+      throw ValidationException('payment_status_required'.tr(), field: 'status');
     }
   }
 
   static void validateTimeOff(Map<String, dynamic> t) {
     if (_str(t, 'name').isEmpty) {
-      throw const ValidationException('Worker name is required', field: 'name');
+      throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
     if (_str(t, 'action').isEmpty) {
-      throw const ValidationException(
-        'Leave type is required',
+      throw ValidationException(
+        'leave_type_required'.tr(),
         field: 'action',
       );
     }
     if (_str(t, 'startDate').isEmpty) {
-      throw const ValidationException(
-        'Start date is required',
+      throw ValidationException(
+        'start_date_required'.tr(),
         field: 'startDate',
       );
     }
     if (_str(t, 'endDate').isEmpty) {
-      throw const ValidationException(
-        'End date is required',
+      throw ValidationException(
+        'end_date_required'.tr(),
         field: 'endDate',
       );
     }
@@ -140,16 +142,16 @@ class Validators {
 
   static void validateAsset(Map<String, dynamic> a) {
     if (_str(a, 'name').isEmpty) {
-      throw const ValidationException('Name is required', field: 'name');
+      throw ValidationException('name_required'.tr(), field: 'name');
     }
     if (_str(a, 'type').isEmpty) {
-      throw const ValidationException('Asset type is required', field: 'type');
+      throw ValidationException('asset_type_required'.tr(), field: 'type');
     }
   }
 
   static void validateHoliday(Map<String, dynamic> h) {
     if (_str(h, 'name').isEmpty) {
-      throw const ValidationException('Holiday name is required', field: 'name');
+      throw ValidationException('holiday_name_required'.tr(), field: 'name');
     }
   }
 }

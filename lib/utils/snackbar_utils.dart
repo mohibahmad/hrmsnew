@@ -186,7 +186,7 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                         children: [
                           Text(
                             widget.title ??
-                                (widget.isError ? 'Error' : 'success'.tr()),
+                                (widget.isError ? 'error_title'.tr() : 'success'.tr()),
                             softWrap: true,
                             maxLines: 2,
                             overflow: TextOverflow.visible,

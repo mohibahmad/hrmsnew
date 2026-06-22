@@ -136,7 +136,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
-          'delete'.tr() == 'delete' ? 'Delete Time Off' : 'delete'.tr(),
+          'delete_time_off'.tr(),
           style: const TextStyle(
             fontWeight: FontWeight.w700,
             fontFamily: 'SF Pro Display',
@@ -163,14 +163,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'cancel'.tr() == 'cancel' ? 'Cancel' : 'cancel'.tr(),
+              'cancel'.tr(),
               style: const TextStyle(color: Colors.grey),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'delete'.tr() == 'delete' ? 'Delete' : 'delete'.tr(),
+              'delete'.tr(),
               style: const TextStyle(
                 color: Colors.red,
                 fontWeight: FontWeight.w600,
