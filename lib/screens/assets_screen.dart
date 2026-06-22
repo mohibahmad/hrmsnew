@@ -363,9 +363,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 positionController.text = '';
                               }
                             });
-                            if (val != null) {
-                              _showWorkerInfoDialog(val);
-                            }
                           },
                         );
                       },
@@ -1506,9 +1503,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 positionController.text = '';
                               }
                             });
-                            if (val != null) {
-                              _showWorkerInfoDialog(val);
-                            }
                           },
                         );
                       },
