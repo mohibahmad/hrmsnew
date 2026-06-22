@@ -1507,7 +1507,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 5),
                                 Transform.translate(
-                                  offset: const Offset(-4, 6),
+                                  offset: const Offset(-6, 6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
