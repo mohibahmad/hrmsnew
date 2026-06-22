@@ -1320,7 +1320,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: paginatedExpenses.length,
               separatorBuilder: (context, index) =>
                   const SizedBox(height: 12),
