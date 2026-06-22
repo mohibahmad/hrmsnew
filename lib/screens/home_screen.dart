@@ -1505,7 +1505,7 @@ class TotalWorkersCard extends StatelessWidget {
                                     color: const Color(0xFF000000),
                                   ),
                                 ),
-                                const SizedBox(width: 5),
+                                const SizedBox(width: 10),
                                 Transform.translate(
                                   offset: const Offset(-6, 6),
                                   child: Column(
