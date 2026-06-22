@@ -38,7 +38,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     try {
       if (io.Platform.isMacOS || io.Platform.isWindows || io.Platform.isLinux) {
         String? outputFile = await FilePicker.saveFile(
-          dialogTitle: 'Save Worker Template',
+          dialogTitle: 'save_worker_template'.tr(),
           fileName: 'worker_template.csv',
           type: FileType.custom,
           allowedExtensions: ['csv'],
@@ -61,7 +61,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         if (mounted) {
           await Share.shareXFiles([
             XFile(file.path),
-          ], text: 'HRMS worker template');
+          ], text: 'hrms_worker_template'.tr());
           await OpenFile.open(file.path);
           FlashySnackBar.show(context, message: 'template_saved_successfully'.tr());
         }

@@ -1255,7 +1255,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          record.phone ?? 'N/A',
+                          record.phone ?? 'na'.tr(),
                           style: const TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 13,
@@ -1471,22 +1471,22 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 rows: [
                   _buildDetailRow(
                     'total_working_days'.tr(),
-                    '$totalWorkingDays Days',
+                    '$totalWorkingDays ${'days_unit'.tr()}',
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'total_presents'.tr(),
-                    '$presents Days',
+                    '$presents ${'days_unit'.tr()}',
                     darkGreen,
                   ),
                   _buildDetailRow(
                     'total_absents'.tr(),
-                    '$absents Days',
+                    '$absents ${'days_unit'.tr()}',
                     darkRed,
                   ),
                   _buildDetailRow(
                     'total_leaves'.tr(),
-                    '$leaves Days',
+                    '$leaves ${'days_unit'.tr()}',
                     darkOrange,
                   ),
                   _buildDetailRow(

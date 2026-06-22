@@ -484,7 +484,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'expense_category'.tr(),
                             categoryController,
-                            hintText: 'e.g. Dinner',
+                            hintText: 'expense_category_hint'.tr(),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -532,8 +532,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 child: TextField(
                                   controller: descriptionController,
                                   maxLines: null,
-                                  decoration: const InputDecoration.collapsed(
-                                    hintText: 'e.g. Client meeting dinner',
+                                  decoration: InputDecoration.collapsed(
+                                    hintText: 'expense_title_hint'.tr(),
                                   ),
                                   style: const TextStyle(
                                     fontSize: 14,

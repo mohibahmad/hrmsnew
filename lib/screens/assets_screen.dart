@@ -1213,13 +1213,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Edit',
-                  style: TextStyle(
-                    color: Color(0xFF0247C4),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
+                  'edit_asset'.tr(),
+                   style: TextStyle(
+                     color: Color(0xFF0247C4),
+                     fontSize: 13,
+                     fontWeight: FontWeight.w500,
+                     fontFamily: 'SF Pro Display',
+                   ),
                 ),
               ],
             ),
@@ -1315,7 +1315,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           constraints: const BoxConstraints(),
                         ),
                         Text(
-                          'Edit Asset',
+                          'edit_asset'.tr(),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -1423,15 +1423,15 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                     const SizedBox(height: 14),
                     _buildModalTextField(
-                      'Asset Type',
+                      'asset_type'.tr(),
                       typeController,
-                      'Enter asset type',
+                      'enter_asset_type'.tr(),
                     ),
                     const SizedBox(height: 14),
                     _buildModalTextField(
-                      'Position',
+                      'position'.tr(),
                       positionController,
-                      'Enter position',
+                      'enter_position'.tr(),
                     ),
                   ],
                 ),
