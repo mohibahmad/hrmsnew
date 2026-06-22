@@ -214,13 +214,6 @@ class DummyData {
 
   static final List<Map<String, dynamic>> expenses = [
     {
-      'id': 'dummy_e1',
-      'name': 'John Smith',
-      'date': '05/06/2026',
-      'category': 'Client Dinner',
-      'amount': 124.50,
-    },
-    {
       'id': 'dummy_e2',
       'name': 'Michael Johnson',
       'date': '04/06/2026',
@@ -317,6 +310,13 @@ class DummyData {
       'date': '03/06/2026',
       'category': 'Data Camp Subscription',
       'amount': 150.00,
+    },
+    {
+      'id': 'dummy_e1',
+      'name': 'John Smith',
+      'date': '05/06/2026',
+      'category': 'Client Dinner',
+      'amount': 124.50,
     },
   ];
 

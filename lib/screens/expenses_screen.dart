@@ -532,8 +532,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 child: TextField(
                                   controller: descriptionController,
                                   maxLines: null,
-                                  decoration: InputDecoration.collapsed(
+                                  decoration: InputDecoration(
                                     hintText: 'expense_title_hint'.tr(),
+                                    contentPadding: const EdgeInsets.only(top: 1),
+                                    hintStyle: const TextStyle(color: Colors.grey),
+                                    border: InputBorder.none,
                                   ),
                                   style: const TextStyle(
                                     fontSize: 14,
@@ -621,6 +624,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 : null,
             decoration: InputDecoration(
               hintText: hintText,
+              hintStyle: const TextStyle(color: Colors.grey),
               border: InputBorder.none,
               isDense: true,
               contentPadding: EdgeInsets.zero,
