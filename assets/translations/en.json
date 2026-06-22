@@ -564,5 +564,9 @@
   "no_email_found_for_account": "No email found for this account.",
   "account_deleted_successfully": "Account deleted successfully",
   "signed_out_for_security_delete_again": "Signed out for security. Please sign in again to fully delete your account.",
-  "expense_updated": "Expense updated successfully"
+  "expense_updated": "Expense updated successfully",
+
+  "joining_date_is": "Joining date is {date}",
+  "hint_enter_national_id": "Enter your national id",
+  "this_field": "This field"
 }

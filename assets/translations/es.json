@@ -564,5 +564,9 @@
   "no_email_found_for_account": "No se encontró correo electrónico para esta cuenta.",
   "account_deleted_successfully": "Cuenta eliminada correctamente",
   "signed_out_for_security_delete_again": "Cerrado por seguridad. Inicia sesión de nuevo para eliminar completamente tu cuenta.",
-  "expense_updated": "Gasto actualizado correctamente"
+  "expense_updated": "Gasto actualizado correctamente",
+
+  "joining_date_is": "La fecha de ingreso es {date}",
+  "hint_enter_national_id": "Ingrese su documento de identidad",
+  "this_field": "Este campo"
 }

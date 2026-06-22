@@ -1205,7 +1205,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         Expanded(
                           child: _buildInputField(
                             'national_id'.tr(),
-                            'Enter your national id',
+                            'hint_enter_national_id'.tr(),
                             controller: nationalIdController,
                           ),
                         ),
@@ -1987,7 +1987,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   });
                                   FlashySnackBar.show(
                                     context,
-                                    message: 'Joining date is $formatted',
+                                    message: 'joining_date_is'.tr(namedArgs: {'date': formatted}),
                                     isError: false,
                                   );
                                 }

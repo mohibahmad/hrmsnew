@@ -564,5 +564,9 @@
   "no_email_found_for_account": "Для этой учетной записи не найден электронный адрес.",
   "account_deleted_successfully": "Аккаунт успешно удален",
   "signed_out_for_security_delete_again": "Выход выполнен в целях безопасности. Войдите снова, чтобы полностью удалить аккаунт.",
-  "expense_updated": "Расход успешно обновлен"
+  "expense_updated": "Расход успешно обновлен",
+
+  "joining_date_is": "Дата приема на работу: {date}",
+  "hint_enter_national_id": "Введите ваш документ удостоверения личности",
+  "this_field": "Это поле"
 }

@@ -36,8 +36,8 @@ class Validators {
 
   /// Returns null when [value] is a non-empty string, otherwise an error
   /// message. Convenient as a `TextFormField.validator`.
-  static String? requiredField(String? value, {String label = 'This field'}) {
-    if (value == null || value.trim().isEmpty) return 'field_is_required'.tr(namedArgs: {'field': label});
+  static String? requiredField(String? value, {String? label}) {
+    if (value == null || value.trim().isEmpty) return 'field_is_required'.tr(namedArgs: {'field': label ?? 'this_field'.tr()});
     return null;
   }
 

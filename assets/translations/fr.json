@@ -564,5 +564,9 @@
   "no_email_found_for_account": "Aucun e-mail trouvé pour ce compte.",
   "account_deleted_successfully": "Compte supprimé avec succès",
   "signed_out_for_security_delete_again": "Déconnecté pour des raisons de sécurité. Veuillez vous reconnecter pour supprimer complètement votre compte.",
-  "expense_updated": "Dépense mise à jour avec succès"
+  "expense_updated": "Dépense mise à jour avec succès",
+
+  "joining_date_is": "La date d'embauche est le {date}",
+  "hint_enter_national_id": "Entrez votre numéro d'identification",
+  "this_field": "Ce champ"
 }
