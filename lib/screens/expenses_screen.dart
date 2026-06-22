@@ -215,7 +215,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final docId = doc['id'] as String;
 
     final dateParts = (doc['date']?.toString() ?? '').split('/');
-    int selectedDay = dateParts.isNotEmpty ? int.tryParse(dateParts[0]) ?? DateTime.now().day : DateTime.now().day;
+    int selectedDay = dateParts.isNotEmpty
+        ? int.tryParse(dateParts[0]) ?? DateTime.now().day
+        : DateTime.now().day;
     DateTime calendarDate = DateTime.now();
 
     showDialog(
@@ -241,7 +243,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.black, size: 20),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 20,
+                          ),
                           onPressed: () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -400,8 +406,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   maxLines: null,
                                   decoration: InputDecoration(
                                     hintText: 'expense_title_hint'.tr(),
-                                    contentPadding: const EdgeInsets.only(top: 1),
-                                    hintStyle: const TextStyle(color: Colors.grey),
+                                    contentPadding: const EdgeInsets.only(
+                                      top: 1,
+                                    ),
+                                    hintStyle: const TextStyle(
+                                      color: Colors.grey,
+                                    ),
                                     border: InputBorder.none,
                                   ),
                                   style: const TextStyle(
@@ -641,8 +651,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   maxLines: null,
                                   decoration: InputDecoration(
                                     hintText: 'expense_title_hint'.tr(),
-                                    contentPadding: const EdgeInsets.only(top: 1),
-                                    hintStyle: const TextStyle(color: Colors.grey),
+                                    contentPadding: const EdgeInsets.only(
+                                      top: 1,
+                                    ),
+                                    hintStyle: const TextStyle(
+                                      color: Colors.grey,
+                                    ),
                                     border: InputBorder.none,
                                   ),
                                   style: const TextStyle(
@@ -1220,30 +1234,40 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: titleColor,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'SF Pro Display',
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: titleColor,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                amount,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
+                const SizedBox(height: 12),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    amount,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           iconWidget,
         ],
       ),
@@ -1338,8 +1362,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: paginatedExpenses.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 return _buildDataRow(paginatedExpenses[index], index);
               },
@@ -1440,13 +1463,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF000000),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -1461,6 +1488,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
@@ -1472,6 +1501,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 color: Color(0xFF000000),
                 fontFamily: 'SF Pro Display',
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(

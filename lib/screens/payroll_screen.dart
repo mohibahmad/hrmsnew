@@ -502,27 +502,33 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      (doc['name'] ?? '').toString(),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (doc['name'] ?? '').toString(),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      (doc['email'] ?? '').toString(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black,
-                        fontFamily: 'SF Pro Display',
+                      const SizedBox(height: 4),
+                      Text(
+                        (doc['email'] ?? '').toString(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -536,6 +542,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 color: Colors.black,
                 fontFamily: 'SF Pro Display',
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
@@ -547,6 +555,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 color: Colors.black,
                 fontFamily: 'SF Pro Display',
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(

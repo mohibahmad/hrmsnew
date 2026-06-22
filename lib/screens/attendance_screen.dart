@@ -902,6 +902,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       color: textDark,
                                       fontFamily: 'SF Pro Display',
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -911,6 +913,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       color: Colors.black,
                                       fontFamily: 'SF Pro Display',
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
@@ -934,6 +938,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             fontWeight: FontWeight.w600,
                             fontFamily: 'SF Pro Display',
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Expanded(
@@ -945,6 +951,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             color: textDark,
                             fontFamily: 'SF Pro Display',
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Expanded(
@@ -956,6 +964,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             color: textDark,
                             fontFamily: 'SF Pro Display',
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       SizedBox(

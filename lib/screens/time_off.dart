@@ -218,22 +218,19 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             fontFamily: 'SF Pro Display',
           ),
         ),
-        content: Text(
-          () {
-            String localizedAction = action;
-            if (action == 'Annual Leave') {
-              localizedAction = 'annual_leave'.tr();
-            } else if (action == 'Sick Leave') {
-              localizedAction = 'sick_leave_type'.tr();
-            } else if (action == 'Casual Leave') {
-              localizedAction = 'casual_leave_type'.tr();
-            } else if (action == 'Maternity Leave') {
-              localizedAction = 'maternity_leave'.tr();
-            }
-            return '${doc['name'] ?? ''} — $localizedAction';
-          }(),
-          style: const TextStyle(fontFamily: 'SF Pro Display'),
-        ),
+        content: Text(() {
+          String localizedAction = action;
+          if (action == 'Annual Leave') {
+            localizedAction = 'annual_leave'.tr();
+          } else if (action == 'Sick Leave') {
+            localizedAction = 'sick_leave_type'.tr();
+          } else if (action == 'Casual Leave') {
+            localizedAction = 'casual_leave_type'.tr();
+          } else if (action == 'Maternity Leave') {
+            localizedAction = 'maternity_leave'.tr();
+          }
+          return '${doc['name'] ?? ''} — $localizedAction';
+        }(), style: const TextStyle(fontFamily: 'SF Pro Display')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -287,7 +284,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_delete_record'.tr(namedArgs: {'error': e.toString()}),
+          message: 'failed_to_delete_record'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
           isError: true,
         );
       }
@@ -652,6 +651,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                         color: Color(0xFF000000),
                                         fontFamily: 'SF Pro Display',
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
@@ -661,6 +662,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                         color: Colors.black,
                                         fontFamily: 'SF Pro Display',
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
@@ -678,6 +681,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               color: Colors.black,
                               fontFamily: 'SF Pro Display',
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // Contact
@@ -690,6 +695,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               color: Colors.black,
                               fontFamily: 'SF Pro Display',
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // Time Off Action

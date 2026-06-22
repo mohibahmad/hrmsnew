@@ -1754,67 +1754,81 @@ class SparklineCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: lineColor == const Color(0xFF4C84E0)
-                                ? SvgPicture.asset(
-                                    'assets/total_salary.svg',
-                                    height: 20,
-                                    width: 20,
-                                    colorFilter: const ColorFilter.mode(
-                                      Color(0xFF155ED5),
-                                      BlendMode.srcIn,
+                      Flexible(
+                        flex: 0,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: lineColor == const Color(0xFF4C84E0)
+                                  ? SvgPicture.asset(
+                                      'assets/total_salary.svg',
+                                      height: 20,
+                                      width: 20,
+                                      colorFilter: const ColorFilter.mode(
+                                        Color(0xFF155ED5),
+                                        BlendMode.srcIn,
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      'assets/expense.png',
+                                      height: 20,
+                                      width: 20,
+                                      color: const Color(0xFF155ED5),
                                     ),
-                                  )
-                                : Image.asset(
-                                    'assets/expense.png',
-                                    height: 20,
-                                    width: 20,
-                                    color: const Color(0xFF155ED5),
-                                  ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                              fontFamily: 'SF Pro Display',
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 18,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            amount,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              fontFamily: 'SF Pro Display',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                amount,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                maxLines: 1,
+                              ),
                             ),
-                            maxLines: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        CustomTimeframeDropdown.localizePeriod(period),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black,
-                          fontFamily: 'SF Pro Display',
+                            Text(
+                              CustomTimeframeDropdown.localizePeriod(period),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ],
                         ),
                       ),
                     ],

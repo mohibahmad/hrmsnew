@@ -1185,6 +1185,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 2,
             child: Text(
               data.position,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
@@ -1197,6 +1199,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 2,
             child: Text(
               data.type,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF000000),
@@ -1208,6 +1212,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 2,
             child: Text(
               data.dateLoaned,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF000000),
@@ -1220,6 +1226,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 2,
             child: Text(
               data.dateReturned,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -1706,7 +1714,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       ),
                                       const SizedBox(height: 12),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           TextButton(
                                             child: Text(

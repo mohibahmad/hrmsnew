@@ -736,7 +736,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       label: 'add_worker'.tr(),
                       onTap: () async {
                         final isPremium = await PreferencesService.isPremium();
-                        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                        final isGuest =
+                            AuthService().currentUser?.isAnonymous ?? false;
                         if (!PremiumGate.canAddEntry(
                           currentEntryCount: _allWorkers.length,
                           isPremium: isPremium,
@@ -755,7 +756,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       label: 'add_bulk_workers'.tr(),
                       onTap: () async {
                         final isPremium = await PreferencesService.isPremium();
-                        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                        final isGuest =
+                            AuthService().currentUser?.isAnonymous ?? false;
                         if (!PremiumGate.canAddEntry(
                           currentEntryCount: _allWorkers.length,
                           isPremium: isPremium,
@@ -930,8 +932,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: _currentPageItems.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 return _buildListItem(_currentPageItems[index], index);
               },
@@ -1057,6 +1058,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             flex: 2,
             child: Text(
               type1,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
@@ -1068,6 +1071,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             flex: 2,
             child: Text(
               position,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
@@ -1079,6 +1084,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             flex: 2,
             child: Text(
               type2,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
@@ -1537,7 +1544,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
               // ==========================================
               Expanded(
                 child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
