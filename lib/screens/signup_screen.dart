@@ -79,9 +79,9 @@ class _SignupScreenState extends State<SignupScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Align(
-              alignment: Alignment.centerRight,
+              alignment: Alignment.topRight,
               child: Padding(
-                padding: const EdgeInsets.only(right: 40.0, top: 40.0),
+                padding: const EdgeInsets.only(right: 40.0, top: 96.0),
                 child: Material(
                   color: Colors.transparent,
                   child: Container(
@@ -821,8 +821,8 @@ class _SignupScreenState extends State<SignupScreen> {
             child: GestureDetector(
               onTap: _showLanguageModal,
               child: Container(
-                width: 36,
-                height: 36,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: Color(0xFFFFFFFF),
                   shape: BoxShape.circle,
@@ -837,8 +837,8 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Center(
                   child: Image.asset(
                     'assets/langauge_icon.png',
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     color: const Color(0xFF0247C4),
                   ),
                 ),
