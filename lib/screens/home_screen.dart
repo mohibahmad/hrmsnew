@@ -2468,8 +2468,8 @@ class AttendanceLineChart extends StatelessWidget {
                           child: LineChart(
                             LineChartData(
                               // add horizontal padding so the line doesn't touch card edges
-                              minX: -0.5,
-                              maxX: (spots.length - 1).toDouble() + 0.5,
+                              minX: 0,
+                              maxX: (spots.length - 1).toDouble() + 0.15,
                               minY: 0,
                               maxY: range.maxY,
                               lineTouchData: LineTouchData(
@@ -2515,12 +2515,12 @@ class AttendanceLineChart extends StatelessWidget {
                                  leftTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
-                                    reservedSize: 80,
+                                    reservedSize: 48,
                                     interval: range.interval,
                                     getTitlesWidget: (value, meta) {
                                       const style = TextStyle(
                                         color: Color(0xFF0247C4),
-                                        fontSize: 11,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
                                       );
@@ -2544,8 +2544,8 @@ class AttendanceLineChart extends StatelessWidget {
                                             ),
                                             const SizedBox(width: 8),
                                             Container(
-                                              width: 6,
-                                              height: 1.5,
+                                              width: 8,
+                                              height: 2,
                                               color: const Color(0xFF939393),
                                             ),
                                           ],
@@ -2557,7 +2557,7 @@ class AttendanceLineChart extends StatelessWidget {
                                 bottomTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
-                                    reservedSize: 32,
+                                    reservedSize: 40,
                                     interval: 1,
                                     getTitlesWidget: (value, meta) {
                                       // Only show titles for integer indices to avoid duplicates at boundary offsets (like -0.5 or 2.5)
@@ -2571,7 +2571,7 @@ class AttendanceLineChart extends StatelessWidget {
                                       }
                                       const style = TextStyle(
                                         color: Color(0xFF0247C4),
-                                        fontSize: 11,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
                                       );
@@ -2582,11 +2582,11 @@ class AttendanceLineChart extends StatelessWidget {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Container(
-                                              width: 1.5,
-                                              height: 6,
+                                              width: 2,
+                                              height: 8,
                                               color: const Color(0xFF939393),
                                             ),
-                                            const SizedBox(height: 8),
+                                            const SizedBox(height: 6),
                                             Text(
                                               chartData.labels[idx],
                                               style: style,
