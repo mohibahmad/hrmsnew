@@ -2856,36 +2856,39 @@ class LeaveTypesPieChart extends StatelessWidget {
                             CustomPaint(
                               size: const Size(380, 260),
                               painter: CalloutLinesPainter(
-                                casualPath: config.casualPath,
-                                sickPath: config.sickPath,
-                                medicalPath: config.medicalPath,
+                                casualPath: config.casualVal > 0 ? config.casualPath : const [],
+                                sickPath: config.sickVal > 0 ? config.sickPath : const [],
+                                medicalPath: config.medicalVal > 0 ? config.medicalPath : const [],
                               ),
                             ),
-                            Positioned(
-                              top: config.casualTop,
-                              left: config.casualLeft,
-                              right: config.casualRight,
-                              bottom: config.casualBottom,
-                              child: _ChartLabel(
-                                '${config.casualVal.toInt()}%',
+                            if (config.casualVal > 0)
+                              Positioned(
+                                top: config.casualTop,
+                                left: config.casualLeft,
+                                right: config.casualRight,
+                                bottom: config.casualBottom,
+                                child: _ChartLabel(
+                                  '${config.casualVal.toInt()}%',
+                                ),
                               ),
-                            ),
-                            Positioned(
-                              top: config.sickTop,
-                              left: config.sickLeft,
-                              right: config.sickRight,
-                              bottom: config.sickBottom,
-                              child: _ChartLabel('${config.sickVal.toInt()}%'),
-                            ),
-                            Positioned(
-                              top: config.medicalTop,
-                              left: config.medicalLeft,
-                              right: config.medicalRight,
-                              bottom: config.medicalBottom,
-                              child: _ChartLabel(
-                                '${config.medicalVal.toInt()}%',
+                            if (config.sickVal > 0)
+                              Positioned(
+                                top: config.sickTop,
+                                left: config.sickLeft,
+                                right: config.sickRight,
+                                bottom: config.sickBottom,
+                                child: _ChartLabel('${config.sickVal.toInt()}%'),
                               ),
-                            ),
+                            if (config.medicalVal > 0)
+                              Positioned(
+                                top: config.medicalTop,
+                                left: config.medicalLeft,
+                                right: config.medicalRight,
+                                bottom: config.medicalBottom,
+                                child: _ChartLabel(
+                                  '${config.medicalVal.toInt()}%',
+                                ),
+                              ),
                           ],
                         ),
                       ),
