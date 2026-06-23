@@ -655,6 +655,20 @@ class _ProfileBodyState extends State<ProfileBody> {
     final hasNewPath = _newProfileImagePath != null;
     final hasCustomPic = _profilePicUrl != null && _profilePicUrl!.isNotEmpty;
 
+    Widget _buildLoadingIndicator() {
+      return const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    Widget _buildFallbackIcon() {
+      return Icon(Icons.person, size: 40, color: Colors.grey.shade400);
+    }
+
     Widget childWidget;
     if (hasNewBytes) {
       childWidget = Image.memory(
@@ -662,6 +676,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         width: 90,
         height: 90,
         fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );
     } else if (hasNewPath) {
       childWidget = Image.file(
@@ -669,6 +684,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         width: 90,
         height: 90,
         fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );
     } else if (hasCustomPic) {
       if (_profilePicUrl!.startsWith('http')) {
@@ -677,6 +693,9 @@ class _ProfileBodyState extends State<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
+          loadingBuilder: (_, child, progress) =>
+              progress == null ? child : _buildLoadingIndicator(),
+          errorBuilder: (_, __, ___) => _buildFallbackIcon(),
         );
       } else if (_profilePicUrl!.startsWith('data:image')) {
         final String base64Content = _profilePicUrl!.substring(
@@ -687,6 +706,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildFallbackIcon(),
         );
       } else {
         childWidget = Image.file(
@@ -694,6 +714,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           width: 90,
           height: 90,
           fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildFallbackIcon(),
         );
       }
     } else {
@@ -702,6 +723,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         width: 75,
         height: 75,
         fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );
     }
 

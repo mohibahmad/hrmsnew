@@ -485,11 +485,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    final hasFrontId = _frontIdBytes != null ||
+    final hasFrontId =
+        _frontIdBytes != null ||
         (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
-    final hasBackId = _backIdBytes != null ||
+    final hasBackId =
+        _backIdBytes != null ||
         (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty);
-    final hasCv = _cvBytes != null ||
+    final hasCv =
+        _cvBytes != null ||
         (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
 
     if (!hasFrontId) {
@@ -888,7 +891,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     final bool isSaveReady = isEditMode
                         ? hasChanges
                         : (_nameController.text.trim().isNotEmpty &&
-                            _phoneController.text.trim().isNotEmpty);
+                              _phoneController.text.trim().isNotEmpty);
                     final bool canSave = isSaveReady && !_isSaving;
 
                     return GestureDetector(
@@ -1465,7 +1468,11 @@ class WorkerDetailFormSection extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         if (hasImageBytes)
-          Image.memory(profileImageBytes!, fit: BoxFit.cover)
+          Image.memory(
+            profileImageBytes!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildUploadPlaceholder(),
+          )
         else
           Image(
             image: getProfileImageProvider(existingProfileImageUrl),

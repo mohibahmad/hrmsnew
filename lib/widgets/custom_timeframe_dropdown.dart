@@ -204,24 +204,23 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             ),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: Text(
-                    CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 17.0,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 17.0,
+                    fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 4),
               const Icon(
                 Icons.arrow_drop_down,
                 color: Color(0xFFFFFFFF),
