@@ -138,7 +138,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                     option,
                                   ),
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 17.0,
                                     color: isSelected
                                         ? const Color(0xFF0247C4)
                                         : Colors.grey.shade400,
@@ -192,8 +192,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       child: GestureDetector(
         onTap: _toggleDropdown,
         child: Container(
-          width: 108,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          width: 112,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
             color: const Color(0xFF0247C4), // Exact button blue
             borderRadius: BorderRadius.only(
@@ -207,22 +207,25 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    fontFamily: 'SF Pro Display',
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Text(
+                    CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
+                    style: const TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 17.0,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const Icon(
                 Icons.arrow_drop_down,
                 color: Color(0xFFFFFFFF),
-                size: 24,
+                size: 30,
               ),
             ],
           ),
