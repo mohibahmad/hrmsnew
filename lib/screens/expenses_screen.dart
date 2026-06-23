@@ -1346,7 +1346,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader('date_header'.tr()),
+                    child: _tableHeader('date_header'.tr(), textAlign: TextAlign.center),
                   ),
                 ),
                 Expanded(
@@ -1513,6 +1513,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
                 date,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,
                   color: Color(0xFF000000),
