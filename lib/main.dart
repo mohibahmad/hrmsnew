@@ -95,8 +95,8 @@ void main() {
         try {
           await windowManager.ensureInitialized();
           const windowOptions = WindowOptions(
-            size: Size(1280, 800),
-            minimumSize: Size(1280, 800),
+            size: Size(1295, 800),
+            minimumSize: Size(1295, 800),
             center: true,
             titleBarStyle: TitleBarStyle.normal,
           );
