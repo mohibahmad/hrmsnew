@@ -3058,7 +3058,7 @@ class LeaveTypesPieChart extends StatelessWidget {
       casualStartAngle,
       casualEndAngle,
       slotCasual.targetAngle,
-      12,
+      casualSweep * 0.35,
     );
 
     // Slice 2: Sick
@@ -3068,7 +3068,7 @@ class LeaveTypesPieChart extends StatelessWidget {
       sickStartAngle,
       sickEndAngle,
       slotSick.targetAngle,
-      12,
+      sickSweep * 0.35,
     );
 
     // Slice 3: Medical
@@ -3078,7 +3078,7 @@ class LeaveTypesPieChart extends StatelessWidget {
       medicalStartAngle,
       medicalEndAngle,
       slotMedical.targetAngle,
-      12,
+      medicalSweep * 0.35,
     );
 
     Offset getCircumferencePoint(double angleDegrees) {
@@ -3140,22 +3140,23 @@ class LeaveTypesPieChart extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  TweenAnimationBuilder<double>(
-                    key: ValueKey(period),
-                    tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeOutBack,
-                    builder: (context, animValue, child) {
-                      return Transform.rotate(
-                        angle: (1 - animValue) * 0.3 * math.pi,
-                        child: child,
-                      );
-                    },
-                    child: Center(
-                      child: SizedBox(
-                        width: 380,
-                        height: 260,
+                  Center(
+                    child: SizedBox(
+                      width: 380,
+                      height: 260,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        switchInCurve: Curves.easeInOutCubic,
+                        switchOutCurve: Curves.easeInOutCubic,
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
                         child: Stack(
+                          key: ValueKey(period),
                           alignment: Alignment.center,
                           children: [
                             PieChart(
