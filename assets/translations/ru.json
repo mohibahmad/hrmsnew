@@ -566,5 +566,8 @@
   "failed_to_pick_image": "Не удалось выбрать изображение",
   "failed_to_pick_file": "Не удалось выбрать файл",
   "error_selecting_image": "Ошибка при выборе изображения: {error}",
-  "file_too_large": "Файл слишком большой. Максимальный размер {size}."
+  "file_too_large": "Файл слишком большой. Максимальный размер {size}.",
+  "uploaded": "Загружено",
+  "not_uploaded": "Не загружено",
+  "pdf_preview_not_available": "Предварительный просмотр PDF недоступен"
 }

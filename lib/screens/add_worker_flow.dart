@@ -2035,31 +2035,43 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Row(
                           children: [
                             Expanded(
-                              child: Center(child: _buildDayPill('SUN', true)),
+                              child: Center(
+                                child: _buildDayPill('weekday_sun'.tr(), true),
+                              ),
                             ),
                             Expanded(
-                              child: Center(child: _buildDayPill('MON', false)),
+                              child: Center(
+                                child: _buildDayPill('weekday_mon'.tr(), false),
+                              ),
                             ),
                             Expanded(
-                              child: Center(child: _buildDayPill('THE', false)),
+                              child: Center(
+                                child: _buildDayPill('weekday_tue'.tr(), false),
+                              ),
                             ),
                             Expanded(
-                              child: Center(child: _buildDayPill('WED', false)),
+                              child: Center(
+                                child: _buildDayPill('weekday_wed'.tr(), false),
+                              ),
                             ),
                             Expanded(
-                              child: Center(child: _buildDayPill('THU', false)),
+                              child: Center(
+                                child: _buildDayPill('weekday_thu'.tr(), false),
+                              ),
                             ),
                             Expanded(
                               child: Center(
                                 child: _buildDayPill(
-                                  'FRI',
+                                  'weekday_fri'.tr(),
                                   false,
                                   isGreen: true,
                                 ),
                               ),
                             ),
                             Expanded(
-                              child: Center(child: _buildDayPill('SAT', false)),
+                              child: Center(
+                                child: _buildDayPill('weekday_sat'.tr(), false),
+                              ),
                             ),
                           ],
                         ),
@@ -2389,6 +2401,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     Color bg = isRed
         ? Colors.red
         : (isGreen ? Colors.green : const Color(0xFF0B50C3));
+    final display = text.length > 3 ? text.substring(0, 3) : text;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
@@ -2396,7 +2409,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         borderRadius: BorderRadius.circular(2),
       ),
       child: Text(
-        text,
+        display,
         style: const TextStyle(
           color: Color(0xFFFFFFFF),
           fontSize: 8,

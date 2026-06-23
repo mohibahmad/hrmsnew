@@ -566,5 +566,8 @@
   "failed_to_pick_image": "Failed to select image",
   "failed_to_pick_file": "Failed to select file",
   "error_selecting_image": "Error selecting image: {error}",
-  "file_too_large": "File too large. Maximum size is {size}."
+  "file_too_large": "File too large. Maximum size is {size}.",
+  "uploaded": "Uploaded",
+  "not_uploaded": "Not Uploaded",
+  "pdf_preview_not_available": "PDF preview not available"
 }
