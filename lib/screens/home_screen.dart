@@ -1550,7 +1550,7 @@ class TotalWorkersCard extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Transform.translate(
-                                  offset: const Offset(5, -10),
+                                  offset: const Offset(6, -9),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -1577,7 +1577,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Transform.rotate(
-                                  angle: 0.3,
+                                  angle: 0.35,
                                   child: Container(
                                     width: 1.0,
                                     height: 42,
@@ -1586,7 +1586,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 10),
                                 Transform.translate(
-                                  offset: const Offset(-9, 6),
+                                  offset: const Offset(-9, 5),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
