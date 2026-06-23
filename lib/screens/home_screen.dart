@@ -1968,12 +1968,12 @@ class SparklineCard extends StatelessWidget {
                       final double m = period == 'Week'
                           ? 0.3
                           : period == 'Month'
-                          ? 0.6
-                          : period == '3 Month'
-                          ? 0.8
-                          : period == '6 Month'
-                          ? 0.9
-                          : 1.0;
+                              ? 0.6
+                              : period == '3 Month'
+                                  ? 0.8
+                                  : period == '6 Month'
+                                      ? 0.9
+                                      : 1.0;
                       final spots = [
                         FlSpot(0, 3 * m),
                         FlSpot(1, 6 * m),
@@ -1985,9 +1985,14 @@ class SparklineCard extends StatelessWidget {
                         FlSpot(7, 2 * m),
                         FlSpot(8, 7 * m),
                       ];
+
                       return LineChart(
                         LineChartData(
-                          // show the card's `amount` as tooltip for each touched spot
+                          // add horizontal padding so the line doesn't touch card edges
+                          minX: -0.5,
+                          maxX: (spots.length - 1).toDouble() + 0.5,
+                          minY: 0,
+                          maxY: 13,
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
                               tooltipRoundedRadius: 8,
@@ -2025,11 +2030,6 @@ class SparklineCard extends StatelessWidget {
                           gridData: FlGridData(show: false),
                           titlesData: FlTitlesData(show: false),
                           borderData: FlBorderData(show: false),
-                          // add horizontal padding so the line doesn't touch card edges
-                          minX: -0.5,
-                          maxX: 8.5,
-                          minY: 0,
-                          maxY: 13,
                           lineBarsData: [
                             LineChartBarData(
                               spots: spots
@@ -2037,8 +2037,8 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor.withValues(alpha: 0.06),
-                              barWidth: 4,
-                              isStrokeCapRound: true,
+                              barWidth: 2.0,
+                              isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                             ),
                             LineChartBarData(
@@ -2047,36 +2047,30 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 0.5,
-                              isStrokeCapRound: true,
+                              barWidth: 1.0,
+                              isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
                                 show: true,
                                 gradient: LinearGradient(
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.65)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.65),
+                                        ? const Color(0xFF93D7FD)
+                                            .withValues(alpha: 0.65)
+                                        : const Color(0xFF8DA9F1)
+                                            .withValues(alpha: 0.65),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.30)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.30),
+                                        ? const Color(0xFF93D7FD)
+                                            .withValues(alpha: 0.30)
+                                        : const Color(0xFF8DA9F1)
+                                            .withValues(alpha: 0.30),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(
-                                            0xFF93D7FD,
-                                          ).withValues(alpha: 0.0)
-                                        : const Color(
-                                            0xFF8DA9F1,
-                                          ).withValues(alpha: 0.0),
+                                        ? const Color(0xFF93D7FD)
+                                            .withValues(alpha: 0.0)
+                                        : const Color(0xFF8DA9F1)
+                                            .withValues(alpha: 0.0),
                                   ],
-                                  stops: [0.0, 0.25, 0.6],
+                                  stops: [0.05, 0.25, 0.6],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
