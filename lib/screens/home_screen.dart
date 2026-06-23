@@ -3144,99 +3144,110 @@ class LeaveTypesPieChart extends StatelessWidget {
                     child: SizedBox(
                       width: 380,
                       height: 260,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 500),
-                        switchInCurve: Curves.easeInOutCubic,
-                        switchOutCurve: Curves.easeInOutCubic,
-                        transitionBuilder:
-                            (Widget child, Animation<double> animation) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              );
-                            },
-                        child: Stack(
-                          key: ValueKey(period),
-                          alignment: Alignment.center,
-                          children: [
-                            PieChart(
-                              PieChartData(
-                                sectionsSpace: 0.0,
-                                centerSpaceRadius: 0,
-                                startDegreeOffset: 108,
-                                sections: [
-                                  PieChartSectionData(
-                                    color: const Color(
-                                      0xFF84A9FF,
-                                    ), // Casual Leave
-                                    value: config.casualVal,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    color: const Color(
-                                      0xFFFF4A5E,
-                                    ), // Sick Leave
-                                    value: config.sickVal,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                  PieChartSectionData(
-                                    color: const Color(
-                                      0xFF97FFA9,
-                                    ), // Medical Leave
-                                    value: config.medicalVal,
-                                    radius: 85,
-                                    showTitle: false,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            CustomPaint(
-                              size: const Size(380, 260),
-                              painter: CalloutLinesPainter(
-                                casualPath: config.casualVal > 0
-                                    ? config.casualPath
-                                    : const [],
-                                sickPath: config.sickVal > 0
-                                    ? config.sickPath
-                                    : const [],
-                                medicalPath: config.medicalVal > 0
-                                    ? config.medicalPath
-                                    : const [],
-                              ),
-                            ),
-                            if (config.casualVal > 0)
-                              Positioned(
-                                top: config.casualTop,
-                                left: config.casualLeft,
-                                right: config.casualRight,
-                                bottom: config.casualBottom,
-                                child: _ChartLabel(
-                                  '${config.casualVal.toInt()}%',
+                      child: TweenAnimationBuilder<double>(
+                        key: const ValueKey('entrance'),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.easeOutQuart,
+                        builder: (context, value, childWidget) {
+                          return Opacity(
+                            opacity: value,
+                            child: childWidget,
+                          );
+                        },
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 500),
+                          switchInCurve: Curves.easeInOutCubic,
+                          switchOutCurve: Curves.easeInOutCubic,
+                          transitionBuilder: (Widget child, Animation<double> animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            );
+                          },
+                          child: Stack(
+                            key: ValueKey(period),
+                            alignment: Alignment.center,
+                            children: [
+                              PieChart(
+                                PieChartData(
+                                  sectionsSpace: 0.0,
+                                  centerSpaceRadius: 0,
+                                  startDegreeOffset: 108,
+                                  sections: [
+                                    PieChartSectionData(
+                                      color: const Color(
+                                        0xFF84A9FF,
+                                      ), // Casual Leave
+                                      value: config.casualVal,
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      color: const Color(
+                                        0xFFFF4A5E,
+                                      ), // Sick Leave
+                                      value: config.sickVal,
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                    PieChartSectionData(
+                                      color: const Color(
+                                        0xFF97FFA9,
+                                      ), // Medical Leave
+                                      value: config.medicalVal,
+                                      radius: 85,
+                                      showTitle: false,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            if (config.sickVal > 0)
-                              Positioned(
-                                top: config.sickTop,
-                                left: config.sickLeft,
-                                right: config.sickRight,
-                                bottom: config.sickBottom,
-                                child: _ChartLabel(
-                                  '${config.sickVal.toInt()}%',
+                              CustomPaint(
+                                size: const Size(380, 260),
+                                painter: CalloutLinesPainter(
+                                  casualPath: config.casualVal > 0
+                                      ? config.casualPath
+                                      : const [],
+                                  sickPath: config.sickVal > 0
+                                      ? config.sickPath
+                                      : const [],
+                                  medicalPath: config.medicalVal > 0
+                                      ? config.medicalPath
+                                      : const [],
                                 ),
                               ),
-                            if (config.medicalVal > 0)
-                              Positioned(
-                                top: config.medicalTop,
-                                left: config.medicalLeft,
-                                right: config.medicalRight,
-                                bottom: config.medicalBottom,
-                                child: _ChartLabel(
-                                  '${config.medicalVal.toInt()}%',
+                              if (config.casualVal > 0)
+                                Positioned(
+                                  top: config.casualTop,
+                                  left: config.casualLeft,
+                                  right: config.casualRight,
+                                  bottom: config.casualBottom,
+                                  child: _ChartLabel(
+                                    '${config.casualVal.toInt()}%',
+                                  ),
                                 ),
-                              ),
-                          ],
+                              if (config.sickVal > 0)
+                                Positioned(
+                                  top: config.sickTop,
+                                  left: config.sickLeft,
+                                  right: config.sickRight,
+                                  bottom: config.sickBottom,
+                                  child: _ChartLabel(
+                                    '${config.sickVal.toInt()}%',
+                                  ),
+                                ),
+                              if (config.medicalVal > 0)
+                                Positioned(
+                                  top: config.medicalTop,
+                                  left: config.medicalLeft,
+                                  right: config.medicalRight,
+                                  bottom: config.medicalBottom,
+                                  child: _ChartLabel(
+                                    '${config.medicalVal.toInt()}%',
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
