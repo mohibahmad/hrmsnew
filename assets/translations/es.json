@@ -584,5 +584,6 @@
   "attendance_exported": "Asistencia exportada exitosamente",
   "upload_cnic_front_required": "Por favor suba el frente del CNIC",
   "upload_cnic_back_required": "Por favor suba el reverso del CNIC",
-  "upload_cv_required": "Por favor suba el CV"
+  "upload_cv_required": "Por favor suba el CV",
+  "could_not_download_template": "No se pudo descargar la plantilla. Intente de nuevo."
 }

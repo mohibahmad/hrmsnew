@@ -58,7 +58,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'could_not_save_worker'.tr(),
+          message: 'could_not_download_template'.tr(),
           isError: true,
         );
       }

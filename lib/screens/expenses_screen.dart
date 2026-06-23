@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -122,11 +121,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   String _formatCurrency(double amount) {
+    final locale = context.locale.toString();
     if (amount >= 1000) {
-      final compact = NumberFormat.compact(locale: 'en_US').format(amount);
+      final compact = NumberFormat.compact(locale: locale).format(amount);
       return '\$$compact';
     }
-    final format = NumberFormat.currency(symbol: '\$ ', decimalDigits: 2);
+    final format = NumberFormat.currency(locale: locale, symbol: '\$ ', decimalDigits: 2);
     return format.format(amount);
   }
 

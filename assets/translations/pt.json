@@ -584,5 +584,6 @@
   "attendance_exported": "Presença exportada com sucesso",
   "upload_cnic_front_required": "Por favor, carregue a frente do CNIC",
   "upload_cnic_back_required": "Por favor, carregue o verso do CNIC",
-  "upload_cv_required": "Por favor, carregue o CV"
+  "upload_cv_required": "Por favor, carregue o CV",
+  "could_not_download_template": "Não foi possível baixar o modelo. Tente novamente."
 }

@@ -584,5 +584,6 @@
   "attendance_exported": "Посещаемость успешно экспортирована",
   "upload_cnic_front_required": "Пожалуйста, загрузите лицевую сторону CNIC",
   "upload_cnic_back_required": "Пожалуйста, загрузите оборотную сторону CNIC",
-  "upload_cv_required": "Пожалуйста, загрузите резюме"
+  "upload_cv_required": "Пожалуйста, загрузите резюме",
+  "could_not_download_template": "Не удалось загрузить шаблон. Попробуйте ещё раз."
 }

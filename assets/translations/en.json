@@ -587,5 +587,6 @@
   "attendance_exported": "Attendance exported successfully",
   "upload_cnic_front_required": "Please upload CNIC Front side",
   "upload_cnic_back_required": "Please upload CNIC Back side",
-  "upload_cv_required": "Please upload CV"
+  "upload_cv_required": "Please upload CV",
+  "could_not_download_template": "Could not download template. Please try again."
 }

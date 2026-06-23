@@ -23,19 +23,19 @@ class PremiumGate {
     if (_isShowingDialog) return false;
 
     _isShowingDialog = true;
-    if (!context.mounted) {
+    try {
+      if (!context.mounted) return false;
+
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+        builder: (_) => const SubscriptionDialog(),
+      );
+
+      return result ?? false;
+    } finally {
       _isShowingDialog = false;
-      return false;
     }
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (_) => const SubscriptionDialog(),
-    );
-
-    _isShowingDialog = false;
-    return result ?? false;
   }
 }

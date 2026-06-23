@@ -584,5 +584,6 @@
   "attendance_exported": "Présences exportées avec succès",
   "upload_cnic_front_required": "Veuillez télécharger le recto du CNIC",
   "upload_cnic_back_required": "Veuillez télécharger le verso du CNIC",
-  "upload_cv_required": "Veuillez télécharger le CV"
+  "upload_cv_required": "Veuillez télécharger le CV",
+  "could_not_download_template": "Impossible de télécharger le modèle. Réessayez."
 }
