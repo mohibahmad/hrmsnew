@@ -1945,13 +1945,15 @@ class SparklineCard extends StatelessWidget {
                             Text(
                               period == 'Month'
                                   ? (title == 'expenses'.tr()
-                                      ? 'monthly'.tr().toLowerCase()
-                                      : 'month'.tr().toLowerCase())
+                                        ? 'monthly'.tr().toLowerCase()
+                                        : 'month'.tr().toLowerCase())
                                   : (period == 'Week'
-                                      ? (title == 'expenses'.tr()
-                                          ? 'weekly'.tr().toLowerCase()
-                                          : 'week'.tr().toLowerCase())
-                                      : CustomTimeframeDropdown.localizePeriod(period)),
+                                        ? (title == 'expenses'.tr()
+                                              ? 'weekly'.tr().toLowerCase()
+                                              : 'week'.tr().toLowerCase())
+                                        : CustomTimeframeDropdown.localizePeriod(
+                                            period,
+                                          )),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.black,
@@ -1976,12 +1978,12 @@ class SparklineCard extends StatelessWidget {
                       final double m = period == 'Week'
                           ? 0.3
                           : period == 'Month'
-                              ? 0.6
-                              : period == '3 Month'
-                                  ? 0.8
-                                  : period == '6 Month'
-                                      ? 0.9
-                                      : 1.0;
+                          ? 0.6
+                          : period == '3 Month'
+                          ? 0.8
+                          : period == '6 Month'
+                          ? 0.9
+                          : 1.0;
                       final spots = [
                         FlSpot(0, 3 * m),
                         FlSpot(1, 6 * m),
@@ -2008,9 +2010,10 @@ class SparklineCard extends StatelessWidget {
                                 if (tSpots.isEmpty) return <LineTooltipItem>[];
                                 final seenX = <double>{};
                                 final nf = NumberFormat.currency(
-                                    locale: context.locale.toString(),
-                                    symbol: '\$ ',
-                                    decimalDigits: 0);
+                                  locale: context.locale.toString(),
+                                  symbol: '\$ ',
+                                  decimalDigits: 0,
+                                );
                                 return tSpots.map((tSpot) {
                                   if (seenX.add(tSpot.x)) {
                                     final label = nf.format(tSpot.y);
@@ -2045,7 +2048,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor.withValues(alpha: 0.06),
-                              barWidth: 2.0,
+                              barWidth: 1.2,
                               isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                             ),
@@ -2055,7 +2058,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 1.0,
+                              barWidth: 0.6,
                               isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -2063,20 +2066,26 @@ class SparklineCard extends StatelessWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.50)
-                                        : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.50),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.50)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.50),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.20)
-                                        : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.20),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.20)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.20),
                                     lineColor == const Color(0xFF0EA5E9)
-                                        ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.0)
-                                        : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.0),
+                                        ? const Color(
+                                            0xFF93D7FD,
+                                          ).withValues(alpha: 0.0)
+                                        : const Color(
+                                            0xFF8DA9F1,
+                                          ).withValues(alpha: 0.0),
                                   ],
                                   stops: [0.0, 0.3, 0.8],
                                   begin: Alignment.topCenter,
@@ -2520,7 +2529,7 @@ class AttendanceLineChart extends StatelessWidget {
                                 rightTitles: AxisTitles(
                                   sideTitles: SideTitles(showTitles: false),
                                 ),
-                                 leftTitles: AxisTitles(
+                                leftTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
                                     reservedSize: 48,
@@ -2569,7 +2578,8 @@ class AttendanceLineChart extends StatelessWidget {
                                     interval: 1,
                                     getTitlesWidget: (value, meta) {
                                       // Only show titles for integer indices to avoid duplicates at boundary offsets (like -0.5 or 2.5)
-                                      if ((value - value.round()).abs() > 0.01) {
+                                      if ((value - value.round()).abs() >
+                                          0.01) {
                                         return const SizedBox.shrink();
                                       }
                                       final idx = value.round();
