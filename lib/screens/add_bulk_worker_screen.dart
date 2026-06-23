@@ -22,6 +22,31 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
+  String _localizeType1(String value) {
+    switch (value) {
+      case 'Full-Time':
+        return 'full_time'.tr();
+      case 'Part-Time':
+        return 'part_time'.tr();
+      case 'Contract':
+        return 'contract'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizeType2(String value) {
+    switch (value) {
+      case 'On-Site':
+        return 'on_site'.tr();
+      case 'Remote':
+        return 'remote'.tr();
+      case 'Hybrid':
+        return 'hybrid'.tr();
+      default:
+        return value;
+    }
+  }
   bool _isSaving = false;
   List<Map<String, dynamic>> _validWorkers = [];
   bool _hasParsedFile = false;
@@ -897,11 +922,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           140,
                                         ),
                                         _buildDataCell(
-                                          worker['type1']?.toString() ?? '',
+                                          _localizeType1(
+                                              worker['type1']?.toString() ?? ''),
                                           120,
                                         ),
                                         _buildDataCell(
-                                          worker['type2']?.toString() ?? '',
+                                          _localizeType2(
+                                              worker['type2']?.toString() ?? ''),
                                           120,
                                         ),
                                         _buildDataCell(

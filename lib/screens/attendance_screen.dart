@@ -52,6 +52,32 @@ class AttendanceRecord {
     this.profileImage,
     this.phone,
   });
+
+  String get localizedWorkType {
+    switch (workType) {
+      case 'Full Time':
+        return 'full_time'.tr();
+      case 'Part Time':
+        return 'part_time'.tr();
+      case 'Contract':
+        return 'contract'.tr();
+      default:
+        return workType;
+    }
+  }
+
+  String get localizedAttendanceType {
+    switch (attendanceType) {
+      case 'On-Site':
+        return 'on_site'.tr();
+      case 'Remote':
+        return 'remote'.tr();
+      case 'Hybrid':
+        return 'hybrid'.tr();
+      default:
+        return attendanceType;
+    }
+  }
 }
 
 class AttendanceScreen extends StatefulWidget {
@@ -939,6 +965,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     .toString();
                 final workType = (doc['workType'] ?? 'Full Time').toString();
 
+                String localizeAttendanceType(String value) {
+                  switch (value) {
+                    case 'On-Site':
+                      return 'on_site'.tr();
+                    case 'Remote':
+                      return 'remote'.tr();
+                    case 'Hybrid':
+                      return 'hybrid'.tr();
+                    default:
+                      return value;
+                  }
+                }
+
+                String localizeWorkType(String value) {
+                  switch (value) {
+                    case 'Full Time':
+                      return 'full_time'.tr();
+                    case 'Part Time':
+                      return 'part_time'.tr();
+                    case 'Contract':
+                      return 'contract'.tr();
+                    default:
+                      return value;
+                  }
+                }
+
                 return Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1029,12 +1081,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                       Expanded(
                         flex: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 16.0),
-                          child: Tooltip(
-                            message: workType,
-                            child: Text(
-                              workType,
+                       child: Padding(
+                         padding: const EdgeInsets.only(right: 16.0),
+                         child: Tooltip(
+                           message: localizeWorkType(workType),
+                           child: Text(
+                             localizeWorkType(workType),
                               style: const TextStyle(
                                 fontSize: 15,
                                 color: textDark,
@@ -1602,12 +1654,12 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   ),
                   _buildDetailRow(
                     'work_type'.tr(),
-                    record.workType,
+                    record.localizedWorkType,
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'attendance_type'.tr(),
-                    record.attendanceType,
+                    record.localizedAttendanceType,
                     Color(0xFF000000),
                   ),
                 ],

@@ -1076,6 +1076,35 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final profileImage = worker['profileImage'] as String?;
     final docId = worker['id'] as String;
 
+    String _localizeType1(String value) {
+      switch (value) {
+        case 'Full-Time':
+          return 'full_time'.tr();
+        case 'Part-Time':
+          return 'part_time'.tr();
+        case 'Contract':
+          return 'contract'.tr();
+        default:
+          return value;
+      }
+    }
+
+    String _localizeType2(String value) {
+      switch (value) {
+        case 'On-Site':
+          return 'on_site'.tr();
+        case 'Remote':
+          return 'remote'.tr();
+        case 'Hybrid':
+          return 'hybrid'.tr();
+        default:
+          return value;
+      }
+    }
+
+    final localizedType1 = _localizeType1(type1);
+    final localizedType2 = _localizeType2(type2);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1138,7 +1167,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                type1,
+                localizedType1,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1171,7 +1200,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           Expanded(
             flex: 2,
             child: Text(
-              type2,
+              localizedType2,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -1218,8 +1247,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       name: name,
                       email: email,
                       position: position,
-                      workType: type1,
-                      attendanceType: type2,
+                      workType: localizedType1,
+                      attendanceType: localizedType2,
                       fatherName: fatherName,
                       phone: phone,
                       joiningDate: joiningDate,

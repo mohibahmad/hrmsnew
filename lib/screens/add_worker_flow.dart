@@ -1531,6 +1531,7 @@ class WorkerDetailFormSection extends StatelessWidget {
       ],
     );
   }
+
 }
 
 // ==========================================
@@ -1595,6 +1596,32 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedJoiningDate != oldWidget.selectedJoiningDate) {
       _parseSelectedDate();
+    }
+  }
+
+  String _localizeType1(String value) {
+    switch (value) {
+      case 'Full-Time':
+        return 'full_time'.tr();
+      case 'Part-Time':
+        return 'part_time'.tr();
+      case 'Contract':
+        return 'contract'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizeType2(String value) {
+    switch (value) {
+      case 'On-Site':
+        return 'on_site'.tr();
+      case 'Remote':
+        return 'remote'.tr();
+      case 'Hybrid':
+        return 'hybrid'.tr();
+      default:
+        return value;
     }
   }
 
@@ -1790,6 +1817,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Contract',
                               'Freelance',
                             ],
+                            itemLabelBuilder: (val) => _localizeType1(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type1Controller.text = val;
@@ -1827,7 +1855,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             label: 'attendance_type_label'.tr(),
                             selectedValue: widget.type2Controller.text,
                             hint: 'enter_your_attendance_type'.tr(),
-                            items: const ['Remote', 'On-site', 'Hybrid'],
+                            items: const ['On-Site', 'Remote', 'Hybrid'],
+                            itemLabelBuilder: (val) => _localizeType2(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.type2Controller.text = val;
@@ -3136,6 +3165,7 @@ class CustomDropdownField extends StatefulWidget {
   final String hint;
   final List<String> items;
   final ValueChanged<String?> onChanged;
+  final String? Function(String item)? itemLabelBuilder;
 
   const CustomDropdownField({
     super.key,
@@ -3144,6 +3174,7 @@ class CustomDropdownField extends StatefulWidget {
     required this.hint,
     required this.items,
     required this.onChanged,
+    this.itemLabelBuilder,
   });
 
   @override
@@ -3202,11 +3233,12 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
               final bool isSelected =
                   item.trim().toLowerCase() ==
                   _currentValue.trim().toLowerCase();
+              final displayLabel = widget.itemLabelBuilder?.call(item) ?? item;
               return PopupMenuItem<String>(
                 value: item,
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildMenuRadio(isSelected, item),
+                child: _buildMenuRadio(isSelected, displayLabel),
               );
             }).toList();
           },
@@ -3221,7 +3253,10 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _currentValue.isEmpty ? widget.hint : _currentValue,
+                  _currentValue.isEmpty
+                      ? widget.hint
+                      : (widget.itemLabelBuilder?.call(_currentValue) ??
+                          _currentValue),
                   style: TextStyle(
                     fontSize: 14,
                     color: _currentValue.isEmpty
@@ -3250,6 +3285,7 @@ Widget _buildDropdownField({
   required String hint,
   required List<String> items,
   required ValueChanged<String?> onChanged,
+  String? Function(String item)? itemLabelBuilder,
 }) {
   return CustomDropdownField(
     label: label,
@@ -3257,6 +3293,7 @@ Widget _buildDropdownField({
     hint: hint,
     items: items,
     onChanged: onChanged,
+    itemLabelBuilder: itemLabelBuilder,
   );
 }
 
