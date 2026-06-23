@@ -2503,8 +2503,8 @@ class AttendanceLineChart extends StatelessWidget {
                           child: LineChart(
                             LineChartData(
                               // add horizontal padding so the line doesn't touch card edges
-                              minX: 0,
-                              maxX: (spots.length - 1).toDouble() + 0.15,
+                              minX: -0.4,
+                              maxX: (spots.length - 1).toDouble() + 0.4,
                               minY: 0,
                               maxY: range.maxY,
                               lineTouchData: LineTouchData(
