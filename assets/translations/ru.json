@@ -334,6 +334,9 @@
 
   "time_off_list": "Список отгулов",
   "no_time_off_requests": "Нет запросов на отгул",
+  "no_time_off_records": "Нет записей об отгулах",
+  "no_time_off": "Нет отгулов",
+  "no_time_off_record_to_delete": "Нет записи об отгуле для удаления",
   "time_off": "Отгул",
   "assign_time_off": "Назначить отгул",
   "assign": "Назначить",

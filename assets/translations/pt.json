@@ -334,6 +334,9 @@
 
   "time_off_list": "Lista de folgas",
   "no_time_off_requests": "Sem solicitações de folga",
+  "no_time_off_records": "Sem registros de folga",
+  "no_time_off": "Sem folga",
+  "no_time_off_record_to_delete": "Nenhum registro de folga para excluir",
   "time_off": "Folga",
   "assign_time_off": "Atribuir folga",
   "assign": "Atribuir",

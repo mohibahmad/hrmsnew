@@ -600,7 +600,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: paginatedWorkers.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
@@ -622,169 +622,171 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 } else if (action.isEmpty) {
                   action = 'no_time_off'.tr();
                 }
-                 return Tooltip(
+                return Tooltip(
                   message: 'long_press_to_delete'.tr(),
                   child: GestureDetector(
                     onLongPress: (doc['action'] ?? '').toString().isNotEmpty
                         ? () => _handleDelete(doc)
                         : null,
                     child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF6F8FA),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        // Worker Name with Avatar
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 16.0),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundImage: getProfileImage(
-                                    doc['profileImage']?.toString(),
-                                    doc['email']?.toString(),
-                                    index,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8FA),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          // Worker Name with Avatar
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 16.0),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundImage: getProfileImage(
+                                      doc['profileImage']?.toString(),
+                                      doc['email']?.toString(),
+                                      index,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Tooltip(
-                                        message: name,
-                                        child: Text(
-                                          name,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Tooltip(
+                                          message: name,
+                                          child: Text(
+                                            name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: Color(0xFF000000),
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          email,
                                           style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            color: Color(0xFF000000),
+                                            fontSize: 14,
+                                            color: Colors.black,
                                             fontFamily: 'SF Pro Display',
                                           ),
-                                          maxLines: 2,
+                                          maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        email,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        // Position
-                        Expanded(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 16.0),
-                            child: Tooltip(
-                              message: position,
+                          // Position
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 16.0),
+                              child: Tooltip(
+                                message: position,
+                                child: Text(
+                                  position,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.black,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Contact
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 16.0),
                               child: Text(
-                                position,
+                                contact,
                                 style: const TextStyle(
                                   fontSize: 15,
                                   color: Colors.black,
                                   fontFamily: 'SF Pro Display',
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
-                        ),
-                        // Contact
-                        Expanded(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 16.0),
-                            child: Text(
-                              contact,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        // Time Off Action
-                        Expanded(
-                          flex: 2,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: InkWell(
-                              onTap: () {
-                                if (widget.onAssignTimeOff != null) {
-                                  widget.onAssignTimeOff!(doc);
-                                } else {
-                                  // Fallback if rendered as standalone
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => AssignTimeOffScreen(
-                                        onBack: () =>
-                                            Navigator.of(context).pop(),
-                                        initialWorker: doc,
+                          // Time Off Action
+                          Expanded(
+                            flex: 2,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: InkWell(
+                                onTap: () {
+                                  if (widget.onAssignTimeOff != null) {
+                                    widget.onAssignTimeOff!(doc);
+                                  } else {
+                                    // Fallback if rendered as standalone
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AssignTimeOffScreen(
+                                              onBack: () =>
+                                                  Navigator.of(context).pop(),
+                                              initialWorker: doc,
+                                            ),
                                       ),
-                                    ),
-                                  );
-                                }
-                              },
-                              mouseCursor: SystemMouseCursors.click,
-                              borderRadius: BorderRadius.circular(6),
-                              splashColor: const Color(
-                                0xFF0D4CC6,
-                              ).withValues(alpha: 0.15),
-                              highlightColor: const Color(
-                                0xFF0D4CC6,
-                              ).withValues(alpha: 0.05),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Text(
-                                    action,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Color(0xFF0D4CC6),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
+                                    );
+                                  }
+                                },
+                                mouseCursor: SystemMouseCursors.click,
+                                borderRadius: BorderRadius.circular(6),
+                                splashColor: const Color(
+                                  0xFF0D4CC6,
+                                ).withValues(alpha: 0.15),
+                                highlightColor: const Color(
+                                  0xFF0D4CC6,
+                                ).withValues(alpha: 0.05),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Text(
+                                      action,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        color: Color(0xFF0D4CC6),
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
             ),
           ),
           // Pagination

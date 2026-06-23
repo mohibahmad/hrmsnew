@@ -334,6 +334,9 @@
 
   "time_off_list": "Lista de tiempo libre",
   "no_time_off_requests": "Sin solicitudes de tiempo libre",
+  "no_time_off_records": "Sin registros de tiempo libre",
+  "no_time_off": "Sin tiempo libre",
+  "no_time_off_record_to_delete": "No hay registro de tiempo libre para eliminar",
   "time_off": "Tiempo libre",
   "assign_time_off": "Asignar tiempo libre",
   "assign": "Asignar",

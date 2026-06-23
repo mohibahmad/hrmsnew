@@ -334,6 +334,9 @@
 
   "time_off_list": "Liste des congés",
   "no_time_off_requests": "Aucune demande de congé",
+  "no_time_off_records": "Aucun enregistrement de congé",
+  "no_time_off": "Pas de congé",
+  "no_time_off_record_to_delete": "Aucun enregistrement de congé à supprimer",
   "time_off": "Congé",
   "assign_time_off": "Attribuer un congé",
   "assign": "Attribuer",
