@@ -3143,11 +3143,11 @@ class LeaveTypesPieChart extends StatelessWidget {
                   TweenAnimationBuilder<double>(
                     key: ValueKey(period),
                     tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 750),
-                    curve: Curves.easeOutQuart,
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOutBack,
                     builder: (context, animValue, child) {
                       return Transform.rotate(
-                        angle: (1 - animValue) * 1.5 * math.pi,
+                        angle: (1 - animValue) * 0.3 * math.pi,
                         child: child,
                       );
                     },
