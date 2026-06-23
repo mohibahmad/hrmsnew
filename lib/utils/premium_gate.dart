@@ -13,7 +13,7 @@ class PremiumGate {
     required bool isPremium,
     required bool isGuest,
   }) {
-    if (isPremium) return true;
+    if (isPremium || isGuest) return true;
     return currentEntryCount < freeEntryLimit;
   }
 

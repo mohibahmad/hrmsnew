@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:csv/csv.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:open_file_plus/open_file_plus.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -675,25 +679,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Offset.zero & overlay.size,
             )
           : (button != null
-              ? RelativeRect.fromRect(
-                  Rect.fromPoints(
-                    button.localToGlobal(Offset.zero, ancestor: overlay),
-                    button.localToGlobal(
-                      button.size.bottomRight(Offset.zero),
-                      ancestor: overlay,
+                ? RelativeRect.fromRect(
+                    Rect.fromPoints(
+                      button.localToGlobal(Offset.zero, ancestor: overlay),
+                      button.localToGlobal(
+                        button.size.bottomRight(Offset.zero),
+                        ancestor: overlay,
+                      ),
                     ),
-                  ),
-                  Offset.zero & overlay.size,
-                )
-              : RelativeRect.fromRect(
-                  Rect.fromLTWH(
-                    overlay.size.width / 2,
-                    overlay.size.height / 2,
-                    0,
-                    0,
-                  ),
-                  Offset.zero & overlay.size,
-                )),
+                    Offset.zero & overlay.size,
+                  )
+                : RelativeRect.fromRect(
+                    Rect.fromLTWH(
+                      overlay.size.width / 2,
+                      overlay.size.height / 2,
+                      0,
+                      0,
+                    ),
+                    Offset.zero & overlay.size,
+                  )),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(6),
         side: const BorderSide(color: Color(0xFFCBCBCB)),
@@ -775,12 +779,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final email = doc['email'];
         if (email != null) {
           final worker = _workersList.firstWhere(
-            (w) => (w['email'] ?? '').toString().toLowerCase() == email.toString().toLowerCase(),
+            (w) =>
+                (w['email'] ?? '').toString().toLowerCase() ==
+                email.toString().toLowerCase(),
             orElse: () => <String, dynamic>{},
           );
           final workerId = worker['id'];
           if (workerId != null) {
-            final Map<String, dynamic> updatedWorker = Map<String, dynamic>.from(worker);
+            final Map<String, dynamic> updatedWorker =
+                Map<String, dynamic>.from(worker);
             updatedWorker['status'] = FieldValue.delete();
             updatedWorker.remove('id');
             await FirestoreService().updateWorker(workerId, updatedWorker);
@@ -794,12 +801,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final email = (doc['email'] ?? '').toString().trim().toLowerCase();
     final name = (doc['name'] ?? '').toString().trim().toLowerCase();
 
-    // Compute real attendance stats from raw attendance records
     final workerRecords = _rawAttendanceDocs.where((att) {
       final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
       final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-      return (email.isNotEmpty && attEmail == email) ||
-          (name.isNotEmpty && attName == name);
+      if (email.isNotEmpty) {
+        return attEmail == email && attName == name;
+      }
+      return name.isNotEmpty && attName == name;
     }).toList();
 
     int totalWorkingDays = workerRecords.length;
@@ -836,6 +844,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           absents: absents,
           leaves: leaves,
           percentage: percentage,
+          workerRecords: workerRecords,
         ),
       ),
     );
@@ -1138,6 +1147,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
   final int absents;
   final int leaves;
   final double percentage;
+  final List<Map<String, dynamic>> workerRecords;
 
   const WorkerAttendancePreviewCard({
     super.key,
@@ -1147,6 +1157,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
     required this.absents,
     required this.leaves,
     required this.percentage,
+    required this.workerRecords,
   });
 
   static const Color primaryBlue = Color(0xFF0A51D0);
@@ -1216,24 +1227,22 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
               ),
-              IconButton(
-                icon: SvgPicture.asset(
-                  'assets/share1.svg',
-                  height: 18,
-                  width: 18,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFFFFFFF),
-                    BlendMode.srcIn,
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
+                  icon: SvgPicture.asset(
+                    'assets/share1.svg',
+                    height: 18,
+                    width: 18,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFFFFFFF),
+                      BlendMode.srcIn,
+                    ),
                   ),
+                  onPressed: () => _exportCsv(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
-                onPressed: () {
-                  FlashySnackBar.show(
-                    context,
-                    message: 'share_coming_soon'.tr(),
-                  );
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
               ),
             ],
           ),
@@ -1270,15 +1279,15 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                       record.name,
                       style: const TextStyle(
                         color: Color(0xFFFFFFFF),
-                        fontSize: 18,
+                        fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3,
+                        horizontal: 12,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         color: Color(0xFFFFFFFF),
@@ -1288,7 +1297,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         record.workType,
                         style: const TextStyle(
                           color: Color(0xFF0A51D0),
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1300,15 +1309,15 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         const Icon(
                           Icons.email_outlined,
                           color: Color(0xFFFFFFFF),
-                          size: 14,
+                          size: 16,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             record.email,
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
-                              fontSize: 13,
+                              fontSize: 15,
                               fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -1316,21 +1325,21 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
 
                     Row(
                       children: [
                         const Icon(
                           Icons.phone,
                           color: Color(0xFFFFFFFF),
-                          size: 14,
+                          size: 16,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Text(
                           record.phone ?? 'na'.tr(),
                           style: const TextStyle(
                             color: Color(0xFFFFFFFF),
-                            fontSize: 13,
+                            fontSize: 15,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1654,5 +1663,106 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _exportCsv(BuildContext context) async {
+    final List<List<dynamic>> rows = [];
+
+    // Header section
+    rows.add(['Worker Attendance Summary']);
+    rows.add(['Name', record.name]);
+    rows.add(['Email', record.email]);
+    rows.add(['Position', record.role]);
+    rows.add(['Work Type', record.workType]);
+    rows.add(['Attendance Type', record.attendanceType]);
+    rows.add([]);
+    rows.add(['Total Working Days', '$totalWorkingDays ${'days_unit'.tr()}']);
+    rows.add(['Total Presents', '$presents ${'days_unit'.tr()}']);
+    rows.add(['Total Absents', '$absents ${'days_unit'.tr()}']);
+    rows.add(['Total Leaves', '$leaves ${'days_unit'.tr()}']);
+    rows.add(['Attendance Percentage', '${percentage.toStringAsFixed(1)}%']);
+    rows.add([]);
+
+    // Daily Logs header
+    rows.add(['Daily Attendance Logs']);
+    rows.add([
+      'Date',
+      'Status',
+      'Work Model',
+      'Attendance Type',
+      'Reason/Notes',
+    ]);
+
+    // Sort workerRecords by date (newest first)
+    final sortedRecords = List<Map<String, dynamic>>.from(workerRecords);
+    sortedRecords.sort((a, b) {
+      final aTime = a['createdAt'];
+      final bTime = b['createdAt'];
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      if (aTime is Timestamp && bTime is Timestamp) {
+        return bTime.compareTo(aTime);
+      }
+      return 0;
+    });
+
+    String formatDate(dynamic createdAt) {
+      if (createdAt == null) return 'N/A';
+      if (createdAt is Timestamp) {
+        final date = createdAt.toDate();
+        return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      }
+      if (createdAt is String) {
+        try {
+          final date = DateTime.parse(createdAt);
+          return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        } catch (_) {
+          return createdAt;
+        }
+      }
+      return createdAt.toString();
+    }
+
+    for (var att in sortedRecords) {
+      final dateStr = formatDate(att['createdAt']);
+      final status = att['status'] ?? '-';
+      final model = att['workType'] ?? '-';
+      final type = att['attendanceType'] ?? '-';
+      final notes = att['desc'] ?? att['reason'] ?? '-';
+      rows.add([dateStr, status, model, type, notes]);
+    }
+
+    final csvString = const CsvEncoder().convert(rows);
+
+    try {
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: 'export_attendance'.tr(),
+        fileName: '${record.name.replaceAll(' ', '_')}_attendance.csv',
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (outputFile == null) return;
+
+      final file = File(outputFile);
+      await file.writeAsString(csvString);
+
+      if (context.mounted) {
+        await OpenFile.open(outputFile);
+        FlashySnackBar.show(
+          context,
+          message: 'attendance_exported'.tr(),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'Error exporting CSV: $e',
+          isError: true,
+        );
+      }
+    }
   }
 }

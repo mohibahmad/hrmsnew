@@ -582,5 +582,7 @@
   "template_saved_successfully": "Template saved successfully.",
   "error_picking_csv": "Error picking CSV file.",
   "no_valid_workers_found_in_csv": "No valid workers found in CSV.",
-  "long_press_to_delete": "Long press to delete"
+  "long_press_to_delete": "Long press to delete",
+  "export_attendance": "Export Attendance",
+  "attendance_exported": "Attendance exported successfully"
 }

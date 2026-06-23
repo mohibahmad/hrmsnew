@@ -579,5 +579,7 @@
   "template_saved_successfully": "Modelo salvo com sucesso.",
   "error_picking_csv": "Erro ao selecionar o arquivo CSV.",
   "no_valid_workers_found_in_csv": "Nenhum funcionário válido encontrado no CSV.",
-  "long_press_to_delete": "Pressione e segure para excluir"
+  "long_press_to_delete": "Pressione e segure para excluir",
+  "export_attendance": "Exportar Presença",
+  "attendance_exported": "Presença exportada com sucesso"
 }

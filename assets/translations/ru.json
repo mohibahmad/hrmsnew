@@ -579,5 +579,7 @@
   "template_saved_successfully": "Шаблон успешно сохранен.",
   "error_picking_csv": "Ошибка при выборе файла CSV.",
   "no_valid_workers_found_in_csv": "В CSV не найдено подходящих сотрудников.",
-  "long_press_to_delete": "Нажмите и удерживайте для удаления"
+  "long_press_to_delete": "Нажмите и удерживайте для удаления",
+  "export_attendance": "Экспорт посещаемости",
+  "attendance_exported": "Посещаемость успешно экспортирована"
 }
