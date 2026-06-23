@@ -842,10 +842,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 80),
+    double dynamicHeight = MediaQuery.of(context).size.height - 450;
+    if (dynamicHeight < 300) dynamicHeight = 300;
+    return Container(
+      width: double.infinity,
+      height: dynamicHeight,
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
