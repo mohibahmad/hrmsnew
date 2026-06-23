@@ -947,25 +947,28 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Image.asset(
-                          'assets/premium_icon.png',
-                          width: 28,
-                          height: 28,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'upgrade_pro'.tr(),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'assets/premium_icon.png',
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Text(
+                            'upgrade_pro'.tr(),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     _buildCheckText('unlock_all_features'.tr()),
@@ -1272,25 +1275,28 @@ class _SidebarWidgetState extends State<SidebarWidget> {
   Widget _buildCheckText(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            'assets/tick_icon.svg',
-            width: 14,
-            height: 10,
-            color: Color(0xFFFFFFFF),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              'assets/tick_icon.svg',
+              width: 14,
+              height: 10,
               color: Color(0xFFFFFFFF),
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
