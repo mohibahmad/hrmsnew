@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -2565,6 +2566,26 @@ class AttendanceLineChart extends StatelessWidget {
   }
 }
 
+class SlotConfig {
+  final double targetAngle;
+  final Offset elbow;
+  final Offset labelEnd;
+  final double? left;
+  final double? top;
+  final double? right;
+  final double? bottom;
+
+  const SlotConfig({
+    required this.targetAngle,
+    required this.elbow,
+    required this.labelEnd,
+    this.left,
+    this.top,
+    this.right,
+    this.bottom,
+  });
+}
+
 class LeavePeriodConfig {
   final double casualVal;
   final double sickVal;
@@ -2761,25 +2782,109 @@ class LeaveTypesPieChart extends StatelessWidget {
         ? (medicalCount / total) * 100
         : 0.0;
 
+    final double casualVal = total > 0 ? casualPercent : defaultConfig.casualVal;
+    final double sickVal = total > 0 ? sickPercent : defaultConfig.sickVal;
+    final double medicalVal = total > 0 ? medicalPercent : defaultConfig.medicalVal;
+
+    final double totalValue = casualVal + sickVal + medicalVal;
+    final double casualSweep = totalValue > 0 ? (casualVal / totalValue) * 360 : 0;
+    final double sickSweep = totalValue > 0 ? (sickVal / totalValue) * 360 : 0;
+    final double medicalSweep = totalValue > 0 ? (medicalVal / totalValue) * 360 : 0;
+
+    double normalizeAngle(double a) {
+      double val = a % 360;
+      if (val < 0) val += 360;
+      return val;
+    }
+
+    final double aCasual = normalizeAngle(108 + casualSweep / 2);
+    final double aSick = normalizeAngle(108 + casualSweep + sickSweep / 2);
+    final double aMedical = normalizeAngle(108 + casualSweep + sickSweep + medicalSweep / 2);
+
+    double angleDistance(double a, double b) {
+      double diff = (a - b).abs() % 360;
+      return diff > 180 ? 360 - diff : diff;
+    }
+
+    final slots = [
+      const SlotConfig(
+        targetAngle: 0.0, // Top-Right
+        elbow: Offset(275, 60),
+        labelEnd: Offset(325, 60),
+        right: 65,
+        top: 36,
+      ),
+      const SlotConfig(
+        targetAngle: 120.0, // Bottom-Left
+        elbow: Offset(135, 245),
+        labelEnd: Offset(80, 245),
+        left: 90,
+        bottom: 18,
+      ),
+      const SlotConfig(
+        targetAngle: 240.0, // Top-Left
+        elbow: Offset(105, 60),
+        labelEnd: Offset(55, 60),
+        left: 65,
+        top: 36,
+      ),
+    ];
+
+    final sliceAngles = [aCasual, aSick, aMedical];
+    final permutations = const [
+      [0, 1, 2],
+      [0, 2, 1],
+      [1, 0, 2],
+      [1, 2, 0],
+      [2, 0, 1],
+      [2, 1, 0],
+    ];
+
+    double minCost = double.infinity;
+    List<int> bestPerm = permutations[0];
+
+    for (final perm in permutations) {
+      double cost = 0;
+      for (int i = 0; i < 3; i++) {
+        cost += angleDistance(sliceAngles[i], slots[perm[i]].targetAngle);
+      }
+      if (cost < minCost) {
+        minCost = cost;
+        bestPerm = perm;
+      }
+    }
+
+    final slotCasual = slots[bestPerm[0]];
+    final slotSick = slots[bestPerm[1]];
+    final slotMedical = slots[bestPerm[2]];
+
+    Offset getCircumferencePoint(double angleDegrees) {
+      final double rad = angleDegrees * math.pi / 180;
+      return Offset(
+        190 + 45 * math.cos(rad),
+        130 + 45 * math.sin(rad),
+      );
+    }
+
     final config = LeavePeriodConfig(
-      casualVal: total > 0 ? casualPercent : defaultConfig.casualVal,
-      sickVal: total > 0 ? sickPercent : defaultConfig.sickVal,
-      medicalVal: total > 0 ? medicalPercent : defaultConfig.medicalVal,
-      casualPath: defaultConfig.casualPath,
-      sickPath: defaultConfig.sickPath,
-      medicalPath: defaultConfig.medicalPath,
-      casualLeft: defaultConfig.casualLeft,
-      casualTop: defaultConfig.casualTop,
-      casualRight: defaultConfig.casualRight,
-      casualBottom: defaultConfig.casualBottom,
-      sickLeft: defaultConfig.sickLeft,
-      sickTop: defaultConfig.sickTop,
-      sickRight: defaultConfig.sickRight,
-      sickBottom: defaultConfig.sickBottom,
-      medicalLeft: defaultConfig.medicalLeft,
-      medicalTop: defaultConfig.medicalTop,
-      medicalRight: defaultConfig.medicalRight,
-      medicalBottom: defaultConfig.medicalBottom,
+      casualVal: casualVal,
+      sickVal: sickVal,
+      medicalVal: medicalVal,
+      casualPath: [getCircumferencePoint(aCasual), slotCasual.elbow, slotCasual.labelEnd],
+      sickPath: [getCircumferencePoint(aSick), slotSick.elbow, slotSick.labelEnd],
+      medicalPath: [getCircumferencePoint(aMedical), slotMedical.elbow, slotMedical.labelEnd],
+      casualLeft: slotCasual.left,
+      casualTop: slotCasual.top,
+      casualRight: slotCasual.right,
+      casualBottom: slotCasual.bottom,
+      sickLeft: slotSick.left,
+      sickTop: slotSick.top,
+      sickRight: slotSick.right,
+      sickBottom: slotSick.bottom,
+      medicalLeft: slotMedical.left,
+      medicalTop: slotMedical.top,
+      medicalRight: slotMedical.right,
+      medicalBottom: slotMedical.bottom,
     );
 
     final bool reallyEmpty = isEmpty || total == 0 || workersList.isEmpty;
@@ -2856,9 +2961,15 @@ class LeaveTypesPieChart extends StatelessWidget {
                             CustomPaint(
                               size: const Size(380, 260),
                               painter: CalloutLinesPainter(
-                                casualPath: config.casualVal > 0 ? config.casualPath : const [],
-                                sickPath: config.sickVal > 0 ? config.sickPath : const [],
-                                medicalPath: config.medicalVal > 0 ? config.medicalPath : const [],
+                                casualPath: config.casualVal > 0
+                                    ? config.casualPath
+                                    : const [],
+                                sickPath: config.sickVal > 0
+                                    ? config.sickPath
+                                    : const [],
+                                medicalPath: config.medicalVal > 0
+                                    ? config.medicalPath
+                                    : const [],
                               ),
                             ),
                             if (config.casualVal > 0)
@@ -2877,7 +2988,9 @@ class LeaveTypesPieChart extends StatelessWidget {
                                 left: config.sickLeft,
                                 right: config.sickRight,
                                 bottom: config.sickBottom,
-                                child: _ChartLabel('${config.sickVal.toInt()}%'),
+                                child: _ChartLabel(
+                                  '${config.sickVal.toInt()}%',
+                                ),
                               ),
                             if (config.medicalVal > 0)
                               Positioned(
