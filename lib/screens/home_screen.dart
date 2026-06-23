@@ -647,7 +647,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 20),
                 Builder(
                   builder: (context) {
-                    final double screenWidth = MediaQuery.of(context).size.width;
+                    final double screenWidth = MediaQuery.of(
+                      context,
+                    ).size.width;
                     final bool isNarrow = screenWidth < 1150;
                     if (isNarrow) {
                       return Column(
@@ -2002,8 +2004,8 @@ class SparklineCard extends StatelessWidget {
                           gridData: FlGridData(show: false),
                           titlesData: FlTitlesData(show: false),
                           borderData: FlBorderData(show: false),
-                          minX: -0.3,
-                          maxX: 8.3,
+                          minX: 0,
+                          maxX: 8,
                           minY: 0,
                           maxY: 13,
                           lineBarsData: [
@@ -2414,7 +2416,11 @@ class AttendanceLineChart extends StatelessWidget {
                         );
 
                         return Padding(
-                          padding: const EdgeInsets.only(right: 22.0, top: 10.0, bottom: 20.0),
+                          padding: const EdgeInsets.only(
+                            right: 20.0,
+                            top: 4.0,
+                            bottom: 2.0,
+                          ),
                           child: LineChart(
                             LineChartData(
                               minX: 0,
@@ -2470,7 +2476,8 @@ class AttendanceLineChart extends StatelessWidget {
                                         fontFamily: 'SF Pro Display',
                                       );
                                       return Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           Text(
                                             value.toInt().toString(),
@@ -2817,14 +2824,22 @@ class LeaveTypesPieChart extends StatelessWidget {
         ? (medicalCount / total) * 100
         : 0.0;
 
-    final double casualVal = total > 0 ? casualPercent : defaultConfig.casualVal;
+    final double casualVal = total > 0
+        ? casualPercent
+        : defaultConfig.casualVal;
     final double sickVal = total > 0 ? sickPercent : defaultConfig.sickVal;
-    final double medicalVal = total > 0 ? medicalPercent : defaultConfig.medicalVal;
+    final double medicalVal = total > 0
+        ? medicalPercent
+        : defaultConfig.medicalVal;
 
     final double totalValue = casualVal + sickVal + medicalVal;
-    final double casualSweep = totalValue > 0 ? (casualVal / totalValue) * 360 : 0;
+    final double casualSweep = totalValue > 0
+        ? (casualVal / totalValue) * 360
+        : 0;
     final double sickSweep = totalValue > 0 ? (sickVal / totalValue) * 360 : 0;
-    final double medicalSweep = totalValue > 0 ? (medicalVal / totalValue) * 360 : 0;
+    final double medicalSweep = totalValue > 0
+        ? (medicalVal / totalValue) * 360
+        : 0;
 
     double normalizeAngle(double a) {
       double val = a % 360;
@@ -2834,7 +2849,9 @@ class LeaveTypesPieChart extends StatelessWidget {
 
     final double aCasual = normalizeAngle(108 + casualSweep / 2);
     final double aSick = normalizeAngle(108 + casualSweep + sickSweep / 2);
-    final double aMedical = normalizeAngle(108 + casualSweep + sickSweep + medicalSweep / 2);
+    final double aMedical = normalizeAngle(
+      108 + casualSweep + sickSweep + medicalSweep / 2,
+    );
 
     double angleDistance(double a, double b) {
       double diff = (a - b).abs() % 360;
@@ -2895,19 +2912,28 @@ class LeaveTypesPieChart extends StatelessWidget {
 
     Offset getCircumferencePoint(double angleDegrees) {
       final double rad = angleDegrees * math.pi / 180;
-      return Offset(
-        190 + 45 * math.cos(rad),
-        130 + 45 * math.sin(rad),
-      );
+      return Offset(190 + 45 * math.cos(rad), 130 + 45 * math.sin(rad));
     }
 
     final config = LeavePeriodConfig(
       casualVal: casualVal,
       sickVal: sickVal,
       medicalVal: medicalVal,
-      casualPath: [getCircumferencePoint(aCasual), slotCasual.elbow, slotCasual.labelEnd],
-      sickPath: [getCircumferencePoint(aSick), slotSick.elbow, slotSick.labelEnd],
-      medicalPath: [getCircumferencePoint(aMedical), slotMedical.elbow, slotMedical.labelEnd],
+      casualPath: [
+        getCircumferencePoint(aCasual),
+        slotCasual.elbow,
+        slotCasual.labelEnd,
+      ],
+      sickPath: [
+        getCircumferencePoint(aSick),
+        slotSick.elbow,
+        slotSick.labelEnd,
+      ],
+      medicalPath: [
+        getCircumferencePoint(aMedical),
+        slotMedical.elbow,
+        slotMedical.labelEnd,
+      ],
       casualLeft: slotCasual.left,
       casualTop: slotCasual.top,
       casualRight: slotCasual.right,
