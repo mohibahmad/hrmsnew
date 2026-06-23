@@ -930,17 +930,22 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 margin: const EdgeInsets.only(top: 29, left: 16, right: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
                   image: const DecorationImage(
                     image: AssetImage('assets/premium_bg.png'),
                     fit: BoxFit.cover,
                   ),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0xFFFFFFFF),
-                      blurRadius: 0.5,
-                      spreadRadius: 0.0,
+                      color: Color(0xFFFFFFFF).withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                    BoxShadow(
+                      color: Color(0xFF4C84E0).withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      spreadRadius: 0,
                     ),
                   ],
                 ),
