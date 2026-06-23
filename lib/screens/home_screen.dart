@@ -1993,14 +1993,29 @@ class SparklineCard extends StatelessWidget {
                               tooltipRoundedRadius: 8,
                               getTooltipItems: (tSpots) {
                                 if (tSpots.isEmpty) return <LineTooltipItem>[];
-                                return tSpots.map((_) {
+                                final seenX = <double>{};
+                                final nf = NumberFormat.currency(
+                                    locale: context.locale.toString(),
+                                    symbol: '\$ ',
+                                    decimalDigits: 0);
+                                return tSpots.map((tSpot) {
+                                  if (seenX.add(tSpot.x)) {
+                                    final label = nf.format(tSpot.y);
+                                    return LineTooltipItem(
+                                      label,
+                                      const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    );
+                                  }
                                   return LineTooltipItem(
-                                    amount,
+                                    '',
                                     const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      fontFamily: 'SF Pro Display',
+                                      color: Colors.transparent,
+                                      fontSize: 0,
                                     ),
                                   );
                                 }).toList();
@@ -2010,8 +2025,9 @@ class SparklineCard extends StatelessWidget {
                           gridData: FlGridData(show: false),
                           titlesData: FlTitlesData(show: false),
                           borderData: FlBorderData(show: false),
-                          minX: 0,
-                          maxX: 8,
+                          // add horizontal padding so the line doesn't touch card edges
+                          minX: -0.5,
+                          maxX: 8.5,
                           minY: 0,
                           maxY: 13,
                           lineBarsData: [
@@ -2429,8 +2445,9 @@ class AttendanceLineChart extends StatelessWidget {
                           ),
                           child: LineChart(
                             LineChartData(
-                              minX: 0,
-                              maxX: (spots.length - 1).toDouble(),
+                              // add horizontal padding so the line doesn't touch card edges
+                              minX: -0.5,
+                              maxX: (spots.length - 1).toDouble() + 0.5,
                               minY: 0,
                               maxY: range.maxY,
                               lineTouchData: LineTouchData(
