@@ -1981,8 +1981,8 @@ class SparklineCard extends StatelessWidget {
                                   .map((s) => FlSpot(s.x, s.y * animValue))
                                   .toList(),
                               isCurved: true,
-                              color: lineColor.withValues(alpha: 0.12),
-                              barWidth: 8,
+                              color: lineColor.withValues(alpha: 0.06),
+                              barWidth: 4,
                               isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
                             ),
