@@ -510,7 +510,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             // 0: Dashboard View
                             _activatedScreens[0]
-                                ? _buildDashboardView()
+                                ? TweenAnimationBuilder<double>(
+                                    key: ValueKey(stackIndex == 0),
+                                    tween: Tween<double>(begin: 0, end: 1),
+                                    duration: const Duration(milliseconds: 650),
+                                    curve: Curves.easeOutQuart,
+                                    builder: (context, value, child) {
+                                      return Opacity(
+                                        opacity: value,
+                                        child: Transform.translate(
+                                          offset: Offset(0, 15 * (1 - value)),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: _buildDashboardView(),
+                                  )
                                 : const SizedBox.shrink(),
                             // 1: Workers Screen
                             _getScreen(1),
