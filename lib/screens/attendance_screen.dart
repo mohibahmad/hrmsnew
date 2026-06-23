@@ -15,6 +15,7 @@ import '../services/dummy_data.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
 import '../utils/image_utils.dart';
+import '../utils/date_utils.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/snackbar_utils.dart';
 
@@ -202,8 +203,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  bool _matchesPeriod(Map<String, dynamic> doc) {
+    final createdAt = doc['createdAt'];
+    final dateStr = createdAt?.toString() ?? '';
+    if (dateStr.isEmpty) return true;
+    return AppDateUtils.isDateWithinPeriod(dateStr, _selectedTimeframe);
+  }
+
   List<Map<String, dynamic>> get _filteredRecords {
     return _attendanceDocs.where((doc) {
+      if (!_matchesPeriod(doc)) return false;
+
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final role = (doc['role'] ?? '').toString().toLowerCase();
       final status = (doc['status'] ?? '').toString();
@@ -220,13 +230,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }).toList();
   }
 
-  int get _totalCount => _attendanceDocs.length;
-  int get _presentCount =>
-      _attendanceDocs.where((d) => d['status'] == 'Present').length;
-  int get _absentCount =>
-      _attendanceDocs.where((d) => d['status'] == 'Absent').length;
-  int get _leaveCount =>
-      _attendanceDocs.where((d) => d['status'] == 'Leave').length;
+  int get _totalCount =>
+      _attendanceDocs.where((d) => _matchesPeriod(d)).length;
+  int get _presentCount => _attendanceDocs
+      .where((d) => d['status'] == 'Present' && _matchesPeriod(d)).length;
+  int get _absentCount => _attendanceDocs
+      .where((d) => d['status'] == 'Absent' && _matchesPeriod(d)).length;
+  int get _leaveCount => _attendanceDocs
+      .where((d) => d['status'] == 'Leave' && _matchesPeriod(d)).length;
 
   @override
   Widget build(BuildContext context) {
