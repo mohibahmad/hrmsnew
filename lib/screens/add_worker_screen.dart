@@ -105,7 +105,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   }
 
   Future<String?> _uploadToStorage(
-    String folder, String fileName, Uint8List fileBytes,
+    String folder,
+    String fileName,
+    Uint8List fileBytes,
   ) async {
     try {
       final ref = FirebaseStorage.instance.ref().child(
@@ -150,6 +152,17 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             _profileImageName ?? 'profile.jpg',
             _profileImageBytes!,
           );
+          if (profileImageUrl == null) {
+            if (mounted) {
+              FlashySnackBar.show(
+                context,
+                message: 'file_upload_failed'.tr(
+                  namedArgs: {'file': _profileImageName ?? 'profile.jpg'},
+                ),
+                isError: true,
+              );
+            }
+          }
           // Fallback to base64 if upload fails
           profileImageUrl ??=
               'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
@@ -525,7 +538,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                               label: 'gender_label'.tr(),
                                               selectedValue: selectedGender,
                                               hint: 'enter_gender'.tr(),
-                                              items: const ['Male', 'Female', 'Other'],
+                                              items: const [
+                                                'Male',
+                                                'Female',
+                                                'Other',
+                                              ],
                                               onChanged: (val) {
                                                 if (val != null) {
                                                   setState(() {
@@ -575,7 +592,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                           width: double.infinity,
                                           decoration: BoxDecoration(
                                             color: Color(0xFFFFFFFF),
-                                            borderRadius: BorderRadius.circular(16),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
                                             boxShadow: [
                                               BoxShadow(
                                                 color: Color(
@@ -590,7 +609,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                               ? Stack(
                                                   children: [
                                                     ClipRRect(
-                                                      borderRadius: BorderRadius.circular(16),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            16,
+                                                          ),
                                                       child: Image.memory(
                                                         _profileImageBytes!,
                                                         height: 240,
@@ -602,11 +624,20 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                       bottom: 8,
                                                       right: 8,
                                                       child: Container(
-                                                        padding: const EdgeInsets.all(6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.black.withOpacity(0.6),
-                                                          shape: BoxShape.circle,
-                                                        ),
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              6,
+                                                            ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                              color: Colors
+                                                                  .black
+                                                                  .withOpacity(
+                                                                    0.6,
+                                                                  ),
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
                                                         child: const Icon(
                                                           Icons.edit,
                                                           color: Colors.white,
@@ -626,32 +657,43 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                       width: 64,
                                                       fit: BoxFit.cover,
                                                       errorBuilder:
-                                                          (context, error, stackTrace) =>
-                                                              const Icon(
-                                                                Icons.person,
-                                                                size: 64,
-                                                                color: Colors.grey,
-                                                              ),
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => const Icon(
+                                                            Icons.person,
+                                                            size: 64,
+                                                            color: Colors.grey,
+                                                          ),
                                                     ),
                                                     const SizedBox(height: 12),
                                                     Text(
                                                       'upload_profile'.tr(),
                                                       style: TextStyle(
-                                                        color: Color(0xFF000000),
-                                                        fontWeight: FontWeight.w700,
+                                                        color: Color(
+                                                          0xFF000000,
+                                                        ),
+                                                        fontWeight:
+                                                            FontWeight.w700,
                                                         fontSize: 14,
-                                                        fontFamily: 'SF Pro Display',
+                                                        fontFamily:
+                                                            'SF Pro Display',
                                                       ),
                                                     ),
                                                     const SizedBox(height: 6),
                                                     Text(
-                                                      'upload_profile_hint'.tr(),
-                                                      textAlign: TextAlign.center,
+                                                      'upload_profile_hint'
+                                                          .tr(),
+                                                      textAlign:
+                                                          TextAlign.center,
                                                       style: TextStyle(
                                                         color: Colors.black,
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
-                                                        fontFamily: 'SF Pro Display',
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        fontFamily:
+                                                            'SF Pro Display',
                                                       ),
                                                     ),
                                                   ],

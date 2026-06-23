@@ -6,21 +6,28 @@ import '../services/auth_service.dart';
 class PremiumGate {
   static const int freeEntryLimit = 2;
 
+  static bool _isShowingDialog = false;
+
   static bool canAddEntry({
     required int currentEntryCount,
     required bool isPremium,
     required bool isGuest,
   }) {
-    if (isPremium || isGuest) return true;
+    if (isPremium) return true;
     return currentEntryCount < freeEntryLimit;
   }
 
   static Future<bool> shouldShowUpgradeDialog(BuildContext context) async {
     final isPremium = await PreferencesService.isPremium();
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-    if (isPremium || isGuest) return false;
+    if (isPremium) return false;
+    if (_isShowingDialog) return false;
 
-    if (!context.mounted) return false;
+    _isShowingDialog = true;
+    if (!context.mounted) {
+      _isShowingDialog = false;
+      return false;
+    }
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -28,6 +35,7 @@ class PremiumGate {
       builder: (_) => const SubscriptionDialog(),
     );
 
+    _isShowingDialog = false;
     return result ?? false;
   }
 }

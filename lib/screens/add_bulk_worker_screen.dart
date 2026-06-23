@@ -221,6 +221,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
     }
 
+    if (!mounted) return;
+
     List<Map<String, dynamic>> parsedWorkers = [];
     Set<String> csvEmails = {};
     Set<String> csvNames = {};

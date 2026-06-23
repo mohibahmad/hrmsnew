@@ -29,9 +29,6 @@ class HolidaysScreen extends StatefulWidget {
 }
 
 class _HolidaysScreenState extends State<HolidaysScreen> {
-  bool isDataEmpty = false;
-
-
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
   bool _isLoading = false;
   StreamSubscription? _holidaysSub;
@@ -490,9 +487,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         } else if (currentDay <= daysInMonth) {
           final int tapDay = currentDay;
           final bool isSelected = (currentDay == selectedDay);
-          rowChildren.add(_buildDayCell('$currentDay', isSelected, () {
-            onDaySelected(tapDay);
-          }));
+          rowChildren.add(
+            _buildDayCell('$currentDay', isSelected, () {
+              onDaySelected(tapDay);
+            }),
+          );
           currentDay++;
         } else {
           rowChildren.add(_buildDayCell('', false, null));
@@ -509,10 +508,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
     if (day.isEmpty) {
       return const Expanded(
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: SizedBox(),
-        ),
+        child: AspectRatio(aspectRatio: 1, child: SizedBox()),
       );
     }
     return Expanded(
@@ -525,7 +521,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             decoration: BoxDecoration(
               color: isSelected ? const Color(0xFFFF0004) : Colors.transparent,
               border: Border.all(
-                color: isSelected ? const Color(0xFFFF0004) : Colors.grey.shade300,
+                color: isSelected
+                    ? const Color(0xFFFF0004)
+                    : Colors.grey.shade300,
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -565,8 +563,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           padding: EdgeInsets.all(40.0),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      : (isDataEmpty ||
-                                _holidaysByMonth.values.every((l) => l.isEmpty)
+                      : (_holidaysByMonth.values.every((l) => l.isEmpty)
                             ? _buildEmptyState()
                             : _buildFilledState()),
                 ],
@@ -645,9 +642,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         ElevatedButton.icon(
           onPressed: () async {
             final isPremium = await PreferencesService.isPremium();
+            if (!mounted) return;
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (!PremiumGate.canAddEntry(
-              currentEntryCount: _holidaysByMonth.values.fold<int>(0, (sum, list) => sum + list.length),
+              currentEntryCount: _holidaysByMonth.values.fold<int>(
+                0,
+                (sum, list) => sum + list.length,
+              ),
               isPremium: isPremium,
               isGuest: isGuest,
             )) {

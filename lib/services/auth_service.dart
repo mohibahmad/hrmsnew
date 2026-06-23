@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-// import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'preferences_service.dart';
 import 'firestore_service.dart';
 import 'error_reporter.dart';
@@ -164,22 +163,22 @@ class UserAvatar extends StatelessWidget {
       valueListenable: AuthService.profilePicNotifier,
       builder: (context, photoUrl, _) {
         final double size = radius * 2;
-        final hasImage = photoUrl != null && photoUrl.isNotEmpty;
+        final url = photoUrl;
         
         Widget imageWidget;
-        if (hasImage) {
-          if (photoUrl.startsWith('http')) {
+        if (url != null && url.isNotEmpty) {
+          if (url.startsWith('http')) {
             imageWidget = Image.network(
-              photoUrl,
+              url,
               width: size,
               height: size,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => _buildFallback(size),
             );
-          } else if (photoUrl.startsWith('data:image')) {
+          } else if (url.startsWith('data:image')) {
             try {
-              final String base64Content = photoUrl.substring(
-                photoUrl.indexOf(',') + 1,
+              final String base64Content = url.substring(
+                url.indexOf(',') + 1,
               );
               imageWidget = Image.memory(
                 base64Decode(base64Content),
@@ -193,7 +192,7 @@ class UserAvatar extends StatelessWidget {
             }
           } else {
             imageWidget = Image.file(
-              File(photoUrl),
+              File(url),
               width: size,
               height: size,
               fit: BoxFit.cover,

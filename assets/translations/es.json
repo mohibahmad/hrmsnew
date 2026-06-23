@@ -575,5 +575,9 @@
   "week_label_1": "S1",
   "week_label_2": "S2",
   "week_label_3": "S3",
-  "week_label_4": "S4"
+  "week_label_4": "S4",
+  "template_saved_successfully": "Plantilla guardada con éxito.",
+  "error_picking_csv": "Error al seleccionar el archivo CSV.",
+  "no_valid_workers_found_in_csv": "No se encontraron trabajadores válidos en el CSV.",
+  "long_press_to_delete": "Mantén presionado para eliminar"
 }

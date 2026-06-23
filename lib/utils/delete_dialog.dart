@@ -9,9 +9,7 @@ class DeleteDialog {
     required String content,
     String confirmButtonText = 'delete',
   }) async {
-    final resolvedConfirmText = confirmButtonText == 'delete'
-        ? 'delete'.tr()
-        : confirmButtonText;
+    final resolvedConfirmText = confirmButtonText.tr();
     final confirm = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,

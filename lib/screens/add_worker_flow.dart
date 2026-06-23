@@ -625,7 +625,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       if (widget.workerToEdit != null) {
         final editId = widget.workerToEdit!['id']?.toString();
         if (editId == null || editId.isEmpty) {
-          throw StateError('Missing worker id for update');
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'could_not_save_worker'.tr(),
+              isError: true,
+            );
+          }
+          setState(() {
+            _isSaving = false;
+          });
+          return;
         }
         if (isGuest) {
           final index = DummyData.workers.indexWhere((w) => w['id'] == editId);
@@ -840,7 +850,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
                     final bool isSaveReady = isEditMode
                         ? hasChanges
-                        : (_activeTabIndex == 2 && hasFrontId && hasCv);
+                        : (_nameController.text.trim().isNotEmpty &&
+                            _phoneController.text.trim().isNotEmpty);
                     final bool canSave = isSaveReady && !_isSaving;
 
                     return GestureDetector(
@@ -1009,19 +1020,29 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         );
       }
     }
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
-        borderRadius: borderRadius,
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: Color(0xFF000000),
-          fontSize: 15,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          fontFamily: 'SF Pro Display',
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _activeTabIndex = index;
+        });
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
+            borderRadius: borderRadius,
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: const Color(0xFF000000),
+              fontSize: 15,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
         ),
       ),
     );

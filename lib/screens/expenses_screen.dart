@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 
+import '../utils/date_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
@@ -35,7 +36,6 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  bool isDataEmpty = false;
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
@@ -116,7 +116,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   double get _totalExpenseSum {
-    if (isDataEmpty) return 0.0;
     return _filteredExpenses.fold(0.0, (sum, doc) {
       return sum + ((doc['amount'] ?? 0).toDouble());
     });
@@ -132,39 +131,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   bool _isDateWithinPeriod(String dateStr, String period) {
-    try {
-      final parts = dateStr.split('/');
-      if (parts.length != 3) return true;
-      final day = int.parse(parts[0]);
-      final month = int.parse(parts[1]);
-      final year = int.parse(parts[2]);
-      final date = DateTime(year, month, day);
-
-      final now = DateTime.now();
-      // Cap at June 10, 2026 if today is earlier, to ensure dummy data shows up correctly
-      final refDate = now.isBefore(DateTime(2026, 6, 10))
-          ? DateTime(2026, 6, 10)
-          : now;
-
-      final diff = refDate.difference(date).inDays;
-      if (diff < 0) {
-        // Future/newly added date, keep visible
-        return true;
-      }
-
-      if (period == 'Week') {
-        return diff <= 7;
-      } else if (period == 'Month') {
-        return diff <= 30;
-      } else if (period == '3 Month') {
-        return diff <= 90;
-      } else if (period == '6 Month') {
-        return diff <= 180;
-      } else if (period == 'Yearly') {
-        return diff <= 365;
-      }
-    } catch (_) {}
-    return true;
+    return AppDateUtils.isDateWithinPeriod(dateStr, period);
   }
 
   void _adjustDummyDatesForPeriod(String period) {
@@ -235,7 +202,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final descriptionController = TextEditingController(
       text: doc['description']?.toString() ?? '',
     );
-    final docId = doc['id'] as String;
+    final docId = doc['id']?.toString() ?? '';
 
     final dateParts = (doc['date']?.toString() ?? '').split('/');
     int selectedDay = dateParts.isNotEmpty
@@ -1036,7 +1003,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           padding: EdgeInsets.symmetric(vertical: 80),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      : (isDataEmpty || filtered.isEmpty
+                      : (filtered.isEmpty
                             ? _buildEmptyState()
                             : _buildDataTable(filtered)),
                 ],
@@ -1166,16 +1133,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ElevatedButton.icon(
           onPressed: () async {
             final isPremium = await PreferencesService.isPremium();
+            if (!mounted) return;
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (!PremiumGate.canAddEntry(
               currentEntryCount: _expensesDocs.length,
               isPremium: isPremium,
               isGuest: isGuest,
             )) {
+              if (!mounted) return;
               await PremiumGate.shouldShowUpgradeDialog(context);
               return;
             }
-            if (!mounted) return;
             _showAddExpenseModal(context);
           },
           style: ElevatedButton.styleFrom(
@@ -1593,7 +1561,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
-    final docId = doc['id'] as String;
+    final docId = doc['id']?.toString() ?? '';
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(

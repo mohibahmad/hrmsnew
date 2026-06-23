@@ -32,7 +32,6 @@ class AssetsScreen extends StatefulWidget {
 }
 
 class _AssetsScreenState extends State<AssetsScreen> {
-  bool isDataEmpty = false;
   String _searchQuery = '';
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
@@ -833,7 +832,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           padding: EdgeInsets.all(40.0),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      : (isDataEmpty || filtered.isEmpty
+                      : (filtered.isEmpty
                             ? _buildEmptyState()
                             : _buildDataTable(filtered)),
                 ],

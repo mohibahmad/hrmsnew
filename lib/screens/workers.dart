@@ -528,14 +528,14 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final pos = position.toLowerCase();
     final f = filter.toLowerCase();
     if (f == 'designer') {
-      return pos.contains('designer');
+      return pos.contains('designer') && !pos.contains('engineer') && !pos.contains('developer');
     } else if (f == 'developer') {
-      return pos.contains('developer');
+      return (pos.contains('developer') || pos.contains('development')) && !pos.contains('designer');
     } else if (f == 'engineering') {
-      return pos.contains('engineer') ||
+      return (pos.contains('engineer') ||
           pos.contains('architect') ||
           pos.contains('analyst') ||
-          pos.contains('scientist');
+          pos.contains('scientist')) && !pos.contains('designer') && !pos.contains('developer');
     } else if (f == 'sales') {
       return pos.contains('sales') || pos.contains('marketing');
     } else if (f == 'management') {
@@ -777,6 +777,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       label: 'add_worker'.tr(),
                       onTap: () async {
                         final isPremium = await PreferencesService.isPremium();
+                        if (!mounted) return;
                         final isGuest =
                             AuthService().currentUser?.isAnonymous ?? false;
                         if (!PremiumGate.canAddEntry(
@@ -784,10 +785,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           isPremium: isPremium,
                           isGuest: isGuest,
                         )) {
+                          if (!mounted) return;
                           await PremiumGate.shouldShowUpgradeDialog(context);
                           return;
                         }
-                        if (!mounted) return;
                         widget.onAddWorker();
                       },
                     ),
@@ -797,6 +798,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       label: 'add_bulk_workers'.tr(),
                       onTap: () async {
                         final isPremium = await PreferencesService.isPremium();
+                        if (!mounted) return;
                         final isGuest =
                             AuthService().currentUser?.isAnonymous ?? false;
                         if (!PremiumGate.canAddEntry(
@@ -804,10 +806,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           isPremium: isPremium,
                           isGuest: isGuest,
                         )) {
+                          if (!mounted) return;
                           await PremiumGate.shouldShowUpgradeDialog(context);
                           return;
                         }
-                        if (!mounted) return;
                         (widget.onAddBulkWorker ?? () {})();
                       },
                     ),
@@ -1202,6 +1204,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       joiningDate: joiningDate,
                       gender: gender,
                       salary: salary,
+                      experienceLevel: (worker['experienceLevel'] ?? '').toString(),
                       profileImage: profileImage,
                     ),
                   );
@@ -1386,6 +1389,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
   final String joiningDate;
   final String gender;
   final String salary;
+  final String experienceLevel;
   final String? profileImage;
 
   const WorkerProfilePreviewDialog({
@@ -1400,6 +1404,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     required this.joiningDate,
     required this.gender,
     required this.salary,
+    required this.experienceLevel,
     this.profileImage,
   });
 
@@ -1665,7 +1670,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             child: _buildInfoCard(
                               Icons.show_chart,
                               'experience_level'.tr(),
-                              'junior_level'.tr(),
+                              experienceLevel.isNotEmpty ? experienceLevel : 'na'.tr(),
                             ),
                           ),
                           const SizedBox(width: 12),

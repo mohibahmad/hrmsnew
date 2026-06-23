@@ -136,9 +136,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Delete Account?',
-                        style: TextStyle(
+                      Text(
+                        'delete_account_question'.tr(),
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF000000),
@@ -146,10 +146,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Are you sure you want to permanently delete your profile and all data? This action cannot be undone.',
+                      Text(
+                        'delete_account_desc'.tr(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF64748B),
                           fontWeight: FontWeight.w400,
@@ -171,9 +171,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   color: const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
-                                  'Cancel',
-                                  style: TextStyle(
+                                child: Text(
+                                  'cancel'.tr(),
+                                  style: const TextStyle(
                                     color: Color(0xFF000000),
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -204,9 +204,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ],
                                 ),
-                                child: const Text(
-                                  'Delete Account',
-                                  style: TextStyle(
+                                child: Text(
+                                  'delete_account'.tr(),
+                                  style: const TextStyle(
                                     color: Color(0xFFFFFFFF),
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -613,9 +613,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            const Text(
-              'Language',
-              style: TextStyle(
+            Text(
+              'language'.tr(),
+              style: const TextStyle(
                 fontSize: 16,
                 color: Color(0xFF000000),
                 fontWeight: FontWeight.w500,

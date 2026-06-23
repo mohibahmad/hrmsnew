@@ -575,5 +575,9 @@
   "week_label_1": "Н1",
   "week_label_2": "Н2",
   "week_label_3": "Н3",
-  "week_label_4": "Н4"
+  "week_label_4": "Н4",
+  "template_saved_successfully": "Шаблон успешно сохранен.",
+  "error_picking_csv": "Ошибка при выборе файла CSV.",
+  "no_valid_workers_found_in_csv": "В CSV не найдено подходящих сотрудников.",
+  "long_press_to_delete": "Нажмите и удерживайте для удаления"
 }

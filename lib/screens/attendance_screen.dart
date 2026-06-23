@@ -654,24 +654,46 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     BuildContext context,
     Map<String, dynamic> doc,
   ) async {
-    if (_tapPosition == null) return;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final renderObj = context.findRenderObject();
+    final RenderBox? button = renderObj is RenderBox ? renderObj : null;
+    final overlayObj = Overlay.of(context).context.findRenderObject();
+    final RenderBox? overlay = overlayObj is RenderBox ? overlayObj : null;
     if (overlay == null) return;
 
     final docId = doc['id'] as String;
 
     final value = await showMenu<String>(
       context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromLTWH(
-          _tapPosition!.globalPosition.dx,
-          _tapPosition!.globalPosition.dy,
-          0,
-          0,
-        ),
-        Offset.zero & overlay.size,
-      ),
+      position: _tapPosition != null
+          ? RelativeRect.fromRect(
+              Rect.fromLTWH(
+                _tapPosition!.globalPosition.dx,
+                _tapPosition!.globalPosition.dy,
+                0,
+                0,
+              ),
+              Offset.zero & overlay.size,
+            )
+          : (button != null
+              ? RelativeRect.fromRect(
+                  Rect.fromPoints(
+                    button.localToGlobal(Offset.zero, ancestor: overlay),
+                    button.localToGlobal(
+                      button.size.bottomRight(Offset.zero),
+                      ancestor: overlay,
+                    ),
+                  ),
+                  Offset.zero & overlay.size,
+                )
+              : RelativeRect.fromRect(
+                  Rect.fromLTWH(
+                    overlay.size.width / 2,
+                    overlay.size.height / 2,
+                    0,
+                    0,
+                  ),
+                  Offset.zero & overlay.size,
+                )),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(6),
         side: const BorderSide(color: Color(0xFFCBCBCB)),

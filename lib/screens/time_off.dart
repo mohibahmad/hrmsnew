@@ -50,7 +50,6 @@ class TimeOffScreen extends StatefulWidget {
 }
 
 class _TimeOffScreenState extends State<TimeOffScreen> {
-  bool isDataEmpty = false;
   String _searchQuery = '';
   String _selectedTab = 'All';
   List<Map<String, dynamic>> _timeoffDocs = [];
@@ -328,7 +327,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           padding: EdgeInsets.symmetric(vertical: 80),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      : (isDataEmpty || filtered.isEmpty
+                      : (filtered.isEmpty
                             ? _buildEmptyState()
                             : _buildDataTable(filtered)),
                 ],
@@ -623,11 +622,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 } else if (action.isEmpty) {
                   action = 'no_time_off'.tr();
                 }
-                return GestureDetector(
-                  onLongPress: (doc['action'] ?? '').toString().isNotEmpty
-                      ? () => _handleDelete(doc)
-                      : null,
-                  child: Container(
+                 return Tooltip(
+                  message: 'long_press_to_delete'.tr(),
+                  child: GestureDetector(
+                    onLongPress: (doc['action'] ?? '').toString().isNotEmpty
+                        ? () => _handleDelete(doc)
+                        : null,
+                    child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -781,8 +782,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       ],
                     ),
                   ),
-                );
-              },
+                ),
+              );
+            },
             ),
           ),
           // Pagination

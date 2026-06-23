@@ -578,5 +578,9 @@
   "week_label_1": "W1",
   "week_label_2": "W2",
   "week_label_3": "W3",
-  "week_label_4": "W4"
+  "week_label_4": "W4",
+  "template_saved_successfully": "Template saved successfully.",
+  "error_picking_csv": "Error picking CSV file.",
+  "no_valid_workers_found_in_csv": "No valid workers found in CSV.",
+  "long_press_to_delete": "Long press to delete"
 }

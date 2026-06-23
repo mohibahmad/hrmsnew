@@ -575,5 +575,9 @@
   "week_label_1": "S1",
   "week_label_2": "S2",
   "week_label_3": "S3",
-  "week_label_4": "S4"
+  "week_label_4": "S4",
+  "template_saved_successfully": "Modelo salvo com sucesso.",
+  "error_picking_csv": "Erro ao selecionar o arquivo CSV.",
+  "no_valid_workers_found_in_csv": "Nenhum funcionário válido encontrado no CSV.",
+  "long_press_to_delete": "Pressione e segure para excluir"
 }
