@@ -655,12 +655,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          AttendanceLineChart(
-                            period: _selectedPeriod,
-                            isEmpty:
-                                _totalAttendanceCount == 0 ||
-                                _totalWorkersCount == 0,
-                            attendanceDocs: _attendanceDocs,
+                          Transform.translate(
+                            offset: const Offset(-10, 0),
+                            child: AttendanceLineChart(
+                              period: _selectedPeriod,
+                              isEmpty:
+                                  _totalAttendanceCount == 0 ||
+                                  _totalWorkersCount == 0,
+                              attendanceDocs: _attendanceDocs,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           LeaveTypesPieChart(
@@ -679,12 +682,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
-                              child: AttendanceLineChart(
-                                period: _selectedPeriod,
-                                isEmpty:
-                                    _totalAttendanceCount == 0 ||
-                                    _totalWorkersCount == 0,
-                                attendanceDocs: _attendanceDocs,
+                              child: Transform.translate(
+                                offset: const Offset(-10, 0),
+                                child: AttendanceLineChart(
+                                  period: _selectedPeriod,
+                                  isEmpty:
+                                      _totalAttendanceCount == 0 ||
+                                      _totalWorkersCount == 0,
+                                  attendanceDocs: _attendanceDocs,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -1981,15 +1987,15 @@ class SparklineCard extends StatelessWidget {
                       ];
                       return LineChart(
                         LineChartData(
+                          // show the card's `amount` as tooltip for each touched spot
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
-                              getTooltipColor: (spot) =>
-                                  const Color(0xFF2C3E50),
                               tooltipRoundedRadius: 8,
-                              getTooltipItems: (spots) {
-                                return spots.map((spot) {
+                              getTooltipItems: (tSpots) {
+                                if (tSpots.isEmpty) return <LineTooltipItem>[];
+                                return tSpots.map((_) {
                                   return LineTooltipItem(
-                                    spot.y.toStringAsFixed(0),
+                                    amount,
                                     const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
