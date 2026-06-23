@@ -1,7 +1,6 @@
 {
   "app_name": "HRMS",
   "human_resource_management_system": "Sistema de Gestão de Recursos Humanos",
-
   "welcome_back": "Bem-vindo de volta!",
   "sign_in_subtitle": "Entre para continuar sua jornada de RH",
   "email_label": "E-mail",
@@ -17,19 +16,16 @@
   "dont_have_account": "Não tem uma conta? ",
   "sign_up": "Cadastrar-se",
   "sign_in": "Entrar",
-
   "create_account": "Criar conta",
   "signup_subtitle": "Junte-se a nós para começar sua jornada",
   "username_label": "Nome de usuário",
   "username_hint": "Digite seu nome de usuário",
   "already_have_account": "Já tem uma conta? ",
-
   "forgot_password": "Esqueci a senha",
   "forgot_password_subtitle": "Digite seu e-mail e enviaremos um link seguro para redefinir sua senha.",
   "send_reset_link": "Enviar link de redefinição",
   "dont_need_this": "Não precisa disso? ",
   "back_to_login": "Voltar ao login",
-
   "email_required": "Por favor, digite seu e-mail",
   "email_must_contain_at": "O e-mail deve conter @",
   "email_invalid": "Por favor, digite um e-mail válido (ex. nome@dominio.com)",
@@ -38,7 +34,6 @@
   "username_required": "Por favor, digite seu nome de usuário",
   "username_too_short": "O nome de usuário deve ter pelo menos 2 caracteres",
   "password_enter": "Por favor, digite uma senha",
-
   "google_login_failed": "Falha ao entrar com Google. Tente novamente.",
   "apple_login_failed": "Falha ao entrar com Apple. Tente novamente.",
   "guest_login_failed": "Falha ao entrar como convidado. Tente novamente.",
@@ -70,7 +65,6 @@
   "password_reset_sent_to": "E-mail de redefinição enviado para {email}",
   "failed_send_reset_email": "Falha ao enviar e-mail de redefinição: {error}",
   "no_email_found": "Nenhum e-mail encontrado para esta conta.",
-
   "dashboard": "Painel",
   "welcome_user": "Bem-vindo {name}",
   "welcome_subtitle": "Veja o que está acontecendo na sua organização hoje.",
@@ -94,7 +88,6 @@
   "casual_leave": "Licença casual: {value}%",
   "sick_leave": "Licença por doença: {value}%",
   "medical_leave": "Licença médica: {value}%",
-
   "sidebar_dashboard": "Painel",
   "sidebar_workers": "Trabalhadores",
   "sidebar_workforce": "Força de trabalho",
@@ -112,7 +105,6 @@
   "get_to_pro": "Obter Pro",
   "subscribe_now": "Assinar agora",
   "back_to_login_sidebar": "Voltar ao login",
-
   "setting": "Configurações",
   "reset_password": "Redefinir senha",
   "reset_password_desc": "Altere sua senha para manter sua conta segura.",
@@ -124,7 +116,6 @@
   "privacy_policy": "Política de Privacidade",
   "sign_out": "Sair",
   "select_language": "Selecionar idioma",
-
   "delete_account": "Excluir conta",
   "delete_account_question": "Excluir conta?",
   "delete_account_desc": "Tem certeza de que deseja excluir permanentemente seu perfil e todos os seus dados? Esta ação não pode ser desfeita.",
@@ -133,10 +124,8 @@
   "account_deleted": "Conta excluída",
   "signed_out_for_security": "Desconectado por segurança. Entre novamente para excluir completamente sua conta.",
   "failed_delete_account": "Falha ao excluir conta. {error}",
-
   "sign_out_dialog_title": "Sair",
   "sign_out_dialog_desc": "Tem certeza de que deseja sair? Você precisará entrar novamente para gerenciar seu perfil de RH e os dados da sua força de trabalho.",
-
   "my_info": "Minhas informações",
   "logout": "Sair",
   "save": "Salvar",
@@ -153,7 +142,6 @@
   "error_saving_profile": "Erro ao salvar perfil: {error}",
   "error_selecting_image": "Erro ao selecionar imagem: {error}",
   "user": "Usuário",
-
   "choose_your_plan": "Escolha seu plano",
   "select_subscription": "Selecione a assinatura que funciona melhor\npara sua equipe",
   "monthly": "Mensal",
@@ -172,24 +160,24 @@
   "subscription_disclaimer": "A assinatura é renovada automaticamente, a menos que seja cancelada antes do\nfinal do período atual. Você não será cobrado se\ncancelar durante o período de teste.",
   "restore": "Restaurar",
   "terms_of_use": "Termos de uso",
-
   "share_app_text": "Gerencie sua força de trabalho de forma eficiente com nosso novo aplicativo HRMS!\nBaixe aqui: {link}",
-
   "week": "Semana",
   "month": "Mês",
   "3_month": "3 meses",
   "6_month": "6 meses",
   "yearly_period": "Anual",
-
-  "jan": "JAN", "feb": "FEV", "mar": "MAR", "apr": "ABR",
-  "may": "MAI", "jun": "JUN", "jul": "JUL",
-
+  "jan": "JAN",
+  "feb": "FEV",
+  "mar": "MAR",
+  "apr": "ABR",
+  "may": "MAI",
+  "jun": "JUN",
+  "jul": "JUL",
   "lang_english": "Inglês",
   "lang_spanish": "Espanhol",
   "lang_french": "Francês",
   "lang_portuguese": "Português",
   "lang_russian": "Russo",
-
   "worker_management": "Gestão de trabalhadores",
   "complete_required_fields_worker": "Preencha todos os campos obrigatórios para registrar um novo trabalhador.",
   "search_workers_name_position": "Pesquisar por nome / cargo",
@@ -223,8 +211,7 @@
   "management": "Gestão",
   "na": "N/D",
   "gender": "Gênero",
-  "position": "Posição",
-
+  "position": "Cargo",
   "add_new_worker": "Adicionar novo trabalhador",
   "fill_worker_details": "Preencha os detalhes do trabalhador para começar.",
   "worker_detail": "Detalhe do trabalhador",
@@ -256,7 +243,6 @@
   "please_fill_name_contact": "Preencha pelo menos o nome e o contato!",
   "worker_added_successfully": "Trabalhador adicionado com sucesso!",
   "error_saving_data": "Erro ao salvar dados: {error}",
-
   "validation_error": "Erro de validação",
   "please_enter_worker_name": "Digite o nome do trabalhador.",
   "please_enter_contact_number": "Digite o número de contato.",
@@ -286,7 +272,6 @@
   "cv_uploaded": "CV enviado",
   "date_format": "DD/MM/AAAA",
   "select_from_gallery": "Selecionar da galeria",
-
   "workforce": "Força de trabalho",
   "search_by_workers_name": "Pesquisar por nome",
   "today_attendance": "Presença de hoje",
@@ -307,11 +292,9 @@
   "leave": "Licença",
   "remote": "Remoto",
   "on_site": "Presencial",
-
   "pay_roll_list": "Lista de folha de pagamento",
   "payroll_data": "Dados de folha",
   "no_payroll_records": "Sem registros de folha",
-
   "delete_expense": "Excluir despesa",
   "delete_expense_desc": "Tem certeza de que deseja excluir esta despesa? Esta ação não pode ser desfeita.",
   "add_expense": "Adicionar despesa",
@@ -324,14 +307,12 @@
   "total_expense": "Despesa total",
   "no_expenses_found": "Nenhuma despesa encontrada",
   "expenses_list": "Lista de despesas",
-
   "add_holiday": "Adicionar feriado",
   "holiday_name": "Nome do feriado",
   "holiday_day": "Dia {day}",
   "successfully_added_holiday": "Feriado \"{name}\" adicionado com sucesso",
   "custom": "Personalizado",
   "holiday_name_hint": "Dia do Trabalho",
-
   "time_off_list": "Lista de folgas",
   "no_time_off_requests": "Sem solicitações de folga",
   "no_time_off_records": "Sem registros de folga",
@@ -351,7 +332,6 @@
   "notes_hint": "Adicionar notas aqui...",
   "requested_days": "Dias solicitados",
   "days": "dias",
-
   "add_asset": "Adicionar ativo",
   "asset_type": "Tipo de ativo",
   "date_loaned": "Data de empréstimo",
@@ -366,7 +346,6 @@
   "ok": "OK",
   "in_use": "Em uso",
   "returned": "Devolvido",
-
   "please_enter_job_position": "Por favor insira o cargo.",
   "please_enter_salary_amount": "Por favor insira o valor do salário.",
   "job_experience_info": "Informações de experiência profissional",
@@ -402,7 +381,6 @@
   "enter_your_currency": "Insira sua moeda",
   "enter_leave_policy": "Insira a política de licença",
   "enter_gender": "Insira o gênero",
-
   "total_presents": "Total Presentes",
   "total_absent": "Total Ausentes",
   "total_leaves": "Total Licenças",
@@ -418,7 +396,6 @@
   "delete_attendance_desc": "Tem certeza de que deseja excluir este registro de presença? Esta ação não pode ser desfeita.",
   "share_coming_soon": "Recurso de compartilhamento em breve!",
   "worker_attendance_preview": "Pré-visualização da Presença do Trabalhador",
-
   "reason_optional": "Motivo (Opcional)",
   "reason_required": "Motivo (Obrigatório)",
   "enter_reason_hint": "Digite o motivo......",
@@ -427,29 +404,24 @@
   "attendance_update_failed": "Falha ao atualizar presença: {error}",
   "absent_type": "Tipo de Ausência: {type}",
   "reason_label": "Motivo",
-
   "search_expenses_hint": "Pesquisar por trabalhadores ou categorias",
   "add_expenses": "Adicionar Despesas",
   "this_month_expense": "Despesa do Mês",
   "date_header": "Data",
   "amount_header": "Valor",
   "edit_expense": "Editar Despesa",
-
   "total_work_days": "Total Dias Úteis",
   "absents_label": "Ausências",
   "leaves_label": "Licenças",
   "overtime_days": "Horas Extras",
   "payroll_data_preview": "Pré-visualização de Folha de Pagamento",
-
   "holiday_list": "Lista de Feriados",
   "no_holidays_found": "Nenhum Feriado Encontrado",
-
   "sick_leave_type": "Licença Médica",
   "please_enter_notes": "Por favor insira suas notas",
   "available_annual_leave": "Dias de Férias Anuais Disponíveis",
   "assign_time_off_success": "Folga atribuída com sucesso",
   "assign_time_off_failed": "Falha ao atribuir folga",
-
   "search_assets_hint": "Pesquisar por trabalhadores ou detalhes de ativos",
   "weekday_sun": "DOM",
   "weekday_mon": "SEG",
@@ -472,8 +444,8 @@
   "available_sick_leave": "Dias de Licença Médica Disponíveis",
   "available_casual_leave": "Dias de Licença Casual Disponíveis",
   "tap_to_upload_profile_image": "Toque para enviar uma imagem de perfil\nPNG ou JPG",
-  "edit_asset": "Editar Ativo",
-  "enter_asset_type": "Insira o tipo de ativo",
+  "edit_asset": "Editar ativo",
+  "enter_asset_type": "Digite o tipo de ativo",
   "csv_required_columns_error": "O CSV deve conter pelo menos as colunas \"Nome completo\" e \"Número de contato\".",
   "workers_added_successfully": "Adicionado com sucesso {count} trabalhadores.",
   "skipped_duplicates_message": "Ignorado {count} trabalhadores duplicados.",
@@ -514,7 +486,6 @@
   "expense_category_hint": "ex. Jantar",
   "amount_hint": "0.00",
   "expense_title_hint": "ex. Jantar de negócios",
-
   "month_january": "Janeiro",
   "month_february": "Fevereiro",
   "month_march": "Março",
@@ -527,7 +498,6 @@
   "month_october": "Outubro",
   "month_november": "Novembro",
   "month_december": "Dezembro",
-
   "weekday_monday": "Segunda-feira",
   "weekday_tuesday": "Terça-feira",
   "weekday_wednesday": "Quarta-feira",
@@ -535,7 +505,6 @@
   "weekday_friday": "Sexta-feira",
   "weekday_saturday": "Sábado",
   "weekday_sunday": "Domingo",
-
   "error_title": "Erro",
   "field_is_required": "{field} é obrigatório",
   "email_is_required": "O e-mail é obrigatório",
@@ -557,24 +526,16 @@
   "approved": "Aprovado",
   "worker_fallback": "Trabalhador",
   "days_unit": "Dias",
-  "position": "Cargo",
-  "enter_position": "Digite o cargo",
-  "edit_asset": "Editar ativo",
-  "asset_type": "Tipo de ativo",
-  "enter_asset_type": "Digite o tipo de ativo",
   "save_worker_template": "Salvar modelo de trabalhadores",
   "hrms_worker_template": "Modelo de trabalhadores HRMS",
-
   "time_off_record_deleted": "Registro de licença excluído",
   "no_email_found_for_account": "Nenhum e-mail encontrado para esta conta.",
   "account_deleted_successfully": "Conta excluída com sucesso",
   "signed_out_for_security_delete_again": "Desconectado por segurança. Entre novamente para excluir completamente sua conta.",
   "expense_updated": "Despesa atualizada com sucesso",
-
   "joining_date_is": "A data de admissão é {date}",
   "hint_enter_national_id": "Digite seu documento de identidade",
   "this_field": "Este campo",
-
   "week_label_1": "S1",
   "week_label_2": "S2",
   "week_label_3": "S3",
@@ -590,5 +551,14 @@
   "upload_cv_required": "Por favor, carregue o CV",
   "could_not_download_template": "Não foi possível baixar o modelo. Tente novamente.",
   "google_login_desktop": "O login do Google não está disponível no desktop. Use o login por e-mail.",
-  "apple_login_desktop": "O login da Apple não está disponível nesta plataforma. Use o login por e-mail."
+  "apple_login_desktop": "O login da Apple não está disponível nesta plataforma. Use o login por e-mail.",
+  "fresher": "Iniciante",
+  "junior": "Júnior",
+  "mid_level": "Nível médio",
+  "senior": "Sênior",
+  "matric": "Ensino fundamental",
+  "intermediate": "Ensino médio",
+  "bachelor": "Bacharelado",
+  "master": "Mestrado",
+  "other": "Outro"
 }

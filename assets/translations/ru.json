@@ -1,7 +1,6 @@
 {
   "app_name": "HRMS",
   "human_resource_management_system": "Система управления человеческими ресурсами",
-
   "welcome_back": "С возвращением!",
   "sign_in_subtitle": "Войдите, чтобы продолжить работу с HR",
   "email_label": "Эл. почта",
@@ -17,19 +16,16 @@
   "dont_have_account": "Нет аккаунта? ",
   "sign_up": "Зарегистрироваться",
   "sign_in": "Войти",
-
   "create_account": "Создать аккаунт",
   "signup_subtitle": "Присоединяйтесь, чтобы начать свой путь",
   "username_label": "Имя пользователя",
   "username_hint": "Введите имя пользователя",
   "already_have_account": "Уже есть аккаунт? ",
-
   "forgot_password": "Забыли пароль",
   "forgot_password_subtitle": "Введите вашу эл. почту, и мы отправим вам безопасную ссылку для сброса пароля.",
   "send_reset_link": "Отправить ссылку для сброса",
   "dont_need_this": "Не нужно это? ",
   "back_to_login": "Вернуться ко входу",
-
   "email_required": "Пожалуйста, введите вашу эл. почту",
   "email_must_contain_at": "Эл. почта должна содержать @",
   "email_invalid": "Пожалуйста, введите действительный адрес (напр. имя@домен.com)",
@@ -38,7 +34,6 @@
   "username_required": "Пожалуйста, введите имя пользователя",
   "username_too_short": "Имя пользователя должно содержать не менее 2 символов",
   "password_enter": "Пожалуйста, введите пароль",
-
   "google_login_failed": "Не удалось войти через Google. Попробуйте ещё раз.",
   "apple_login_failed": "Не удалось войти через Apple. Попробуйте ещё раз.",
   "guest_login_failed": "Не удалось войти как гость. Попробуйте ещё раз.",
@@ -70,7 +65,6 @@
   "password_reset_sent_to": "Письмо для сброса пароля отправлено на {email}",
   "failed_send_reset_email": "Не удалось отправить письмо для сброса пароля: {error}",
   "no_email_found": "Для этого аккаунта не найдена эл. почта.",
-
   "dashboard": "Панель управления",
   "welcome_user": "Добро пожаловать, {name}",
   "welcome_subtitle": "Вот что происходит в вашей организации сегодня.",
@@ -94,7 +88,6 @@
   "casual_leave": "Личный отпуск: {value}%",
   "sick_leave": "Больничный: {value}%",
   "medical_leave": "Медицинский отпуск: {value}%",
-
   "sidebar_dashboard": "Панель управления",
   "sidebar_workers": "Сотрудники",
   "sidebar_workforce": "Рабочая сила",
@@ -112,7 +105,6 @@
   "get_to_pro": "Получить Pro",
   "subscribe_now": "Подписаться сейчас",
   "back_to_login_sidebar": "Вернуться ко входу",
-
   "setting": "Настройки",
   "reset_password": "Сбросить пароль",
   "reset_password_desc": "Измените пароль, чтобы защитить ваш аккаунт.",
@@ -124,7 +116,6 @@
   "privacy_policy": "Политика конфиденциальности",
   "sign_out": "Выйти",
   "select_language": "Выбрать язык",
-
   "delete_account": "Удалить аккаунт",
   "delete_account_question": "Удалить аккаунт?",
   "delete_account_desc": "Вы уверены, что хотите навсегда удалить свой профиль и все данные? Это действие нельзя отменить.",
@@ -133,10 +124,8 @@
   "account_deleted": "Аккаунт удалён",
   "signed_out_for_security": "Выход выполнен в целях безопасности. Войдите снова, чтобы полностью удалить аккаунт.",
   "failed_delete_account": "Не удалось удалить аккаунт. {error}",
-
   "sign_out_dialog_title": "Выйти",
   "sign_out_dialog_desc": "Вы уверены, что хотите выйти? Вам нужно будет войти снова, чтобы управлять HR-профилем и данными сотрудников.",
-
   "my_info": "Моя информация",
   "logout": "Выйти",
   "save": "Сохранить",
@@ -153,7 +142,6 @@
   "error_saving_profile": "Ошибка сохранения профиля: {error}",
   "error_selecting_image": "Ошибка выбора изображения: {error}",
   "user": "Пользователь",
-
   "choose_your_plan": "Выберите план",
   "select_subscription": "Выберите подписку, которая лучше всего подходит\nдля вашей команды",
   "monthly": "Ежемесячно",
@@ -172,24 +160,24 @@
   "subscription_disclaimer": "Подписка автоматически продлевается, если не отменена до\nконца текущего периода. Плата не взимается, если вы\nотмените в течение пробного периода.",
   "restore": "Восстановить",
   "terms_of_use": "Условия использования",
-
   "share_app_text": "Управляйте своей рабочей силой эффективно с нашим новым приложением HRMS!\nСкачайте здесь: {link}",
-
   "week": "Неделя",
   "month": "Месяц",
   "3_month": "3 месяца",
   "6_month": "6 месяцев",
   "yearly_period": "Год",
-
-  "jan": "ЯНВ", "feb": "ФЕВ", "mar": "МАР", "apr": "АПР",
-  "may": "МАЙ", "jun": "ИЮН", "jul": "ИЮЛ",
-
+  "jan": "ЯНВ",
+  "feb": "ФЕВ",
+  "mar": "МАР",
+  "apr": "АПР",
+  "may": "МАЙ",
+  "jun": "ИЮН",
+  "jul": "ИЮЛ",
   "lang_english": "Английский",
   "lang_spanish": "Испанский",
   "lang_french": "Французский",
   "lang_portuguese": "Португальский",
   "lang_russian": "Русский",
-
   "worker_management": "Управление сотрудниками",
   "complete_required_fields_worker": "Заполните все обязательные поля для регистрации нового сотрудника.",
   "search_workers_name_position": "Поиск по имени / должности",
@@ -224,7 +212,6 @@
   "na": "Н/Д",
   "gender": "Пол",
   "position": "Должность",
-
   "add_new_worker": "Добавить нового сотрудника",
   "fill_worker_details": "Заполните данные сотрудника, чтобы начать.",
   "worker_detail": "Данные сотрудника",
@@ -256,7 +243,6 @@
   "please_fill_name_contact": "Заполните хотя бы имя и контакт!",
   "worker_added_successfully": "Сотрудник успешно добавлен!",
   "error_saving_data": "Ошибка сохранения данных: {error}",
-
   "validation_error": "Ошибка валидации",
   "please_enter_worker_name": "Введите имя сотрудника.",
   "please_enter_contact_number": "Введите контактный номер.",
@@ -286,7 +272,6 @@
   "cv_uploaded": "Резюме загружено",
   "date_format": "ДД/ММ/ГГГГ",
   "select_from_gallery": "Выбрать из галереи",
-
   "workforce": "Рабочая сила",
   "search_by_workers_name": "Поиск по имени",
   "today_attendance": "Посещаемость сегодня",
@@ -307,11 +292,9 @@
   "leave": "Отпуск",
   "remote": "Удалённо",
   "on_site": "На месте",
-
   "pay_roll_list": "Список зарплат",
   "payroll_data": "Данные о зарплате",
   "no_payroll_records": "Нет записей о зарплате",
-
   "delete_expense": "Удалить расход",
   "delete_expense_desc": "Вы уверены, что хотите удалить этот расход? Это действие нельзя отменить.",
   "add_expense": "Добавить расход",
@@ -324,14 +307,12 @@
   "total_expense": "Общий расход",
   "no_expenses_found": "Расходы не найдены",
   "expenses_list": "Список расходов",
-
   "add_holiday": "Добавить праздник",
   "holiday_name": "Название праздника",
   "holiday_day": "День {day}",
   "successfully_added_holiday": "Праздник \"{name}\" успешно добавлен",
   "custom": "Пользовательский",
   "holiday_name_hint": "День труда",
-
   "time_off_list": "Список отгулов",
   "no_time_off_requests": "Нет запросов на отгул",
   "no_time_off_records": "Нет записей об отгулах",
@@ -351,7 +332,6 @@
   "notes_hint": "Добавить заметки здесь...",
   "requested_days": "Запрошено дней",
   "days": "дней",
-
   "add_asset": "Добавить актив",
   "asset_type": "Тип актива",
   "date_loaned": "Дата выдачи",
@@ -366,7 +346,6 @@
   "ok": "ОК",
   "in_use": "В использовании",
   "returned": "Возвращён",
-
   "please_enter_job_position": "Пожалуйста, введите должность.",
   "please_enter_salary_amount": "Пожалуйста, введите сумму зарплаты.",
   "job_experience_info": "Информация об опыте работы",
@@ -402,7 +381,6 @@
   "enter_your_currency": "Введите вашу валюту",
   "enter_leave_policy": "Введите политику отпусков",
   "enter_gender": "Введите пол",
-
   "total_presents": "Всего Присутствующих",
   "total_absent": "Всего Отсутствующих",
   "total_leaves": "Всего Отпусков",
@@ -418,7 +396,6 @@
   "delete_attendance_desc": "Вы уверены, что хотите удалить эту запись посещаемости? Это действие нельзя отменить.",
   "share_coming_soon": "Функция поделиться скоро будет доступна!",
   "worker_attendance_preview": "Предпросмотр Посещаемости Работника",
-
   "reason_optional": "Причина (Необязательно)",
   "reason_required": "Причина (Обязательно)",
   "enter_reason_hint": "Введите причину......",
@@ -427,29 +404,24 @@
   "attendance_update_failed": "Не удалось обновить посещаемость: {error}",
   "absent_type": "Тип отсутствия: {type}",
   "reason_label": "Причина",
-
   "search_expenses_hint": "Поиск по работникам или категориям",
   "add_expenses": "Добавить Расходы",
   "this_month_expense": "Расход за Месяц",
   "date_header": "Дата",
   "amount_header": "Сумма",
   "edit_expense": "Редактировать Расход",
-
   "total_work_days": "Всего Рабочих Дней",
   "absents_label": "Отсутствия",
   "leaves_label": "Отпуска",
   "overtime_days": "Сверхурочные Дни",
   "payroll_data_preview": "Предпросмотр Данных Зарплаты",
-
   "holiday_list": "Список Праздников",
   "no_holidays_found": "Праздники не найдены",
-
   "sick_leave_type": "Больничный",
   "please_enter_notes": "Пожалуйста, введите ваши заметки",
   "available_annual_leave": "Доступные Дни Ежегодного Отпуска",
   "assign_time_off_success": "Отпуск успешно назначен",
   "assign_time_off_failed": "Не удалось назначить отпуск",
-
   "search_assets_hint": "Поиск по работникам или деталям активов",
   "weekday_sun": "ВС",
   "weekday_mon": "ПН",
@@ -514,7 +486,6 @@
   "expense_category_hint": "например, ужин",
   "amount_hint": "0.00",
   "expense_title_hint": "например, ужин с клиентом",
-
   "month_january": "Январь",
   "month_february": "Февраль",
   "month_march": "Март",
@@ -527,7 +498,6 @@
   "month_october": "Октябрь",
   "month_november": "Ноябрь",
   "month_december": "Декабрь",
-
   "weekday_monday": "Понедельник",
   "weekday_tuesday": "Вторник",
   "weekday_wednesday": "Среда",
@@ -535,7 +505,6 @@
   "weekday_friday": "Пятница",
   "weekday_saturday": "Суббота",
   "weekday_sunday": "Воскресенье",
-
   "error_title": "Ошибка",
   "field_is_required": "{field} обязательно",
   "email_is_required": "Email обязателен",
@@ -557,24 +526,16 @@
   "approved": "Одобрено",
   "worker_fallback": "Сотрудник",
   "days_unit": "Дни",
-  "position": "Должность",
-  "enter_position": "Введите должность",
-  "edit_asset": "Редактировать актив",
-  "asset_type": "Тип актива",
-  "enter_asset_type": "Введите тип актива",
   "save_worker_template": "Сохранить шаблон сотрудников",
   "hrms_worker_template": "Шаблон сотрудников HRMS",
-
   "time_off_record_deleted": "Запись об отпуске удалена",
   "no_email_found_for_account": "Для этой учетной записи не найден электронный адрес.",
   "account_deleted_successfully": "Аккаунт успешно удален",
   "signed_out_for_security_delete_again": "Выход выполнен в целях безопасности. Войдите снова, чтобы полностью удалить аккаунт.",
   "expense_updated": "Расход успешно обновлен",
-
   "joining_date_is": "Дата приема на работу: {date}",
   "hint_enter_national_id": "Введите ваш документ удостоверения личности",
   "this_field": "Это поле",
-
   "week_label_1": "Н1",
   "week_label_2": "Н2",
   "week_label_3": "Н3",
@@ -590,5 +551,14 @@
   "upload_cv_required": "Пожалуйста, загрузите резюме",
   "could_not_download_template": "Не удалось загрузить шаблон. Попробуйте ещё раз.",
   "google_login_desktop": "Вход через Google недоступен на компьютере. Пожалуйста, используйте вход по email.",
-  "apple_login_desktop": "Вход через Apple недоступен на этой платформе. Пожалуйста, используйте вход по email."
+  "apple_login_desktop": "Вход через Apple недоступен на этой платформе. Пожалуйста, используйте вход по email.",
+  "fresher": "Новичок",
+  "junior": "Младший",
+  "mid_level": "Средний уровень",
+  "senior": "Старший",
+  "matric": "Средняя школа",
+  "intermediate": "Старшая школа",
+  "bachelor": "Бакалавриат",
+  "master": "Магистратура",
+  "other": "Другое"
 }

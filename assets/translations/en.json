@@ -1,7 +1,6 @@
 {
   "app_name": "HRMS",
   "human_resource_management_system": "Human Resource Management System",
-
   "welcome_back": "Welcome Back!",
   "sign_in_subtitle": "Sign in to continue your HR journey",
   "email_label": "E-mail",
@@ -17,19 +16,16 @@
   "dont_have_account": "Don't have an account? ",
   "sign_up": "Sign Up",
   "sign_in": "Sign In",
-
   "create_account": "Create Account",
   "signup_subtitle": "Join us to get started on your journey",
   "username_label": "Username",
   "username_hint": "Enter your username",
   "already_have_account": "Already have an account? ",
-
   "forgot_password": "Forgot Password",
   "forgot_password_subtitle": "Enter your email and we'll send you a secure link to reset your password.",
   "send_reset_link": "Send Reset Link",
   "dont_need_this": "Don't need this? ",
   "back_to_login": "Back to Login",
-
   "email_required": "Please enter your email",
   "email_must_contain_at": "Email must contain @",
   "email_invalid": "Please enter a valid email (e.g. name@domain.com)",
@@ -38,7 +34,6 @@
   "username_required": "Please enter your username",
   "username_too_short": "Username must be at least 2 characters",
   "password_enter": "Please enter a password",
-
   "google_login_failed": "Google login failed. Please try again.",
   "apple_login_failed": "Apple login failed. Please try again.",
   "guest_login_failed": "Guest login failed. Please try again.",
@@ -70,7 +65,6 @@
   "password_reset_sent_to": "Password reset email sent to {email}",
   "failed_send_reset_email": "Failed to send reset email: {error}",
   "no_email_found": "No email found for this account.",
-
   "dashboard": "Dashboard",
   "welcome_user": "Welcome {name}",
   "welcome_subtitle": "Here's what's happening in your organization today.",
@@ -94,7 +88,6 @@
   "casual_leave": "Casual Leave: {value}%",
   "sick_leave": "Sick Leave: {value}%",
   "medical_leave": "Medical Leave: {value}%",
-
   "sidebar_dashboard": "Dashboard",
   "sidebar_workers": "Workers",
   "sidebar_workforce": "Workforce",
@@ -112,7 +105,6 @@
   "get_to_pro": "Get to Pro",
   "subscribe_now": "Subscribe Now",
   "back_to_login_sidebar": "Back to login",
-
   "setting": "Setting",
   "reset_password": "Reset Password",
   "reset_password_desc": "Change your password to keep your account secure.",
@@ -124,7 +116,6 @@
   "privacy_policy": "Privacy Policy",
   "sign_out": "Sign out",
   "select_language": "Select Language",
-
   "delete_account": "Delete Account",
   "delete_account_question": "Delete Account?",
   "delete_account_desc": "Are you sure you want to permanently delete your profile and all data? This action cannot be undone.",
@@ -133,10 +124,8 @@
   "account_deleted": "Account deleted",
   "signed_out_for_security": "Signed out for security. Please sign in again to fully delete your account.",
   "failed_delete_account": "Failed to delete account. {error}",
-
   "sign_out_dialog_title": "Sign Out",
   "sign_out_dialog_desc": "Are you sure you want to sign out? You will need to log back in to manage your HR profile and workforce data.",
-
   "my_info": "My Info",
   "logout": "Logout",
   "save": "Save",
@@ -153,7 +142,6 @@
   "error_saving_profile": "Error saving profile: {error}",
   "error_selecting_image": "Error selecting image: {error}",
   "user": "User",
-
   "choose_your_plan": "Choose Your Plan",
   "select_subscription": "Select the subscription that works best\nfor your team",
   "monthly": "Monthly",
@@ -172,24 +160,24 @@
   "subscription_disclaimer": "Subscription automatically renew unless canceled before the\nend of the current period. You won't be change if you\ncancel during the trial period.",
   "restore": "Restore",
   "terms_of_use": "Terms of Use",
-
   "share_app_text": "Manage your workforce efficiently with our new HRMS App!\nDownload here: {link}",
-
   "week": "Week",
   "month": "Month",
   "3_month": "3 Month",
   "6_month": "6 Month",
   "yearly_period": "Yearly",
-
-  "jan": "JAN", "feb": "FEB", "mar": "MAR", "apr": "APR",
-  "may": "MAY", "jun": "JUN", "jul": "JUL",
-
+  "jan": "JAN",
+  "feb": "FEB",
+  "mar": "MAR",
+  "apr": "APR",
+  "may": "MAY",
+  "jun": "JUN",
+  "jul": "JUL",
   "lang_english": "English",
   "lang_spanish": "Spanish",
   "lang_french": "French",
   "lang_portuguese": "Portuguese",
   "lang_russian": "Russian",
-
   "worker_management": "Worker Management",
   "complete_required_fields_worker": "Complete all required fields to register a new worker.",
   "search_workers_name_position": "Search by workers name / position",
@@ -224,7 +212,6 @@
   "na": "N/A",
   "gender": "Gender",
   "position": "Position",
-
   "add_new_worker": "Add New Worker",
   "fill_worker_details": "Fill in the worker details to get started.",
   "worker_detail": "Worker Detail",
@@ -256,7 +243,6 @@
   "please_fill_name_contact": "Please fill Name and Contact at least!",
   "worker_added_successfully": "Worker Added Successfully!",
   "error_saving_data": "Error saving data: {error}",
-
   "validation_error": "Validation Error",
   "please_enter_worker_name": "Please enter worker name.",
   "please_enter_contact_number": "Please enter contact number.",
@@ -286,7 +272,6 @@
   "cv_uploaded": "CV Uploaded",
   "date_format": "DD/MM/YYYY",
   "select_from_gallery": "Select from Gallery",
-
   "workforce": "Workforce",
   "search_by_workers_name": "Search by workers name",
   "today_attendance": "Today Attendance",
@@ -307,11 +292,9 @@
   "leave": "Leave",
   "remote": "Remote",
   "on_site": "On-Site",
-
   "pay_roll_list": "Pay Roll List",
   "payroll_data": "Payroll Data",
   "no_payroll_records": "No Payroll Records",
-
   "delete_expense": "Delete Expense",
   "delete_expense_desc": "Are you sure you want to delete this expense? This action cannot be undone.",
   "add_expense": "Add Expense",
@@ -324,14 +307,12 @@
   "total_expense": "Total Expense",
   "no_expenses_found": "No Expenses Found",
   "expenses_list": "Expenses List",
-
   "add_holiday": "Add Holiday",
   "holiday_name": "Holiday Name",
   "holiday_day": "Day {day}",
   "successfully_added_holiday": "Successfully added holiday \"{name}\"",
   "custom": "Custom",
   "holiday_name_hint": "Labour Day",
-
   "time_off_list": "Time off List",
   "no_time_off_requests": "No Time Off Requests",
   "no_time_off_records": "No Time Off Records",
@@ -351,7 +332,6 @@
   "notes_hint": "Add notes here...",
   "requested_days": "Requested Days",
   "days": "days",
-
   "add_asset": "Add Asset",
   "asset_type": "Asset Type",
   "date_loaned": "Date Loaned",
@@ -366,7 +346,6 @@
   "ok": "OK",
   "in_use": "In use",
   "returned": "Returned",
-
   "please_enter_job_position": "Please enter job position.",
   "please_enter_salary_amount": "Please enter salary amount.",
   "job_experience_info": "Job Experience Information",
@@ -402,7 +381,6 @@
   "enter_your_currency": "Enter your currency",
   "enter_leave_policy": "Enter leave policy",
   "enter_gender": "Enter gender",
-
   "total_presents": "Total Presents",
   "total_absent": "Total Absent",
   "total_leaves": "Total Leaves",
@@ -418,7 +396,6 @@
   "delete_attendance_desc": "Are you sure you want to delete this attendance record? This action cannot be undone.",
   "share_coming_soon": "Share feature coming soon!",
   "worker_attendance_preview": "Worker Attendance Preview",
-
   "reason_optional": "Reason (Optional)",
   "reason_required": "Reason (Required)",
   "enter_reason_hint": "Enter reason......",
@@ -427,29 +404,24 @@
   "attendance_update_failed": "Failed to update attendance: {error}",
   "absent_type": "Absent Type: {type}",
   "reason_label": "Reason",
-
   "search_expenses_hint": "Search by workers or categories",
   "add_expenses": "Add Expenses",
   "this_month_expense": "This Month Expense",
   "date_header": "Date",
   "amount_header": "Amount",
   "edit_expense": "Edit Expense",
-
   "total_work_days": "Total Work Days",
   "absents_label": "Absents",
   "leaves_label": "Leaves",
   "overtime_days": "Overtime Days",
   "payroll_data_preview": "PayRoll Data Preview",
-
   "holiday_list": "Holiday List",
   "no_holidays_found": "No Holidays Found",
-
   "sick_leave_type": "Sick Leave",
   "please_enter_notes": "Please enter your notes",
   "available_annual_leave": "Available Annual Leave Days",
   "assign_time_off_success": "Successfully assigned time off",
   "assign_time_off_failed": "Failed to assign time off",
-
   "search_assets_hint": "Search by workers or asset details",
   "weekday_sun": "SUN",
   "weekday_mon": "MON",
@@ -514,7 +486,6 @@
   "expense_category_hint": "e.g. Dinner",
   "amount_hint": "0.00",
   "expense_title_hint": "e.g. Client meeting dinner",
-
   "month_january": "January",
   "month_february": "February",
   "month_march": "March",
@@ -527,7 +498,6 @@
   "month_october": "October",
   "month_november": "November",
   "month_december": "December",
-
   "weekday_monday": "Monday",
   "weekday_tuesday": "Tuesday",
   "weekday_wednesday": "Wednesday",
@@ -535,7 +505,6 @@
   "weekday_friday": "Friday",
   "weekday_saturday": "Saturday",
   "weekday_sunday": "Sunday",
-
   "error_title": "Error",
   "field_is_required": "{field} is required",
   "email_is_required": "Email is required",
@@ -557,24 +526,16 @@
   "approved": "Approved",
   "worker_fallback": "Worker",
   "days_unit": "Days",
-  "position": "Position",
-  "enter_position": "Enter position",
-  "edit_asset": "Edit Asset",
-  "asset_type": "Asset Type",
-  "enter_asset_type": "Enter asset type",
   "save_worker_template": "Save Worker Template",
   "hrms_worker_template": "HRMS worker template",
-
   "time_off_record_deleted": "Time off record deleted",
   "no_email_found_for_account": "No email found for this account.",
   "account_deleted_successfully": "Account deleted successfully",
   "signed_out_for_security_delete_again": "Signed out for security. Please sign in again to fully delete your account.",
   "expense_updated": "Expense updated successfully",
-
   "joining_date_is": "Joining date is {date}",
   "hint_enter_national_id": "Enter your national id",
   "this_field": "This field",
-
   "week_label_1": "W1",
   "week_label_2": "W2",
   "week_label_3": "W3",
@@ -590,5 +551,14 @@
   "upload_cv_required": "Please upload CV",
   "could_not_download_template": "Could not download template. Please try again.",
   "google_login_desktop": "Google Sign-In is not available on desktop. Please use Email login instead.",
-  "apple_login_desktop": "Apple Sign-In is not available on this platform. Please use Email login instead."
+  "apple_login_desktop": "Apple Sign-In is not available on this platform. Please use Email login instead.",
+  "fresher": "Fresher",
+  "junior": "Junior",
+  "mid_level": "Mid-Level",
+  "senior": "Senior",
+  "matric": "Matric",
+  "intermediate": "Intermediate",
+  "bachelor": "Bachelor",
+  "master": "Master",
+  "other": "Other"
 }

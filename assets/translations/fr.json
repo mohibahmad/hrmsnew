@@ -1,7 +1,6 @@
 {
   "app_name": "HRMS",
   "human_resource_management_system": "Système de Gestion des Ressources Humaines",
-
   "welcome_back": "Bon retour !",
   "sign_in_subtitle": "Connectez-vous pour continuer votre parcours RH",
   "email_label": "E-mail",
@@ -17,19 +16,16 @@
   "dont_have_account": "Vous n'avez pas de compte ? ",
   "sign_up": "S'inscrire",
   "sign_in": "Se connecter",
-
   "create_account": "Créer un compte",
   "signup_subtitle": "Rejoignez-nous pour commencer votre parcours",
   "username_label": "Nom d'utilisateur",
   "username_hint": "Entrez votre nom d'utilisateur",
   "already_have_account": "Vous avez déjà un compte ? ",
-
   "forgot_password": "Mot de passe oublié",
   "forgot_password_subtitle": "Entrez votre e-mail et nous vous enverrons un lien sécurisé pour réinitialiser votre mot de passe.",
   "send_reset_link": "Envoyer le lien de réinitialisation",
   "dont_need_this": "Vous n'en avez pas besoin ? ",
   "back_to_login": "Retour à la connexion",
-
   "email_required": "Veuillez entrer votre e-mail",
   "email_must_contain_at": "L'e-mail doit contenir @",
   "email_invalid": "Veuillez entrer un e-mail valide (ex. nom@domaine.com)",
@@ -38,7 +34,6 @@
   "username_required": "Veuillez entrer votre nom d'utilisateur",
   "username_too_short": "Le nom d'utilisateur doit contenir au moins 2 caractères",
   "password_enter": "Veuillez entrer un mot de passe",
-
   "google_login_failed": "Échec de connexion avec Google. Veuillez réessayer.",
   "apple_login_failed": "Échec de connexion avec Apple. Veuillez réessayer.",
   "guest_login_failed": "Échec de connexion en tant qu'invité. Veuillez réessayer.",
@@ -70,7 +65,6 @@
   "password_reset_sent_to": "E-mail de réinitialisation envoyé à {email}",
   "failed_send_reset_email": "Échec de l'envoi de l'e-mail de réinitialisation : {error}",
   "no_email_found": "Aucun e-mail trouvé pour ce compte.",
-
   "dashboard": "Tableau de bord",
   "welcome_user": "Bienvenue {name}",
   "welcome_subtitle": "Voici ce qui se passe dans votre organisation aujourd'hui.",
@@ -94,7 +88,6 @@
   "casual_leave": "Congé occasionnel : {value}%",
   "sick_leave": "Congé maladie : {value}%",
   "medical_leave": "Congé médical : {value}%",
-
   "sidebar_dashboard": "Tableau de bord",
   "sidebar_workers": "Travailleurs",
   "sidebar_workforce": "Main-d'œuvre",
@@ -112,7 +105,6 @@
   "get_to_pro": "Obtenir Pro",
   "subscribe_now": "S'abonner maintenant",
   "back_to_login_sidebar": "Retour à la connexion",
-
   "setting": "Paramètres",
   "reset_password": "Réinitialiser le mot de passe",
   "reset_password_desc": "Changez votre mot de passe pour sécuriser votre compte.",
@@ -124,7 +116,6 @@
   "privacy_policy": "Politique de confidentialité",
   "sign_out": "Se déconnecter",
   "select_language": "Sélectionner la langue",
-
   "delete_account": "Supprimer le compte",
   "delete_account_question": "Supprimer le compte ?",
   "delete_account_desc": "Êtes-vous sûr de vouloir supprimer définitivement votre profil et toutes vos données ? Cette action est irréversible.",
@@ -133,10 +124,8 @@
   "account_deleted": "Compte supprimé",
   "signed_out_for_security": "Déconnecté pour des raisons de sécurité. Veuillez vous reconnecter pour supprimer complètement votre compte.",
   "failed_delete_account": "Échec de la suppression du compte. {error}",
-
   "sign_out_dialog_title": "Se déconnecter",
   "sign_out_dialog_desc": "Êtes-vous sûr de vouloir vous déconnecter ? Vous devrez vous reconnecter pour gérer votre profil RH et les données de votre main-d'œuvre.",
-
   "my_info": "Mes informations",
   "logout": "Se déconnecter",
   "save": "Enregistrer",
@@ -153,7 +142,6 @@
   "error_saving_profile": "Erreur lors de l'enregistrement du profil : {error}",
   "error_selecting_image": "Erreur lors de la sélection de l'image : {error}",
   "user": "Utilisateur",
-
   "choose_your_plan": "Choisissez votre plan",
   "select_subscription": "Sélectionnez l'abonnement qui convient le mieux\nà votre équipe",
   "monthly": "Mensuel",
@@ -172,24 +160,24 @@
   "subscription_disclaimer": "L'abonnement se renouvelle automatiquement sauf annulation avant la\nfin de la période en cours. Vous ne serez pas facturé si vous\nannulez pendant la période d'essai.",
   "restore": "Restaurer",
   "terms_of_use": "Conditions d'utilisation",
-
   "share_app_text": "Gérez votre main-d'œuvre efficacement avec notre nouvelle application HRMS !\nTéléchargez-la ici : {link}",
-
   "week": "Semaine",
   "month": "Mois",
   "3_month": "3 mois",
   "6_month": "6 mois",
   "yearly_period": "Annuel",
-
-  "jan": "JAN", "feb": "FÉV", "mar": "MAR", "apr": "AVR",
-  "may": "MAI", "jun": "JUIN", "jul": "JUIL",
-
+  "jan": "JAN",
+  "feb": "FÉV",
+  "mar": "MAR",
+  "apr": "AVR",
+  "may": "MAI",
+  "jun": "JUIN",
+  "jul": "JUIL",
   "lang_english": "Anglais",
   "lang_spanish": "Espagnol",
   "lang_french": "Français",
   "lang_portuguese": "Portugais",
   "lang_russian": "Russe",
-
   "worker_management": "Gestion des travailleurs",
   "complete_required_fields_worker": "Remplissez tous les champs requis pour enregistrer un nouveau travailleur.",
   "search_workers_name_position": "Rechercher par nom / position",
@@ -224,7 +212,6 @@
   "na": "N/A",
   "gender": "Genre",
   "position": "Poste",
-
   "add_new_worker": "Ajouter un nouveau travailleur",
   "fill_worker_details": "Remplissez les détails du travailleur pour commencer.",
   "worker_detail": "Détail du travailleur",
@@ -256,7 +243,6 @@
   "please_fill_name_contact": "Veuillez remplir au moins le nom et le contact !",
   "worker_added_successfully": "Travailleur ajouté avec succès !",
   "error_saving_data": "Erreur lors de l'enregistrement : {error}",
-
   "validation_error": "Erreur de validation",
   "please_enter_worker_name": "Veuillez entrer le nom du travailleur.",
   "please_enter_contact_number": "Veuillez entrer le numéro de contact.",
@@ -286,7 +272,6 @@
   "cv_uploaded": "CV téléchargé",
   "date_format": "JJ/MM/AAAA",
   "select_from_gallery": "Sélectionner dans la galerie",
-
   "workforce": "Main-d'œuvre",
   "search_by_workers_name": "Rechercher par nom",
   "today_attendance": "Présence du jour",
@@ -307,11 +292,9 @@
   "leave": "Congé",
   "remote": "À distance",
   "on_site": "Sur site",
-
   "pay_roll_list": "Liste de paie",
   "payroll_data": "Données de paie",
   "no_payroll_records": "Aucun enregistrement de paie",
-
   "delete_expense": "Supprimer la dépense",
   "delete_expense_desc": "Êtes-vous sûr de vouloir supprimer cette dépense ? Cette action est irréversible.",
   "add_expense": "Ajouter une dépense",
@@ -324,14 +307,12 @@
   "total_expense": "Dépense totale",
   "no_expenses_found": "Aucune dépense trouvée",
   "expenses_list": "Liste des dépenses",
-
   "add_holiday": "Ajouter un jour férié",
   "holiday_name": "Nom du jour férié",
   "holiday_day": "Jour {day}",
   "successfully_added_holiday": "Jour férié \"{name}\" ajouté avec succès",
   "custom": "Personnalisé",
   "holiday_name_hint": "Fête du Travail",
-
   "time_off_list": "Liste des congés",
   "no_time_off_requests": "Aucune demande de congé",
   "no_time_off_records": "Aucun enregistrement de congé",
@@ -351,7 +332,6 @@
   "notes_hint": "Ajouter des notes ici...",
   "requested_days": "Jours demandés",
   "days": "jours",
-
   "add_asset": "Ajouter un actif",
   "asset_type": "Type d'actif",
   "date_loaned": "Date de prêt",
@@ -366,7 +346,6 @@
   "ok": "OK",
   "in_use": "En utilisation",
   "returned": "Retourné",
-
   "please_enter_job_position": "Veuillez saisir le poste.",
   "please_enter_salary_amount": "Veuillez saisir le montant du salaire.",
   "job_experience_info": "Informations sur l'expérience professionnelle",
@@ -402,7 +381,6 @@
   "enter_your_currency": "Entrez votre devise",
   "enter_leave_policy": "Entrez la politique de congé",
   "enter_gender": "Entrez le genre",
-
   "total_presents": "Total Présents",
   "total_absent": "Total Absents",
   "total_leaves": "Total Congés",
@@ -418,7 +396,6 @@
   "delete_attendance_desc": "Êtes-vous sûr de vouloir supprimer cet enregistrement de présence ? Cette action est irréversible.",
   "share_coming_soon": "Fonction de partage bientôt disponible !",
   "worker_attendance_preview": "Aperçu de la Présence du Travailleur",
-
   "reason_optional": "Raison (Facultatif)",
   "reason_required": "Raison (Obligatoire)",
   "enter_reason_hint": "Entrez la raison......",
@@ -427,29 +404,24 @@
   "attendance_update_failed": "Échec de la mise à jour de la présence : {error}",
   "absent_type": "Type d'Absence : {type}",
   "reason_label": "Raison",
-
   "search_expenses_hint": "Rechercher par travailleurs ou catégories",
   "add_expenses": "Ajouter Dépenses",
   "this_month_expense": "Dépense du Mois",
   "date_header": "Date",
   "amount_header": "Montant",
   "edit_expense": "Modifier Dépense",
-
   "total_work_days": "Total Jours Travaillés",
   "absents_label": "Absences",
   "leaves_label": "Congés",
   "overtime_days": "Heures Supplémentaires",
   "payroll_data_preview": "Aperçu des Données de Paie",
-
   "holiday_list": "Liste des Jours Fériés",
   "no_holidays_found": "Aucun Jour Férié",
-
   "sick_leave_type": "Congé Maladie",
   "please_enter_notes": "Veuillez entrer vos notes",
   "available_annual_leave": "Jours de Congé Annuel Disponibles",
   "assign_time_off_success": "Congé attribué avec succès",
   "assign_time_off_failed": "Échec de l'attribution du congé",
-
   "search_assets_hint": "Rechercher par travailleurs ou détails d'actifs",
   "weekday_sun": "DIM",
   "weekday_mon": "LUN",
@@ -473,7 +445,7 @@
   "available_casual_leave": "Jours de Congé Occasionnel Disponibles",
   "tap_to_upload_profile_image": "Appuyez pour charger une image de profil\nPNG ou JPG",
   "edit_asset": "Modifier l'actif",
-  "enter_asset_type": "Saisir le type d'actif",
+  "enter_asset_type": "Entrez le type d'actif",
   "csv_required_columns_error": "Le CSV doit contenir au moins les colonnes \"Nom complet\" et \"Numéro de contact\".",
   "workers_added_successfully": "{count} travailleurs ajoutés avec succès.",
   "skipped_duplicates_message": "{count} travailleurs en double ignorés.",
@@ -514,7 +486,6 @@
   "expense_category_hint": "ex. Dîner",
   "amount_hint": "0.00",
   "expense_title_hint": "ex. Dîner d'affaires",
-
   "month_january": "Janvier",
   "month_february": "Février",
   "month_march": "Mars",
@@ -527,7 +498,6 @@
   "month_october": "Octobre",
   "month_november": "Novembre",
   "month_december": "Décembre",
-
   "weekday_monday": "Lundi",
   "weekday_tuesday": "Mardi",
   "weekday_wednesday": "Mercredi",
@@ -535,7 +505,6 @@
   "weekday_friday": "Vendredi",
   "weekday_saturday": "Samedi",
   "weekday_sunday": "Dimanche",
-
   "error_title": "Erreur",
   "field_is_required": "{field} est obligatoire",
   "email_is_required": "L'e-mail est obligatoire",
@@ -557,24 +526,16 @@
   "approved": "Approuvé",
   "worker_fallback": "Travailleur",
   "days_unit": "Jours",
-  "position": "Poste",
-  "enter_position": "Entrez le poste",
-  "edit_asset": "Modifier l'actif",
-  "asset_type": "Type d'actif",
-  "enter_asset_type": "Entrez le type d'actif",
   "save_worker_template": "Enregistrer le modèle de travailleurs",
   "hrms_worker_template": "Modèle de travailleurs HRMS",
-
   "time_off_record_deleted": "Enregistrement de congé supprimé",
   "no_email_found_for_account": "Aucun e-mail trouvé pour ce compte.",
   "account_deleted_successfully": "Compte supprimé avec succès",
   "signed_out_for_security_delete_again": "Déconnecté pour des raisons de sécurité. Veuillez vous reconnecter pour supprimer complètement votre compte.",
   "expense_updated": "Dépense mise à jour avec succès",
-
   "joining_date_is": "La date d'embauche est le {date}",
   "hint_enter_national_id": "Entrez votre numéro d'identification",
   "this_field": "Ce champ",
-
   "week_label_1": "S1",
   "week_label_2": "S2",
   "week_label_3": "S3",
@@ -590,5 +551,14 @@
   "upload_cv_required": "Veuillez télécharger le CV",
   "could_not_download_template": "Impossible de télécharger le modèle. Réessayez.",
   "google_login_desktop": "La connexion avec Google n'est pas disponible sur le bureau. Veuillez utiliser la connexion par e-mail.",
-  "apple_login_desktop": "La connexion Apple n'est pas disponible sur cette plateforme. Veuillez utiliser la connexion par e-mail."
+  "apple_login_desktop": "La connexion Apple n'est pas disponible sur cette plateforme. Veuillez utiliser la connexion par e-mail.",
+  "fresher": "Débutant",
+  "junior": "Junior",
+  "mid_level": "Intermédiaire",
+  "senior": "Sénior",
+  "matric": "Brevet",
+  "intermediate": "Baccalauréat",
+  "bachelor": "Licence",
+  "master": "Master",
+  "other": "Autre"
 }
