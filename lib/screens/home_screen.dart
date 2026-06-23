@@ -981,11 +981,11 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                       children: [
                         Container(
                           width: double.infinity,
-                          height: 46,
+                          height: 50,
                           padding: const EdgeInsets.only(left: 16, right: 52),
                           decoration: BoxDecoration(
                             color: Color(0xFF000000),
-                            borderRadius: BorderRadius.circular(23),
+                            borderRadius: BorderRadius.circular(25),
                             border: Border.all(
                               color: Color(0xFFFFFFFF),
                               width: 1.0,
@@ -1007,6 +1007,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                                   height: 1.1,
                                 ),
                               ),
+                              const SizedBox(height: 4),
                               Text(
                                 'subscribe_now'.tr(),
                                 maxLines: 1,
