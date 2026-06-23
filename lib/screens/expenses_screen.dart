@@ -1360,7 +1360,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   flex: 2,
                   child: _tableHeader(
                     'amount_header'.tr(),
-                    textAlign: TextAlign.right,
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 const SizedBox(width: 48), // Spacer to match action menu width
@@ -1546,6 +1546,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             flex: 2,
             child: AmountText(
               _formatCurrency(amount),
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF0247C4),
