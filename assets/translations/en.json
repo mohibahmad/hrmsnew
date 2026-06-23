@@ -562,5 +562,9 @@
   "intermediate": "Intermediate",
   "bachelor": "Bachelor",
   "master": "Master",
-  "other": "Other"
+  "other": "Other",
+  "failed_to_pick_image": "Failed to select image",
+  "failed_to_pick_file": "Failed to select file",
+  "error_selecting_image": "Error selecting image: {error}",
+  "file_too_large": "File too large. Maximum size is {size}."
 }

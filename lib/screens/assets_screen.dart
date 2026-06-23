@@ -318,6 +318,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                     ),
                                   );
                                   DummyData.assets.insert(0, newAsset);
+                                  DummyData.saveToPrefs();
                                 });
                               } else {
                                 await FirestoreService().addAsset(assetMap);
@@ -1330,6 +1331,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               DummyData.assets.removeWhere(
                 (a) => a['name'] == data.name && a['type'] == data.type,
               );
+              DummyData.saveToPrefs();
             } else {
               if (data.id != null)
                 await FirestoreService().deleteAsset(data.id!);

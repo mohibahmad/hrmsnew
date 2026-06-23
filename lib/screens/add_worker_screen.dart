@@ -83,6 +83,16 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
+        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
           bytes = io.File(file.path!).readAsBytesSync();

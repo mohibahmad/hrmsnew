@@ -186,6 +186,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       setState(() {
         _expensesDocs.removeWhere((e) => e['id'] == docId);
         DummyData.expenses.removeWhere((e) => e['id'] == docId);
+        DummyData.saveToPrefs();
       });
     } else {
       await FirestoreService().deleteExpense(docId);
@@ -584,6 +585,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   ...expenseMap,
                                   'id': newId,
                                 });
+                                DummyData.saveToPrefs();
                               });
                             } else {
                               FirestoreService().addExpense(expenseMap);
@@ -882,20 +884,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
-    [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
     String monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 

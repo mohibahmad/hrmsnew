@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'firebase_options.dart';
+import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'screens/splash_screen.dart';
 
@@ -94,6 +95,9 @@ void main() {
         ErrorReporter.report(e, st, context: 'Firebase.initializeApp');
       }
       debugPrint('Firebase ready: $firebaseReady');
+
+      // Restore guest data from previous session, if any.
+      await DummyData.loadFromPrefs();
 
       // FIX #2: await window setup BEFORE runApp and launch hidden, then show,
       // to avoid the default-size flash / position jump on macOS.

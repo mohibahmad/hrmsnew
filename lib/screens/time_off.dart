@@ -264,6 +264,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 e['name'] == doc['name'] &&
                 e['action'] == doc['action'],
           );
+          DummyData.saveToPrefs();
           _timeoffDocs.removeWhere(
             (e) =>
                 e['id'] == doc['id'] &&

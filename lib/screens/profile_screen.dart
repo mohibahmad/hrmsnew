@@ -394,9 +394,19 @@ class _ProfileBodyState extends State<ProfileBody> {
 
       if (result == null || !mounted) return;
 
+      final file = result.files.single;
+      if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+        FlashySnackBar.show(
+          context,
+          message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+          isError: true,
+        );
+        return;
+      }
+
       setState(() {
-        _newProfileImageBytes = result.files.single.bytes;
-        _newProfileImagePath = result.files.single.path;
+        _newProfileImageBytes = file.bytes;
+        _newProfileImagePath = file.path;
       });
     } catch (e) {
       if (mounted) {
@@ -429,12 +439,26 @@ class _ProfileBodyState extends State<ProfileBody> {
               .child('profile_pics')
               .child(fileName);
 
-          if (_newProfileImageBytes != null) {
-            await ref.putData(_newProfileImageBytes!);
-          } else if (_newProfileImagePath != null) {
-            await ref.putFile(File(_newProfileImagePath!));
+          try {
+            if (_newProfileImageBytes != null) {
+              await ref.putData(_newProfileImageBytes!);
+            } else if (_newProfileImagePath != null) {
+              await ref.putFile(File(_newProfileImagePath!));
+            }
+            downloadUrl = await ref.getDownloadURL();
+          } catch (e) {
+            if (mounted) {
+              FlashySnackBar.show(
+                context,
+                message: 'file_upload_failed'.tr(
+                  namedArgs: {'file': fileName},
+                ),
+                isError: true,
+              );
+            }
+            setState(() => _isLoading = false);
+            return;
           }
-          downloadUrl = await ref.getDownloadURL();
         }
 
         if (downloadUrl != null) {

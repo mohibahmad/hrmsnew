@@ -943,6 +943,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           if (desc != null && desc.isNotEmpty)
                                             newRecord['desc'] = desc;
                                           DummyData.attendance.add(newRecord);
+                                          DummyData.saveToPrefs();
                                         }
                                         setState(() {
                                           _workers =

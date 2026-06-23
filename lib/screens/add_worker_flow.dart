@@ -249,6 +249,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
+        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
           bytes = io.File(file.path!).readAsBytesSync();
@@ -280,6 +290,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
+        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
           bytes = io.File(file.path!).readAsBytesSync();
@@ -311,6 +331,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
+        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
           bytes = io.File(file.path!).readAsBytesSync();
@@ -342,6 +372,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
+        if (file.bytes != null && file.bytes!.length > 20 * 1024 * 1024) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '20MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
         Uint8List? bytes = file.bytes;
         if (bytes == null && file.path != null) {
           bytes = io.File(file.path!).readAsBytesSync();
@@ -689,6 +729,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         if (isGuest) {
           final newId = 'dummy_${DateTime.now().millisecondsSinceEpoch}';
           DummyData.workers.insert(0, {...data, 'id': newId});
+          await DummyData.saveToPrefs();
         } else {
           await FirestoreService().addWorker(data);
         }
@@ -808,6 +849,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _annualLeavesController.dispose();
     _sickLeavesController.dispose();
     _casualLeavesController.dispose();
+    _profileImageBytes = null;
+    _frontIdBytes = null;
+    _backIdBytes = null;
+    _cvBytes = null;
     super.dispose();
   }
 
@@ -1960,7 +2005,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             ),
                             const SizedBox(width: 20),
                             Text(
-                              '${_months[_calendarMonth.month - 1].toUpperCase()}${_calendarMonth.year}',
+                              '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()}${_calendarMonth.year}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
@@ -3393,8 +3438,8 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       if (document != null) {
         final page = await document.getPage(1);
         final pageImage = await page.render(
-          width: page.width * 3,
-          height: page.height * 3,
+          width: page.width * 1.5,
+          height: page.height * 1.5,
           format: PdfPageImageFormat.png,
         );
         if (pageImage != null) {

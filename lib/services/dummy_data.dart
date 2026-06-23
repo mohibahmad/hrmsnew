@@ -1,4 +1,88 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 class DummyData {
+  static bool _prefsLoaded = false;
+
+  static Future<void> loadFromPrefs() async {
+    if (_prefsLoaded) return;
+    _prefsLoaded = true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final workersJson = prefs.getString('dummy_workers');
+      if (workersJson != null && workersJson.isNotEmpty) {
+        final list = (jsonDecode(workersJson) as List)
+            .cast<Map<String, dynamic>>();
+        workers
+          ..clear()
+          ..addAll(list);
+      }
+
+      final expensesJson = prefs.getString('dummy_expenses');
+      if (expensesJson != null && expensesJson.isNotEmpty) {
+        final list = (jsonDecode(expensesJson) as List)
+            .cast<Map<String, dynamic>>();
+        expenses
+          ..clear()
+          ..addAll(list);
+      }
+
+      final attendanceJson = prefs.getString('dummy_attendance');
+      if (attendanceJson != null && attendanceJson.isNotEmpty) {
+        final list = (jsonDecode(attendanceJson) as List)
+            .cast<Map<String, dynamic>>();
+        attendance
+          ..clear()
+          ..addAll(list);
+      }
+
+      final payrollJson = prefs.getString('dummy_payroll');
+      if (payrollJson != null && payrollJson.isNotEmpty) {
+        final list = (jsonDecode(payrollJson) as List)
+            .cast<Map<String, dynamic>>();
+        payroll
+          ..clear()
+          ..addAll(list);
+      }
+
+      final timeoffJson = prefs.getString('dummy_timeoff');
+      if (timeoffJson != null && timeoffJson.isNotEmpty) {
+        final list = (jsonDecode(timeoffJson) as List)
+            .cast<Map<String, dynamic>>();
+        timeoff
+          ..clear()
+          ..addAll(list);
+      }
+
+      final assetsJson = prefs.getString('dummy_assets');
+      if (assetsJson != null && assetsJson.isNotEmpty) {
+        final list = (jsonDecode(assetsJson) as List)
+            .cast<Map<String, dynamic>>();
+        assets
+          ..clear()
+          ..addAll(list);
+      }
+    } catch (_) {
+      // Ignore errors loading prefs; use default data
+    }
+  }
+
+  static Future<void> saveToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('dummy_workers', jsonEncode(workers));
+      await prefs.setString('dummy_expenses', jsonEncode(expenses));
+      await prefs.setString('dummy_attendance', jsonEncode(attendance));
+      await prefs.setString('dummy_payroll', jsonEncode(payroll));
+      await prefs.setString('dummy_timeoff', jsonEncode(timeoff));
+      await prefs.setString('dummy_assets', jsonEncode(assets));
+    } catch (_) {
+      // Ignore save errors
+    }
+  }
+
   static final List<Map<String, dynamic>> workers = [
     {
       'id': 'dummy_1',

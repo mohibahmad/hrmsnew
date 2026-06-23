@@ -562,5 +562,9 @@
   "intermediate": "Старшая школа",
   "bachelor": "Бакалавриат",
   "master": "Магистратура",
-  "other": "Другое"
+  "other": "Другое",
+  "failed_to_pick_image": "Не удалось выбрать изображение",
+  "failed_to_pick_file": "Не удалось выбрать файл",
+  "error_selecting_image": "Ошибка при выборе изображения: {error}",
+  "file_too_large": "Файл слишком большой. Максимальный размер {size}."
 }

@@ -101,6 +101,16 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
+      if (file.bytes != null && file.bytes!.length > 5 * 1024 * 1024) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'file_too_large'.tr(namedArgs: {'size': '5MB'}),
+            isError: true,
+          );
+        }
+        return;
+      }
       Uint8List? bytes = file.bytes;
       if (bytes == null && file.path != null) {
         bytes = await io.File(file.path!).readAsBytes();
@@ -352,6 +362,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
           DummyData.workers.insert(0, {...data, 'id': newId});
         }
+        await DummyData.saveToPrefs();
       } else {
         await FirestoreService().addBulkWorkers(_validWorkers);
       }

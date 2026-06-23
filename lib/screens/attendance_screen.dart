@@ -803,6 +803,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
           _attendanceDocs.removeWhere((a) => a['id'] == docId);
           DummyData.attendance.removeWhere((a) => a['id'] == docId);
+          DummyData.saveToPrefs();
           _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
           _rawAttendanceDocs = List<Map<String, dynamic>>.from(
             DummyData.attendance,

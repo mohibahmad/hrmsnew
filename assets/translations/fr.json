@@ -562,5 +562,9 @@
   "intermediate": "Baccalauréat",
   "bachelor": "Licence",
   "master": "Master",
-  "other": "Autre"
+  "other": "Autre",
+  "failed_to_pick_image": "Échec de la sélection de l'image",
+  "failed_to_pick_file": "Échec de la sélection du fichier",
+  "error_selecting_image": "Erreur lors de la sélection de l'image : {error}",
+  "file_too_large": "Fichier trop volumineux. La taille maximale est de {size}."
 }

@@ -822,8 +822,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 // else update end date
                 if (date.isBefore(_startDate)) {
                   _startDate = date;
+                  if (_endDate.isBefore(_startDate)) {
+                    _endDate = _startDate.add(const Duration(days: 1));
+                  }
                 } else {
                   _endDate = date;
+                  if (_endDate.isBefore(_startDate)) {
+                    _endDate = _startDate;
+                  }
                 }
               });
             }
@@ -1047,6 +1053,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ...recordMap,
           'id': 'guest_to_${DateTime.now().millisecondsSinceEpoch}',
         });
+        await DummyData.saveToPrefs();
       } else {
         await FirestoreService().addTimeOffRecord(recordMap);
       }

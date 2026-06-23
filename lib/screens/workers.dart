@@ -614,6 +614,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         setState(() {
           _allWorkers.removeWhere((w) => w['id'] == docId);
           DummyData.workers.removeWhere((w) => w['id'] == docId);
+          DummyData.saveToPrefs();
         });
       } else {
         await FirestoreService().deleteWorker(docId);

@@ -256,6 +256,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                         'name': holidayNameController.text,
                                         'isEnabled': true,
                                       });
+                                  DummyData.saveToPrefs();
                                 });
                               } else {
                                 await FirestoreService().addHoliday(holidayMap);
@@ -712,7 +713,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          month,
+          _localizeMonth(month),
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF000000),
@@ -843,6 +844,37 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         ),
       ),
     );
+  }
+
+  String _localizeMonth(String month) {
+    switch (month) {
+      case 'January':
+        return 'month_january'.tr();
+      case 'February':
+        return 'month_february'.tr();
+      case 'March':
+        return 'month_march'.tr();
+      case 'April':
+        return 'month_april'.tr();
+      case 'May':
+        return 'month_may'.tr();
+      case 'June':
+        return 'month_june'.tr();
+      case 'July':
+        return 'month_july'.tr();
+      case 'August':
+        return 'month_august'.tr();
+      case 'September':
+        return 'month_september'.tr();
+      case 'October':
+        return 'month_october'.tr();
+      case 'November':
+        return 'month_november'.tr();
+      case 'December':
+        return 'month_december'.tr();
+      default:
+        return month;
+    }
   }
 }
 

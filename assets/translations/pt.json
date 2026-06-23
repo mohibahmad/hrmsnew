@@ -562,5 +562,9 @@
   "intermediate": "Ensino médio",
   "bachelor": "Bacharelado",
   "master": "Mestrado",
-  "other": "Outro"
+  "other": "Outro",
+  "failed_to_pick_image": "Falha ao selecionar imagem",
+  "failed_to_pick_file": "Falha ao selecionar arquivo",
+  "error_selecting_image": "Erro ao selecionar imagem: {error}",
+  "file_too_large": "Arquivo muito grande. O tamanho máximo é {size}."
 }
