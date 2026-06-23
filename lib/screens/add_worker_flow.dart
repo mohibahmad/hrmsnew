@@ -1625,6 +1625,38 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     }
   }
 
+  String _localizeExperience(String value) {
+    switch (value) {
+      case 'Fresher':
+        return 'fresher'.tr();
+      case 'Junior':
+        return 'junior'.tr();
+      case 'Mid-Level':
+        return 'mid_level'.tr();
+      case 'Senior':
+        return 'senior'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizeEducation(String value) {
+    switch (value) {
+      case 'Matric':
+        return 'matric'.tr();
+      case 'Intermediate':
+        return 'intermediate'.tr();
+      case 'Bachelor':
+        return 'bachelor'.tr();
+      case 'Master':
+        return 'master'.tr();
+      case 'Other':
+        return 'other'.tr();
+      default:
+        return value;
+    }
+  }
+
   void _parseSelectedDate() {
     if (widget.selectedJoiningDate != null &&
         widget.selectedJoiningDate!.isNotEmpty) {
@@ -1794,6 +1826,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Mid-Level',
                               'Senior',
                             ],
+                            itemLabelBuilder: (val) => _localizeExperience(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.experienceLevelController.text = val;
@@ -1838,6 +1871,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               'Master',
                               'Other',
                             ],
+                            itemLabelBuilder: (val) => _localizeEducation(val),
                             onChanged: (val) {
                               if (val != null) {
                                 widget.educationController.text = val;
