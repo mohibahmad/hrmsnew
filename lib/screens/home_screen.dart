@@ -1575,16 +1575,16 @@ class TotalWorkersCard extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 12),
                                 Transform.rotate(
                                   angle: 0.35,
                                   child: Container(
                                     width: 1.0,
-                                    height: 42,
+                                    height: 52,
                                     color: const Color(0xFF000000),
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 14),
                                 Transform.translate(
                                   offset: const Offset(-9, 5),
                                   child: Column(
@@ -1970,6 +1970,16 @@ class SparklineCard extends StatelessWidget {
                           minY: 0,
                           maxY: 13,
                           lineBarsData: [
+                            LineChartBarData(
+                              spots: spots
+                                  .map((s) => FlSpot(s.x, s.y * animValue))
+                                  .toList(),
+                              isCurved: true,
+                              color: lineColor.withValues(alpha: 0.12),
+                              barWidth: 8,
+                              isStrokeCapRound: true,
+                              dotData: FlDotData(show: false),
+                            ),
                             LineChartBarData(
                               spots: spots
                                   .map((s) => FlSpot(s.x, s.y * animValue))
