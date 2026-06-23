@@ -645,32 +645,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: AttendanceLineChart(
-                          period: _selectedPeriod,
-                          isEmpty:
-                              _totalAttendanceCount == 0 ||
-                              _totalWorkersCount == 0,
-                          attendanceDocs: _attendanceDocs,
+                Builder(
+                  builder: (context) {
+                    final double screenWidth = MediaQuery.of(context).size.width;
+                    final bool isNarrow = screenWidth < 1150;
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AttendanceLineChart(
+                            period: _selectedPeriod,
+                            isEmpty:
+                                _totalAttendanceCount == 0 ||
+                                _totalWorkersCount == 0,
+                            attendanceDocs: _attendanceDocs,
+                          ),
+                          const SizedBox(height: 16),
+                          LeaveTypesPieChart(
+                            period: _selectedPeriod,
+                            isEmpty:
+                                _totalTimeoffCount == 0 ||
+                                _totalWorkersCount == 0,
+                            timeoffDocs: _timeoffDocs,
+                            workersList: _workersList,
+                          ),
+                        ],
+                      );
+                    } else {
+                      return IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: AttendanceLineChart(
+                                period: _selectedPeriod,
+                                isEmpty:
+                                    _totalAttendanceCount == 0 ||
+                                    _totalWorkersCount == 0,
+                                attendanceDocs: _attendanceDocs,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: LeaveTypesPieChart(
+                                period: _selectedPeriod,
+                                isEmpty:
+                                    _totalTimeoffCount == 0 ||
+                                    _totalWorkersCount == 0,
+                                timeoffDocs: _timeoffDocs,
+                                workersList: _workersList,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: LeaveTypesPieChart(
-                          period: _selectedPeriod,
-                          isEmpty:
-                              _totalTimeoffCount == 0 ||
-                              _totalWorkersCount == 0,
-                          timeoffDocs: _timeoffDocs,
-                          workersList: _workersList,
-                        ),
-                      ),
-                    ],
-                  ),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -2198,7 +2228,7 @@ ChartData getChartData(
           1050.0,
         ];
         final values = <double>[];
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < now.month; i++) {
           final date = DateTime(now.year, i + 1, 1);
           labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
           values.add(dummyValues[i]);
@@ -2312,15 +2342,15 @@ ChartData getChartData(
     case 'Yearly':
     default:
       final labels = <String>[];
-      final values = List.filled(12, 0.0);
+      final values = List.filled(now.month, 0.0);
 
-      for (int i = 0; i < 12; i++) {
+      for (int i = 0; i < now.month; i++) {
         final date = DateTime(now.year, i + 1, 1);
         labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
       }
 
       for (final dt in parsedRecords) {
-        if (dt.year == now.year) {
+        if (dt.year == now.year && dt.month <= now.month) {
           values[dt.month - 1] += 1.0;
         }
       }
@@ -2362,7 +2392,7 @@ class AttendanceLineChart extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
                   SizedBox(
-                    height: 300,
+                    height: 330,
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: 1),
                       duration: const Duration(milliseconds: 1000),
@@ -2383,153 +2413,158 @@ class AttendanceLineChart extends StatelessWidget {
                           (i) => FlSpot(i.toDouble(), chartData.values[i]),
                         );
 
-                        return LineChart(
-                          LineChartData(
-                            minX: 0,
-                            maxX: (spots.length - 1).toDouble(),
-                            minY: 0,
-                            maxY: range.maxY,
-                            lineTouchData: LineTouchData(
-                              touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (spot) =>
-                                    const Color(0xFF2C3E50),
-                                tooltipRoundedRadius: 8,
-                                getTooltipItems: (spots) {
-                                  return spots.map((spot) {
-                                    return LineTooltipItem(
-                                      spot.y.toStringAsFixed(0),
-                                      const TextStyle(
-                                        color: Colors.white,
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 22.0, top: 10.0, bottom: 20.0),
+                          child: LineChart(
+                            LineChartData(
+                              minX: 0,
+                              maxX: (spots.length - 1).toDouble(),
+                              minY: 0,
+                              maxY: range.maxY,
+                              lineTouchData: LineTouchData(
+                                touchTooltipData: LineTouchTooltipData(
+                                  getTooltipColor: (spot) =>
+                                      const Color(0xFF2C3E50),
+                                  tooltipRoundedRadius: 8,
+                                  getTooltipItems: (spots) {
+                                    return spots.map((spot) {
+                                      return LineTooltipItem(
+                                        spot.y.toStringAsFixed(0),
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                ),
+                              ),
+                              gridData: FlGridData(
+                                show: true,
+                                drawHorizontalLine: false,
+                                drawVerticalLine: true,
+                                getDrawingVerticalLine: (value) => FlLine(
+                                  color: Colors.black.withOpacity(0.12),
+                                  strokeWidth: 1,
+                                ),
+                              ),
+                              titlesData: FlTitlesData(
+                                topTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                rightTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    reservedSize: 80,
+                                    interval: range.interval,
+                                    getTitlesWidget: (value, meta) {
+                                      const style = TextStyle(
+                                        color: Color(0xFF0247C4),
+                                        fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 14,
                                         fontFamily: 'SF Pro Display',
-                                      ),
-                                    );
-                                  }).toList();
-                                },
+                                      );
+                                      return Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            value.toInt().toString(),
+                                            style: style,
+                                            textAlign: TextAlign.right,
+                                            maxLines: 1,
+                                            softWrap: false,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            width: 6,
+                                            height: 1.5,
+                                            color: const Color(0xFF939393),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    reservedSize: 32,
+                                    interval: 1,
+                                    getTitlesWidget: (value, meta) {
+                                      final idx = value.toInt();
+                                      if (idx < 0 ||
+                                          idx >= chartData.labels.length) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      const style = TextStyle(
+                                        color: Color(0xFF0247C4),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro Display',
+                                      );
+                                      return Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 1.5,
+                                            height: 6,
+                                            color: const Color(0xFF939393),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            chartData.labels[idx],
+                                            style: style,
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
+                              borderData: FlBorderData(
+                                show: true,
+                                border: const Border(
+                                  bottom: BorderSide(
+                                    color: Color(0xFF939393),
+                                    width: 1,
+                                  ),
+                                  left: BorderSide(
+                                    color: Color(0xFF939393),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              lineBarsData: [
+                                LineChartBarData(
+                                  spots: spots
+                                      .map((s) => FlSpot(s.x, s.y * animValue))
+                                      .toList(),
+                                  isCurved: false,
+                                  color: const Color(0xFF21367E),
+                                  barWidth: 2,
+                                  dotData: FlDotData(
+                                    show: true,
+                                    getDotPainter:
+                                        (spot, percent, barData, index) {
+                                          return FlDotCirclePainter(
+                                            radius: 4,
+                                            color: const Color(0xFF21367E),
+                                            strokeWidth: 0,
+                                          );
+                                        },
+                                  ),
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    color: const Color(0xFFDEE6FF),
+                                  ),
+                                ),
+                              ],
                             ),
-                            gridData: FlGridData(
-                              show: true,
-                              drawHorizontalLine: false,
-                              drawVerticalLine: true,
-                              getDrawingVerticalLine: (value) => FlLine(
-                                color: Colors.black.withOpacity(0.12),
-                                strokeWidth: 1,
-                              ),
-                            ),
-                            titlesData: FlTitlesData(
-                              topTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              rightTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              leftTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 70,
-                                  interval: range.interval,
-                                  getTitlesWidget: (value, meta) {
-                                    const style = TextStyle(
-                                      color: Color(0xFF0247C4),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'SF Pro Display',
-                                    );
-                                    return Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          value.toInt().toString(),
-                                          style: style,
-                                          textAlign: TextAlign.right,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          width: 6,
-                                          height: 1.5,
-                                          color: const Color(0xFF939393),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ),
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 32,
-                                  interval: 1,
-                                  getTitlesWidget: (value, meta) {
-                                    final idx = value.toInt();
-                                    if (idx < 0 ||
-                                        idx >= chartData.labels.length) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    const style = TextStyle(
-                                      color: Color(0xFF0247C4),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'SF Pro Display',
-                                    );
-                                    return Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 1.5,
-                                          height: 6,
-                                          color: const Color(0xFF939393),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          chartData.labels[idx],
-                                          style: style,
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            borderData: FlBorderData(
-                              show: true,
-                              border: const Border(
-                                bottom: BorderSide(
-                                  color: Color(0xFF939393),
-                                  width: 1,
-                                ),
-                                left: BorderSide(
-                                  color: Color(0xFF939393),
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            lineBarsData: [
-                              LineChartBarData(
-                                spots: spots
-                                    .map((s) => FlSpot(s.x, s.y * animValue))
-                                    .toList(),
-                                isCurved: false,
-                                color: const Color(0xFF21367E),
-                                barWidth: 2,
-                                dotData: FlDotData(
-                                  show: true,
-                                  getDotPainter:
-                                      (spot, percent, barData, index) {
-                                        return FlDotCirclePainter(
-                                          radius: 4,
-                                          color: const Color(0xFF21367E),
-                                          strokeWidth: 0,
-                                        );
-                                      },
-                                ),
-                                belowBarData: BarAreaData(
-                                  show: true,
-                                  color: const Color(0xFFDEE6FF),
-                                ),
-                              ),
-                            ],
                           ),
                         );
                       },
