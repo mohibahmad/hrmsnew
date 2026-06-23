@@ -1248,7 +1248,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
           color: isSelected
               ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
               : const Color(0x00FFFFFF),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1327,7 +1327,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               color: isSelected
                   ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)
                   : const Color(0x00FFFFFF),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
