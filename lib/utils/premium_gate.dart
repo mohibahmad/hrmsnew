@@ -18,6 +18,9 @@ class PremiumGate {
   }
 
   static Future<bool> shouldShowUpgradeDialog(BuildContext context) async {
+    // Guest users are in demo mode — never show the upgrade dialog to them
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) return false;
     final isPremium = await PreferencesService.isPremium();
     if (isPremium) return false;
     if (_isShowingDialog) return false;

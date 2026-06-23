@@ -71,7 +71,10 @@ class AuthService {
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      await GoogleSignIn.instance.initialize();
+      await GoogleSignIn.instance.initialize(
+        clientId:
+            '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
+      );
       final GoogleSignInAccount googleUser = await GoogleSignIn.instance
           .authenticate();
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
@@ -164,7 +167,7 @@ class UserAvatar extends StatelessWidget {
       builder: (context, photoUrl, _) {
         final double size = radius * 2;
         final url = photoUrl;
-        
+
         Widget imageWidget;
         if (url != null && url.isNotEmpty) {
           if (url.startsWith('http')) {
@@ -173,19 +176,19 @@ class UserAvatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildFallback(size),
             );
           } else if (url.startsWith('data:image')) {
             try {
-              final String base64Content = url.substring(
-                url.indexOf(',') + 1,
-              );
+              final String base64Content = url.substring(url.indexOf(',') + 1);
               imageWidget = Image.memory(
                 base64Decode(base64Content),
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildFallback(size),
               );
             } catch (e) {
               imageWidget = _buildFallback(size);
@@ -196,7 +199,8 @@ class UserAvatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _buildFallback(size),
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildFallback(size),
             );
           }
         } else {
@@ -210,9 +214,7 @@ class UserAvatar extends StatelessWidget {
             shape: BoxShape.circle,
             color: Colors.transparent,
           ),
-          child: ClipOval(
-            child: imageWidget,
-          ),
+          child: ClipOval(child: imageWidget),
         );
       },
     );

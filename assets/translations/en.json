@@ -588,5 +588,7 @@
   "upload_cnic_front_required": "Please upload CNIC Front side",
   "upload_cnic_back_required": "Please upload CNIC Back side",
   "upload_cv_required": "Please upload CV",
-  "could_not_download_template": "Could not download template. Please try again."
+  "could_not_download_template": "Could not download template. Please try again.",
+  "google_login_desktop": "Google Sign-In is not available on desktop. Please use Email login instead.",
+  "apple_login_desktop": "Apple Sign-In is not available on this platform. Please use Email login instead."
 }

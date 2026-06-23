@@ -342,12 +342,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final isPremium = await PreferencesService.isPremium();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isPremium && !isGuest && mounted) {
-      await showDialog<bool>(
+      final result = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
         builder: (_) => const SubscriptionDialog(),
       );
+      // If the user subscribed, refresh premium status to update the sidebar
+      if (result == true) {
+        await _loadPremiumStatus();
+      }
     }
   }
 
@@ -441,6 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
                     isGuest: AuthService().currentUser?.isAnonymous ?? false,
+                    isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) => setState(() {
                       _selectedIndex = index;
                       if (subIndex != null) {
@@ -807,6 +812,7 @@ class SidebarWidget extends StatefulWidget {
   final int selectedIndex;
   final int selectedSubIndex;
   final bool isGuest;
+  final bool isPremium;
   final void Function(int index, {int? subIndex}) onItemSelected;
   final VoidCallback? onBackToLogin;
 
@@ -815,6 +821,7 @@ class SidebarWidget extends StatefulWidget {
     required this.selectedIndex,
     this.selectedSubIndex = 0,
     this.isGuest = false,
+    this.isPremium = false,
     required this.onItemSelected,
     this.onBackToLogin,
   });
@@ -863,7 +870,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
       color: const Color(0xFF0247C4),
       child: Column(
         children: [
-          if (!widget.isGuest)
+          if (!widget.isGuest && !widget.isPremium)
             GestureDetector(
               onTap: () {
                 showDialog(

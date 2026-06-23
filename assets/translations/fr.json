@@ -585,5 +585,7 @@
   "upload_cnic_front_required": "Veuillez télécharger le recto du CNIC",
   "upload_cnic_back_required": "Veuillez télécharger le verso du CNIC",
   "upload_cv_required": "Veuillez télécharger le CV",
-  "could_not_download_template": "Impossible de télécharger le modèle. Réessayez."
+  "could_not_download_template": "Impossible de télécharger le modèle. Réessayez.",
+  "google_login_desktop": "La connexion avec Google n'est pas disponible sur le bureau. Veuillez utiliser la connexion par e-mail.",
+  "apple_login_desktop": "La connexion Apple n'est pas disponible sur cette plateforme. Veuillez utiliser la connexion par e-mail."
 }
