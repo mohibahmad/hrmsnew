@@ -1943,7 +1943,15 @@ class SparklineCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              CustomTimeframeDropdown.localizePeriod(period),
+                              period == 'Month'
+                                  ? (title == 'expenses'.tr()
+                                      ? 'monthly'.tr().toLowerCase()
+                                      : 'month'.tr().toLowerCase())
+                                  : (period == 'Week'
+                                      ? (title == 'expenses'.tr()
+                                          ? 'weekly'.tr().toLowerCase()
+                                          : 'week'.tr().toLowerCase())
+                                      : CustomTimeframeDropdown.localizePeriod(period)),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.black,
@@ -2037,7 +2045,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor.withValues(alpha: 0.06),
-                              barWidth: 3.0,
+                              barWidth: 2.0,
                               isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                             ),
@@ -2047,7 +2055,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 2.5,
+                              barWidth: 1.0,
                               isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -2056,14 +2064,14 @@ class SparklineCard extends StatelessWidget {
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.90)
+                                            .withValues(alpha: 0.50)
                                         : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.90),
+                                            .withValues(alpha: 0.50),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.60)
+                                            .withValues(alpha: 0.20)
                                         : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.60),
+                                            .withValues(alpha: 0.20),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD)
                                             .withValues(alpha: 0.0)
