@@ -1767,9 +1767,10 @@ class RoundedDonutChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
+      key: ValueKey('$malePercent-$femalePercent'),
       tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1000),
-      curve: Curves.easeInOutCubic,
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutQuart,
       builder: (context, value, child) {
         return CustomPaint(
           size: const Size(135, 135),
@@ -1971,9 +1972,10 @@ class SparklineCard extends StatelessWidget {
                 SizedBox(
                   height: 90,
                   child: TweenAnimationBuilder<double>(
+                    key: ValueKey(period),
                     tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 800),
-                    curve: Curves.easeInOutCubic,
+                    duration: const Duration(milliseconds: 650),
+                    curve: Curves.easeOutQuart,
                     builder: (context, animValue, child) {
                       final double m = period == 'Week'
                           ? 0.3
@@ -2457,9 +2459,10 @@ class AttendanceLineChart extends StatelessWidget {
                   SizedBox(
                     height: 330,
                     child: TweenAnimationBuilder<double>(
+                      key: ValueKey(period),
                       tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeInOutCubic,
+                      duration: const Duration(milliseconds: 750),
+                      curve: Curves.easeOutQuart,
                       builder: (context, animValue, child) {
                         final chartData = getChartData(
                           period,
@@ -3053,9 +3056,10 @@ class LeaveTypesPieChart extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   TweenAnimationBuilder<double>(
+                    key: ValueKey(period),
                     tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 1000),
-                    curve: Curves.easeInOutCubic,
+                    duration: const Duration(milliseconds: 750),
+                    curve: Curves.easeOutQuart,
                     builder: (context, animValue, child) {
                       return Opacity(
                         opacity: animValue,
