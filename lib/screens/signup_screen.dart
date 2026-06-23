@@ -86,7 +86,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   color: Colors.transparent,
                   child: Container(
                     width: 280,
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 20,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(6),
@@ -121,14 +124,20 @@ class _SignupScreenState extends State<SignupScreen> {
                               Navigator.pop(context);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               margin: const EdgeInsets.only(bottom: 4),
                               decoration: BoxDecoration(
-                                color: isSel ? const Color(0xFFF1F3F5) : Colors.transparent,
+                                color: isSel
+                                    ? const Color(0xFFF1F3F5)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     lang,
@@ -139,7 +148,11 @@ class _SignupScreenState extends State<SignupScreen> {
                                     ),
                                   ),
                                   if (isSel)
-                                    const Icon(Icons.check, size: 18, color: Color(0xFF0247C4)),
+                                    const Icon(
+                                      Icons.check,
+                                      size: 18,
+                                      color: Color(0xFF0247C4),
+                                    ),
                                 ],
                               ),
                             ),
@@ -306,7 +319,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
       // updateDisplayName is best-effort — don't let it block profile creation
       try {
-        await credential.user?.updateDisplayName(_usernameController.text.trim());
+        await credential.user?.updateDisplayName(
+          _usernameController.text.trim(),
+        );
       } catch (_) {}
 
       await FirestoreService().createUserProfile(
@@ -805,7 +820,11 @@ class _SignupScreenState extends State<SignupScreen> {
       color: Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(40),
       boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: Offset(0, 10)),
+        BoxShadow(
+          color: Colors.black.withOpacity(0.12),
+          blurRadius: 20,
+          offset: Offset(0, 10),
+        ),
       ],
     );
 

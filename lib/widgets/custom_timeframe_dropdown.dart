@@ -138,7 +138,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                     option,
                                   ),
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 16,
                                     color: isSelected
                                         ? const Color(0xFF0247C4)
                                         : Colors.grey.shade400,
@@ -192,7 +192,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       child: GestureDetector(
         onTap: _toggleDropdown,
         child: Container(
-          width: 100,
+          width: 108,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF0247C4), // Exact button blue
@@ -212,7 +212,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                   style: const TextStyle(
                     color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 16,
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
@@ -222,7 +222,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
               const Icon(
                 Icons.arrow_drop_down,
                 color: Color(0xFFFFFFFF),
-                size: 20,
+                size: 24,
               ),
             ],
           ),
