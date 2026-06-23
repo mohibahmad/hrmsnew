@@ -607,6 +607,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: 'total_salary'.tr(),
                           amount:
                               '\$${NumberFormat.compact(locale: 'en_US').format(_totalSalarySum)}',
+                          rawValue: _totalSalarySum,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF4C84E0),
                         ),
@@ -617,6 +618,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: 'expenses'.tr(),
                           amount:
                               '\$${NumberFormat.compact(locale: 'en_US').format(_totalExpensesSum)}',
+                          rawValue: _totalExpensesSum,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF0EA5E9),
                         ),
@@ -1867,6 +1869,7 @@ class _DonutChartPainter extends CustomPainter {
 class SparklineCard extends StatelessWidget {
   final String title;
   final String amount;
+  final double rawValue;
   final String period;
   final Color lineColor;
 
@@ -1874,6 +1877,7 @@ class SparklineCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.amount,
+    required this.rawValue,
     required this.period,
     required this.lineColor,
   });
@@ -2001,16 +2005,18 @@ class SparklineCard extends StatelessWidget {
                           : period == '6 Month'
                           ? 0.9
                           : 1.0;
+                      final double scaleFactor =
+                          (rawValue > 0 ? rawValue : 1.0) / 7.0;
                       final spots = [
-                        FlSpot(0, 3 * m),
-                        FlSpot(1, 6 * m),
-                        FlSpot(2, 4 * m),
-                        FlSpot(3, 4 * m),
-                        FlSpot(4, 7 * m),
-                        FlSpot(5, 5 * m),
-                        FlSpot(6, 6 * m),
-                        FlSpot(7, 2 * m),
-                        FlSpot(8, 7 * m),
+                        FlSpot(0, 3 * m * scaleFactor),
+                        FlSpot(1, 6 * m * scaleFactor),
+                        FlSpot(2, 4 * m * scaleFactor),
+                        FlSpot(3, 4 * m * scaleFactor),
+                        FlSpot(4, 7 * m * scaleFactor),
+                        FlSpot(5, 5 * m * scaleFactor),
+                        FlSpot(6, 6 * m * scaleFactor),
+                        FlSpot(7, 2 * m * scaleFactor),
+                        FlSpot(8, 7 * m * scaleFactor),
                       ];
 
                       return LineChart(
@@ -2019,7 +2025,7 @@ class SparklineCard extends StatelessWidget {
                           minX: -0.5,
                           maxX: (spots.length - 1).toDouble() + 0.5,
                           minY: 0,
-                          maxY: 13,
+                          maxY: 13 * scaleFactor,
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
                               tooltipRoundedRadius: 8,
