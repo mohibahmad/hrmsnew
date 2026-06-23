@@ -716,9 +716,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
-                            color: Color(0xFF000000).withValues(alpha: 0.02),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: Color(0xFFFFFFFF).withValues(alpha: 0.45),
+                            blurRadius: 12,
+                            spreadRadius: 1.5,
                           ),
                         ],
                       ),
@@ -938,14 +938,14 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFFFFFFFF).withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+                      color: Color(0xFFFFFFFF).withValues(alpha: 0.55),
+                      blurRadius: 14,
+                      spreadRadius: 2,
                     ),
                     BoxShadow(
-                      color: Color(0xFF4C84E0).withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      spreadRadius: 0,
+                      color: Color(0xFF4C84E0).withValues(alpha: 0.25),
+                      blurRadius: 18,
+                      spreadRadius: 1,
                     ),
                   ],
                 ),
