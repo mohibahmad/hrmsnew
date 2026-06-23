@@ -16,6 +16,7 @@ import '../utils/delete_dialog.dart';
 import '../utils/premium_gate.dart';
 import '../services/preferences_service.dart';
 import '../widgets/amount_text.dart';
+import '../utils/image_utils.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -42,10 +43,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
   StreamSubscription? _expensesSub;
+  StreamSubscription? _workersSub;
+  Map<String, Map<String, dynamic>> _workersMap = {};
 
   @override
   void dispose() {
     _expensesSub?.cancel();
+    _workersSub?.cancel();
     super.dispose();
   }
 
@@ -56,6 +60,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _isLoading = true;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
+      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workersMap = {
+              for (var doc in snapshot.docs)
+                (doc.data() as Map<String, dynamic>)['name'] as String? ?? '':
+                    doc.data() as Map<String, dynamic>,
+            };
+          });
+        }
+      });
       _expensesSub = FirestoreService().expensesStream.listen(
         (snapshot) {
           if (mounted) {
@@ -88,6 +103,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         },
       );
     } else {
+      _workersMap = {
+        for (var w in DummyData.workers)
+          (w['name'] ?? '').toString(): Map<String, dynamic>.from(w),
+      };
       _expensesDocs = DummyData.expenses
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
@@ -104,6 +123,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   String _formatCurrency(double amount) {
+    if (amount >= 1000) {
+      final compact = NumberFormat.compact(locale: 'en_US').format(amount);
+      return '\$$compact';
+    }
     final format = NumberFormat.currency(symbol: '\$ ', decimalDigits: 2);
     return format.format(amount);
   }
@@ -1346,11 +1369,32 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: _tableHeader('worker_name_header'.tr()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('worker_name_header'.tr()),
+                  ),
                 ),
-                Expanded(flex: 3, child: _tableHeader('date_header'.tr())),
-                Expanded(flex: 3, child: _tableHeader('expense_category'.tr())),
-                Expanded(flex: 2, child: _tableHeader('amount_header'.tr())),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('date_header'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('expense_category'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _tableHeader(
+                    'amount_header'.tr(),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
                 const SizedBox(width: 48), // Spacer to match action menu width
               ],
             ),
@@ -1425,9 +1469,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _tableHeader(String title) {
+  Widget _tableHeader(String title, {TextAlign? textAlign}) {
     return Text(
       title,
+      textAlign: textAlign,
       style: const TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 16,
@@ -1442,6 +1487,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final date = (doc['date'] ?? '').toString();
     final category = (doc['category'] ?? '').toString();
     final amount = (doc['amount'] ?? 0).toDouble();
+
+    String? profileImage;
+    String? email;
+    if (_workersMap.containsKey(name)) {
+      final workerData = _workersMap[name]!;
+      profileImage = workerData['profileImage']?.toString();
+      email = workerData['email']?.toString();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1452,57 +1506,72 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         children: [
           Expanded(
             flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: AssetImage(
-                    index % 2 == 0
-                        ? 'assets/profileimage.png'
-                        : 'assets/boy.png',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: getProfileImage(
+                      profileImage,
+                      email,
+                      index,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Tooltip(
+                      message: name,
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                date,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
-              ],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
           Expanded(
             flex: 3,
-            child: Text(
-              date,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: category,
+                child: Text(
+                  category,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              category,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(

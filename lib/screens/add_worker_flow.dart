@@ -17,6 +17,7 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 const List<String> _months = [
   'January',
@@ -513,51 +514,63 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       final uploads = <Future<String?>>[];
 
       Future<String?> uploadWithFallback(
-          String folder, String name, Uint8List bytes, String mime) async {
+        String folder,
+        String name,
+        Uint8List bytes,
+        String mime,
+      ) async {
         final url = await _uploadToStorage(folder, name, bytes);
         return url ?? 'data:$mime;base64,${base64Encode(bytes)}';
       }
 
       if (_profileImageBytes != null) {
-        uploads.add(uploadWithFallback(
-          'profile_images',
-          _profileImageName ?? 'profile.jpg',
-          _profileImageBytes!,
-          'image/jpeg',
-        ));
+        uploads.add(
+          uploadWithFallback(
+            'profile_images',
+            _profileImageName ?? 'profile.jpg',
+            _profileImageBytes!,
+            'image/jpeg',
+          ),
+        );
       } else {
         uploads.add(Future.value(profileImageUrl));
       }
 
       if (_frontIdBytes != null) {
-        uploads.add(uploadWithFallback(
-          'id_cards',
-          _frontIdName ?? 'front.jpg',
-          _frontIdBytes!,
-          'image/jpeg',
-        ));
+        uploads.add(
+          uploadWithFallback(
+            'id_cards',
+            _frontIdName ?? 'front.jpg',
+            _frontIdBytes!,
+            'image/jpeg',
+          ),
+        );
       } else {
         uploads.add(Future.value(frontIdUrl));
       }
 
       if (_backIdBytes != null) {
-        uploads.add(uploadWithFallback(
-          'id_cards',
-          _backIdName ?? 'back.jpg',
-          _backIdBytes!,
-          'image/jpeg',
-        ));
+        uploads.add(
+          uploadWithFallback(
+            'id_cards',
+            _backIdName ?? 'back.jpg',
+            _backIdBytes!,
+            'image/jpeg',
+          ),
+        );
       } else {
         uploads.add(Future.value(backIdUrl));
       }
 
       if (_cvBytes != null) {
-        uploads.add(uploadWithFallback(
-          'cvs',
-          _cvName ?? 'cv.pdf',
-          _cvBytes!,
-          'application/pdf',
-        ));
+        uploads.add(
+          uploadWithFallback(
+            'cvs',
+            _cvName ?? 'cv.pdf',
+            _cvBytes!,
+            'application/pdf',
+          ),
+        );
       } else {
         uploads.add(Future.value(cvUrl));
       }
@@ -2013,7 +2026,9 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   });
                                   FlashySnackBar.show(
                                     context,
-                                    message: 'joining_date_is'.tr(namedArgs: {'date': formatted}),
+                                    message: 'joining_date_is'.tr(
+                                      namedArgs: {'date': formatted},
+                                    ),
                                     isError: false,
                                   );
                                 }
@@ -3311,7 +3326,7 @@ ImageProvider getProfileImageProvider(String? url) {
     return MemoryImage(base64Decode(base64Content));
   }
   if (url.startsWith('http')) {
-    return NetworkImage(url);
+    return CachedNetworkImageProvider(url);
   }
   return AssetImage(url);
 }

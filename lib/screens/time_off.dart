@@ -70,6 +70,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
   void _combineTimeOff() {
     if (_workersList.isEmpty) {
+      _timeoffDocs = [];
       _isLoading = false;
       return;
     }
@@ -534,49 +535,61 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text(
-                    'worker_name_header'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'worker_name_header'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    'position'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'position'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    'contact_no'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'contact_no'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    'time_off'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Text(
+                      'time_off'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
                 ),
@@ -628,75 +641,90 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         // Worker Name with Avatar
                         Expanded(
                           flex: 3,
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundImage: getProfileImage(
-                                  doc['profileImage']?.toString(),
-                                  doc['email']?.toString(),
-                                  index,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundImage: getProfileImage(
+                                    doc['profileImage']?.toString(),
+                                    doc['email']?.toString(),
+                                    index,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: Color(0xFF000000),
-                                        fontFamily: 'SF Pro Display',
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Tooltip(
+                                        message: name,
+                                        child: Text(
+                                          name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Color(0xFF000000),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      email,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black,
-                                        fontFamily: 'SF Pro Display',
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        email,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         // Position
                         Expanded(
                           flex: 2,
-                          child: Text(
-                            position,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.black,
-                              fontFamily: 'SF Pro Display',
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16.0),
+                            child: Tooltip(
+                              message: position,
+                              child: Text(
+                                position,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // Contact
                         Expanded(
                           flex: 2,
-                          child: Text(
-                            contact,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.black,
-                              fontFamily: 'SF Pro Display',
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16.0),
+                            child: Text(
+                              contact,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // Time Off Action
@@ -830,7 +858,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'no_time_off_requests'.tr(),
+              'no_time_off_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,

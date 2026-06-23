@@ -14,6 +14,7 @@ import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/image_utils.dart';
+import '../utils/snackbar_utils.dart';
 
 void main() {
   runApp(const WorkerManagementApp());
@@ -47,9 +48,21 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   // 0: Dashboard List, 1: Add Worker Form
   int _currentMenuIndex = 1;
+  bool _isPremium = false;
 
   final Color sidebarBlue = const Color(0xFF0B50C3);
   final Color activeTabBlue = const Color(0xFF4C84E0);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPremiumStatus();
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final isPremium = await PreferencesService.isPremium();
+    if (mounted) setState(() => _isPremium = isPremium);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,16 +74,19 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             color: sidebarBlue,
             child: Column(
               children: [
-                if (!(AuthService().currentUser?.isAnonymous ?? false))
+                if (!(AuthService().currentUser?.isAnonymous ?? false) && !_isPremium)
                   GestureDetector(
-                    onTap: () {
-                      showDialog(
+                    onTap: () async {
+                      final result = await showDialog<bool>(
                         context: context,
                         barrierColor: const Color(
                           0xFF0247C4,
                         ).withValues(alpha: 0.5),
                         builder: (context) => const SubscriptionDialog(),
                       );
+                      if (result == true) {
+                        await _loadPremiumStatus();
+                      }
                     },
                     child: Container(
                       width: 238,
@@ -545,6 +561,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 
   List<Map<String, dynamic>> get _currentPageItems {
     final filtered = _filteredWorkers;
+    final total = _totalPages;
+    if (_currentPage > total) {
+      _currentPage = total;
+    }
+    if (_currentPage < 1) {
+      _currentPage = 1;
+    }
     final startIndex = (_currentPage - 1) * _itemsPerPage;
     if (startIndex >= filtered.length) return [];
     final endIndex = startIndex + _itemsPerPage;
@@ -569,13 +592,31 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     if (!confirmed) return;
 
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      setState(() {
-        _allWorkers.removeWhere((w) => w['id'] == docId);
-        DummyData.workers.removeWhere((w) => w['id'] == docId);
-      });
-    } else {
-      await FirestoreService().deleteWorker(docId);
+    try {
+      if (isGuest) {
+        setState(() {
+          _allWorkers.removeWhere((w) => w['id'] == docId);
+          DummyData.workers.removeWhere((w) => w['id'] == docId);
+        });
+      } else {
+        await FirestoreService().deleteWorker(docId);
+      }
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'worker_deleted_successfully'.tr(),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_delete_record'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -875,37 +916,46 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text(
-                    'worker_name'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      fontFamily: 'SF Pro Display',
-                      color: Colors.black,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'worker_name'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontFamily: 'SF Pro Display',
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    'work_type'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      fontFamily: 'SF Pro Display',
-                      color: Colors.black,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'work_type'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontFamily: 'SF Pro Display',
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    'position'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      fontFamily: 'SF Pro Display',
-                      color: Colors.black,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'position'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontFamily: 'SF Pro Display',
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ),
@@ -1017,66 +1067,81 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         children: [
           Expanded(
             flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: getProfileImage(profileImage, email, index),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      Text(
-                        email,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: getProfileImage(profileImage, email, index),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              type1,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Tooltip(
+                          message: name,
+                          child: Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                        Text(
+                          email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              position,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                type1,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: position,
+                child: Text(
+                  position,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
               ),
             ),
           ),

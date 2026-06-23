@@ -173,8 +173,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     'pay_roll_list'.tr(),
                     style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
@@ -208,14 +208,21 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ),
       child: Row(
         children: [
-          Text(
-            'workforce'.tr(),
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF000000),
-              fontFamily: 'SF Pro Display',
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'workforce'.tr(),
+                style: TextStyle(
+                  color: Color(0xFF000000),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+              SizedBox(height: 4),
+            ],
           ),
           const Spacer(),
           GestureDetector(
@@ -343,7 +350,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       {'key': 'Management', 'label': 'management'.tr()},
     ];
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
@@ -358,7 +365,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               _currentPage = 1;
             }),
             child: Container(
-              margin: const EdgeInsets.only(right: 8),
+              margin: const EdgeInsets.only(right: 4),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
@@ -369,8 +376,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: Text(
                 filter['label']!,
                 style: TextStyle(
-                  color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 14,
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -434,19 +442,34 @@ class _PayrollScreenState extends State<PayrollScreen> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text('worker_name_header'.tr(), style: _headerStyle()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'worker_name_header'.tr(),
+                      style: _headerStyle(),
+                    ),
+                  ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('position'.tr(), style: _headerStyle()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text('position'.tr(), style: _headerStyle()),
+                  ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('contact_no'.tr(), style: _headerStyle()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text('contact_no'.tr(), style: _headerStyle()),
+                  ),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('payroll_data'.tr(), style: _headerStyle()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Text('payroll_data'.tr(), style: _headerStyle()),
+                  ),
                 ),
               ],
             ),
@@ -491,72 +514,87 @@ class _PayrollScreenState extends State<PayrollScreen> {
         children: [
           Expanded(
             flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: getProfileImage(
-                    doc['profileImage']?.toString(),
-                    doc['email']?.toString(),
-                    index,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: getProfileImage(
+                      doc['profileImage']?.toString(),
+                      doc['email']?.toString(),
+                      index,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        (doc['name'] ?? '').toString(),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Tooltip(
+                          message: (doc['name'] ?? '').toString(),
+                          child: Text(
+                            (doc['name'] ?? '').toString(),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        (doc['email'] ?? '').toString(),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                          fontFamily: 'SF Pro Display',
+                        const SizedBox(height: 4),
+                        Text(
+                          (doc['email'] ?? '').toString(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              (doc['position'] ?? '').toString(),
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.black,
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: (doc['position'] ?? '').toString(),
+                child: Text(
+                  (doc['position'] ?? '').toString(),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              (doc['phone'] ?? doc['contact'] ?? '').toString(),
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.black,
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                (doc['phone'] ?? doc['contact'] ?? '').toString(),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.black,
+                  fontFamily: 'SF Pro Display',
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
@@ -1070,9 +1108,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
         ),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFF0D4CC6),
+            color: const Color(0xFF0247C4),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(

@@ -31,24 +31,6 @@ class HolidaysScreen extends StatefulWidget {
 class _HolidaysScreenState extends State<HolidaysScreen> {
   bool isDataEmpty = false;
 
-  int _monthToIndex(String monthStr) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    final index = months.indexOf(monthStr);
-    return index == -1 ? 1 : index + 1;
-  }
 
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
   bool _isLoading = false;
@@ -108,21 +90,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               bool isEnabled =
                   data['isEnabled'] == true || data['isEnabled'] == null;
               final id = doc.id;
-
-              // Auto turn off custom holidays if their date has passed
-              final isCustom = data['isCustom'] == true;
-              final year = (data['year'] as num?)?.toInt();
-              if (isCustom && isEnabled && year != null) {
-                final holidayDate = DateTime(year, _monthToIndex(month), day);
-                final today = DateTime.now();
-                final todayDate = DateTime(today.year, today.month, today.day);
-
-                if (todayDate.isAfter(holidayDate)) {
-                  isEnabled = false;
-                  // Lazily update firestore in the background
-                  FirestoreService().updateHoliday(id, {'isEnabled': false});
-                }
-              }
 
               if (!tempMap.containsKey(month)) {
                 tempMap[month] = [];
@@ -811,9 +778,21 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 });
                 final isGuest = AuthService().currentUser?.isAnonymous ?? false;
                 if (!isGuest && item.id != null) {
-                  await FirestoreService().updateHoliday(item.id!, {
-                    'isEnabled': value,
-                  });
+                  try {
+                    await FirestoreService().updateHoliday(item.id!, {
+                      'isEnabled': value,
+                    });
+                  } catch (e) {
+                    setState(() {
+                      item.isEnabled = !value;
+                    });
+                    if (mounted) {
+                      FlashySnackBar.show(
+                        context,
+                        message: 'Failed to update holiday: $e',
+                      );
+                    }
+                  }
                 } else if (isGuest) {
                   final monthList = DummyData.holidays[item.month];
                   if (monthList != null) {

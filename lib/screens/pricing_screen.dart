@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
+import '../services/firestore_service.dart';
 
 class SubscriptionDialog extends StatefulWidget {
   final bool isPremium;
@@ -163,9 +164,14 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 height: 50,
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    // TODO: Implement real In-App Purchase
                                     // Current implementation is fake - just sets premium to true
                                     await PreferencesService.setPremium(true);
+                                    try {
+                                      await FirestoreService()
+                                          .updateUserProfile({
+                                            'isPremium': true,
+                                          });
+                                    } catch (_) {}
                                     if (context.mounted) {
                                       Navigator.of(context).pop(true);
                                     }
@@ -229,7 +235,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   _buildFooterLink(
                                     'privacy_policy'.tr(),
                                     onTap: () => launchUrl(
-                                      Uri.parse('https://your-privacy-policy-url.com'),
+                                      Uri.parse(
+                                        'https://your-privacy-policy-url.com',
+                                      ),
                                     ),
                                   ),
                                   _buildFooterDivider(),

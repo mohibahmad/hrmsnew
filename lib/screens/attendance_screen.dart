@@ -747,7 +747,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _combineAttendance();
         });
       } else {
-        await FirestoreService().deleteAttendanceRecord(docId);
+        if (!docId.startsWith('norecord_')) {
+          await FirestoreService().deleteAttendanceRecord(docId);
+        }
+        final email = doc['email'];
+        if (email != null) {
+          final worker = _workersList.firstWhere(
+            (w) => (w['email'] ?? '').toString().toLowerCase() == email.toString().toLowerCase(),
+            orElse: () => <String, dynamic>{},
+          );
+          final workerId = worker['id'];
+          if (workerId != null) {
+            final Map<String, dynamic> updatedWorker = Map<String, dynamic>.from(worker);
+            updatedWorker['status'] = FieldValue.delete();
+            updatedWorker.remove('id');
+            await FirestoreService().updateWorker(workerId, updatedWorker);
+          }
+        }
       }
     }
   }
@@ -834,15 +850,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         children: [
           // Table Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
                 Expanded(
                   flex: 3,
-                  child: _tableHeader('worker_name_header'.tr()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('worker_name_header'.tr()),
+                  ),
                 ),
-                Expanded(flex: 2, child: _tableHeader('status_header'.tr())),
-                Expanded(flex: 2, child: _tableHeader('work_type'.tr())),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('status_header'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('work_type'.tr()),
+                  ),
+                ),
                 Expanded(flex: 2, child: _tableHeader('position'.tr())),
                 const SizedBox(width: 48),
               ],
@@ -868,7 +899,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                 return Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
+                    horizontal: 16,
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
@@ -879,93 +910,114 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     children: [
                       Expanded(
                         flex: 3,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundImage: getProfileImage(
-                                doc['profileImage']?.toString(),
-                                email,
-                                index,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 16.0),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundImage: getProfileImage(
+                                  doc['profileImage']?.toString(),
+                                  email,
+                                  index,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: textDark,
-                                      fontFamily: 'SF Pro Display',
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Tooltip(
+                                      message: name,
+                                      child: Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: textDark,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    email,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black,
-                                      fontFamily: 'SF Pro Display',
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      email,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 16.0),
+                          child: Tooltip(
+                            message: status.isEmpty ? '-' : status,
+                            child: Text(
+                              status.isEmpty ? '-' : status,
+                              style: TextStyle(
+                                color: status == 'Present'
+                                    ? greenPresent
+                                    : (status == 'Absent'
+                                          ? redAbsent
+                                          : (status.isEmpty
+                                                ? Colors.grey
+                                                : orangeLeave)),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
+                          ),
                         ),
                       ),
                       Expanded(
                         flex: 2,
-                        child: Text(
-                          status.isEmpty ? '-' : status,
-                          style: TextStyle(
-                            color: status == 'Present'
-                                ? greenPresent
-                                : (status == 'Absent'
-                                      ? redAbsent
-                                      : (status.isEmpty
-                                            ? Colors.grey
-                                            : orangeLeave)),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'SF Pro Display',
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 16.0),
+                          child: Tooltip(
+                            message: workType,
+                            child: Text(
+                              workType,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: textDark,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Expanded(
                         flex: 2,
-                        child: Text(
-                          workType,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: textDark,
-                            fontFamily: 'SF Pro Display',
+                        child: Tooltip(
+                          message: role,
+                          child: Text(
+                            role,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: textDark,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          role,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: textDark,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       SizedBox(

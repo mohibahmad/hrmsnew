@@ -171,6 +171,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   List<AssetData> get _filteredAssets {
     return _assets.where((asset) {
+      final nameClean = asset.name.trim().toLowerCase();
+      final workerExists = _workersMap.keys.any((k) => k.trim().toLowerCase() == nameClean);
+      if (!workerExists) return false;
+
       final matchesSearch =
           asset.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           asset.type.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -1043,13 +1047,40 @@ class _AssetsScreenState extends State<AssetsScreen> {
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
               children: [
-                Expanded(flex: 3, child: _tableHeader('worker_name'.tr())),
-                Expanded(flex: 2, child: _tableHeader('position'.tr())),
-                Expanded(flex: 2, child: _tableHeader('type_header'.tr())),
-                Expanded(flex: 2, child: _tableHeader('date_loaned'.tr())),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('worker_name'.tr()),
+                  ),
+                ),
                 Expanded(
                   flex: 2,
-                  child: _tableHeader('date_returned_header'.tr()),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('position'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('type_header'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('date_loaned'.tr()),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: _tableHeader('date_returned_header'.tr()),
+                  ),
                 ),
                 const SizedBox(width: 48), // Match the action menu size
               ],
@@ -1141,9 +1172,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
     // Fallback: if asset has no profileImage, look up from workers map
     String? profileImage = data.profileImage;
     String? email = data.email;
-    if ((profileImage == null || profileImage.isEmpty) &&
-        _workersMap.containsKey(data.name)) {
-      final workerData = _workersMap[data.name]!;
+    final nameClean = data.name.trim().toLowerCase();
+    final matchKey = _workersMap.keys.firstWhere(
+      (k) => k.trim().toLowerCase() == nameClean,
+      orElse: () => '',
+    );
+    if ((profileImage == null || profileImage.isEmpty) && matchKey.isNotEmpty) {
+      final workerData = _workersMap[matchKey]!;
       profileImage = workerData['profileImage']?.toString();
       email ??= workerData['email']?.toString();
     }
@@ -1158,81 +1193,105 @@ class _AssetsScreenState extends State<AssetsScreen> {
           // Name and Avatar
           Expanded(
             flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: getProfileImage(profileImage, email, index),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    data.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: getProfileImage(profileImage, email, index),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Tooltip(
+                      message: data.name,
+                      child: Text(
+                        data.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: data.position,
+                child: Text(
+                  data.position,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              data.position,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
               ),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              data.type,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Tooltip(
+                message: data.type,
+                child: Text(
+                  data.type,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
               ),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              data.dateLoaned,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF000000),
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                data.dateLoaned,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
             ),
           ),
           // Date Returned (Colored)
           Expanded(
             flex: 2,
-            child: Text(
-              data.dateReturned,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: data.isReturned ? Colors.red : Colors.green,
-                fontFamily: 'SF Pro Display',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                data.dateReturned,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: data.isReturned ? Colors.red : Colors.green,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
             ),
           ),

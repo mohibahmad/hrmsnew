@@ -55,6 +55,7 @@ dependencies:
   csv: ^8.0.0
   path_provider: ^2.1.5
   open_file_plus: ^3.4.1+1
+  cached_network_image: ^3.4.1
 
 flutter_launcher_icons:
   android: true

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 
 final _base64Cache = <String, Uint8List>{};
@@ -12,7 +13,7 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
     final notifierUrl = AuthService.profilePicNotifier.value;
     if (notifierUrl != null && notifierUrl.isNotEmpty) {
       if (notifierUrl.startsWith('http')) {
-        return NetworkImage(notifierUrl);
+        return CachedNetworkImageProvider(notifierUrl);
       }
       if (notifierUrl.startsWith('data:image/')) {
         return MemoryImage(_decodeBase64(notifierUrl));
@@ -30,7 +31,7 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
     return MemoryImage(_decodeBase64(url));
   }
   if (url.startsWith('http')) {
-    return NetworkImage(url);
+    return CachedNetworkImageProvider(url);
   }
   return AssetImage(url);
 }

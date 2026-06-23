@@ -154,7 +154,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _totalAttendanceCount = 0;
   int _totalTimeoffCount = 0;
   List<Map<String, dynamic>> _attendanceDocs = [];
+  List<Map<String, dynamic>> _timeoffDocs = [];
+  List<Map<String, dynamic>> _workersList = [];
   Map<String, dynamic>? _selectedTimeOffWorker;
+  bool _isPremium = false;
 
   @override
   void dispose() {
@@ -167,9 +170,15 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Future<void> _loadPremiumStatus() async {
+    final isPremium = await PreferencesService.isPremium();
+    if (mounted) setState(() => _isPremium = isPremium);
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadPremiumStatus();
     AuthService.profilePicNotifier.value = AuthService().currentUser?.photoURL;
     final currentUser = AuthService().currentUser;
     if (currentUser != null && !currentUser.isAnonymous) {
@@ -223,8 +232,10 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
+        _workersList = List<Map<String, dynamic>>.from(workersList);
         _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
         _totalAttendanceCount = DummyData.attendance.length;
+        _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
         _holidays = DummyData.holidays.values
@@ -253,9 +264,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           int mCount = 0;
           int fCount = 0;
+          final list = <Map<String, dynamic>>[];
           for (final doc in snap.docs) {
-            final data = doc.data() as Map<String, dynamic>?;
-            final genderStr = (data?['gender'] ?? '')
+            final data = doc.data() as Map<String, dynamic>? ?? {};
+            list.add({...data, 'id': doc.id});
+            final genderStr = (data['gender'] ?? '')
                 .toString()
                 .trim()
                 .toLowerCase();
@@ -266,6 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
           setState(() {
+            _workersList = list;
             _totalWorkersCount = snap.docs.length;
             _maleWorkersCount = mCount;
             _femaleWorkersCount = fCount;
@@ -287,6 +301,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _timeoffSub = firestore.timeoffStream.listen((snap) {
         if (mounted) {
           setState(() {
+            _timeoffDocs = snap.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
             _totalTimeoffCount = snap.docs.length;
           });
         }
@@ -526,7 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: SparklineCard(
                           title: 'total_salary'.tr(),
                           amount:
-                              '\$${NumberFormat.compact().format(_totalSalarySum)}',
+                              '\$${NumberFormat.compact(locale: 'en_US').format(_totalSalarySum)}',
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF4C84E0),
                         ),
@@ -536,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: SparklineCard(
                           title: 'expenses'.tr(),
                           amount:
-                              '\$${NumberFormat.compact().format(_totalExpensesSum)}',
+                              '\$${NumberFormat.compact(locale: 'en_US').format(_totalExpensesSum)}',
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF0EA5E9),
                         ),
@@ -587,7 +604,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: AttendanceLineChart(
                           period: _selectedPeriod,
-                          isEmpty: _totalAttendanceCount == 0,
+                          isEmpty: _totalAttendanceCount == 0 || _totalWorkersCount == 0,
                           attendanceDocs: _attendanceDocs,
                         ),
                       ),
@@ -595,7 +612,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: LeaveTypesPieChart(
                           period: _selectedPeriod,
-                          isEmpty: _totalTimeoffCount == 0,
+                          isEmpty: _totalTimeoffCount == 0 || _totalWorkersCount == 0,
+                          timeoffDocs: _timeoffDocs,
+                          workersList: _workersList,
                         ),
                       ),
                     ],
@@ -1834,7 +1853,7 @@ class SparklineCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 18),
                 SizedBox(
                   height: 90,
                   child: TweenAnimationBuilder<double>(
@@ -1890,7 +1909,7 @@ class SparklineCard extends StatelessWidget {
                           minX: -0.3,
                           maxX: 8.3,
                           minY: 0,
-                          maxY: 10,
+                          maxY: 13,
                           lineBarsData: [
                             LineChartBarData(
                               spots: spots
@@ -1898,7 +1917,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 0.7,
+                              barWidth: 0.5,
                               isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -1908,17 +1927,17 @@ class SparklineCard extends StatelessWidget {
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(
                                             0xFF93D7FD,
-                                          ).withValues(alpha: 0.45)
+                                          ).withValues(alpha: 0.65)
                                         : const Color(
                                             0xFF8DA9F1,
-                                          ).withValues(alpha: 0.45),
+                                          ).withValues(alpha: 0.65),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(
                                             0xFF93D7FD,
-                                          ).withValues(alpha: 0.15)
+                                          ).withValues(alpha: 0.30)
                                         : const Color(
                                             0xFF8DA9F1,
-                                          ).withValues(alpha: 0.15),
+                                          ).withValues(alpha: 0.30),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(
                                             0xFF93D7FD,
@@ -1927,7 +1946,7 @@ class SparklineCard extends StatelessWidget {
                                             0xFF8DA9F1,
                                           ).withValues(alpha: 0.0),
                                   ],
-                                  stops: [0.0, 0.2, 0.5],
+                                  stops: [0.0, 0.25, 0.6],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
@@ -2518,11 +2537,15 @@ class LeavePeriodConfig {
 class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
+  final List<Map<String, dynamic>> timeoffDocs;
+  final List<Map<String, dynamic>> workersList;
 
   const LeaveTypesPieChart({
     super.key,
     required this.period,
     this.isEmpty = false,
+    required this.timeoffDocs,
+    required this.workersList,
   });
 
   static const Map<String, LeavePeriodConfig> _configs = {
@@ -2600,7 +2623,86 @@ class LeaveTypesPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = _configs[period] ?? _configs['Month']!;
+    final defaultConfig = _configs[period] ?? _configs['Month']!;
+
+    final activeWorkersEmails = workersList
+        .map((w) => (w['email'] ?? '').toString().trim().toLowerCase())
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    final activeWorkersNames = workersList
+        .map((w) => (w['name'] ?? '').toString().trim().toLowerCase())
+        .where((n) => n.isNotEmpty)
+        .toSet();
+
+    DateTime? dateLimit;
+    final now = DateTime.now();
+    if (period == 'Week') {
+      dateLimit = now.subtract(const Duration(days: 7));
+    } else if (period == 'Month') {
+      dateLimit = now.subtract(const Duration(days: 30));
+    } else if (period == '3 Month') {
+      dateLimit = now.subtract(const Duration(days: 90));
+    } else if (period == '6 Month') {
+      dateLimit = now.subtract(const Duration(days: 180));
+    } else if (period == 'Yearly') {
+      dateLimit = now.subtract(const Duration(days: 365));
+    }
+
+    int casualCount = 0;
+    int sickCount = 0;
+    int medicalCount = 0;
+
+    for (var t in timeoffDocs) {
+      final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
+      final tName = (t['name'] ?? '').toString().trim().toLowerCase();
+      final belongsToActive = (tEmail.isNotEmpty && activeWorkersEmails.contains(tEmail)) ||
+                              (tName.isNotEmpty && activeWorkersNames.contains(tName));
+      if (!belongsToActive) continue;
+
+      if (dateLimit != null) {
+        final tDate = DateTime.tryParse(t['startDate'] ?? '');
+        if (tDate != null && tDate.isBefore(dateLimit)) {
+          continue;
+        }
+      }
+
+      final action = (t['action'] ?? '').toString().trim().toLowerCase();
+      if (action.contains('casual')) {
+        casualCount++;
+      } else if (action.contains('sick')) {
+        sickCount++;
+      } else {
+        medicalCount++;
+      }
+    }
+
+    final int total = casualCount + sickCount + medicalCount;
+    final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0.0;
+    final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0.0;
+    final double medicalPercent = total > 0 ? (medicalCount / total) * 100 : 0.0;
+
+    final config = LeavePeriodConfig(
+      casualVal: total > 0 ? casualPercent : defaultConfig.casualVal,
+      sickVal: total > 0 ? sickPercent : defaultConfig.sickVal,
+      medicalVal: total > 0 ? medicalPercent : defaultConfig.medicalVal,
+      casualPath: defaultConfig.casualPath,
+      sickPath: defaultConfig.sickPath,
+      medicalPath: defaultConfig.medicalPath,
+      casualLeft: defaultConfig.casualLeft,
+      casualTop: defaultConfig.casualTop,
+      casualRight: defaultConfig.casualRight,
+      casualBottom: defaultConfig.casualBottom,
+      sickLeft: defaultConfig.sickLeft,
+      sickTop: defaultConfig.sickTop,
+      sickRight: defaultConfig.sickRight,
+      sickBottom: defaultConfig.sickBottom,
+      medicalLeft: defaultConfig.medicalLeft,
+      medicalTop: defaultConfig.medicalTop,
+      medicalRight: defaultConfig.medicalRight,
+      medicalBottom: defaultConfig.medicalBottom,
+    );
+
+    final bool reallyEmpty = isEmpty || total == 0 || workersList.isEmpty;
 
     return Card(
       elevation: 0,
@@ -2608,7 +2710,7 @@ class LeaveTypesPieChart extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: !isEmpty
+        child: !reallyEmpty
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
