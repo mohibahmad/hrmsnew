@@ -1631,14 +1631,11 @@ class TotalWorkersCard extends StatelessWidget {
                             namedArgs: {'count': maleCount.toString()},
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16),
-                          child: _buildLegendItem(
-                            Color(0xFFFF2D2D),
-                            'female'.tr(),
-                            'workers_count'.tr(
-                              namedArgs: {'count': femaleCount.toString()},
-                            ),
+                        _buildLegendItem(
+                          Color(0xFFFF2D2D),
+                          'female'.tr(),
+                          'workers_count'.tr(
+                            namedArgs: {'count': femaleCount.toString()},
                           ),
                         ),
                       ],
