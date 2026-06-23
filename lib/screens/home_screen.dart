@@ -151,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _payrollSub;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _timeoffSub;
+  StreamSubscription<Map<String, dynamic>?>? _profileSub;
   int _totalAttendanceCount = 0;
   int _totalTimeoffCount = 0;
   List<Map<String, dynamic>> _attendanceDocs = [];
@@ -167,18 +168,31 @@ class _HomeScreenState extends State<HomeScreen> {
     _payrollSub?.cancel();
     _attendanceSub?.cancel();
     _timeoffSub?.cancel();
+    _profileSub?.cancel();
     super.dispose();
   }
 
   Future<void> _loadPremiumStatus() async {
-    final isPremium = await PreferencesService.isPremium();
+    bool isPremium = await PreferencesService.isPremium();
+    // If local says not premium, double-check with Firestore in case
+    // the user's session was restored on a cold start (no explicit login).
+    if (!isPremium && !(AuthService().currentUser?.isAnonymous ?? false)) {
+      try {
+        final profile = await FirestoreService().getUserProfile();
+        if (profile != null && profile['isPremium'] == true) {
+          await PreferencesService.setPremium(true);
+          isPremium = true;
+        }
+      } catch (_) {
+        // Silently fail – local cache will be correct next time
+      }
+    }
     if (mounted) setState(() => _isPremium = isPremium);
   }
 
   @override
   void initState() {
     super.initState();
-    _loadPremiumStatus();
     AuthService.profilePicNotifier.value = AuthService().currentUser?.photoURL;
     final currentUser = AuthService().currentUser;
     if (currentUser != null && !currentUser.isAnonymous) {
@@ -196,8 +210,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     _selectedIndex = 0;
     _loadDashboardData();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkPremiumAndShowDialog();
+    // Real-time listener for premium status changes from Firestore
+    _startPremiumListener();
+    // Load premium status first, then show dialog if needed
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadPremiumStatus();
+      if (!mounted) return;
+      await _checkPremiumAndShowDialog();
+    });
+  }
+
+  void _startPremiumListener() {
+    final user = AuthService().currentUser;
+    if (user == null || user.isAnonymous) return;
+    _profileSub = FirestoreService().userProfileStream.listen((profile) {
+      final isPremium = profile?['isPremium'] == true;
+      // Update local preferences and UI state
+      PreferencesService.setPremium(isPremium);
+      if (mounted && _isPremium != isPremium) {
+        setState(() => _isPremium = isPremium);
+      }
     });
   }
 
@@ -609,7 +641,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: AttendanceLineChart(
                           period: _selectedPeriod,
-                          isEmpty: _totalAttendanceCount == 0 || _totalWorkersCount == 0,
+                          isEmpty:
+                              _totalAttendanceCount == 0 ||
+                              _totalWorkersCount == 0,
                           attendanceDocs: _attendanceDocs,
                         ),
                       ),
@@ -617,7 +651,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: LeaveTypesPieChart(
                           period: _selectedPeriod,
-                          isEmpty: _totalTimeoffCount == 0 || _totalWorkersCount == 0,
+                          isEmpty:
+                              _totalTimeoffCount == 0 ||
+                              _totalWorkersCount == 0,
                           timeoffDocs: _timeoffDocs,
                           workersList: _workersList,
                         ),
@@ -2344,8 +2380,10 @@ class AttendanceLineChart extends StatelessWidget {
                               show: true,
                               drawHorizontalLine: false,
                               drawVerticalLine: true,
-                              getDrawingVerticalLine: (value) =>
-                                  FlLine(color: Colors.black.withOpacity(0.12), strokeWidth: 1),
+                              getDrawingVerticalLine: (value) => FlLine(
+                                color: Colors.black.withOpacity(0.12),
+                                strokeWidth: 1,
+                              ),
                             ),
                             titlesData: FlTitlesData(
                               topTitles: AxisTitles(
@@ -2662,8 +2700,9 @@ class LeaveTypesPieChart extends StatelessWidget {
     for (var t in timeoffDocs) {
       final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
       final tName = (t['name'] ?? '').toString().trim().toLowerCase();
-      final belongsToActive = (tEmail.isNotEmpty && activeWorkersEmails.contains(tEmail)) ||
-                              (tName.isNotEmpty && activeWorkersNames.contains(tName));
+      final belongsToActive =
+          (tEmail.isNotEmpty && activeWorkersEmails.contains(tEmail)) ||
+          (tName.isNotEmpty && activeWorkersNames.contains(tName));
       if (!belongsToActive) continue;
 
       if (dateLimit != null) {
@@ -2686,7 +2725,9 @@ class LeaveTypesPieChart extends StatelessWidget {
     final int total = casualCount + sickCount + medicalCount;
     final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0.0;
     final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0.0;
-    final double medicalPercent = total > 0 ? (medicalCount / total) * 100 : 0.0;
+    final double medicalPercent = total > 0
+        ? (medicalCount / total) * 100
+        : 0.0;
 
     final config = LeavePeriodConfig(
       casualVal: total > 0 ? casualPercent : defaultConfig.casualVal,

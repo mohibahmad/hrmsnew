@@ -60,7 +60,16 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   }
 
   Future<void> _loadPremiumStatus() async {
-    final isPremium = await PreferencesService.isPremium();
+    bool isPremium = await PreferencesService.isPremium();
+    if (!isPremium && !(AuthService().currentUser?.isAnonymous ?? false)) {
+      try {
+        final profile = await FirestoreService().getUserProfile();
+        if (profile != null && profile['isPremium'] == true) {
+          await PreferencesService.setPremium(true);
+          isPremium = true;
+        }
+      } catch (_) {}
+    }
     if (mounted) setState(() => _isPremium = isPremium);
   }
 
@@ -74,7 +83,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             color: sidebarBlue,
             child: Column(
               children: [
-                if (!(AuthService().currentUser?.isAnonymous ?? false) && !_isPremium)
+                if (!(AuthService().currentUser?.isAnonymous ?? false) &&
+                    !_isPremium)
                   GestureDetector(
                     onTap: () async {
                       final result = await showDialog<bool>(
@@ -528,14 +538,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final pos = position.toLowerCase();
     final f = filter.toLowerCase();
     if (f == 'designer') {
-      return pos.contains('designer') && !pos.contains('engineer') && !pos.contains('developer');
+      return pos.contains('designer') &&
+          !pos.contains('engineer') &&
+          !pos.contains('developer');
     } else if (f == 'developer') {
-      return (pos.contains('developer') || pos.contains('development')) && !pos.contains('designer');
+      return (pos.contains('developer') || pos.contains('development')) &&
+          !pos.contains('designer');
     } else if (f == 'engineering') {
       return (pos.contains('engineer') ||
-          pos.contains('architect') ||
-          pos.contains('analyst') ||
-          pos.contains('scientist')) && !pos.contains('designer') && !pos.contains('developer');
+              pos.contains('architect') ||
+              pos.contains('analyst') ||
+              pos.contains('scientist')) &&
+          !pos.contains('designer') &&
+          !pos.contains('developer');
     } else if (f == 'sales') {
       return pos.contains('sales') || pos.contains('marketing');
     } else if (f == 'management') {
@@ -1075,7 +1090,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: getProfileImage(profileImage, email, index),
+                    backgroundImage: getProfileImage(
+                      profileImage,
+                      email,
+                      index,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1204,7 +1223,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       joiningDate: joiningDate,
                       gender: gender,
                       salary: salary,
-                      experienceLevel: (worker['experienceLevel'] ?? '').toString(),
+                      experienceLevel: (worker['experienceLevel'] ?? '')
+                          .toString(),
                       profileImage: profileImage,
                     ),
                   );
@@ -1670,7 +1690,9 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             child: _buildInfoCard(
                               Icons.show_chart,
                               'experience_level'.tr(),
-                              experienceLevel.isNotEmpty ? experienceLevel : 'na'.tr(),
+                              experienceLevel.isNotEmpty
+                                  ? experienceLevel
+                                  : 'na'.tr(),
                             ),
                           ),
                           const SizedBox(width: 12),

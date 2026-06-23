@@ -51,6 +51,7 @@ class AuthService {
       password: password,
     );
     await PreferencesService.setLoggedIn(true);
+    await _syncPremiumStatusFromFirestore();
     await _clearSeededDummyDataIfNeeded();
     return credential;
   }
@@ -64,6 +65,7 @@ class AuthService {
       await credential.user!.updateDisplayName(displayName).catchError((_) {});
     }
     await PreferencesService.setLoggedIn(true);
+    await _syncPremiumStatusFromFirestore();
     await _clearSeededDummyDataIfNeeded();
     return credential;
   }
@@ -99,6 +101,7 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
+      await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
     } on GoogleSignInException catch (e) {
@@ -134,6 +137,7 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
+      await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -148,6 +152,21 @@ class AuthService {
   Future<void> signOut() async {
     await _auth.signOut();
     await PreferencesService.clear();
+  }
+
+  /// Sync the user's premium status from Firestore into local preferences.
+  /// This is called after every login so that a returning premium user
+  /// doesn't see the upgrade dialog again.
+  Future<void> _syncPremiumStatusFromFirestore() async {
+    try {
+      final profile = await FirestoreService().getUserProfile();
+      if (profile != null && profile['isPremium'] == true) {
+        await PreferencesService.setPremium(true);
+      }
+    } catch (e) {
+      // Silently fail – the user will see the upgrade dialog once but
+      // after that the flag will be set if they purchase again.
+    }
   }
 
   /// Send password reset email

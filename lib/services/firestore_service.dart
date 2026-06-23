@@ -92,6 +92,11 @@ class FirestoreService {
     return doc.data() as Map<String, dynamic>?;
   }
 
+  /// Real-time stream of the user's profile document.
+  /// Use this to react instantly to premium status changes.
+  Stream<Map<String, dynamic>?> get userProfileStream =>
+      _userDoc.snapshots().map((snap) => snap.data() as Map<String, dynamic>?);
+
   Future<String> addWorker(Map<String, dynamic> worker) async {
     Validators.validateWorker(worker);
     final docRef = await _workers.add({
