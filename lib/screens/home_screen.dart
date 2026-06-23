@@ -2480,7 +2480,7 @@ class AttendanceLineChart extends StatelessWidget {
                                 rightTitles: AxisTitles(
                                   sideTitles: SideTitles(showTitles: false),
                                 ),
-                                leftTitles: AxisTitles(
+                                 leftTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
                                     reservedSize: 80,
@@ -2492,24 +2492,32 @@ class AttendanceLineChart extends StatelessWidget {
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
                                       );
-                                      return Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            value.toInt().toString(),
-                                            style: style,
-                                            textAlign: TextAlign.right,
-                                            maxLines: 1,
-                                            softWrap: false,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            width: 6,
-                                            height: 1.5,
-                                            color: const Color(0xFF939393),
-                                          ),
-                                        ],
+                                      if (value < 0 || value > range.maxY) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return SideTitleWidget(
+                                        meta: meta,
+                                        space: 0,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              value.toInt().toString(),
+                                              style: style,
+                                              textAlign: TextAlign.right,
+                                              maxLines: 1,
+                                              softWrap: false,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              width: 6,
+                                              height: 1.5,
+                                              color: const Color(0xFF939393),
+                                            ),
+                                          ],
+                                        ),
                                       );
                                     },
                                   ),
@@ -2531,20 +2539,24 @@ class AttendanceLineChart extends StatelessWidget {
                                         fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
                                       );
-                                      return Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 1.5,
-                                            height: 6,
-                                            color: const Color(0xFF939393),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            chartData.labels[idx],
-                                            style: style,
-                                          ),
-                                        ],
+                                      return SideTitleWidget(
+                                        meta: meta,
+                                        space: 0,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 1.5,
+                                              height: 6,
+                                              color: const Color(0xFF939393),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              chartData.labels[idx],
+                                              style: style,
+                                            ),
+                                          ],
+                                        ),
                                       );
                                     },
                                   ),
