@@ -817,7 +817,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 decoration: InputDecoration.collapsed(
                                   hintText: 'enter_reason_hint'.tr(),
                                   hintStyle: TextStyle(
-                                    color: Colors.black38,
+                                    color: Colors.black.withOpacity(0.38),
                                     fontSize: 13,
                                     fontFamily: 'SF Pro Display',
                                   ),
@@ -846,7 +846,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   child: Text(
                                     'cancel'.tr(),
                                     style: TextStyle(
-                                      color: Colors.black87,
+                                      color: Colors.black,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       fontFamily: 'SF Pro Display',
@@ -1095,7 +1095,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? Color(0xFFFFFFFF) : Colors.black87,
+              color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',

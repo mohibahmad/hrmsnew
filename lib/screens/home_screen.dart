@@ -2338,7 +2338,7 @@ class AttendanceLineChart extends StatelessWidget {
                               drawHorizontalLine: false,
                               drawVerticalLine: true,
                               getDrawingVerticalLine: (value) =>
-                                  FlLine(color: Colors.black12, strokeWidth: 1),
+                                  FlLine(color: Colors.black.withOpacity(0.12), strokeWidth: 1),
                             ),
                             titlesData: FlTitlesData(
                               topTitles: AxisTitles(

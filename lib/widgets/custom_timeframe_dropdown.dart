@@ -14,12 +14,18 @@ class CustomTimeframeDropdown extends StatefulWidget {
 
   static String localizePeriod(String period) {
     switch (period) {
-      case 'Week': return 'week'.tr();
-      case 'Month': return 'month'.tr();
-      case '3 Month': return '3_month'.tr();
-      case '6 Month': return '6_month'.tr();
-      case 'Yearly': return 'yearly_period'.tr();
-      default: return period;
+      case 'Week':
+        return 'week'.tr();
+      case 'Month':
+        return 'month'.tr();
+      case '3 Month':
+        return '3_month'.tr();
+      case '6 Month':
+        return '6_month'.tr();
+      case 'Yearly':
+        return 'yearly_period'.tr();
+      default:
+        return period;
     }
   }
 
@@ -94,8 +100,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
+                            horizontal: 10,
+                            vertical: 10,
                           ),
                           color: Colors.transparent,
                           child: Row(
@@ -126,15 +132,21 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
                                     : null,
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                CustomTimeframeDropdown.localizePeriod(option),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isSelected
-                                      ? const Color(0xFF0247C4)
-                                      : Colors.grey.shade400,
-                                  fontWeight: FontWeight.w500,
-                                  fontFamily: 'SF Pro Display',
+                              Expanded(
+                                child: Text(
+                                  CustomTimeframeDropdown.localizePeriod(
+                                    option,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: isSelected
+                                        ? const Color(0xFF0247C4)
+                                        : Colors.grey.shade400,
+                                    fontWeight: FontWeight.w500,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -180,8 +192,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       child: GestureDetector(
         onTap: _toggleDropdown,
         child: Container(
-          width: 115,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          width: 100,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF0247C4), // Exact button blue
             borderRadius: BorderRadius.only(
@@ -194,19 +206,23 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
-                style: const TextStyle(
-                  color: Color(0xFFFFFFFF),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  fontFamily: 'SF Pro Display',
+              Expanded(
+                child: Text(
+                  CustomTimeframeDropdown.localizePeriod(widget.selectedPeriod),
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const Icon(
                 Icons.arrow_drop_down,
                 color: Color(0xFFFFFFFF),
-                size: 24,
+                size: 20,
               ),
             ],
           ),

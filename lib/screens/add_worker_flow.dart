@@ -1420,7 +1420,7 @@ class WorkerDetailFormSection extends StatelessWidget {
           right: 0,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: Colors.black54,
+            color: Colors.black.withOpacity(0.54),
             child: Text(
               profileImageName ?? 'Profile Image',
               textAlign: TextAlign.center,
@@ -1456,8 +1456,8 @@ class WorkerDetailFormSection extends StatelessWidget {
         Text(
           'tap_to_upload_profile_image'.tr(),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.black54,
+          style: TextStyle(
+            color: Colors.black.withOpacity(0.54),
             fontSize: 12,
             fontWeight: FontWeight.w500,
             fontFamily: 'SF Pro Display',
@@ -2506,7 +2506,7 @@ class DocumentationSection extends StatelessWidget {
                     right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      color: Colors.black54,
+                      color: Colors.black.withOpacity(0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
