@@ -2037,7 +2037,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor.withValues(alpha: 0.06),
-                              barWidth: 2.0,
+                              barWidth: 3.0,
                               isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                             ),
@@ -2047,7 +2047,7 @@ class SparklineCard extends StatelessWidget {
                                   .toList(),
                               isCurved: true,
                               color: lineColor,
-                              barWidth: 1.0,
+                              barWidth: 2.5,
                               isStrokeCapRound: false,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -2056,21 +2056,21 @@ class SparklineCard extends StatelessWidget {
                                   colors: [
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.65)
+                                            .withValues(alpha: 0.90)
                                         : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.65),
+                                            .withValues(alpha: 0.90),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD)
-                                            .withValues(alpha: 0.30)
+                                            .withValues(alpha: 0.60)
                                         : const Color(0xFF8DA9F1)
-                                            .withValues(alpha: 0.30),
+                                            .withValues(alpha: 0.60),
                                     lineColor == const Color(0xFF0EA5E9)
                                         ? const Color(0xFF93D7FD)
                                             .withValues(alpha: 0.0)
                                         : const Color(0xFF8DA9F1)
                                             .withValues(alpha: 0.0),
                                   ],
-                                  stops: [0.05, 0.25, 0.6],
+                                  stops: [0.0, 0.3, 0.8],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
@@ -2142,20 +2142,48 @@ NiceChartRange getNiceRange(double rawMax) {
     return NiceChartRange(5, 1);
   } else if (rawMax <= 10) {
     return NiceChartRange(10, 2);
-  } else if (rawMax <= 25) {
-    return NiceChartRange(25, 5);
+  } else if (rawMax <= 15) {
+    return NiceChartRange(15, 3);
+  } else if (rawMax <= 20) {
+    return NiceChartRange(20, 4);
+  } else if (rawMax <= 30) {
+    return NiceChartRange(30, 5);
+  } else if (rawMax <= 40) {
+    return NiceChartRange(40, 8);
   } else if (rawMax <= 50) {
     return NiceChartRange(50, 10);
+  } else if (rawMax <= 75) {
+    return NiceChartRange(75, 15);
   } else if (rawMax <= 100) {
     return NiceChartRange(100, 20);
+  } else if (rawMax <= 150) {
+    return NiceChartRange(150, 30);
+  } else if (rawMax <= 200) {
+    return NiceChartRange(200, 40);
   } else if (rawMax <= 250) {
     return NiceChartRange(250, 50);
+  } else if (rawMax <= 300) {
+    return NiceChartRange(300, 50);
+  } else if (rawMax <= 400) {
+    return NiceChartRange(400, 100);
   } else if (rawMax <= 500) {
     return NiceChartRange(500, 100);
+  } else if (rawMax <= 600) {
+    return NiceChartRange(600, 100);
+  } else if (rawMax <= 800) {
+    return NiceChartRange(800, 200);
   } else if (rawMax <= 1000) {
     return NiceChartRange(1000, 200);
+  } else if (rawMax <= 1500) {
+    return NiceChartRange(1500, 300);
+  } else if (rawMax <= 2000) {
+    return NiceChartRange(2000, 400);
   } else if (rawMax <= 2500) {
     return NiceChartRange(2500, 500);
+  } else if (rawMax <= 3000) {
+    return NiceChartRange(3000, 500);
+  } else if (rawMax <= 4000) {
+    return NiceChartRange(4000, 1000);
   } else if (rawMax <= 5000) {
     return NiceChartRange(5000, 1000);
   } else {
@@ -2468,6 +2496,10 @@ class AttendanceLineChart extends StatelessWidget {
                                 show: true,
                                 drawHorizontalLine: false,
                                 drawVerticalLine: true,
+                                verticalInterval: 1,
+                                checkToShowVerticalLine: (value) {
+                                  return (value - value.round()).abs() < 0.01;
+                                },
                                 getDrawingVerticalLine: (value) => FlLine(
                                   color: Colors.black.withOpacity(0.12),
                                   strokeWidth: 1,
@@ -2528,7 +2560,11 @@ class AttendanceLineChart extends StatelessWidget {
                                     reservedSize: 32,
                                     interval: 1,
                                     getTitlesWidget: (value, meta) {
-                                      final idx = value.toInt();
+                                      // Only show titles for integer indices to avoid duplicates at boundary offsets (like -0.5 or 2.5)
+                                      if ((value - value.round()).abs() > 0.01) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      final idx = value.round();
                                       if (idx < 0 ||
                                           idx >= chartData.labels.length) {
                                         return const SizedBox.shrink();
