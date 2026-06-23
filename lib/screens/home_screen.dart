@@ -173,18 +173,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadPremiumStatus() async {
-    bool isPremium = await PreferencesService.isPremium();
-    // If local says not premium, double-check with Firestore in case
-    // the user's session was restored on a cold start (no explicit login).
-    if (!isPremium && !(AuthService().currentUser?.isAnonymous ?? false)) {
+    bool isPremium = false;
+    final user = AuthService().currentUser;
+    // Always read premium status from Firestore, never trust local cache.
+    if (user != null && !user.isAnonymous) {
       try {
         final profile = await FirestoreService().getUserProfile();
-        if (profile != null && profile['isPremium'] == true) {
-          await PreferencesService.setPremium(true);
-          isPremium = true;
-        }
+        isPremium = profile?['isPremium'] == true;
+        // Sync to local preferences so other parts of the app (PremiumGate, etc.)
+        // also see the correct value without another Firestore call.
+        await PreferencesService.setPremium(isPremium);
       } catch (_) {
-        // Silently fail – local cache will be correct next time
+        // Fallback to local cache if Firestore is unreachable
+        isPremium = await PreferencesService.isPremium();
       }
     }
     if (mounted) setState(() => _isPremium = isPremium);
@@ -371,8 +372,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkPremiumAndShowDialog() async {
-    final isPremium = await PreferencesService.isPremium();
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    bool isPremium = false;
+    final user = AuthService().currentUser;
+    if (user != null && !user.isAnonymous) {
+      try {
+        final profile = await FirestoreService().getUserProfile();
+        isPremium = profile?['isPremium'] == true;
+      } catch (_) {
+        isPremium = await PreferencesService.isPremium();
+      }
+    }
+    final isGuest = user?.isAnonymous ?? false;
     if (!isPremium && !isGuest && mounted) {
       final result = await showDialog<bool>(
         context: context,

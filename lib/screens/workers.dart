@@ -60,15 +60,17 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   }
 
   Future<void> _loadPremiumStatus() async {
-    bool isPremium = await PreferencesService.isPremium();
-    if (!isPremium && !(AuthService().currentUser?.isAnonymous ?? false)) {
+    bool isPremium = false;
+    final user = AuthService().currentUser;
+    // Always read premium status from Firestore, never trust local cache.
+    if (user != null && !user.isAnonymous) {
       try {
         final profile = await FirestoreService().getUserProfile();
-        if (profile != null && profile['isPremium'] == true) {
-          await PreferencesService.setPremium(true);
-          isPremium = true;
-        }
-      } catch (_) {}
+        isPremium = profile?['isPremium'] == true;
+        await PreferencesService.setPremium(isPremium);
+      } catch (_) {
+        isPremium = await PreferencesService.isPremium();
+      }
     }
     if (mounted) setState(() => _isPremium = isPremium);
   }
