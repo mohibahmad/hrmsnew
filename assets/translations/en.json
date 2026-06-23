@@ -584,5 +584,8 @@
   "no_valid_workers_found_in_csv": "No valid workers found in CSV.",
   "long_press_to_delete": "Long press to delete",
   "export_attendance": "Export Attendance",
-  "attendance_exported": "Attendance exported successfully"
+  "attendance_exported": "Attendance exported successfully",
+  "upload_cnic_front_required": "Please upload CNIC Front side",
+  "upload_cnic_back_required": "Please upload CNIC Back side",
+  "upload_cv_required": "Please upload CV"
 }

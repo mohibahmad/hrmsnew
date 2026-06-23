@@ -485,6 +485,43 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
+    final hasFrontId = _frontIdBytes != null ||
+        (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
+    final hasBackId = _backIdBytes != null ||
+        (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty);
+    final hasCv = _cvBytes != null ||
+        (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
+
+    if (!hasFrontId) {
+      FlashySnackBar.show(
+        context,
+        message: 'upload_cnic_front_required'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (!hasBackId) {
+      FlashySnackBar.show(
+        context,
+        message: 'upload_cnic_back_required'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (!hasCv) {
+      FlashySnackBar.show(
+        context,
+        message: 'upload_cv_required'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });

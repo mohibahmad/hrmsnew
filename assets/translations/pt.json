@@ -581,5 +581,8 @@
   "no_valid_workers_found_in_csv": "Nenhum funcionário válido encontrado no CSV.",
   "long_press_to_delete": "Pressione e segure para excluir",
   "export_attendance": "Exportar Presença",
-  "attendance_exported": "Presença exportada com sucesso"
+  "attendance_exported": "Presença exportada com sucesso",
+  "upload_cnic_front_required": "Por favor, carregue a frente do CNIC",
+  "upload_cnic_back_required": "Por favor, carregue o verso do CNIC",
+  "upload_cv_required": "Por favor, carregue o CV"
 }

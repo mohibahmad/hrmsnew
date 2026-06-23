@@ -6,8 +6,6 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:open_file_plus/open_file_plus.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -36,41 +34,24 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,';
 
     try {
-      if (io.Platform.isMacOS || io.Platform.isWindows || io.Platform.isLinux) {
-        String? outputFile = await FilePicker.saveFile(
-          dialogTitle: 'save_worker_template'.tr(),
-          fileName: 'worker_template.csv',
-          type: FileType.custom,
-          allowedExtensions: ['csv'],
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: 'save_worker_template'.tr(),
+        fileName: 'worker_template.csv',
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (outputFile == null) return;
+
+      final file = io.File(outputFile);
+      await file.writeAsString(templateStr);
+
+      if (mounted) {
+        await OpenFile.open(file.path);
+        FlashySnackBar.show(
+          context,
+          message: 'template_saved_successfully'.tr(),
         );
-
-        if (outputFile == null) return; // User canceled the picker
-
-        final file = io.File(outputFile);
-        await file.writeAsString(templateStr);
-
-        if (mounted) {
-          await OpenFile.open(file.path);
-          FlashySnackBar.show(
-            context,
-            message: 'template_saved_successfully'.tr(),
-          );
-        }
-      } else {
-        final directory = await getTemporaryDirectory();
-        final file = io.File('${directory.path}/worker_template.csv');
-        await file.writeAsString(templateStr);
-
-        if (mounted) {
-          await Share.shareXFiles([
-            XFile(file.path),
-          ], text: 'hrms_worker_template'.tr());
-          await OpenFile.open(file.path);
-          FlashySnackBar.show(
-            context,
-            message: 'template_saved_successfully'.tr(),
-          );
-        }
       }
     } catch (e) {
       debugPrint('Error generating template: $e');

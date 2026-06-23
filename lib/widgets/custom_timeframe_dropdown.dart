@@ -192,7 +192,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
       child: GestureDetector(
         onTap: _toggleDropdown,
         child: Container(
-          width: 112,
+          constraints: const BoxConstraints(minWidth: 112),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
             color: const Color(0xFF0247C4), // Exact button blue

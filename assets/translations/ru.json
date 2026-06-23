@@ -581,5 +581,8 @@
   "no_valid_workers_found_in_csv": "В CSV не найдено подходящих сотрудников.",
   "long_press_to_delete": "Нажмите и удерживайте для удаления",
   "export_attendance": "Экспорт посещаемости",
-  "attendance_exported": "Посещаемость успешно экспортирована"
+  "attendance_exported": "Посещаемость успешно экспортирована",
+  "upload_cnic_front_required": "Пожалуйста, загрузите лицевую сторону CNIC",
+  "upload_cnic_back_required": "Пожалуйста, загрузите оборотную сторону CNIC",
+  "upload_cv_required": "Пожалуйста, загрузите резюме"
 }
