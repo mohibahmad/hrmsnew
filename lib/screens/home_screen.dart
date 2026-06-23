@@ -3017,6 +3017,70 @@ class LeaveTypesPieChart extends StatelessWidget {
     final slotSick = slots[bestPerm[1]];
     final slotMedical = slots[bestPerm[2]];
 
+    double getClosestAngleInSlice(
+      double startAngle,
+      double endAngle,
+      double targetAngle,
+      double padding,
+    ) {
+      double sweep = endAngle - startAngle;
+      if (sweep < 0) sweep += 360;
+
+      if (sweep <= 2 * padding) {
+        return normalizeAngle(startAngle + sweep / 2);
+      }
+
+      double startLimit = startAngle + padding;
+      double endLimit = startAngle + sweep - padding;
+
+      double t = (targetAngle - startLimit) % 360;
+      if (t < 0) t += 360;
+
+      double allowedSweep = endLimit - startLimit;
+
+      if (t <= allowedSweep) {
+        return normalizeAngle(startLimit + t);
+      } else {
+        double distToStart = 360 - t;
+        double distToEnd = t - allowedSweep;
+        if (distToStart < distToEnd) {
+          return normalizeAngle(startLimit);
+        } else {
+          return normalizeAngle(endLimit);
+        }
+      }
+    }
+
+    // Slice 1: Casual
+    final double casualStartAngle = 108;
+    final double casualEndAngle = 108 + casualSweep;
+    final double casualLineAngle = getClosestAngleInSlice(
+      casualStartAngle,
+      casualEndAngle,
+      slotCasual.targetAngle,
+      12,
+    );
+
+    // Slice 2: Sick
+    final double sickStartAngle = casualEndAngle;
+    final double sickEndAngle = casualEndAngle + sickSweep;
+    final double sickLineAngle = getClosestAngleInSlice(
+      sickStartAngle,
+      sickEndAngle,
+      slotSick.targetAngle,
+      12,
+    );
+
+    // Slice 3: Medical
+    final double medicalStartAngle = sickEndAngle;
+    final double medicalEndAngle = sickEndAngle + medicalSweep;
+    final double medicalLineAngle = getClosestAngleInSlice(
+      medicalStartAngle,
+      medicalEndAngle,
+      slotMedical.targetAngle,
+      12,
+    );
+
     Offset getCircumferencePoint(double angleDegrees) {
       final double rad = angleDegrees * math.pi / 180;
       return Offset(190 + 45 * math.cos(rad), 130 + 45 * math.sin(rad));
@@ -3027,17 +3091,17 @@ class LeaveTypesPieChart extends StatelessWidget {
       sickVal: sickVal,
       medicalVal: medicalVal,
       casualPath: [
-        getCircumferencePoint(aCasual),
+        getCircumferencePoint(casualLineAngle),
         slotCasual.elbow,
         slotCasual.labelEnd,
       ],
       sickPath: [
-        getCircumferencePoint(aSick),
+        getCircumferencePoint(sickLineAngle),
         slotSick.elbow,
         slotSick.labelEnd,
       ],
       medicalPath: [
-        getCircumferencePoint(aMedical),
+        getCircumferencePoint(medicalLineAngle),
         slotMedical.elbow,
         slotMedical.labelEnd,
       ],
