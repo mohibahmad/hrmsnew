@@ -1526,7 +1526,7 @@ class TotalWorkersCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                   Expanded(
                     child: Center(
                       child: Stack(
@@ -1580,7 +1580,7 @@ class TotalWorkersCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 10),
                                 Transform.translate(
-                                  offset: const Offset(-6, 6),
+                                  offset: const Offset(-9, 6),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -1721,7 +1721,7 @@ class RoundedDonutChart extends StatelessWidget {
       curve: Curves.easeInOutCubic,
       builder: (context, value, child) {
         return CustomPaint(
-          size: const Size(130, 130),
+          size: const Size(135, 135),
           painter: _DonutChartPainter(
             progress: value,
             malePercent: malePercent,
