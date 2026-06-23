@@ -3146,9 +3146,9 @@ class LeaveTypesPieChart extends StatelessWidget {
                     duration: const Duration(milliseconds: 750),
                     curve: Curves.easeOutQuart,
                     builder: (context, animValue, child) {
-                      return Opacity(
-                        opacity: animValue,
-                        child: Transform.scale(scale: animValue, child: child),
+                      return Transform.rotate(
+                        angle: (1 - animValue) * 1.5 * math.pi,
+                        child: child,
                       );
                     },
                     child: Center(
