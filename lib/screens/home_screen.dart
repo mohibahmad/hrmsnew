@@ -2856,39 +2856,36 @@ class LeaveTypesPieChart extends StatelessWidget {
                             CustomPaint(
                               size: const Size(380, 260),
                               painter: CalloutLinesPainter(
-                                casualPath: config.casualVal > 0 ? config.casualPath : const [],
-                                sickPath: config.sickVal > 0 ? config.sickPath : const [],
-                                medicalPath: config.medicalVal > 0 ? config.medicalPath : const [],
+                                casualPath: config.casualPath,
+                                sickPath: config.sickPath,
+                                medicalPath: config.medicalPath,
                               ),
                             ),
-                            if (config.casualVal > 0)
-                              Positioned(
-                                top: config.casualTop,
-                                left: config.casualLeft,
-                                right: config.casualRight,
-                                bottom: config.casualBottom,
-                                child: _ChartLabel(
-                                  '${config.casualVal.toInt()}%',
-                                ),
+                            Positioned(
+                              top: config.casualTop,
+                              left: config.casualLeft,
+                              right: config.casualRight,
+                              bottom: config.casualBottom,
+                              child: _ChartLabel(
+                                '${config.casualVal.toInt()}%',
                               ),
-                            if (config.sickVal > 0)
-                              Positioned(
-                                top: config.sickTop,
-                                left: config.sickLeft,
-                                right: config.sickRight,
-                                bottom: config.sickBottom,
-                                child: _ChartLabel('${config.sickVal.toInt()}%'),
+                            ),
+                            Positioned(
+                              top: config.sickTop,
+                              left: config.sickLeft,
+                              right: config.sickRight,
+                              bottom: config.sickBottom,
+                              child: _ChartLabel('${config.sickVal.toInt()}%'),
+                            ),
+                            Positioned(
+                              top: config.medicalTop,
+                              left: config.medicalLeft,
+                              right: config.medicalRight,
+                              bottom: config.medicalBottom,
+                              child: _ChartLabel(
+                                '${config.medicalVal.toInt()}%',
                               ),
-                            if (config.medicalVal > 0)
-                              Positioned(
-                                top: config.medicalTop,
-                                left: config.medicalLeft,
-                                right: config.medicalRight,
-                                bottom: config.medicalBottom,
-                                child: _ChartLabel(
-                                  '${config.medicalVal.toInt()}%',
-                                ),
-                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -2896,34 +2893,48 @@ class LeaveTypesPieChart extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Wrap(
-                      spacing: 24,
-                      runSpacing: 16,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Column(
                       children: [
-                        _buildLegendItem(
-                          const Color(0xFF84A9FF),
-                          'casual_leave'.tr(
-                            namedArgs: {
-                              'value': '${config.casualVal.toInt()}',
-                            },
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLegendItem(
+                                const Color(0xFF84A9FF),
+                                'casual_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${config.casualVal.toInt()}',
+                                  },
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildLegendItem(
+                                const Color(0xFFFF4A5E),
+                                'sick_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${config.sickVal.toInt()}',
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        _buildLegendItem(
-                          const Color(0xFFFF4A5E),
-                          'sick_leave'.tr(
-                            namedArgs: {
-                              'value': '${config.sickVal.toInt()}',
-                            },
-                          ),
-                        ),
-                        _buildLegendItem(
-                          const Color(0xFF97FFA9),
-                          'medical_leave'.tr(
-                            namedArgs: {
-                              'value': '${config.medicalVal.toInt()}',
-                            },
-                          ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLegendItem(
+                                const Color(0xFF97FFA9),
+                                'medical_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${config.medicalVal.toInt()}',
+                                  },
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: SizedBox()),
+                          ],
                         ),
                       ],
                     ),
@@ -2968,13 +2979,16 @@ class LeaveTypesPieChart extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 10),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
+        Flexible(
+          child: Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF000000),
+              fontFamily: 'SF Pro Display',
+            ),
           ),
         ),
       ],
