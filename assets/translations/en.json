@@ -405,6 +405,7 @@
   "attendance_update_failed": "Failed to update attendance: {error}",
   "absent_type": "Absent Type: {type}",
   "reason_label": "Reason",
+  "select_worker": "Select Worker",
   "search_expenses_hint": "Search by workers or categories",
   "add_expenses": "Add Expenses",
   "this_month_expense": "This Month Expense",

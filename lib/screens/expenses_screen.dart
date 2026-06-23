@@ -204,6 +204,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     final docId = doc['id']?.toString() ?? '';
 
+    final workerNames = _workersMap.keys.toList()..sort();
+    String selectedWorkerName = doc['name']?.toString() ?? (workerNames.isNotEmpty ? workerNames[0] : '');
+
     final dateParts = (doc['date']?.toString() ?? '').split('/');
     int selectedDay = dateParts.isNotEmpty
         ? int.tryParse(dateParts[0]) ?? DateTime.now().day
@@ -287,7 +290,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final dateStr =
                                 '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
                             final updatedMap = {
-                              'name': doc['name'],
+                              'name': selectedWorkerName.isNotEmpty
+                                  ? selectedWorkerName
+                                  : (doc['name']?.toString() ?? ''),
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
@@ -340,6 +345,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
+                    if (workerNames.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildWorkerDropdown(
+                              label: 'select_worker'.tr(),
+                              value: selectedWorkerName,
+                              items: workerNames,
+                              onChanged: (v) {
+                                setModalState(() {
+                                  selectedWorkerName = v;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     Row(
                       children: [
                         Expanded(
@@ -457,6 +481,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final descriptionController = TextEditingController();
     int selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
+    final workerNames = _workersMap.keys.toList()..sort();
+    String selectedWorkerName = workerNames.isNotEmpty ? workerNames[0] : '';
 
     showDialog(
       context: context,
@@ -538,9 +564,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final isGuest =
                                 AuthService().currentUser?.isAnonymous ?? false;
                             final expenseMap = {
-                              'name':
-                                  AuthService().currentUser?.displayName ??
-                                  'Expense',
+                              'name': selectedWorkerName.isNotEmpty
+                                  ? selectedWorkerName
+                                  : (AuthService().currentUser?.displayName ?? 'Expense'),
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
@@ -583,6 +609,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
+
+                    // === Worker Selector ===
+                    if (workerNames.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildWorkerDropdown(
+                              label: 'select_worker'.tr(),
+                              value: selectedWorkerName,
+                              items: workerNames,
+                              onChanged: (v) {
+                                setModalState(() {
+                                  selectedWorkerName = v;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // === Modal Form Rows ===
                     Row(
@@ -745,6 +792,83 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               color: Colors.black,
               fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkerDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    final bool isEmpty = items.isEmpty;
+    final displayItems = isEmpty ? ['no_workers_found'.tr()] : items;
+    final displayValue = isEmpty
+        ? 'no_workers_found'.tr()
+        : (items.contains(value) ? value : null);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF000000),
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 44,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: displayValue,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              hint: Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+              isExpanded: true,
+              icon: const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.black,
+                size: 24,
+              ),
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+              items: displayItems.map((String val) {
+                return DropdownMenuItem<String>(
+                  value: isEmpty ? null : val,
+                  child: Text(
+                    val,
+                    style: TextStyle(
+                      color: isEmpty ? Colors.red.shade600 : Colors.black,
+                      fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w500,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: isEmpty ? null : (v) { if (v != null) onChanged(v); },
             ),
           ),
         ),

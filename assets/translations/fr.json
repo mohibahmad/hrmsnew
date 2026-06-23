@@ -405,6 +405,7 @@
   "attendance_update_failed": "Échec de la mise à jour de la présence : {error}",
   "absent_type": "Type d'Absence : {type}",
   "reason_label": "Raison",
+  "select_worker": "Sélectionner un Travailleur",
   "search_expenses_hint": "Rechercher par travailleurs ou catégories",
   "add_expenses": "Ajouter Dépenses",
   "this_month_expense": "Dépense du Mois",

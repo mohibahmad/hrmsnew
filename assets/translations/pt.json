@@ -405,6 +405,7 @@
   "attendance_update_failed": "Falha ao atualizar presença: {error}",
   "absent_type": "Tipo de Ausência: {type}",
   "reason_label": "Motivo",
+  "select_worker": "Selecionar Trabalhador",
   "search_expenses_hint": "Pesquisar por trabalhadores ou categorias",
   "add_expenses": "Adicionar Despesas",
   "this_month_expense": "Despesa do Mês",

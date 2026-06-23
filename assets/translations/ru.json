@@ -405,6 +405,7 @@
   "attendance_update_failed": "Не удалось обновить посещаемость: {error}",
   "absent_type": "Тип отсутствия: {type}",
   "reason_label": "Причина",
+  "select_worker": "Выбрать работника",
   "search_expenses_hint": "Поиск по работникам или категориям",
   "add_expenses": "Добавить Расходы",
   "this_month_expense": "Расход за Месяц",

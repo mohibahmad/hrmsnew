@@ -405,6 +405,7 @@
   "attendance_update_failed": "Error al actualizar la asistencia: {error}",
   "absent_type": "Tipo de Ausencia: {type}",
   "reason_label": "Razón",
+  "select_worker": "Seleccionar Trabajador",
   "search_expenses_hint": "Buscar por trabajadores o categorías",
   "add_expenses": "Agregar Gastos",
   "this_month_expense": "Gasto del Mes",
