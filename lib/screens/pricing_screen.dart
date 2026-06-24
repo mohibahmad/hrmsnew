@@ -185,7 +185,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     'continue'.tr(),
                                     style: TextStyle(
                                       color: Color(0xFFFFFFFF),
-              fontSize: 20,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.w600,
                                       fontFamily: 'SF Pro Display',
                                     ),
@@ -201,7 +201,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   'continue_free_plan'.tr(),
                                   style: TextStyle(
                                     color: Color(0xFF0242AE),
-                                  fontSize: 12,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     fontFamily: 'SF Pro Display',
                                   ),
@@ -214,7 +214,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 padding: EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
                                   'subscription_disclaimer'.tr(),
-                                textAlign: TextAlign.center,
+                                  textAlign: TextAlign.center,
 
                                   style: TextStyle(
                                     color: Colors.black,
@@ -229,7 +229,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
                               // --- Footer Links ---
                               Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
                                   _buildFooterLink(
                                     'privacy_policy'.tr(),
@@ -303,10 +303,14 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   Widget _buildFeatureItem(String text) {
     return Padding(
-        padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         children: [
-          const ImageIcon(AssetImage('assets/left_arrow.png'), color: Color(0xFFFFFFFF), size: 18),
+          const ImageIcon(
+            AssetImage('assets/left_arrow.png'),
+            color: Color(0xFFFFFFFF),
+            size: 18,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
@@ -339,7 +343,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       },
       child: Container(
         height: 68,
-        margin: const EdgeInsets.only(bottom: 28),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: cardLightBlue,
           borderRadius: BorderRadius.circular(6),
