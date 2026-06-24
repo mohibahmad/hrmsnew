@@ -108,21 +108,22 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         flex: 11,
                         child: Container(
                           color: Color(0xFFFFFFFF),
-                          padding: const EdgeInsets.fromLTRB(48, 2, 48, 24),
+                          padding: const EdgeInsets.fromLTRB(48, 16, 48, 24),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 4),
-                              Text(
-                                'choose_your_plan'.tr(),
-                                style: TextStyle(
-                                  color: primaryBlue,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  fontFamily: 'SF Pro Display',
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Text(
+                                  'choose_your_plan'.tr(),
+                                  style: TextStyle(
+                                    color: primaryBlue,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 6),
                               Text(
                                 'select_subscription'.tr(),
                                 textAlign: TextAlign.center,
@@ -134,7 +135,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 24),
 
                               // --- Subscription Cards ---
                               _buildPlanCard(
@@ -199,8 +200,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 child: Text(
                                   'continue_free_plan'.tr(),
                                   style: TextStyle(
-                                    color: primaryBlue,
-                                  fontSize: 14,
+                                    color: Color(0xFF0242AE),
+                                  fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     fontFamily: 'SF Pro Display',
                                   ),
@@ -228,7 +229,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
                               // --- Footer Links ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
                                   _buildFooterLink(
                                     'privacy_policy'.tr(),
@@ -338,7 +339,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       },
       child: Container(
         height: 68,
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 28),
         decoration: BoxDecoration(
           color: cardLightBlue,
           borderRadius: BorderRadius.circular(6),
