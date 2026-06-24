@@ -149,7 +149,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 title: 'yearly'.tr(),
                                 price: '\$64.99',
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 6),
 
                               // --- Continue Button ---
                               SizedBox(
