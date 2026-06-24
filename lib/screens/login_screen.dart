@@ -184,7 +184,8 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
-    } on GoogleSignInException catch (e) {
+    } on GoogleSignInException catch (e, st) {
+      ErrorReporter.report(e, st, context: 'googleSignIn');
       if (e.code == GoogleSignInExceptionCode.canceled ||
           e.code == GoogleSignInExceptionCode.interrupted) {
         return;
@@ -192,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         _showErrorSnackBar('google_login_failed'.tr());
       }
-    } on FirebaseAuthException catch (e, st) {
+    } on FirebaseException catch (e, st) {
       ErrorReporter.report(e, st, context: 'googleSignIn');
       if (mounted) {
         _showErrorSnackBar('google_login_failed'.tr());
@@ -764,7 +765,7 @@ class _LoginScreenState extends State<LoginScreen> {
       color: Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(40),
       boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: Offset(0, 10)),
+        BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 20, offset: Offset(0, 10)),
       ],
     );
 
@@ -787,9 +788,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+color: Colors.black.withValues(alpha: 0.12),
+                       blurRadius: 8,
+                       offset: Offset(0, 2),
                     ),
                   ],
                 ),

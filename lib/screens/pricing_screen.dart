@@ -27,7 +27,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       elevation: 0,
       child: Center(
         child: SizedBox(
-          width: 1000,
+          width: 900,
           height: 670,
           child: Stack(
             clipBehavior: Clip.none,
@@ -35,7 +35,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
               Align(
                 alignment: Alignment.center,
                 child: Container(
-                  width: 950,
+                  width: 850,
                   height: 620,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
@@ -125,13 +125,13 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 12),
                               Text(
                                 'select_subscription'.tr(),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: primaryBlue,
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                   height: 1.3,
                                   fontFamily: 'SF Pro Display',
@@ -187,7 +187,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     'continue'.tr(),
                                     style: TextStyle(
                                       color: Color(0xFFFFFFFF),
-                                      fontSize: 18,
+              fontSize: 20,
                                       fontWeight: FontWeight.w600,
                                       fontFamily: 'SF Pro Display',
                                     ),
@@ -203,20 +203,21 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   'continue_free_plan'.tr(),
                                   style: TextStyle(
                                     color: primaryBlue,
-                                    fontSize: 14,
+                                  fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 24),
 
                               // --- Disclaimer Text ---
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
                                   'subscription_disclaimer'.tr(),
-                                  textAlign: TextAlign.center,
+                                textAlign: TextAlign.center,
+
                                   style: TextStyle(
                                     color: Colors.black,
                                     fontSize: 11,
@@ -304,18 +305,20 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   Widget _buildFeatureItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         children: [
-          const Icon(Icons.play_arrow, color: Color(0xFFFFFFFF), size: 18),
+          const ImageIcon(AssetImage('assets/left_arrow.png'), color: Color(0xFFFFFFFF), size: 18),
           const SizedBox(width: 14),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ],

@@ -109,6 +109,7 @@ flutter:
     - assets/holidays_icon.svg
     - assets/payroll_icon.svg
     - assets/time_off_icon.svg
+    - assets/left_arrow.png
     - assets/notification_icon.svg
     - assets/right_arrow_icon.svg
     - assets/tick_icon.svg

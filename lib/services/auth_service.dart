@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -73,10 +74,12 @@ class AuthService {
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      await GoogleSignIn.instance.initialize(
-        clientId:
-            '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com',
-      );
+      String? clientId;
+      if (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
+        clientId = '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com';
+      }
+      await GoogleSignIn.instance.initialize(clientId: clientId);
       final GoogleSignInAccount googleUser = await GoogleSignIn.instance
           .authenticate();
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;

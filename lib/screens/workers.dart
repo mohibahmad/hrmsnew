@@ -678,7 +678,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ],
               ),
               const Spacer(),
-              // Notification Bell & Profile Avatar
               if (widget.onProfileTap != null && widget.onLogout != null) ...[
                 GestureDetector(
                   onTap: widget.onNotificationTap,
