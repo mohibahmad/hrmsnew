@@ -1059,9 +1059,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 16.0),
                           child: Tooltip(
-                            message: status.isEmpty ? '-' : status,
+                            message: status.isEmpty ? '-' : status.toLowerCase().tr(),
                             child: Text(
-                              status.isEmpty ? '-' : status,
+                              status.isEmpty ? '-' : status.toLowerCase().tr(),
                               style: TextStyle(
                                 color: status == 'Present'
                                     ? greenPresent
@@ -1823,7 +1823,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Error exporting CSV: $e',
+          message: 'error_exporting_csv'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
       }

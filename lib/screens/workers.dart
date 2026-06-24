@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -1259,9 +1258,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       experienceLevel: (worker['experienceLevel'] ?? '')
                           .toString(),
                       profileImage: profileImage,
-                      frontId: (worker['frontId'] ?? '').toString(),
-                      backId: (worker['backId'] ?? '').toString(),
-                      cv: (worker['cv'] ?? '').toString(),
                     ),
                   );
                 } else if (value == 'edit') {
@@ -1447,10 +1443,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
   final String salary;
   final String experienceLevel;
   final String? profileImage;
-  final String? frontId;
-  final String? backId;
-  final String? cv;
-
   const WorkerProfilePreviewDialog({
     super.key,
     required this.name,
@@ -1465,9 +1457,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     required this.salary,
     required this.experienceLevel,
     this.profileImage,
-    this.frontId,
-    this.backId,
-    this.cv,
   });
 
   // Exact colors picked from the image
@@ -1769,57 +1758,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-
-                      // Row 5 - Documentation Status
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.badge,
-                              'upload_front_side'.tr(),
-                              frontId != null && frontId!.isNotEmpty
-                                  ? 'uploaded'.tr()
-                                  : 'not_uploaded'.tr(),
-                              onTap: frontId != null && frontId!.isNotEmpty
-                                  ? () => _openDocument(context, frontId!)
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.badge,
-                              'upload_back_side'.tr(),
-                              backId != null && backId!.isNotEmpty
-                                  ? 'uploaded'.tr()
-                                  : 'not_uploaded'.tr(),
-                              onTap: backId != null && backId!.isNotEmpty
-                                  ? () => _openDocument(context, backId!)
-                                  : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.description,
-                              'upload_cv_label'.tr(),
-                              cv != null && cv!.isNotEmpty
-                                  ? 'uploaded'.tr()
-                                  : 'not_uploaded'.tr(),
-                              onTap: cv != null && cv!.isNotEmpty
-                                  ? () => _openDocument(context, cv!)
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(child: SizedBox()),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -1832,114 +1770,60 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
   }
 
   // --- Helper Widget for the Cards ---
-  void _openDocument(BuildContext context, String url) {
-    if (url.startsWith('http')) {
-      // Open in external browser or show preview
-      showDialog(
-        context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: InteractiveViewer(
-            child: url.endsWith('.pdf')
-                ? Container(
-                    color: Colors.white,
-                    child: Center(
-                      child: Text(
-                        'pdf_preview_not_available'.tr(),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  )
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(url, fit: BoxFit.contain),
-                  ),
+  Widget _buildInfoCard(IconData icon, String title, String value) {
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: cardBorderGrey, width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: iconLightBlue,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Center(child: Icon(icon, color: primaryBlue, size: 20)),
           ),
-        ),
-      );
-    } else if (url.startsWith('data:')) {
-      final content = url.substring(url.indexOf(',') + 1);
-      showDialog(
-        context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: InteractiveViewer(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(
-                base64Decode(content),
-                fit: BoxFit.contain,
-              ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF000000),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildInfoCard(
-    IconData icon,
-    String title,
-    String value, {
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        height: 70,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: cardBorderGrey, width: 1.2),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconLightBlue,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Center(child: Icon(icon, color: primaryBlue, size: 20)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF000000),
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

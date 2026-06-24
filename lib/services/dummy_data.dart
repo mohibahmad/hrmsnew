@@ -1196,7 +1196,7 @@ class DummyData {
       'position': 'Graphic Designer',
       'type': 'Mouse',
       'dateLoaned': '10/03/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {
@@ -1212,7 +1212,7 @@ class DummyData {
       'position': 'HR Manager',
       'type': 'Mac',
       'dateLoaned': '05/02/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {
@@ -1220,7 +1220,7 @@ class DummyData {
       'position': 'Frontend Developer',
       'type': 'Table',
       'dateLoaned': '12/04/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {
@@ -1228,7 +1228,7 @@ class DummyData {
       'position': 'Backend Developer',
       'type': 'Monitor',
       'dateLoaned': '18/06/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {
@@ -1244,7 +1244,7 @@ class DummyData {
       'position': 'UI Designer',
       'type': 'iPad',
       'dateLoaned': '01/07/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {
@@ -1260,7 +1260,7 @@ class DummyData {
       'position': 'Technical Writer',
       'type': 'Keyboard',
       'dateLoaned': '10/08/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {
@@ -1268,7 +1268,7 @@ class DummyData {
       'position': 'Mobile Developer',
       'type': 'iPhone',
       'dateLoaned': '15/08/2025',
-      'dateReturned': 'In use',
+      'dateReturned': 'in_use',
       'isReturned': false,
     },
     {

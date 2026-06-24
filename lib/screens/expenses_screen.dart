@@ -379,7 +379,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'amount_dollar'.tr(),
                             amountController,
-                            hintText: '0.00',
+                            hintText: 'hint_amount'.tr(),
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
@@ -648,7 +648,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'amount_dollar'.tr(),
                             amountController,
-                            hintText: '0.00',
+                            hintText: 'hint_amount'.tr(),
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),

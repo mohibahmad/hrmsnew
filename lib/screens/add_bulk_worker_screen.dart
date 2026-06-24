@@ -52,11 +52,18 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   bool _hasParsedFile = false;
 
   Future<void> _downloadTemplate() async {
-    const String templateStr =
-        'Full Name,Contact Number,Email Address,Father Name/Husband Name,National ID,Professed Religion,Date of Birth,Gender,Address,Relationship Status,Job Position,Employee Type,Work Model,Experience Level,Education,Salary Type,Currency,Salary Amount,Leave Policy,Annual Leaves,Sick Leaves,Casual Leaves,Joining Date,Profile Image URL\n'
-        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,\n'
-        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane\n'
-        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,';
+    final String headerRow = [
+      'full_name','contact_number','email_address','father_name','national_id_title',
+      'religion_title','date_of_birth','gender_title','address_title','relationship_status_title',
+      'job_position','employee_type','work_model','experience_level_title','education_title',
+      'salary_type','currency_title','salary_amount','leave_policy','annual_leaves_title',
+      'sick_leaves_title','casual_leaves_title','joining_date_title','profile_image_url',
+    ].map((k) => k.tr()).join(',');
+    const String dataRows =
+    'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,\n'
+    'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane\n'
+    'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,';
+    final String templateStr = '$headerRow\n$dataRows';
 
     try {
       String? outputFile = await FilePicker.saveFile(

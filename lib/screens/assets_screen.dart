@@ -1283,7 +1283,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                data.dateReturned,
+                data.dateReturned.tr(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

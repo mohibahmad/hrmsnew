@@ -815,7 +815,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       vertical: 12,
                     ),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
+                      constraints: const BoxConstraints(maxWidth: 500),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 40,

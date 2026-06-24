@@ -20,19 +20,27 @@ import '../utils/snackbar_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 const List<String> _months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+String _localizedMonth(int month) {
+  switch (month) {
+    case 1: return 'month_january'.tr();
+    case 2: return 'month_february'.tr();
+    case 3: return 'month_march'.tr();
+    case 4: return 'month_april'.tr();
+    case 5: return 'month_may'.tr();
+    case 6: return 'month_june'.tr();
+    case 7: return 'month_july'.tr();
+    case 8: return 'month_august'.tr();
+    case 9: return 'month_september'.tr();
+    case 10: return 'month_october'.tr();
+    case 11: return 'month_november'.tr();
+    case 12: return 'month_december'.tr();
+    default: return '';
+  }
+}
 
 // ==========================================
 // ADD NEW WORKER FLOW (EXPERIENCE & DOCS)
@@ -179,7 +187,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
     if (_joiningDate == null || _joiningDate!.isEmpty) {
       final today = DateTime.now();
-      _joiningDate = '${_months[today.month - 1]} ${today.day}, ${today.year}';
+      _joiningDate = '${_localizedMonth(today.month)} ${today.day}, ${today.year}';
     }
 
     _nameController.addListener(_onControllerChanged);
@@ -1105,29 +1113,19 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         );
       }
     }
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _activeTabIndex = index;
-        });
-      },
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
-            borderRadius: borderRadius,
-          ),
-          child: Text(
-            title,
-            style: TextStyle(
-              color: const Color(0xFF000000),
-              fontSize: 15,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFFE8EEF9) : Colors.transparent,
+        borderRadius: borderRadius,
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: const Color(0xFF000000),
+          fontSize: 15,
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+          fontFamily: 'SF Pro Display',
         ),
       ),
     );
@@ -1404,6 +1402,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             selectedValue: genderController.text,
                             hint: 'enter_gender'.tr(),
                             items: const ['Male', 'Female', 'Other'],
+                            itemLabelBuilder: (val) => _localizeGender(val),
                             onChanged: (val) {
                               if (val != null) {
                                 genderController.text = val;
@@ -1577,6 +1576,19 @@ class WorkerDetailFormSection extends StatelessWidget {
     );
   }
 
+  String _localizeGender(String value) {
+    switch (value) {
+      case 'Male':
+        return 'male'.tr();
+      case 'Female':
+        return 'female'.tr();
+      case 'Other':
+        return 'other'.tr();
+      default:
+        return value;
+    }
+  }
+
 }
 
 // ==========================================
@@ -1652,6 +1664,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         return 'part_time'.tr();
       case 'Contract':
         return 'contract'.tr();
+      case 'Freelance':
+        return 'freelance'.tr();
       default:
         return value;
     }
@@ -1697,6 +1711,47 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         return 'master'.tr();
       case 'Other':
         return 'other'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizeSalaryType(String value) {
+    switch (value) {
+      case 'Monthly':
+        return 'monthly'.tr();
+      case 'Hourly':
+        return 'hourly'.tr();
+      case 'Contract':
+        return 'contract'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizeCurrency(String value) {
+    switch (value) {
+      case 'USD':
+      case 'PKR':
+      case 'GBP':
+        return value;
+      case 'Japanese Yen':
+        return 'japanese_yen'.tr();
+      case 'Pound':
+        return 'pound_currency'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizeLeavePolicy(String value) {
+    switch (value) {
+      case 'Standard':
+        return 'standard'.tr();
+      case 'Custom':
+        return 'custom'.tr();
+      case 'Sick/Casual Only':
+        return 'sick_casual_only'.tr();
       default:
         return value;
     }
@@ -2202,7 +2257,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               onTap: () {
                                 if (_selectedDate != null) {
                                   final monthName =
-                                      _months[_selectedDate!.month - 1];
+                                      _localizedMonth(_selectedDate!.month);
                                   final formatted =
                                       '$monthName ${_selectedDate!.day}, ${_selectedDate!.year}';
                                   widget.onJoiningDateChanged?.call(formatted);
@@ -2277,6 +2332,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       selectedValue: widget.salaryTypeController.text,
                       hint: 'enter_your_salary_type'.tr(),
                       items: const ['Monthly', 'Hourly', 'Contract'],
+                      itemLabelBuilder: (val) => _localizeSalaryType(val),
                       onChanged: (val) {
                         if (val != null) {
                           widget.salaryTypeController.text = val;
@@ -2297,6 +2353,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         'Japanese Yen',
                         'Pound',
                       ],
+                      itemLabelBuilder: (val) => _localizeCurrency(val),
                       onChanged: (val) {
                         if (val != null) {
                           widget.currencyController.text = val;
@@ -2352,6 +2409,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       selectedValue: widget.leavePolicyController.text,
                       hint: 'enter_leave_policy'.tr(),
                       items: const ['Standard', 'Custom', 'Sick/Casual Only'],
+                      itemLabelBuilder: (val) => _localizeLeavePolicy(val),
                       onChanged: (val) {
                         if (val != null) {
                           widget.leavePolicyController.text = val;
@@ -2363,7 +2421,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   Expanded(
                     child: _buildInputField(
                       'annual_leaves_days'.tr(),
-                      'e.g., 14',
+                      'hint_annual_leaves'.tr(),
                       controller: widget.annualLeavesController,
                     ),
                   ),
@@ -2375,7 +2433,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   Expanded(
                     child: _buildInputField(
                       'sick_leaves_days'.tr(),
-                      'e.g., 7',
+                      'hint_sick_leaves'.tr(),
                       controller: widget.sickLeavesController,
                     ),
                   ),
@@ -2383,7 +2441,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   Expanded(
                     child: _buildInputField(
                       'casual_leaves_days'.tr(),
-                      'e.g., 3',
+                      'hint_casual_leaves'.tr(),
                       controller: widget.casualLeavesController,
                     ),
                   ),
@@ -2658,7 +2716,7 @@ class DocumentationSection extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              fileName ?? 'PDF Document',
+                              fileName ?? 'pdf_document'.tr(),
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -2704,7 +2762,7 @@ class DocumentationSection extends StatelessWidget {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              fileName ?? 'File uploaded',
+                              fileName ?? 'file_uploaded'.tr(),
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,

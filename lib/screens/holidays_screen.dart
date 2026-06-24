@@ -791,7 +791,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     if (mounted) {
                       FlashySnackBar.show(
                         context,
-                        message: 'Failed to update holiday: $e',
+                        message: 'error_updating_holiday'.tr(namedArgs: {'error': e.toString()}),
                       );
                     }
                   }

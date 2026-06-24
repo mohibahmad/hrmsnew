@@ -569,5 +569,19 @@
   "file_too_large": "Файл слишком большой. Максимальный размер {size}.",
   "uploaded": "Загружено",
   "not_uploaded": "Не загружено",
-  "pdf_preview_not_available": "Предварительный просмотр PDF недоступен"
+  "pdf_preview_not_available": "Предварительный просмотр PDF недоступен",
+  "error_exporting_csv": "Ошибка экспорта CSV: {error}",
+  "error_updating_holiday": "Не удалось обновить праздник: {error}",
+  "hourly": "Почасовой",
+  "standard": "Стандартный",
+  "sick_casual_only": "Только больничный/обычный",
+  "hint_annual_leaves": "напр., 14",
+  "hint_sick_leaves": "напр., 7",
+  "hint_casual_leaves": "напр., 3",
+  "hint_amount": "0.00",
+  "japanese_yen": "Японская йена",
+  "pound_currency": "Фунт",
+  "freelance": "Фриланс",
+  "pdf_document": "PDF-документ",
+  "file_uploaded": "Файл загружен"
 }

@@ -169,7 +169,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Text(
-              _errorMessage!,
+              'error_occurred'.tr(namedArgs: {'error': _errorMessage!}),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: textDark,

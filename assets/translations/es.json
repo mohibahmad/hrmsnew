@@ -569,5 +569,19 @@
   "file_too_large": "Archivo demasiado grande. El tamaño máximo es {size}.",
   "uploaded": "Subido",
   "not_uploaded": "No subido",
-  "pdf_preview_not_available": "Vista previa de PDF no disponible"
+  "pdf_preview_not_available": "Vista previa de PDF no disponible",
+  "error_exporting_csv": "Error al exportar CSV: {error}",
+  "error_updating_holiday": "Error al actualizar festivo: {error}",
+  "hourly": "Por hora",
+  "standard": "Estándar",
+  "sick_casual_only": "Solo Enfermedad/Casual",
+  "hint_annual_leaves": "ej., 14",
+  "hint_sick_leaves": "ej., 7",
+  "hint_casual_leaves": "ej., 3",
+  "hint_amount": "0.00",
+  "japanese_yen": "Yen japonés",
+  "pound_currency": "Libra",
+  "freelance": "Freelance",
+  "pdf_document": "Documento PDF",
+  "file_uploaded": "Archivo subido"
 }

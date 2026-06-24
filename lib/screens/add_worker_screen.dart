@@ -553,6 +553,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                 'Female',
                                                 'Other',
                                               ],
+                                              itemLabelBuilder: (val) => val.toLowerCase().tr(),
                                               onChanged: (val) {
                                                 if (val != null) {
                                                   setState(() {
