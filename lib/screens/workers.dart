@@ -1475,7 +1475,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
       child: Center(
         child: Container(
           width: 480,
-          height: 610,
+          height: 580,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
@@ -1500,9 +1500,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                     // --- Title Bar ---
                     Container(
                       height: 44,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF004FDE),
-                      ),
+                      decoration: const BoxDecoration(color: Color(0xFF004FDE)),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1629,20 +1627,27 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
 
                                 // Phone Row
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      Icons.phone,
-                                      color: Color(0xFFFFFFFF),
-                                      size: 20,
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 3),
+                                      child: Icon(
+                                        Icons.phone,
+                                        color: Color(0xFFFFFFFF),
+                                        size: 20,
+                                      ),
                                     ),
                                     const SizedBox(width: 10),
-                                    Text(
-                                      phone.isNotEmpty ? phone : 'na'.tr(),
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
+                                    Flexible(
+                                      child: Text(
+                                        phone.isNotEmpty ? phone : 'na'.tr(),
+                                        style: const TextStyle(
+                                          color: Color(0xFFFFFFFF),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        softWrap: true,
                                       ),
                                     ),
                                   ],

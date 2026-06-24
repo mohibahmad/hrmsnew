@@ -20,25 +20,48 @@ import '../utils/snackbar_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 const List<String> _months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 String _localizedMonth(int month) {
   switch (month) {
-    case 1: return 'month_january'.tr();
-    case 2: return 'month_february'.tr();
-    case 3: return 'month_march'.tr();
-    case 4: return 'month_april'.tr();
-    case 5: return 'month_may'.tr();
-    case 6: return 'month_june'.tr();
-    case 7: return 'month_july'.tr();
-    case 8: return 'month_august'.tr();
-    case 9: return 'month_september'.tr();
-    case 10: return 'month_october'.tr();
-    case 11: return 'month_november'.tr();
-    case 12: return 'month_december'.tr();
-    default: return '';
+    case 1:
+      return 'month_january'.tr();
+    case 2:
+      return 'month_february'.tr();
+    case 3:
+      return 'month_march'.tr();
+    case 4:
+      return 'month_april'.tr();
+    case 5:
+      return 'month_may'.tr();
+    case 6:
+      return 'month_june'.tr();
+    case 7:
+      return 'month_july'.tr();
+    case 8:
+      return 'month_august'.tr();
+    case 9:
+      return 'month_september'.tr();
+    case 10:
+      return 'month_october'.tr();
+    case 11:
+      return 'month_november'.tr();
+    case 12:
+      return 'month_december'.tr();
+    default:
+      return '';
   }
 }
 
@@ -187,7 +210,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
     if (_joiningDate == null || _joiningDate!.isEmpty) {
       final today = DateTime.now();
-      _joiningDate = '${_localizedMonth(today.month)} ${today.day}, ${today.year}';
+      _joiningDate =
+          '${_localizedMonth(today.month)} ${today.day}, ${today.year}';
     }
 
     _nameController.addListener(_onControllerChanged);
@@ -1588,7 +1612,6 @@ class WorkerDetailFormSection extends StatelessWidget {
         return value;
     }
   }
-
 }
 
 // ==========================================
@@ -2256,8 +2279,9 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             GestureDetector(
                               onTap: () {
                                 if (_selectedDate != null) {
-                                  final monthName =
-                                      _localizedMonth(_selectedDate!.month);
+                                  final monthName = _localizedMonth(
+                                    _selectedDate!.month,
+                                  );
                                   final formatted =
                                       '$monthName ${_selectedDate!.day}, ${_selectedDate!.year}';
                                   widget.onJoiningDateChanged?.call(formatted);
@@ -3149,7 +3173,10 @@ Widget _buildInputField(
   final isContact =
       label.toLowerCase().contains('contact') ||
       label.toLowerCase().contains('phone');
-  final isNumeric = isAmount || isLeaves || isContact;
+  final isNationalId =
+      label.toLowerCase().contains('national id') ||
+      label.toLowerCase().contains('national_id');
+  final isNumeric = isAmount || isLeaves || isContact || isNationalId;
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -3186,6 +3213,8 @@ Widget _buildInputField(
                   FilteringTextInputFormatter.allow(
                     isAmount ? RegExp(r'^\d*\.?\d*') : RegExp(r'^\d*'),
                   ),
+                  if (isContact) LengthLimitingTextInputFormatter(20),
+                  if (isNationalId) LengthLimitingTextInputFormatter(15),
                 ]
               : null,
           style: const TextStyle(
@@ -3406,7 +3435,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                   _currentValue.isEmpty
                       ? widget.hint
                       : (widget.itemLabelBuilder?.call(_currentValue) ??
-                          _currentValue),
+                            _currentValue),
                   style: TextStyle(
                     fontSize: 14,
                     color: _currentValue.isEmpty

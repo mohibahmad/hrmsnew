@@ -3150,21 +3150,19 @@ class LeaveTypesPieChart extends StatelessWidget {
                         duration: const Duration(milliseconds: 700),
                         curve: Curves.easeOutQuart,
                         builder: (context, value, childWidget) {
-                          return Opacity(
-                            opacity: value,
-                            child: childWidget,
-                          );
+                          return Opacity(opacity: value, child: childWidget);
                         },
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 500),
                           switchInCurve: Curves.easeInOutCubic,
                           switchOutCurve: Curves.easeInOutCubic,
-                          transitionBuilder: (Widget child, Animation<double> animation) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            );
-                          },
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                );
+                              },
                           child: Stack(
                             key: ValueKey(period),
                             alignment: Alignment.center,

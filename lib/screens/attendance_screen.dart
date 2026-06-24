@@ -256,14 +256,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }).toList();
   }
 
-  int get _totalCount =>
-      _attendanceDocs.where((d) => _matchesPeriod(d)).length;
+  int get _totalCount => _attendanceDocs.where((d) => _matchesPeriod(d)).length;
   int get _presentCount => _attendanceDocs
-      .where((d) => d['status'] == 'Present' && _matchesPeriod(d)).length;
+      .where((d) => d['status'] == 'Present' && _matchesPeriod(d))
+      .length;
   int get _absentCount => _attendanceDocs
-      .where((d) => d['status'] == 'Absent' && _matchesPeriod(d)).length;
+      .where((d) => d['status'] == 'Absent' && _matchesPeriod(d))
+      .length;
   int get _leaveCount => _attendanceDocs
-      .where((d) => d['status'] == 'Leave' && _matchesPeriod(d)).length;
+      .where((d) => d['status'] == 'Leave' && _matchesPeriod(d))
+      .length;
 
   @override
   Widget build(BuildContext context) {
@@ -1059,7 +1061,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 16.0),
                           child: Tooltip(
-                            message: status.isEmpty ? '-' : status.toLowerCase().tr(),
+                            message: status.isEmpty
+                                ? '-'
+                                : status.toLowerCase().tr(),
                             child: Text(
                               status.isEmpty ? '-' : status.toLowerCase().tr(),
                               style: TextStyle(
@@ -1082,12 +1086,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                       Expanded(
                         flex: 2,
-                       child: Padding(
-                         padding: const EdgeInsets.only(right: 16.0),
-                         child: Tooltip(
-                           message: localizeWorkType(workType),
-                           child: Text(
-                             localizeWorkType(workType),
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 16.0),
+                          child: Tooltip(
+                            message: localizeWorkType(workType),
+                            child: Text(
+                              localizeWorkType(workType),
                               style: const TextStyle(
                                 fontSize: 15,
                                 color: textDark,
@@ -1393,18 +1397,24 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
 
                     Row(
                       children: [
-                        const Icon(
-                          Icons.phone,
-                          color: Color(0xFFFFFFFF),
-                          size: 16,
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.phone,
+                            color: Color(0xFFFFFFFF),
+                            size: 16,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          record.phone ?? 'na'.tr(),
-                          style: const TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            record.phone ?? 'na'.tr(),
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1814,10 +1824,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
 
       if (context.mounted) {
         await OpenFile.open(outputFile);
-        FlashySnackBar.show(
-          context,
-          message: 'attendance_exported'.tr(),
-        );
+        FlashySnackBar.show(context, message: 'attendance_exported'.tr());
       }
     } catch (e) {
       if (context.mounted) {

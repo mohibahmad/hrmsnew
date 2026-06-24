@@ -553,7 +553,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                 'Female',
                                                 'Other',
                                               ],
-                                              itemLabelBuilder: (val) => val.toLowerCase().tr(),
+                                              itemLabelBuilder: (val) =>
+                                                  val.toLowerCase().tr(),
                                               onChanged: (val) {
                                                 if (val != null) {
                                                   setState(() {
@@ -791,7 +792,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   }) {
     final isNumeric =
         label.toLowerCase().contains('contact') ||
-        label.toLowerCase().contains('phone');
+        label.toLowerCase().contains('phone') ||
+        label.toLowerCase().contains('national');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -819,7 +821,14 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             maxLines: isTextArea ? 4 : 1,
             keyboardType: isNumeric ? TextInputType.number : null,
             inputFormatters: isNumeric
-                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*'))]
+                ? [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*')),
+                    if (label.toLowerCase().contains('phone') ||
+                        label.toLowerCase().contains('contact'))
+                      LengthLimitingTextInputFormatter(20),
+                    if (label.toLowerCase().contains('national'))
+                      LengthLimitingTextInputFormatter(15),
+                  ]
                 : null,
             style: const TextStyle(
               fontSize: 14,

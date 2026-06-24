@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter/services.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
@@ -450,9 +451,7 @@ class _ProfileBodyState extends State<ProfileBody> {
             if (mounted) {
               FlashySnackBar.show(
                 context,
-                message: 'file_upload_failed'.tr(
-                  namedArgs: {'file': fileName},
-                ),
+                message: 'file_upload_failed'.tr(namedArgs: {'file': fileName}),
                 isError: true,
               );
             }
@@ -542,6 +541,10 @@ class _ProfileBodyState extends State<ProfileBody> {
         contact2: _contact2Controller.text,
         address: _addressController.text,
         onSave: _saveProfile,
+        onEdit: () {
+          Navigator.of(context).pop();
+          setState(() => _isEditing = true);
+        },
       ),
     );
   }
@@ -752,7 +755,7 @@ class _ProfileBodyState extends State<ProfileBody> {
     }
 
     return GestureDetector(
-      onTap: _pickProfilePic,
+      onTap: _isEditing ? _pickProfilePic : null,
       child: Stack(
         children: [
           Container(
@@ -765,28 +768,29 @@ class _ProfileBodyState extends State<ProfileBody> {
             clipBehavior: Clip.antiAlias,
             child: Center(child: childWidget),
           ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: const BoxDecoration(
-                color: Color(0xFF155ED5),
-                shape: BoxShape.circle,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: SvgPicture.asset(
-                  'assets/edit_pencil_profile.svg',
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFFFFFFF),
-                    BlendMode.srcIn,
+          if (_isEditing)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF155ED5),
+                  shape: BoxShape.circle,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: SvgPicture.asset(
+                    'assets/edit_pencil_profile.svg',
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFFFFFFF),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -811,6 +815,10 @@ class _ProfileBodyState extends State<ProfileBody> {
     bool readOnly = false,
   }) {
     final bool isEmailField = label == 'company_email'.tr();
+    final bool isCompanyId = label == 'company_id_no'.tr();
+    final bool isContact =
+        label.toLowerCase().contains('contact') ||
+        label.toLowerCase().contains('phone');
     final Color bgColor = readOnly
         ? const Color(0xFFEEEFF2)
         : const Color(0xFFFFFFFF);
@@ -859,6 +867,9 @@ class _ProfileBodyState extends State<ProfileBody> {
                   controller: controller,
                   maxLines: maxLines,
                   readOnly: readOnly,
+                  inputFormatters: isCompanyId || isContact
+                      ? [LengthLimitingTextInputFormatter(15)]
+                      : null,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
@@ -894,6 +905,7 @@ class ProfilePreviewDialog extends StatelessWidget {
   final String contact2;
   final String address;
   final VoidCallback? onSave;
+  final VoidCallback? onEdit;
 
   const ProfilePreviewDialog({
     super.key,
@@ -905,6 +917,7 @@ class ProfilePreviewDialog extends StatelessWidget {
     required this.contact2,
     required this.address,
     this.onSave,
+    this.onEdit,
   });
 
   static const Color primaryBlue = Color(0xFF0B51C1);
@@ -977,7 +990,9 @@ class ProfilePreviewDialog extends StatelessWidget {
                               BlendMode.srcIn,
                             ),
                           ),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () {
+                            onEdit?.call();
+                          },
                           constraints: const BoxConstraints(),
                           padding: EdgeInsets.zero,
                         ),
