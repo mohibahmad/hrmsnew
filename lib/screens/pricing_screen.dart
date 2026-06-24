@@ -108,14 +108,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         flex: 11,
                         child: Container(
                           color: Color(0xFFFFFFFF),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 48,
-                            vertical: 24,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(48, 2, 48, 24),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 4),
                               Text(
                                 'choose_your_plan'.tr(),
                                 style: TextStyle(
@@ -125,13 +122,13 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 6),
                               Text(
                                 'select_subscription'.tr(),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: primaryBlue,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w500,
                                   height: 1.3,
                                   fontFamily: 'SF Pro Display',
@@ -203,7 +200,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   'continue_free_plan'.tr(),
                                   style: TextStyle(
                                     color: primaryBlue,
-                                  fontSize: 16,
+                                  fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                     fontFamily: 'SF Pro Display',
                                   ),
