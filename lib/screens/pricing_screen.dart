@@ -201,7 +201,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 26),
 
                               // --- Disclaimer Text ---
                               Padding(
