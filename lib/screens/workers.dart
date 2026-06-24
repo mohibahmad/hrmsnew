@@ -1499,7 +1499,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                   children: [
                     // --- Title Bar ---
                     Container(
-                      height: 56,
+                      height: 44,
                       decoration: const BoxDecoration(
                         color: Color(0xFF004FDE),
                       ),
