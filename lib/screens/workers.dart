@@ -1494,16 +1494,14 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
               // TOP HEADER SECTION (BLUE)
               // ==========================================
               Container(
-                decoration: BoxDecoration(color: primaryBlue),
+                decoration: const BoxDecoration(color: Color(0xFF0247C4)),
                 child: Column(
                   children: [
                     // --- Title Bar ---
                     Container(
                       height: 56,
                       decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.white30, width: 1),
-                        ),
+                        color: Color(0xFF004FDE),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
