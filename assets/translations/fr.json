@@ -63,6 +63,8 @@
   "failed_send_reset": "Échec de l'envoi de l'e-mail de réinitialisation.",
   "password_reset_sent": "E-mail de réinitialisation envoyé. Vérifiez votre boîte de réception.",
   "password_reset_sent_to": "E-mail de réinitialisation envoyé à {email}",
+  "password_reset_email_sent": "E-mail de réinitialisation envoyé à {email}",
+  "password_reset_link": "Un lien de réinitialisation de mot de passe a été envoyé à votre adresse e-mail.",
   "failed_send_reset_email": "Échec de l'envoi de l'e-mail de réinitialisation : {error}",
   "no_email_found": "Aucun e-mail trouvé pour ce compte.",
   "dashboard": "Tableau de bord",
@@ -583,5 +585,11 @@
   "pound_currency": "Livre",
   "freelance": "Freelance",
   "pdf_document": "Document PDF",
-  "file_uploaded": "Fichier téléchargé"
+  "file_uploaded": "Fichier téléchargé",
+  "success_asset_update": "Actif mis à jour avec succès !",
+  "asset_updated": "Actif mis à jour avec succès",
+  "account_created_successfully": "Compte créé avec succès",
+  "worker_deleted_successfully": "Travailleur supprimé avec succès",
+  "please_select_worker_first": "Veuillez d'abord sélectionner un travailleur",
+  "file_upload_failed": "Échec du téléchargement de {file}"
 }

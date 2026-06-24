@@ -27,7 +27,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       elevation: 0,
       child: Center(
         child: SizedBox(
-          width: 900,
+          width: 960,
           height: 670,
           child: Stack(
             clipBehavior: Clip.none,
@@ -35,24 +35,18 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
               Align(
                 alignment: Alignment.center,
                 child: Container(
-                  width: 850,
+                  width: 920,
                   height: 620,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF000000).withValues(alpha: 0.2),
-                        blurRadius: 0.5,
-                        offset: const Offset(0, 15),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [],
                   ),
                   child: Row(
                     children: [
                       Expanded(
-                        flex: 9,
+                        flex: 11,
                         child: Container(
                           decoration: const BoxDecoration(
                             image: DecorationImage(
@@ -62,12 +56,13 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           ),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 40,
-                            vertical: 40,
+                            vertical: 20,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
+                              const SizedBox(height: 20),
                               // --- App Icon (Premium HR App Icon) ---
                               SvgPicture.asset(
                                 'assets/app_icon.svg',
@@ -86,7 +81,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
-                              const SizedBox(height: 32),
+                              const SizedBox(height: 22),
 
                               // --- Features List (with solid play arrow triangles) ---
                               _buildFeatureItem('secure_staff_records'.tr()),
@@ -154,7 +149,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 title: 'yearly'.tr(),
                                 price: '\$64.99',
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
 
                               // --- Continue Button ---
                               SizedBox(
@@ -192,10 +187,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 14),
 
-                              // --- Free Plan Link ---
-                              GestureDetector(
+                               GestureDetector(
                                 onTap: () => Navigator.of(context).pop(false),
                                 child: Text(
                                   'continue_free_plan'.tr(),
@@ -207,7 +201,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 26),
 
                               // --- Disclaimer Text ---
                               Padding(
@@ -225,17 +219,17 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 24),
 
                               // --- Footer Links ---
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   _buildFooterLink(
                                     'privacy_policy'.tr(),
                                     onTap: () => launchUrl(
                                       Uri.parse(
-                                        'https://your-privacy-policy-url.com',
+                                        'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
                                       ),
                                     ),
                                   ),
@@ -271,7 +265,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
               Positioned(
                 top: -7,
-                right: -7,
+                right: -10,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
@@ -303,7 +297,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   Widget _buildFeatureItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 24),
       child: Row(
         children: [
           const ImageIcon(
@@ -343,7 +337,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       },
       child: Container(
         height: 68,
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 17),
         decoration: BoxDecoration(
           color: cardLightBlue,
           borderRadius: BorderRadius.circular(6),

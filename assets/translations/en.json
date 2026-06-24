@@ -63,6 +63,8 @@
   "failed_send_reset": "Failed to send reset email.",
   "password_reset_sent": "Password reset email sent. Check your inbox.",
   "password_reset_sent_to": "Password reset email sent to {email}",
+  "password_reset_email_sent": "Password reset email sent to {email}",
+  "password_reset_link": "A password reset link has been sent to your email.",
   "failed_send_reset_email": "Failed to send reset email: {error}",
   "no_email_found": "No email found for this account.",
   "dashboard": "Dashboard",
@@ -583,5 +585,11 @@
   "pound_currency": "Pound",
   "freelance": "Freelance",
   "pdf_document": "PDF Document",
-  "file_uploaded": "File uploaded"
+  "file_uploaded": "File uploaded",
+  "success_asset_update": "Asset updated successfully!",
+  "asset_updated": "Asset updated successfully",
+  "account_created_successfully": "Account created successfully",
+  "worker_deleted_successfully": "Worker deleted successfully",
+  "please_select_worker_first": "Please select a worker first",
+  "file_upload_failed": "Failed to upload {file}"
 }

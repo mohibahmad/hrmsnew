@@ -63,6 +63,8 @@
   "failed_send_reset": "Не удалось отправить письмо для сброса пароля.",
   "password_reset_sent": "Письмо для сброса пароля отправлено. Проверьте входящие.",
   "password_reset_sent_to": "Письмо для сброса пароля отправлено на {email}",
+  "password_reset_email_sent": "Письмо для сброса пароля отправлено на {email}",
+  "password_reset_link": "Ссылка для сброса пароля была отправлена на вашу электронную почту.",
   "failed_send_reset_email": "Не удалось отправить письмо для сброса пароля: {error}",
   "no_email_found": "Для этого аккаунта не найдена эл. почта.",
   "dashboard": "Панель управления",
@@ -583,5 +585,11 @@
   "pound_currency": "Фунт",
   "freelance": "Фриланс",
   "pdf_document": "PDF-документ",
-  "file_uploaded": "Файл загружен"
+  "file_uploaded": "Файл загружен",
+  "success_asset_update": "Актив успешно обновлен!",
+  "asset_updated": "Актив успешно обновлен",
+  "account_created_successfully": "Аккаунт успешно создан",
+  "worker_deleted_successfully": "Работник успешно удален",
+  "please_select_worker_first": "Пожалуйста, сначала выберите работника",
+  "file_upload_failed": "Не удалось загрузить {file}"
 }

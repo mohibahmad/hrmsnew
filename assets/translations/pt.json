@@ -63,6 +63,8 @@
   "failed_send_reset": "Falha ao enviar e-mail de redefinição.",
   "password_reset_sent": "E-mail de redefinição enviado. Verifique sua caixa de entrada.",
   "password_reset_sent_to": "E-mail de redefinição enviado para {email}",
+  "password_reset_email_sent": "E-mail de redefinição enviado para {email}",
+  "password_reset_link": "Um link de redefinição de senha foi enviado para seu e-mail.",
   "failed_send_reset_email": "Falha ao enviar e-mail de redefinição: {error}",
   "no_email_found": "Nenhum e-mail encontrado para esta conta.",
   "dashboard": "Painel",
@@ -583,5 +585,11 @@
   "pound_currency": "Libra",
   "freelance": "Freelance",
   "pdf_document": "Documento PDF",
-  "file_uploaded": "Arquivo enviado"
+  "file_uploaded": "Arquivo enviado",
+  "success_asset_update": "Ativo atualizado com sucesso!",
+  "asset_updated": "Ativo atualizado com sucesso",
+  "account_created_successfully": "Conta criada com sucesso",
+  "worker_deleted_successfully": "Trabalhador excluído com sucesso",
+  "please_select_worker_first": "Por favor, selecione um trabalhador primeiro",
+  "file_upload_failed": "Falha ao enviar {file}"
 }

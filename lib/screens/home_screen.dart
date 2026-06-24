@@ -779,26 +779,70 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       child: () {
+                        final now = DateTime.now();
                         final activeHolidays = _holidays.where((h) {
                           if (h['isEnabled'] != true) return false;
-                          final remainingStr = h['remainingDays'] ?? '';
-                          final remaining =
-                              int.tryParse(remainingStr.toString()) ?? -1;
-                          if (remaining < 0) return false;
+                          
+                          // Build holiday date from month and day fields
+                          final monthStr = (h['month'] ?? '').toString();
+                          final dayStr = (h['day'] ?? '').toString();
+                          if (monthStr.isEmpty || dayStr.isEmpty) return false;
+                          
+                          // Map month name to number
+                          final monthNames = {
+                            'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                            'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                            'September': 9, 'October': 10, 'November': 11, 'December': 12,
+                          };
+                          final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
+                          if (monthNum == null) return false;
+                          final dayNum = int.tryParse(dayStr);
+                          if (dayNum == null) return false;
+                          
+                          // Build holiday date (use next year if already passed this year)
+                          var holidayDate = DateTime(now.year, monthNum as int, dayNum);
+                          if (holidayDate.isBefore(now.subtract(const Duration(days: 1)))) {
+                            holidayDate = DateTime(now.year + 1, monthNum as int, dayNum);
+                          }
+                          
+                          final daysUntilHoliday = holidayDate.difference(now).inDays;
+                          if (daysUntilHoliday < 0) return false;
+                          
                           switch (holidaysPeriod) {
                             case 'Week':
-                              return remaining <= 7;
+                              return daysUntilHoliday <= 7;
                             case 'Month':
-                              return remaining <= 30;
+                              return daysUntilHoliday <= 30;
                             case '3 Month':
-                              return remaining <= 90;
+                              return daysUntilHoliday <= 90;
                             case '6 Month':
-                              return remaining <= 180;
+                              return daysUntilHoliday <= 180;
                             case 'Yearly':
                             default:
                               return true;
                           }
                         }).toList();
+                        
+                        // Also update remainingDays for display based on actual calculation
+                        for (final h in activeHolidays) {
+                          final monthStr = (h['month'] ?? '').toString();
+                          final dayStr = (h['day'] ?? '').toString();
+                          final monthNames = {
+                            'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                            'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                            'September': 9, 'October': 10, 'November': 11, 'December': 12,
+                          };
+                          final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
+                          final dayNum = int.tryParse(dayStr);
+                          if (monthNum != null && dayNum != null) {
+                            var holidayDate = DateTime(now.year, monthNum as int, dayNum);
+                            if (holidayDate.isBefore(now.subtract(const Duration(days: 1)))) {
+                              holidayDate = DateTime(now.year + 1, monthNum as int, dayNum);
+                            }
+                            final daysUntil = holidayDate.difference(now).inDays;
+                            h['remainingDays'] = daysUntil.toString();
+                          }
+                        }
                         if (activeHolidays.isEmpty) {
                           return Center(
                             child: Padding(
@@ -2897,7 +2941,7 @@ class LeaveTypesPieChart extends StatelessWidget {
 
     int casualCount = 0;
     int sickCount = 0;
-    int medicalCount = 0;
+    int annualCount = 0;
 
     for (var t in timeoffDocs) {
       final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
@@ -2919,16 +2963,18 @@ class LeaveTypesPieChart extends StatelessWidget {
         casualCount++;
       } else if (action.contains('sick')) {
         sickCount++;
+      } else if (action.contains('annual') || action.contains('maternity')) {
+        annualCount++;
       } else {
-        medicalCount++;
+        annualCount++;
       }
     }
 
-    final int total = casualCount + sickCount + medicalCount;
+    final int total = casualCount + sickCount + annualCount;
     final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0.0;
     final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0.0;
     final double medicalPercent = total > 0
-        ? (medicalCount / total) * 100
+        ? (annualCount / total) * 100
         : 0.0;
 
     final double casualVal = total > 0

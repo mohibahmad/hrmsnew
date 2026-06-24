@@ -1025,6 +1025,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
+    // Notes are required
+    if (_notesController.text.trim().isEmpty) {
+      FlashySnackBar.show(context, message: 'please_enter_notes'.tr(), isError: true);
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -1040,7 +1046,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
         'endDate':
             '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}',
-        'notes': _notesController.text,
+        'notes': _notesController.text.trim(),
         'requestedDays': _requestedDays,
         'status': 'Approved',
         'workerName': _selectedWorker!['name'] ?? 'Worker',

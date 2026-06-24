@@ -449,7 +449,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'assets/privacy_policy.svg',
                     'privacy_policy'.tr(),
                     onTap: () => launchUrl(
-                      Uri.parse('https://your-privacy-policy-url.com'),
+                      Uri.parse(
+                        'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                      ),
                     ),
                   ),
                   if (!widget.isGuest)
