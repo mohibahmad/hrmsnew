@@ -172,6 +172,34 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     }
   }
 
+  bool _matchesFilter(String position, String filter) {
+    if (filter == 'All') return true;
+    final pos = position.toLowerCase();
+    final f = filter.toLowerCase();
+    if (f == 'designer') {
+      return pos.contains('designer') &&
+          !pos.contains('engineer') &&
+          !pos.contains('developer');
+    } else if (f == 'developer') {
+      return (pos.contains('developer') || pos.contains('development')) &&
+          !pos.contains('designer');
+    } else if (f == 'engineering') {
+      return (pos.contains('engineer') ||
+              pos.contains('architect') ||
+              pos.contains('analyst') ||
+              pos.contains('scientist')) &&
+          !pos.contains('designer') &&
+          !pos.contains('developer');
+    } else if (f == 'sales') {
+      return pos.contains('sales') || pos.contains('marketing');
+    } else if (f == 'management') {
+      return pos.contains('manager') ||
+          pos.contains('writer') ||
+          pos.contains('hr');
+    }
+    return false;
+  }
+
   List<Map<String, dynamic>> get _filteredWorkers {
     return _timeoffDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
@@ -185,11 +213,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           email.contains(query);
 
       if (!matchesSearch) return false;
-      if (_selectedTab == 'All') return true;
-      if (_selectedTab == 'Management') {
-        return position.contains('manag');
-      }
-      return position.contains(_selectedTab.toLowerCase());
+      return _matchesFilter(position, _selectedTab);
     }).toList();
   }
 

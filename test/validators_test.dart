@@ -147,6 +147,8 @@ void main() {
         () => Validators.validateTimeOff({
           'name': 'John',
           'action': 'Annual Leave',
+          'startDate': '2023-10-01',
+          'endDate': '2023-10-05',
         }),
         returnsNormally,
       );

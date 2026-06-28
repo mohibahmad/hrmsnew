@@ -19,9 +19,19 @@ class AuthService {
   static const bool useDemoAuth = false;
   // static const bool useDemoAppleAuth = false;
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Stream<User?> get authStateChanges {
+    if (FirestoreService.isTesting) {
+      return Stream.value(MockUser());
+    }
+    return _auth.authStateChanges();
+  }
 
-  User? get currentUser => _auth.currentUser;
+  User? get currentUser {
+    if (FirestoreService.isTesting) {
+      return MockUser();
+    }
+    return _auth.currentUser;
+  }
 
   Future<void> _clearSeededDummyDataIfNeeded() async {
     try {
@@ -61,6 +71,10 @@ class AuthService {
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
+    if (FirestoreService.isTesting) {
+      await PreferencesService.setLoggedIn(true);
+      return MockUserCredential();
+    }
     final credential = await _auth.signInAnonymously();
     if (credential.user != null) {
       await credential.user!.updateDisplayName(displayName).catchError((_) {});
@@ -262,4 +276,31 @@ class UserAvatar extends StatelessWidget {
       },
     );
   }
+}
+
+class MockUser implements User {
+  @override
+  final String uid = 'guest_uid';
+  @override
+  final String? email = null;
+  @override
+  final String? displayName = 'Guest User';
+  @override
+  final String? photoURL = null;
+  @override
+  final bool isAnonymous = true;
+
+  @override
+  Future<void> updateDisplayName(String? displayName) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class MockUserCredential implements UserCredential {
+  @override
+  final User user = MockUser();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

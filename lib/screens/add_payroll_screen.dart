@@ -1,0 +1,539 @@
+import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/dummy_data.dart';
+import '../services/payroll_service.dart';
+import '../utils/image_utils.dart';
+import '../utils/snackbar_utils.dart';
+
+class AddPayrollScreen extends StatefulWidget {
+  final Map<String, dynamic> workerData;
+  final VoidCallback? onNotificationTap;
+  final VoidCallback? onBack;
+  const AddPayrollScreen({super.key, required this.workerData, this.onNotificationTap, this.onBack});
+
+  @override
+  State<AddPayrollScreen> createState() => _AddPayrollScreenState();
+}
+
+class _AddPayrollScreenState extends State<AddPayrollScreen> {
+  final _workDaysCtrl = TextEditingController();
+  final _absentsCtrl = TextEditingController();
+  final _leavesCtrl = TextEditingController();
+  final _overtimeCtrl = TextEditingController();
+  final _salaryCtrl = TextEditingController();
+  String _calculatedNet = '';
+  Map<String, dynamic> _calcResult = {};
+
+  static const _primaryBlue = Color(0xFF0A44C2);
+  static const _darkBlue = Color(0xFF082C7C);
+  static const _textDark = Color(0xFF111827);
+  static const _textGrey = Color(0xFF000000);
+  static const _borderLight = Color(0xFFE5E7EB);
+
+  String get _name => (widget.workerData['name'] ?? '').toString();
+  String get _email => (widget.workerData['email'] ?? '').toString();
+  String get _position => (widget.workerData['position'] ?? '').toString();
+  String get _status => (widget.workerData['status'] ?? 'Active').toString();
+  String get _phone => (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '').toString();
+  String get _profileImage => (widget.workerData['profileImage'] ?? '').toString();
+
+  void _recalc() {
+    setState(() {
+      if (_workDaysCtrl.text.trim().isNotEmpty) {
+        _calcResult = PayrollService.calculatePayroll(
+          salary: _salaryStr,
+          totalWorkDays: _workDaysCtrl.text,
+          daysWorked: _workDaysCtrl.text,
+          absents: _absentsCtrl.text,
+          leaves: _leavesCtrl.text,
+          overtimeDays: _overtimeCtrl.text,
+        );
+        _calculatedNet = _calcResult['formattedNet'] as String;
+      } else {
+        _calcResult = {};
+        _calculatedNet = '';
+      }
+    });
+  }
+
+  String get _salaryStr {
+    final s = widget.workerData['salary'] ?? '';
+    if (s.toString().isNotEmpty) return s.toString();
+    return r'$ 0';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _salaryCtrl.text = _salaryStr;
+    final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
+    if (totalDays.isNotEmpty) {
+      _workDaysCtrl.text = totalDays;
+      _absentsCtrl.text = (widget.workerData['absents'] ?? '').toString();
+      _leavesCtrl.text = (widget.workerData['leaves'] ?? '').toString();
+      _overtimeCtrl.text = (widget.workerData['overtimeDays'] ?? '').toString();
+      _recalc();
+    }
+  }
+
+  @override
+  void dispose() {
+    _workDaysCtrl.dispose();
+    _absentsCtrl.dispose();
+    _leavesCtrl.dispose();
+    _overtimeCtrl.dispose();
+    _salaryCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (_workDaysCtrl.text.trim().isEmpty) {
+      FlashySnackBar.show(context, message: 'Please enter Total Work Days', isError: true);
+      return;
+    }
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final record = {
+      'name': _name,
+      'email': _email,
+      'position': _position,
+      'contact': _phone,
+      'status': _status,
+      'profileImage': _profileImage,
+      'totalWorkDays': _workDaysCtrl.text.trim(),
+      'absents': _absentsCtrl.text.trim(),
+      'leaves': _leavesCtrl.text.trim(),
+      'overtimeDays': _overtimeCtrl.text.trim(),
+      'salary': _salaryStr,
+      'netSalary': _calculatedNet,
+    };
+    try {
+      if (isGuest) {
+        final existingIdx = DummyData.payroll.indexWhere((p) {
+          final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+          final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+          return (pEmail.isNotEmpty && pEmail == _email.trim().toLowerCase()) ||
+              (pName.isNotEmpty && pName == _name.trim().toLowerCase());
+        });
+        if (existingIdx != -1) {
+          DummyData.payroll[existingIdx] = {
+            ...DummyData.payroll[existingIdx],
+            ...record,
+          };
+        } else {
+          DummyData.payroll.add(record);
+        }
+        await DummyData.saveToPrefs();
+      } else {
+        final existingId = widget.workerData['id']?.toString() ?? '';
+        final hasExistingRecord = (widget.workerData['totalWorkDays'] ?? '').toString().isNotEmpty;
+        if (hasExistingRecord && existingId.isNotEmpty) {
+          await FirestoreService().updatePayrollRecord(existingId, record);
+        } else {
+          await FirestoreService().addPayrollRecord(record);
+        }
+      }
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
+        widget.onBack?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'failed_to_save_record'.tr(), isError: true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FB),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildEmployeeBanner(),
+                  const SizedBox(height: 24),
+                  _buildDetailsCard(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Icon(Icons.arrow_back, color: _textDark, size: 24),
+                  ),
+                ),
+                Text(
+                  'payroll_data'.tr(),
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _textDark),
+                ),
+              ],
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            OutlinedButton(
+              onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primaryBlue,
+                side: BorderSide(color: _primaryBlue.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Discard Changes', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton(
+              onPressed: _handleSave,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B50C3),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Save Payroll', style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmployeeBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [_primaryBlue, Color(0xFF1E5EE0)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Color(0x3DFFFFFF), width: 2),
+                  image: DecorationImage(
+                    image: getProfileImage(_profileImage, _email, 0),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: -8,
+                right: -12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00A63F),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _status.toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _name,
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.badge_outlined, color: Color(0xB3FFFFFF), size: 16),
+                    const SizedBox(width: 6),
+                    Text('ID: EMP-${_email.hashCode.toString().substring(0, 5)}',
+                        style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14)),
+                    const SizedBox(width: 24),
+                    const Icon(Icons.corporate_fare_outlined, color: Color(0xB3FFFFFF), size: 16),
+                    const SizedBox(width: 6),
+                    Text(_position, style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'CURRENT PAY PERIOD',
+                style: TextStyle(
+                    color: Color(0xB3FFFFFF),
+                    fontSize: 11,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Oct 1 - Oct 31, 2023',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsCard() {
+    final cr = _calcResult;
+
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(width: 4, height: 24, color: _darkBlue),
+              const SizedBox(width: 12),
+              const Text(
+                'Attendance & Salary Details',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Row(
+            children: [
+              Expanded(child: _buildInput('total_work_days'.tr(), '22', _workDaysCtrl)),
+              const SizedBox(width: 24),
+              Expanded(child: _buildInput('absents'.tr(), '0', _absentsCtrl)),
+              const SizedBox(width: 24),
+              Expanded(child: _buildInput('leaves'.tr(), '0', _leavesCtrl)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(child: _buildInput('overtime_days'.tr(), '2', _overtimeCtrl)),
+              const SizedBox(width: 24),
+              Expanded(child: _buildInput('salary'.tr(), '', _salaryCtrl, readOnly: true)),
+              const SizedBox(width: 24),
+              Expanded(child: _buildCalculatedInput(cr)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          if (cr.isNotEmpty) ...[
+            _buildCalcBreakdown(cr),
+            const SizedBox(height: 16),
+          ],
+          Divider(color: _borderLight, thickness: 1),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.history, color: _textGrey, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Last modified by Admin on ${DateTime.now().toString().substring(0, 10)}',
+                    style: const TextStyle(color: _textGrey, fontSize: 13),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: _handleSave,
+                icon: const Icon(Icons.save_outlined, size: 20, color: Colors.white),
+                label: const Text('Save Payroll Entry', style: TextStyle(fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B50C3),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInput(String label, String hint, TextEditingController? controller, {bool readOnly = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textGrey)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          readOnly: readOnly,
+          onChanged: readOnly ? null : (_) => _recalc(),
+          decoration: InputDecoration(
+            hintText: readOnly ? null : hint,
+            hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: _borderLight),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: _primaryBlue),
+            ),
+            filled: readOnly,
+            fillColor: readOnly ? const Color(0xFFF9FAFB) : null,
+          ),
+          style: const TextStyle(fontSize: 16, color: _textDark),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalculatedInput(Map<String, dynamic> cr) {
+    final netAmount = cr.isNotEmpty ? cr['formattedNet'] as String : r'$ 0';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Salary After Deduction',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _darkBlue)),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDF2FA),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFD2E3FC)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(netAmount,
+                  style: const TextStyle(fontSize: 20, color: _darkBlue, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.info_outline, size: 14, color: _darkBlue),
+            const SizedBox(width: 4),
+            const Text('System generated calculation',
+                style: TextStyle(fontSize: 11, color: _darkBlue)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalcBreakdown(Map<String, dynamic> cr) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _borderLight),
+      ),
+      child: Column(
+        children: [
+          _breakdownRow('Daily Rate', cr['formattedDailyRate'] as String, '${cr['totalWorkDaysPerYear']} days/year'),
+          const Divider(height: 16),
+          _breakdownRow('Gross Pay', cr['formattedGross'] as String, '${cr['workedDays']} days'),
+          _breakdownRow('Overtime Pay', cr['formattedOvertime'] as String, '${cr['overtimeDays']} days @ 1.5×'),
+          _breakdownRow('Absent Deduction', cr['formattedAbsentDeduct'] as String, '${cr['absentDays']} days'),
+          _breakdownRow('Leave Deduction', cr['formattedLeaveDeduct'] as String, '${cr['leaveDays']} days'),
+          const Divider(height: 16, thickness: 1.5),
+          _breakdownRow('Net Pay', cr['formattedNet'] as String, null, isTotal: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _breakdownRow(String label, String value, String? detail, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: isTotal ? 15 : 13,
+                fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
+                color: _textDark,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isTotal ? 15 : 13,
+                fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+                color: isTotal ? _darkBlue : _textDark,
+              ),
+            ),
+          ),
+          if (detail != null)
+            Expanded(
+              child: Text(
+                detail,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF000000)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

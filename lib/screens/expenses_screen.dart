@@ -1253,7 +1253,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               isGuest: isGuest,
             )) {
               if (!mounted) return;
-              await PremiumGate.shouldShowUpgradeDialog(context);
+              final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+              if (upgraded == true && mounted) {
+                _showAddExpenseModal(context);
+              }
               return;
             }
             _showAddExpenseModal(context);

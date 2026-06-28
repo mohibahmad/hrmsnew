@@ -40,8 +40,29 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   @override
   void initState() {
     super.initState();
-    _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+    if (widget.initialWorker != null) {
+      _selectedWorker = widget.initialWorker;
+    }
+    _resetFormFields();
     _loadWorkers();
+  }
+
+  @override
+  void didUpdateWidget(covariant AssignTimeOffScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialWorker != null &&
+        widget.initialWorker!['email'] != oldWidget.initialWorker?['email']) {
+      _selectedWorker = widget.initialWorker;
+      _resetFormFields();
+    }
+  }
+
+  void _resetFormFields() {
+    _startDate = DateTime.now();
+    _endDate = DateTime.now().add(const Duration(days: 9));
+    _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+    _timeOffType = 'Annual Leave';
+    _notesController.clear();
   }
 
   void _loadWorkers() {

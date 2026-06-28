@@ -590,6 +590,8 @@
   "asset_updated": "Activo actualizado exitosamente",
   "account_created_successfully": "Cuenta creada exitosamente",
   "worker_deleted_successfully": "Trabajador eliminado exitosamente",
+  "payroll_saved_successfully": "Datos de nómina guardados exitosamente",
+  "failed_to_save_record": "Error al guardar el registro",
   "please_select_worker_first": "Por favor seleccione un trabajador primero",
   "file_upload_failed": "Error al subir {file}"
 }

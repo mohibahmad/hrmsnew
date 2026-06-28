@@ -1,8 +1,8 @@
-import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -38,6 +38,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   bool _isLoading = true;
+  bool _isDialogOpen = false;
   String? _errorMessage;
   final FirestoreService _firestore = FirestoreService();
   StreamSubscription? _workersSub;
@@ -136,6 +137,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     );
   }
 
+  String _getWorkerStatus(Map<String, dynamic> worker) {
+    final directStatus = worker["status"]?.toString();
+    if (directStatus != null && directStatus.isNotEmpty && directStatus != "*****") {
+      return directStatus;
+    }
+    // Derive status from today's attendance records
+    final email = worker["email"]?.toString() ?? "";
+    final attRecord = _todayAttendance.cast<Map<String, dynamic>?>().firstWhere(
+      (att) => att?['email']?.toString() == email,
+      orElse: () => null,
+    );
+    if (attRecord != null) {
+      final attStatus = attRecord['status']?.toString() ?? "";
+      if (attStatus.isNotEmpty && attStatus != "*****") {
+        return attStatus;
+      }
+    }
+    return "";
+  }
+
   List<Map<String, dynamic>> get _filteredWorkers {
     return _workers.where((worker) {
       final name = (worker["name"] ?? "").toString().toLowerCase();
@@ -145,9 +166,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       final query = _searchQuery.toLowerCase();
       final matchesSearch = name.contains(query) || role.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
-      return matchesSearch &&
-          ((worker["status"] ?? worker["type1"] ?? "") ==
-              _selectedStatusFilter);
+      final workerStatus = _getWorkerStatus(worker);
+      return matchesSearch && workerStatus == _selectedStatusFilter;
     }).toList();
   }
 
@@ -189,189 +209,196 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Left Sidebar (Standard SidebarWidget)
-          SidebarWidget(
-            selectedIndex: 2,
-            selectedSubIndex: 0,
-            isGuest: AuthService().currentUser?.isAnonymous ?? false,
-            onItemSelected: (index, {subIndex}) {
-              Navigator.of(context).pop();
-            },
+          IgnorePointer(
+            ignoring: _isDialogOpen,
+            child: SidebarWidget(
+              selectedIndex: 2,
+              selectedSubIndex: 0,
+              isGuest: AuthService().currentUser?.isAnonymous ?? false,
+              onItemSelected: (index, {subIndex}) {
+                Navigator.of(context, rootNavigator: true).pop();
+              },
+            ),
           ),
           // Right Main Content
           Expanded(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSearchBar(),
-                        const SizedBox(height: 32),
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Left List Section: Worker Attendance Statuses
-                              Expanded(
-                                flex: 70,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'worker_attendance'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: textDark,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFFFFFFF),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFFEEEEEE),
-                                          ),
+            child: IgnorePointer(
+              ignoring: _isDialogOpen,
+              child: Column(
+                children: [
+                  _buildHeader(context),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(40, 24, 40, 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSearchBar(),
+                          const SizedBox(height: 32),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Left List Section: Worker Attendance Statuses
+                                Expanded(
+                                  flex: 70,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'worker_attendance'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: textDark,
+                                          fontFamily: 'SF Pro Display',
                                         ),
-                                        child: Column(
-                                          children: [
-                                            Expanded(
-                                              child: SingleChildScrollView(
-                                                child: Column(
-                                                  children: [
-                                                    if (filteredWorkers.isEmpty)
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets.all(
-                                                              40.0,
-                                                            ),
-                                                        child: Center(
-                                                          child: Text(
-                                                            'no_workers_found_title'
-                                                                .tr(),
-                                                            style: TextStyle(
-                                                              color: Color(
-                                                                0xFF000000,
-                                                              ),
-                                                              fontSize: 15,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              fontFamily:
-                                                                  'SF Pro Display',
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    else
-                                                      ...filteredWorkers
-                                                          .asMap()
-                                                          .entries
-                                                          .map(
-                                                            (
-                                                              entry,
-                                                            ) => WorkerListItem(
-                                                              data: entry.value,
-                                                              index: entry.key,
-                                                              onMarkAttendance: () =>
-                                                                  _showMarkAttendanceDialog(
-                                                                    context,
-                                                                    entry.value,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                  ],
-                                                ),
-                                              ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
                                             ),
-                                            const SizedBox(height: 8),
-                                            const PaginationWidget(),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              // Right List Section: Today Detailed Attendance Logs
-                              Expanded(
-                                flex: 30,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'today_attendance'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: textDark,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFFFFFFF),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
+                                            border: Border.all(
+                                              color: const Color(0xFFEEEEEE),
+                                            ),
                                           ),
-                                          border: Border.all(
-                                            color: const Color(0xFFEEEEEE),
-                                          ),
-                                        ),
-                                        child: _todayAttendance.isEmpty
-                                            ? Center(
-                                                child: Text(
-                                                  'no_attendance_records'.tr(),
-                                                  style: TextStyle(
-                                                    color: Color(0xFF000000),
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.w500,
-                                                    fontFamily:
-                                                        'SF Pro Display',
+                                          child: Column(
+                                            children: [
+                                              Expanded(
+                                                child: SingleChildScrollView(
+                                                  child: Column(
+                                                    children: [
+                                                      if (filteredWorkers.isEmpty)
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                40.0,
+                                                              ),
+                                                          child: Center(
+                                                            child: Text(
+                                                              'no_workers_found_title'
+                                                                  .tr(),
+                                                              style: TextStyle(
+                                                                color: Color(
+                                                                  0xFF000000,
+                                                                ),
+                                                                fontSize: 15,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                fontFamily:
+                                                                    'SF Pro Display',
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        )
+                                                      else
+                                                        ...filteredWorkers
+                                                            .asMap()
+                                                            .entries
+                                                            .map(
+                                                              (
+                                                                entry,
+                                                              ) =>
+                                                                  WorkerListItem(
+                                                                data: entry.value,
+                                                                index: entry.key,
+                                                                onMarkAttendance: () =>
+                                                                    _showMarkAttendanceDialog(
+                                                                      context,
+                                                                      entry.value,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                    ],
                                                   ),
                                                 ),
-                                              )
-                                            : SingleChildScrollView(
-                                                child: Column(
-                                                  children: _todayAttendance
-                                                      .asMap()
-                                                      .entries
-                                                      .map(
-                                                        (entry) =>
-                                                            TodayAttendanceItem(
-                                                              data: entry.value,
-                                                              index: entry.key,
-                                                            ),
-                                                      )
-                                                      .toList(),
-                                                ),
                                               ),
+                                              const SizedBox(height: 8),
+                                              const PaginationWidget(),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 20),
+                                // Right List Section: Today Detailed Attendance Logs
+                                Expanded(
+                                  flex: 30,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'today_attendance'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: textDark,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFEEEEEE),
+                                            ),
+                                          ),
+                                          child: _todayAttendance.isEmpty
+                                              ? Center(
+                                                  child: Text(
+                                                    'no_attendance_records'.tr(),
+                                                    style: TextStyle(
+                                                      color: Color(0xFF000000),
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.w500,
+                                                      fontFamily:
+                                                          'SF Pro Display',
+                                                    ),
+                                                  ),
+                                                )
+                                              : SingleChildScrollView(
+                                                  child: Column(
+                                                    children: _todayAttendance
+                                                        .asMap()
+                                                        .entries
+                                                        .map(
+                                                          (entry) =>
+                                                              TodayAttendanceItem(
+                                                                data: entry.value,
+                                                                index: entry.key,
+                                                              ),
+                                                        )
+                                                        .toList(),
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -564,6 +591,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final name = data["name"] ?? "";
     final email = data["email"] ?? "";
 
+    // Calculate total working days for this worker
+    final totalWorkingDays = _todayAttendance
+        .where((att) => att['email'] == email)
+        .length;
+
     // Find if there is an existing today's attendance record for this worker
     final todayRecord = _todayAttendance.firstWhere(
       (att) => att['email'] == email,
@@ -574,8 +606,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final initialStatus = todayRecord['status'] ?? data['status'] ?? 'Present';
     final initialReason = todayRecord['desc'] ?? '';
 
+    setState(() => _isDialogOpen = true);
+
     showDialog(
       context: context,
+      barrierDismissible: false,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext context) {
         String selectedStatus =
@@ -588,8 +623,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
+            return WillPopScope(
+              onWillPop: () async => false,
+              child: Dialog(
+                shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(0),
               ),
               backgroundColor: Colors.transparent,
@@ -621,8 +658,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            const Spacer(),
                             Text(
                               'mark_attendance'.tr(),
                               style: TextStyle(
@@ -630,6 +667,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: const Icon(
+                                Icons.close,
+                                color: Color(0xFFFFFFFF),
+                                size: 24,
                               ),
                             ),
                           ],
@@ -712,10 +758,34 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         ),
                                         const SizedBox(width: 10),
                                         Text(
-                                          (data['phone'] ??
-                                                  data['contact'] ??
-                                                  '')
-                                              .toString(),
+                                          (() {
+                                            final phone = (data['phone'] ??
+                                                    data['contact'] ??
+                                                    '')
+                                                .toString();
+                                            return phone.isNotEmpty
+                                                ? phone
+                                                : 'na'.tr();
+                                          })(),
+                                          style: const TextStyle(
+                                            color: Color(0xFFFFFFFF),
+                                            fontSize: 14,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.calendar_today,
+                                          color: Color(0xFFFFFFFF),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          '${totalWorkingDays} ${'total_working_days'.tr()}',
                                           style: const TextStyle(
                                             color: Color(0xFFFFFFFF),
                                             fontSize: 14,
@@ -1018,7 +1088,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       }
 
                                       if (!context.mounted) return;
-                                      Navigator.pop(context);
                                       FlashySnackBar.show(
                                         context,
                                         message: 'attendance_updated_success'
@@ -1066,11 +1135,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
+            ),
+          );
+        },
+      );
+    },
+  ).then((_) {
+      if (mounted) setState(() => _isDialogOpen = false);
+    });
   }
 
   Widget _buildToggleChip(

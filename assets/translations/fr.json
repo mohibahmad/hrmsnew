@@ -590,6 +590,8 @@
   "asset_updated": "Actif mis à jour avec succès",
   "account_created_successfully": "Compte créé avec succès",
   "worker_deleted_successfully": "Travailleur supprimé avec succès",
+  "payroll_saved_successfully": "Données de paie enregistrées avec succès",
+  "failed_to_save_record": "Échec de l'enregistrement",
   "please_select_worker_first": "Veuillez d'abord sélectionner un travailleur",
   "file_upload_failed": "Échec du téléchargement de {file}"
 }

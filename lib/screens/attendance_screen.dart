@@ -1619,8 +1619,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: 214,
+            Expanded(
               child: _buildDetailCard(
                 title: 'attendance_label'.tr(),
                 rows: [
@@ -1653,8 +1652,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            SizedBox(
-              width: 214,
+            Expanded(
               child: _buildDetailCard(
                 title: 'worker_information'.tr(),
                 rows: [
@@ -1714,7 +1712,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(
+          Expanded(
             child: Text(
               label,
               style: const TextStyle(
@@ -1723,10 +1721,12 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
-          const SizedBox(width: 4),
-          Flexible(
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 110),
             child: Text(
               value,
               style: TextStyle(
@@ -1735,6 +1735,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],

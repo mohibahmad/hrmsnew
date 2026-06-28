@@ -803,7 +803,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           isGuest: isGuest,
                         )) {
                           if (!mounted) return;
-                          await PremiumGate.shouldShowUpgradeDialog(context);
+                          final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+                          if (upgraded == true && mounted) {
+                            widget.onAddWorker();
+                          }
                           return;
                         }
                         widget.onAddWorker();
@@ -824,7 +827,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           isGuest: isGuest,
                         )) {
                           if (!mounted) return;
-                          await PremiumGate.shouldShowUpgradeDialog(context);
+                          final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+                          if (upgraded == true && mounted) {
+                            (widget.onAddBulkWorker ?? () {})();
+                          }
                           return;
                         }
                         (widget.onAddBulkWorker ?? () {})();

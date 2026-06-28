@@ -24,6 +24,7 @@ import 'settings_screen.dart';
 import 'profile_screen.dart';
 import '../utils/logout_dialog.dart';
 import 'login_screen.dart';
+import '../services/payroll_service.dart';
 import '../services/dummy_data.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 
@@ -359,12 +360,15 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _totalSalarySum = snap.docs.fold(0.0, (sum, doc) {
               final data = doc.data() as Map<String, dynamic>?;
-              final salaryStr = (data?['salary'] ?? '')
-                  .toString()
-                  .replaceAll('\$', '')
-                  .replaceAll(',', '')
-                  .trim();
-              return sum + (double.tryParse(salaryStr) ?? 0.0);
+              if (data == null) return sum;
+              final result = PayrollService.calculatePayroll(
+                salary: (data['salary'] ?? '').toString(),
+                totalWorkDays: (data['totalWorkDays'] ?? '').toString(),
+                absents: (data['absents'] ?? '').toString(),
+                leaves: (data['leaves'] ?? '').toString(),
+                overtimeDays: (data['overtimeDays'] ?? '').toString(),
+              );
+              return sum + (result['netSalary'] as double);
             });
           });
         }
@@ -429,12 +433,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _totalSalarySum =
         DummyData.payroll.fold(0.0, (sum, item) {
-          final salaryStr = (item['salary'] ?? '')
-              .toString()
-              .replaceAll('\$', '')
-              .replaceAll(',', '')
-              .trim();
-          return sum + (double.tryParse(salaryStr) ?? 0.0);
+          final result = PayrollService.calculatePayroll(
+            salary: (item['salary'] ?? '').toString(),
+            totalWorkDays: (item['totalWorkDays'] ?? '').toString(),
+            absents: (item['absents'] ?? '').toString(),
+            leaves: (item['leaves'] ?? '').toString(),
+            overtimeDays: (item['overtimeDays'] ?? '').toString(),
+          );
+          return sum + (result['netSalary'] as double);
         }) *
         scale;
   }
@@ -823,25 +829,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           }
                         }).toList();
                         
-                        // Also update remainingDays for display based on actual calculation
                         for (final h in activeHolidays) {
-                          final monthStr = (h['month'] ?? '').toString();
-                          final dayStr = (h['day'] ?? '').toString();
-                          final monthNames = {
-                            'January': 1, 'February': 2, 'March': 3, 'April': 4,
-                            'May': 5, 'June': 6, 'July': 7, 'August': 8,
-                            'September': 9, 'October': 10, 'November': 11, 'December': 12,
-                          };
-                          final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
-                          final dayNum = int.tryParse(dayStr);
-                          if (monthNum != null && dayNum != null) {
-                            var holidayDate = DateTime(now.year, monthNum as int, dayNum);
-                            if (holidayDate.isBefore(now.subtract(const Duration(days: 1)))) {
-                              holidayDate = DateTime(now.year + 1, monthNum as int, dayNum);
-                            }
-                            final daysUntil = holidayDate.difference(now).inDays;
-                            h['remainingDays'] = daysUntil.toString();
-                          }
+                          final daysUntil = _daysUntilHoliday(h, now);
+                          h['remainingDays'] = daysUntil != null
+                              ? daysUntil.toString()
+                              : (h['remainingDays']?.toString() ?? '0');
                         }
                         if (activeHolidays.isEmpty) {
                           return Center(
@@ -3460,6 +3452,26 @@ class CalloutLinesPainter extends CustomPainter {
   }
 }
 
+int? _daysUntilHoliday(Map<String, dynamic> h, DateTime now) {
+  final monthStr = (h['month'] ?? '').toString();
+  final dayStr = (h['day'] ?? '').toString();
+  if (monthStr.isEmpty || dayStr.isEmpty) return null;
+  const monthNames = {
+    'January': 1, 'February': 2, 'March': 3, 'April': 4,
+    'May': 5, 'June': 6, 'July': 7, 'August': 8,
+    'September': 9, 'October': 10, 'November': 11, 'December': 12,
+  };
+  final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
+  final dayNum = int.tryParse(dayStr);
+  if (monthNum == null || dayNum == null) return null;
+  var holidayDate = DateTime(now.year, monthNum, dayNum);
+  if (holidayDate.isBefore(now.subtract(const Duration(days: 1)))) {
+    holidayDate = DateTime(now.year + 1, monthNum, dayNum);
+  }
+  final daysUntil = holidayDate.difference(now).inDays;
+  return daysUntil >= 0 ? daysUntil : null;
+}
+
 // ==========================================
 // REUSABLE CUSTOM HOLIDAY CARD WIDGET
 // ==========================================
@@ -3620,10 +3632,11 @@ class HolidayCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(
-                        width: 22,
+                        width: 30,
                         child: Text(
                           remainingDays,
                           textAlign: TextAlign.end,
+                          overflow: TextOverflow.visible,
                           style: TextStyle(
                             color: mainTextColor,
                             fontSize: 12,

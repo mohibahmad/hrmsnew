@@ -148,7 +148,7 @@ class HRMSApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'app_name'.tr(),
+      title: 'HRMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'SF Pro Display'),
       localizationsDelegates: context.localizationDelegates,

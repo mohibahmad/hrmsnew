@@ -590,6 +590,8 @@
   "asset_updated": "Актив успешно обновлен",
   "account_created_successfully": "Аккаунт успешно создан",
   "worker_deleted_successfully": "Работник успешно удален",
+  "payroll_saved_successfully": "Данные о зарплате успешно сохранены",
+  "failed_to_save_record": "Не удалось сохранить запись",
   "please_select_worker_first": "Пожалуйста, сначала выберите работника",
   "file_upload_failed": "Не удалось загрузить {file}"
 }

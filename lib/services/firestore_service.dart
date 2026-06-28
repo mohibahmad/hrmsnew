@@ -4,6 +4,8 @@ import 'auth_service.dart';
 import 'dummy_data.dart';
 
 class FirestoreService {
+  static bool isTesting = false;
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String get _userKey {
@@ -49,6 +51,7 @@ class FirestoreService {
   }
 
   Future<void> clearDummyDataForCurrentUser() async {
+    if (isTesting) return;
     if (_userKey.isEmpty) return;
 
     final profile = await getUserProfile();
@@ -88,6 +91,7 @@ class FirestoreService {
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {
+    if (isTesting) return {'isPremium': false, 'hasDummyData': false};
     final doc = await _userDoc.get();
     return doc.data() as Map<String, dynamic>?;
   }

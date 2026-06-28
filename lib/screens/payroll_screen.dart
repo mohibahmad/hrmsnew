@@ -6,7 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/payroll_service.dart';
 import '../utils/image_utils.dart';
+import 'add_payroll_screen.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -37,6 +39,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
   static const int _itemsPerPage = 8;
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
+
+  bool _isAddingPayroll = false;
+  Map<String, dynamic>? _workerForPayroll;
 
   @override
   void dispose() {
@@ -73,6 +78,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
         });
       } else {
         // Include workers without payroll records with default empty values
+        final currency = worker['currency']?.toString() ?? 'USD';
+        final currencySymbol = currency == 'USD' ? '\$' : currency;
+        final salaryAmount = worker['salaryAmount']?.toString() ?? '';
         combined.add({
           'id': worker['id'] ?? '',
           'name': worker['name'] ?? '',
@@ -85,7 +93,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           'absents': '',
           'leaves': '',
           'overtimeDays': '',
-          'salary': '',
+          'salary': salaryAmount.isNotEmpty ? '$currencySymbol $salaryAmount' : '',
           'netSalary': '',
         });
       }
@@ -156,6 +164,19 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAddingPayroll && _workerForPayroll != null) {
+      return AddPayrollScreen(
+        workerData: _workerForPayroll!,
+        onNotificationTap: widget.onNotificationTap,
+        onBack: () {
+          setState(() {
+            _isAddingPayroll = false;
+            _workerForPayroll = null;
+          });
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: Column(
@@ -307,6 +328,34 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
+  bool _matchesFilter(String position, String filter) {
+    if (filter == 'All') return true;
+    final pos = position.toLowerCase();
+    final f = filter.toLowerCase();
+    if (f == 'designer') {
+      return pos.contains('designer') &&
+          !pos.contains('engineer') &&
+          !pos.contains('developer');
+    } else if (f == 'developer') {
+      return (pos.contains('developer') || pos.contains('development')) &&
+          !pos.contains('designer');
+    } else if (f == 'engineering') {
+      return (pos.contains('engineer') ||
+              pos.contains('architect') ||
+              pos.contains('analyst') ||
+              pos.contains('scientist')) &&
+          !pos.contains('designer') &&
+          !pos.contains('developer');
+    } else if (f == 'sales') {
+      return pos.contains('sales') || pos.contains('marketing');
+    } else if (f == 'management') {
+      return pos.contains('manager') ||
+          pos.contains('writer') ||
+          pos.contains('hr');
+    }
+    return false;
+  }
+
   List<Map<String, dynamic>> get _filteredEmployees {
     return _payrollDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
@@ -315,11 +364,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final matchesSearch = name.contains(query) || pos.contains(query);
 
       if (!matchesSearch) return false;
-      if (_selectedFilter == 'All') return true;
-      if (_selectedFilter == 'Management') {
-        return pos.contains('manag');
-      }
-      return pos.contains(_selectedFilter.toLowerCase());
+      return _matchesFilter(pos, _selectedFilter);
     }).toList();
   }
 
@@ -376,7 +421,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
               child: Text(
                 filter['label']!,
                 style: TextStyle(
-                  color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
+                  color: isSelected
+                      ? Color(0xFFFFFFFF)
+                      : const Color(0xFF000000),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 14,
                   fontFamily: 'SF Pro Display',
@@ -603,7 +650,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
               alignment: Alignment.centerLeft,
               child: InkWell(
                 onTap: () {
-                  _showPayrollDataDialog(context, doc);
+                  final hasData = (doc['totalWorkDays'] ?? '')
+                      .toString()
+                      .isNotEmpty;
+                  if (hasData) {
+                    _showPayrollDataDialog(context, doc, index);
+                  } else {
+                    setState(() {
+                      _isAddingPayroll = true;
+                      _workerForPayroll = doc;
+                    });
+                  }
                 },
                 mouseCursor: SystemMouseCursors.click,
                 borderRadius: BorderRadius.circular(6),
@@ -632,7 +689,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data) {
+  void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index) async {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
     final String contact = (data['contact'] ?? '').toString();
@@ -645,32 +702,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
     String salaryAfterDeductionStr =
         (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
     if (salaryAfterDeductionStr.isEmpty && salary.isNotEmpty) {
-      try {
-        final numericSalStr = salary.replaceAll(RegExp(r'[^0-9]'), '');
-        if (numericSalStr.isNotEmpty) {
-          final numericSal = int.parse(numericSalStr);
-          // Standard mock deduction (e.g. 5%) if real data doesn't provide it
-          final afterDed = (numericSal * 0.95).round();
-          final formatted = afterDed.toString().replaceAllMapped(
-            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-            (Match m) => '${m[1]},',
-          );
-          final prefix = salary.replaceAll(RegExp(r'[0-9,\s]'), '').trim();
-          salaryAfterDeductionStr = prefix.isNotEmpty
-              ? '$prefix $formatted'
-              : '\$ $formatted';
-        } else {
-          salaryAfterDeductionStr = salary;
-        }
-      } catch (_) {
-        salaryAfterDeductionStr = salary;
-      }
+      salaryAfterDeductionStr = PayrollService.getNetSalaryDisplay(
+        salary: salary,
+        totalWorkDays: totalWorkDays,
+        absents: absents,
+        overtimeDays: overtimeDays,
+      );
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
 
-    showDialog(
+    final result = await showDialog<String>(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (context) => Dialog(
@@ -695,7 +738,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ),
             child: Column(
               children: [
-                // Top Header AppBar (Height: 40, Color: #004FDE)
                 Container(
                   height: 40,
                   width: double.infinity,
@@ -710,7 +752,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const SizedBox(width: 40), // Spacer for centering
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop('edit'),
+                        child: const MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Icon(
+                            Icons.edit,
+                            color: Color(0xFFFFFFFF),
+                            size: 20,
+                          ),
+                        ),
+                      ),
                       Flexible(
                         child: Text(
                           'payroll_data_preview'.tr(),
@@ -725,16 +777,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       ),
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
-                        child: const Icon(
-                          Icons.close,
-                          color: Color(0xFFFFFFFF),
-                          size: 24,
+                        child: const MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Icon(
+                            Icons.close,
+                            color: Color(0xFFFFFFFF),
+                            size: 24,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Profile Section (Blue backdrop: #0247C4)
                 Container(
                   color: const Color(0xFF0247C4),
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
@@ -750,8 +804,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             color: Color(0xFFFFFFFF),
                             width: 2,
                           ),
-                          image: const DecorationImage(
-                            image: AssetImage('assets/profileimage.png'),
+                          image: DecorationImage(
+                            image: getProfileImage(
+                              data['profileImage']?.toString(),
+                              data['email']?.toString(),
+                              index,
+                            ),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -854,7 +912,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ],
                   ),
                 ),
-                // White Bottom Section (5 Metric Cards, bordered sides)
                 Expanded(
                   child: Container(
                     decoration: const BoxDecoration(
@@ -958,6 +1015,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
         ),
       ),
     );
+
+    if (result == 'edit' && mounted) {
+      setState(() {
+        _isAddingPayroll = true;
+        _workerForPayroll = data;
+      });
+    }
   }
 
   Widget _buildMetricCard({

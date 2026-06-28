@@ -215,7 +215,23 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
 
     _nameController.addListener(_onControllerChanged);
+    _nameController.addListener(() {
+      if (_nameController.text.length > 50) {
+        _nameController.text = _nameController.text.substring(0, 50);
+        _nameController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _nameController.text.length),
+        );
+      }
+    });
     _fatherNameController.addListener(_onControllerChanged);
+    _fatherNameController.addListener(() {
+      if (_fatherNameController.text.length > 50) {
+        _fatherNameController.text = _fatherNameController.text.substring(0, 50);
+        _fatherNameController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _fatherNameController.text.length),
+        );
+      }
+    });
     _emailController.addListener(_onControllerChanged);
     _phoneController.addListener(_onControllerChanged);
     _nationalIdController.addListener(_onControllerChanged);
@@ -223,7 +239,23 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _dobController.addListener(_onControllerChanged);
     _genderController.addListener(_onControllerChanged);
     _addressController.addListener(_onControllerChanged);
+    _addressController.addListener(() {
+      if (_addressController.text.length > 500) {
+        _addressController.text = _addressController.text.substring(0, 500);
+        _addressController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _addressController.text.length),
+        );
+      }
+    });
     _positionController.addListener(_onControllerChanged);
+    _positionController.addListener(() {
+      if (_positionController.text.length > 60) {
+        _positionController.text = _positionController.text.substring(0, 60);
+        _positionController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _positionController.text.length),
+        );
+      }
+    });
     _type1Controller.addListener(_onControllerChanged);
     _type2Controller.addListener(_onControllerChanged);
     _experienceLevelController.addListener(_onControllerChanged);
@@ -967,7 +999,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                         (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
                     final bool isSaveReady = isEditMode
                         ? hasChanges
-                        : (_nameController.text.trim().isNotEmpty &&
+                        : (_activeTabIndex == 2 &&
+                              _nameController.text.trim().isNotEmpty &&
                               _phoneController.text.trim().isNotEmpty);
                     final bool canSave = isSaveReady && !_isSaving;
 
@@ -3214,7 +3247,7 @@ Widget _buildInputField(
                     isAmount ? RegExp(r'^\d*\.?\d*') : RegExp(r'^\d*'),
                   ),
                   if (isContact) LengthLimitingTextInputFormatter(20),
-                  if (isNationalId) LengthLimitingTextInputFormatter(15),
+                  if (isNationalId) LengthLimitingTextInputFormatter(20),
                 ]
               : null,
           style: const TextStyle(

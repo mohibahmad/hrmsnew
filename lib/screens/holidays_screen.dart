@@ -653,7 +653,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               isPremium: isPremium,
               isGuest: isGuest,
             )) {
-              await PremiumGate.shouldShowUpgradeDialog(context);
+              final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+              if (upgraded == true && mounted) {
+                _showAddHolidayModal(context);
+              }
               return;
             }
             if (!mounted) return;
