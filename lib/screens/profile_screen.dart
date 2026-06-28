@@ -883,7 +883,13 @@ class _ProfileBodyState extends State<ProfileBody> {
                   maxLines: maxLines,
                   readOnly: readOnly,
                   inputFormatters: isCompanyId || isContact
-                      ? [LengthLimitingTextInputFormatter(15)]
+                      ? [
+                          LengthLimitingTextInputFormatter(15),
+                          if (isContact)
+                            FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]')),
+                          if (isCompanyId)
+                            FilteringTextInputFormatter.digitsOnly,
+                        ]
                       : null,
                   decoration: const InputDecoration(
                     border: InputBorder.none,
