@@ -17,6 +17,7 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/date_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 const List<String> _months = [
@@ -645,6 +646,30 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
+    final dobStr = _dobController.text.trim();
+    if (dobStr.isNotEmpty) {
+      final dob = AppDateUtils.parseDateString(dobStr);
+      if (dob == null) {
+        FlashySnackBar.show(
+          context,
+          message: 'invalid_date_format'.tr(),
+          title: 'validation_error'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+      if (dob.isAfter(cutoff)) {
+        FlashySnackBar.show(
+          context,
+          message: 'worker_must_be_18'.tr(),
+          title: 'validation_error'.tr(),
+          isError: true,
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -874,6 +899,30 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         isError: true,
       );
       return;
+    }
+
+    final dobStr = _dobController.text.trim();
+    if (dobStr.isNotEmpty) {
+      final dob = AppDateUtils.parseDateString(dobStr);
+      if (dob == null) {
+        FlashySnackBar.show(
+          context,
+          message: 'invalid_date_format'.tr(),
+          title: 'validation_error'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+      if (dob.isAfter(cutoff)) {
+        FlashySnackBar.show(
+          context,
+          message: 'worker_must_be_18'.tr(),
+          title: 'validation_error'.tr(),
+          isError: true,
+        );
+        return;
+      }
     }
 
     setState(() => _activeTabIndex = 1);
@@ -1295,7 +1344,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                     mode: import_cupertino.CupertinoDatePickerMode.date,
                     initialDateTime: initialDate,
                     minimumDate: DateTime(1950),
-                    maximumDate: DateTime.now(),
+                    maximumDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
                     onDateTimeChanged: (DateTime newDate) {
                       tempPickedDate = newDate;
                     },
@@ -1443,7 +1492,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             onTap: () {
                               _showCupertinoDatePicker(
                                 context: context,
-                                initialDate: DateTime(1990, 1, 1),
+                                initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
                                 onDateSelected: (date) {
                                   final day = date.day.toString().padLeft(
                                     2,

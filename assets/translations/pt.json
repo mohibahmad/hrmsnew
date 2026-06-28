@@ -621,5 +621,7 @@
   "inr_desc": "INR - Rúpia indiana (₹)",
   "rub_desc": "RUB - Rublo russo (₽)",
   "brl_desc": "BRL - Real brasileiro (R$)",
-  "sar_desc": "SAR - Riyal saudita (﷼)"
+  "sar_desc": "SAR - Riyal saudita (﷼)",
+  "worker_must_be_18": "O trabalhador deve ter pelo menos 18 anos.",
+  "invalid_date_format": "Formato de data inválido. Use DD/MM/AAAA."
 }

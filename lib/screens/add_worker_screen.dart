@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
 import '../utils/snackbar_utils.dart';
+import '../utils/date_utils.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import 'add_worker_flow.dart' show CustomDropdownField;
@@ -142,6 +143,28 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         isError: true,
       );
       return;
+    }
+
+    final dobStr = dobController.text.trim();
+    if (dobStr.isNotEmpty) {
+      final dob = AppDateUtils.parseDateString(dobStr);
+      if (dob == null) {
+        FlashySnackBar.show(
+          context,
+          message: 'invalid_date_format'.tr(),
+          isError: true,
+        );
+        return;
+      }
+      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+      if (dob.isAfter(cutoff)) {
+        FlashySnackBar.show(
+          context,
+          message: 'worker_must_be_18'.tr(),
+          isError: true,
+        );
+        return;
+      }
     }
 
     setState(() {

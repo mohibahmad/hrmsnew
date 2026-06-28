@@ -7,6 +7,7 @@
 library;
 
 import 'package:easy_localization/easy_localization.dart';
+import 'date_utils.dart';
 
 /// Thrown when a record fails validation before being written to Firestore.
 class ValidationException implements Exception {
@@ -70,6 +71,18 @@ class Validators {
     final emailErr = email(w['email']?.toString());
     if (emailErr != null) {
       throw ValidationException(emailErr, field: 'email');
+    }
+
+    final dobStr = _str(w, 'dob');
+    if (dobStr.isNotEmpty) {
+      final dob = AppDateUtils.parseDateString(dobStr);
+      if (dob == null) {
+        throw ValidationException('invalid_date_format'.tr(), field: 'dob');
+      }
+      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+      if (dob.isAfter(cutoff)) {
+        throw ValidationException('worker_must_be_18'.tr(), field: 'dob');
+      }
     }
   }
 

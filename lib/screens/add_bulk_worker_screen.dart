@@ -11,6 +11,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/date_utils.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -306,6 +307,15 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         continue;
       if (workerData['phone'] == null || workerData['phone'].toString().isEmpty)
         continue;
+
+      // Validate DOB - must be 18+
+      final dobStr = (workerData['dob'] ?? '').toString().trim();
+      if (dobStr.isNotEmpty) {
+        final dob = AppDateUtils.parseDateString(dobStr);
+        if (dob == null) continue;
+        final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+        if (dob.isAfter(cutoff)) continue;
+      }
 
       final email = workerData['email']?.toString().toLowerCase().trim() ?? '';
       final name = workerData['name']?.toString().toLowerCase().trim() ?? '';
