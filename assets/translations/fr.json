@@ -611,5 +611,13 @@
   "days": "jours",
   "days_overtime_multiplier": "jours @ 1.5×",
   "last_modified_by_admin_on": "Dernière modification par l'Administrateur le {date}",
-  "secondary_contact": "Contact Secondaire"
+  "secondary_contact": "Contact Secondaire",
+  "usd_desc": "USD - Dollar américain ($)",
+  "eur_desc": "EUR - Euro (€)",
+  "gbp_desc": "GBP - Livre britannique (£)",
+  "jpy_desc": "JPY - Yen japonais (¥)",
+  "inr_desc": "INR - Roupie indienne (₹)",
+  "rub_desc": "RUB - Rouble russe (₽)",
+  "brl_desc": "BRL - Réal brésilien (R$)",
+  "sar_desc": "SAR - Riyal saoudien (﷼)"
 }

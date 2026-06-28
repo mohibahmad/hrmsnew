@@ -32,19 +32,27 @@ class PayrollService {
   }
 
   static String getCurrencySymbol(String currency) {
-    switch (currency.trim()) {
+    switch (currency.trim().toUpperCase()) {
       case 'USD':
         return '\$';
-      case 'GBP':
-      case 'Pound':
-        return '£';
-      case 'Japanese Yen':
-      case 'JPY':
-        return '¥';
-      case 'PKR':
-        return 'Rs';
       case 'EUR':
         return '€';
+      case 'GBP':
+      case 'POUND':
+        return '£';
+      case 'JPY':
+      case 'JAPANESE YEN':
+        return '¥';
+      case 'INR':
+        return '₹';
+      case 'RUB':
+        return '₽';
+      case 'BRL':
+        return 'R\$';
+      case 'SAR':
+        return '﷼';
+      case 'PKR':
+        return 'Rs';
       default:
         return currency;
     }

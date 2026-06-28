@@ -917,7 +917,21 @@ class _ProfileBodyState extends State<ProfileBody> {
       return _buildInputField('currency'.tr(), _currencyController, readOnly: true);
     }
 
-    final currencies = ['USD', 'PKR', 'GBP', 'Japanese Yen', 'Pound'];
+    final currencies = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'RUB', 'BRL', 'SAR'];
+    String localize(String val) {
+      switch (val) {
+        case 'USD': return 'usd_desc'.tr();
+        case 'EUR': return 'eur_desc'.tr();
+        case 'GBP': return 'gbp_desc'.tr();
+        case 'JPY': return 'jpy_desc'.tr();
+        case 'INR': return 'inr_desc'.tr();
+        case 'RUB': return 'rub_desc'.tr();
+        case 'BRL': return 'brl_desc'.tr();
+        case 'SAR': return 'sar_desc'.tr();
+        default: return val;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -957,7 +971,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               items: currencies.map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
-                  child: Text(value),
+                  child: Text(localize(value)),
                 );
               }).toList(),
             ),

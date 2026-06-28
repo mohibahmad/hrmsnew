@@ -1788,13 +1788,21 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   String _localizeCurrency(String value) {
     switch (value) {
       case 'USD':
-      case 'PKR':
+        return 'usd_desc'.tr();
+      case 'EUR':
+        return 'eur_desc'.tr();
       case 'GBP':
-        return value;
-      case 'Japanese Yen':
-        return 'japanese_yen'.tr();
-      case 'Pound':
-        return 'pound_currency'.tr();
+        return 'gbp_desc'.tr();
+      case 'JPY':
+        return 'jpy_desc'.tr();
+      case 'INR':
+        return 'inr_desc'.tr();
+      case 'RUB':
+        return 'rub_desc'.tr();
+      case 'BRL':
+        return 'brl_desc'.tr();
+      case 'SAR':
+        return 'sar_desc'.tr();
       default:
         return value;
     }
@@ -2405,10 +2413,13 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       hint: 'enter_your_currency'.tr(),
                       items: const [
                         'USD',
-                        'PKR',
+                        'EUR',
                         'GBP',
-                        'Japanese Yen',
-                        'Pound',
+                        'JPY',
+                        'INR',
+                        'RUB',
+                        'BRL',
+                        'SAR',
                       ],
                       itemLabelBuilder: (val) => _localizeCurrency(val),
                       onChanged: (val) {

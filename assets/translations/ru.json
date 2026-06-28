@@ -611,5 +611,13 @@
   "days": "дней",
   "days_overtime_multiplier": "дней @ 1.5×",
   "last_modified_by_admin_on": "Последнее изменение: Администратор, {date}",
-  "secondary_contact": "Дополнительный контакт"
+  "secondary_contact": "Дополнительный контакт",
+  "usd_desc": "USD - Доллар США ($)",
+  "eur_desc": "EUR - Евро (€)",
+  "gbp_desc": "GBP - Британский фунт (£)",
+  "jpy_desc": "JPY - Японская иена (¥)",
+  "inr_desc": "INR - Индийская рупия (₹)",
+  "rub_desc": "RUB - Российский рубль (₽)",
+  "brl_desc": "BRL - Бразильский реал (R$)",
+  "sar_desc": "SAR - Саудовский риял (﷼)"
 }
