@@ -654,9 +654,24 @@ class _ProfileBodyState extends State<ProfileBody> {
                   _emailController,
                   readOnly: true,
                 ),
+                _buildCurrencyField(_isEditing),
+              ),
+              const SizedBox(height: 24),
+              _buildFormRow(
                 _buildInputField(
                   'contact_number'.tr(),
                   _contact1Controller,
+                  readOnly: !_isEditing,
+                ),
+                _buildInputField(
+                  'secondary_contact'.tr(),
+                  _isEditing
+                      ? _contact2Controller
+                      : TextEditingController(
+                          text: _contact2Controller.text.isNotEmpty
+                              ? _contact2Controller.text
+                              : '-',
+                        ),
                   readOnly: !_isEditing,
                 ),
               ),
@@ -885,6 +900,61 @@ class _ProfileBodyState extends State<ProfileBody> {
               if (isDropdown)
                 const Icon(Icons.arrow_drop_down, color: Colors.grey),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCurrencyField(bool isEditing) {
+    if (!isEditing) {
+      return _buildInputField('currency'.tr(), _currencyController, readOnly: true);
+    }
+
+    final currencies = ['USD', 'PKR', 'GBP', 'Japanese Yen', 'Pound'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'currency'.tr(),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            color: Colors.black,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: currencies.contains(_currencyController.text) ? _currencyController.text : 'USD',
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black,
+                fontFamily: 'SF Pro Display',
+              ),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _currencyController.text = newValue;
+                  });
+                }
+              },
+              items: currencies.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
           ),
         ),
       ],

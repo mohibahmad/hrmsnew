@@ -79,7 +79,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       } else {
         // Include workers without payroll records with default empty values
         final currency = worker['currency']?.toString() ?? 'USD';
-        final currencySymbol = currency == 'USD' ? '\$' : currency;
+        final currencySymbol = PayrollService.getCurrencySymbol(currency);
         final salaryAmount = worker['salaryAmount']?.toString() ?? '';
         combined.add({
           'id': worker['id'] ?? '',

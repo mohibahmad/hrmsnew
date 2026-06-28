@@ -610,5 +610,6 @@
   "days_per_year": "dias/ano",
   "days": "dias",
   "days_overtime_multiplier": "dias @ 1.5×",
-  "last_modified_by_admin_on": "Última modificação pelo Administrador em {date}"
+  "last_modified_by_admin_on": "Última modificação pelo Administrador em {date}",
+  "secondary_contact": "Contato Secundário"
 }

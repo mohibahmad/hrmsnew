@@ -26,8 +26,28 @@ class PayrollService {
 
   static String getCurrencyPrefix(String salaryStr) {
     if (salaryStr.isEmpty) return '';
-    final prefix = salaryStr.replaceAll(RegExp(r'[0-9,\s]'), '').trim();
-    return prefix;
+    final match = RegExp(r'\d').firstMatch(salaryStr);
+    if (match == null) return salaryStr.trim();
+    return salaryStr.substring(0, match.start).trim();
+  }
+
+  static String getCurrencySymbol(String currency) {
+    switch (currency.trim()) {
+      case 'USD':
+        return '\$';
+      case 'GBP':
+      case 'Pound':
+        return '£';
+      case 'Japanese Yen':
+      case 'JPY':
+        return '¥';
+      case 'PKR':
+        return 'Rs';
+      case 'EUR':
+        return '€';
+      default:
+        return currency;
+    }
   }
 
   static String _fmt(num val, String prefix) {
