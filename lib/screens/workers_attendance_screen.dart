@@ -381,26 +381,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         MainAxisAlignment
                                                             .center,
                                                     children: [
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.all(
-                                                              20,
-                                                            ),
-                                                        decoration:
-                                                            const BoxDecoration(
-                                                              color: Color(
-                                                                0xFFF8FAFC,
-                                                              ),
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
-                                                        child: Image.asset(
-                                                          'assets/placeholdemptystate.png',
-                                                          width: 80,
-                                                          height: 80,
-                                                          color: const Color(
-                                                            0xFF94A3B8,
-                                                          ),
+                                                      Image.asset(
+                                                        'assets/placeholdemptystate.png',
+                                                        width: 120,
+                                                        height: 100,
+                                                        color: const Color(
+                                                          0xFFCBCBCB,
                                                         ),
                                                       ),
                                                       const SizedBox(
