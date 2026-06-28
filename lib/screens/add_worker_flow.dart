@@ -207,6 +207,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _cvName = _existingCvUrl!.split('/').last;
       }
       _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
+    } else {
+      _loadDefaultCompanyCurrency();
     }
     if (_joiningDate == null || _joiningDate!.isEmpty) {
       final today = DateTime.now();
@@ -472,6 +474,20 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<void> _loadDefaultCompanyCurrency() async {
+    try {
+      final profile = await FirestoreService().getUserProfile();
+      if (profile != null && profile['currency'] != null) {
+        final currency = profile['currency'].toString();
+        if (currency.isNotEmpty) {
+          setState(() {
+            _currencyController.text = currency;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   bool _hasChanges() {
