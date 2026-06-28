@@ -611,10 +611,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     try {
       if (isGuest) {
+        DummyData.workers.removeWhere(
+          (w) => w['id']?.toString() == docId,
+        );
+        await DummyData.saveToPrefs();
         setState(() {
-          _allWorkers.removeWhere((w) => w['id'] == docId);
-          DummyData.workers.removeWhere((w) => w['id'] == docId);
-          DummyData.saveToPrefs();
+          _allWorkers = DummyData.workers;
         });
       } else {
         await FirestoreService().deleteWorker(docId);
@@ -1080,7 +1082,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final position = (worker['position'] ?? '').toString();
     final type2 = (worker['type2'] ?? '').toString();
     final profileImage = worker['profileImage'] as String?;
-    final docId = worker['id'] as String;
+    final docId = (worker['id'] ?? '').toString();
 
     String _localizeType1(String value) {
       switch (value) {
