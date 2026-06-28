@@ -1396,6 +1396,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     const SizedBox(height: 6),
 
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Padding(
                           padding: EdgeInsets.only(top: 2),
@@ -1414,7 +1415,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                             ),
-                            overflow: TextOverflow.ellipsis,
+                            softWrap: true,
                           ),
                         ),
                       ],

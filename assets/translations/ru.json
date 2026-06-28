@@ -593,5 +593,22 @@
   "payroll_saved_successfully": "Данные о зарплате успешно сохранены",
   "failed_to_save_record": "Не удалось сохранить запись",
   "please_select_worker_first": "Пожалуйста, сначала выберите работника",
-  "file_upload_failed": "Не удалось загрузить {file}"
+  "file_upload_failed": "Не удалось загрузить {file}",
+  "attendance_salary_details": "Детали посещаемости и зарплаты",
+  "salary_after_deduction": "Зарплата после удержаний",
+  "discard_changes": "Отменить изменения",
+  "save_payroll": "Сохранить ведомость",
+  "current_pay_period": "ТЕКУЩИЙ ПЕРИОД ОПЛАТЫ",
+  "save_payroll_entry": "Сохранить запись ведомости",
+  "system_generated_calculation": "Расчет сгенерирован системой",
+  "daily_rate": "Дневная ставка",
+  "gross_pay": "Оклад",
+  "overtime_pay": "Оплата сверхурочных",
+  "absent_deduction": "Вычет за прогулы",
+  "leave_deduction": "Вычет за отпуск",
+  "net_pay": "Чистая зарплата",
+  "days_per_year": "дней/год",
+  "days": "дней",
+  "days_overtime_multiplier": "дней @ 1.5×",
+  "last_modified_by_admin_on": "Последнее изменение: Администратор, {date}"
 }

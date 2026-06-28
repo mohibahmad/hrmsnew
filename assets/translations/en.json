@@ -593,5 +593,22 @@
   "payroll_saved_successfully": "Payroll data saved successfully",
   "failed_to_save_record": "Failed to save record",
   "please_select_worker_first": "Please select a worker first",
-  "file_upload_failed": "Failed to upload {file}"
+  "file_upload_failed": "Failed to upload {file}",
+  "attendance_salary_details": "Attendance & Salary Details",
+  "salary_after_deduction": "Salary After Deduction",
+  "discard_changes": "Discard Changes",
+  "save_payroll": "Save Payroll",
+  "current_pay_period": "CURRENT PAY PERIOD",
+  "save_payroll_entry": "Save Payroll Entry",
+  "system_generated_calculation": "System generated calculation",
+  "daily_rate": "Daily Rate",
+  "gross_pay": "Gross Pay",
+  "overtime_pay": "Overtime Pay",
+  "absent_deduction": "Absent Deduction",
+  "leave_deduction": "Leave Deduction",
+  "net_pay": "Net Pay",
+  "days_per_year": "days/year",
+  "days": "days",
+  "days_overtime_multiplier": "days @ 1.5×",
+  "last_modified_by_admin_on": "Last modified by Admin on {date}"
 }

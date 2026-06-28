@@ -593,5 +593,22 @@
   "payroll_saved_successfully": "Datos de nómina guardados exitosamente",
   "failed_to_save_record": "Error al guardar el registro",
   "please_select_worker_first": "Por favor seleccione un trabajador primero",
-  "file_upload_failed": "Error al subir {file}"
+  "file_upload_failed": "Error al subir {file}",
+  "attendance_salary_details": "Detalles de Asistencia y Salario",
+  "salary_after_deduction": "Salario Después de la Deducción",
+  "discard_changes": "Descartar Cambios",
+  "save_payroll": "Guardar Nómina",
+  "current_pay_period": "PERÍODO DE PAGO ACTUAL",
+  "save_payroll_entry": "Guardar Entrada de Nómina",
+  "system_generated_calculation": "Cálculo generado por el sistema",
+  "daily_rate": "Tarifa Diaria",
+  "gross_pay": "Salario Bruto",
+  "overtime_pay": "Pago por Horas Extras",
+  "absent_deduction": "Deducción por Ausencia",
+  "leave_deduction": "Deducción por Licencia",
+  "net_pay": "Salario Neto",
+  "days_per_year": "días/año",
+  "days": "días",
+  "days_overtime_multiplier": "días @ 1.5×",
+  "last_modified_by_admin_on": "Última modificación por el Administrador el {date}"
 }

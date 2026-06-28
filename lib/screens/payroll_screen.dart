@@ -753,13 +753,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.of(context).pop('edit'),
+                        onTap: () => Navigator.of(context).pop(),
                         child: const MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: Icon(
-                            Icons.edit,
+                            Icons.close,
                             color: Color(0xFFFFFFFF),
-                            size: 20,
+                            size: 24,
                           ),
                         ),
                       ),
@@ -776,13 +776,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: const MouseRegion(
+                        onTap: () => Navigator.of(context).pop('edit'),
+                        child: MouseRegion(
                           cursor: SystemMouseCursors.click,
-                          child: Icon(
-                            Icons.close,
-                            color: Color(0xFFFFFFFF),
-                            size: 24,
+                          child: SvgPicture.asset(
+                            'assets/edit_icon.svg',
+                            height: 20,
+                            width: 20,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFFFFFFF),
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -885,11 +889,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             ),
                             const SizedBox(height: 4),
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.phone,
-                                  color: Color(0xFFFFFFFF),
-                                  size: 18,
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    Icons.phone,
+                                    color: Color(0xFFFFFFFF),
+                                    size: 18,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -901,7 +909,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
                                     ),
-                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: true,
                                   ),
                                 ),
                               ],

@@ -593,5 +593,22 @@
   "payroll_saved_successfully": "Dados da folha de pagamento salvos com sucesso",
   "failed_to_save_record": "Falha ao salvar registro",
   "please_select_worker_first": "Por favor, selecione um trabalhador primeiro",
-  "file_upload_failed": "Falha ao enviar {file}"
+  "file_upload_failed": "Falha ao enviar {file}",
+  "attendance_salary_details": "Detalhes de Presença e Salário",
+  "salary_after_deduction": "Salário Após Dedução",
+  "discard_changes": "Descartar Alterações",
+  "save_payroll": "Salvar Folha de Pagamento",
+  "current_pay_period": "PERÍODO DE PAGAMENTO ATUAL",
+  "save_payroll_entry": "Salvar Entrada de Folha",
+  "system_generated_calculation": "Cálculo gerado pelo sistema",
+  "daily_rate": "Taxa Diária",
+  "gross_pay": "Salário Bruto",
+  "overtime_pay": "Pagamento de Horas Extras",
+  "absent_deduction": "Dedução de Ausência",
+  "leave_deduction": "Dedução de Licença",
+  "net_pay": "Salário Líquido",
+  "days_per_year": "dias/ano",
+  "days": "dias",
+  "days_overtime_multiplier": "dias @ 1.5×",
+  "last_modified_by_admin_on": "Última modificação pelo Administrador em {date}"
 }

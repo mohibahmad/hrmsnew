@@ -750,27 +750,34 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     ),
                                     const SizedBox(height: 10),
                                     Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(
-                                          Icons.phone,
-                                          color: Color(0xFFFFFFFF),
-                                          size: 16,
+                                        const Padding(
+                                          padding: EdgeInsets.only(top: 2),
+                                          child: Icon(
+                                            Icons.phone,
+                                            color: Color(0xFFFFFFFF),
+                                            size: 16,
+                                          ),
                                         ),
                                         const SizedBox(width: 10),
-                                        Text(
-                                          (() {
-                                            final phone = (data['phone'] ??
-                                                    data['contact'] ??
-                                                    '')
-                                                .toString();
-                                            return phone.isNotEmpty
-                                                ? phone
-                                                : 'na'.tr();
-                                          })(),
-                                          style: const TextStyle(
-                                            color: Color(0xFFFFFFFF),
-                                            fontSize: 14,
-                                            fontFamily: 'SF Pro Display',
+                                        Expanded(
+                                          child: Text(
+                                            (() {
+                                              final phone = (data['phone'] ??
+                                                      data['contact'] ??
+                                                      '')
+                                                  .toString();
+                                              return phone.isNotEmpty
+                                                  ? phone
+                                                  : 'na'.tr();
+                                            })(),
+                                            style: const TextStyle(
+                                              color: Color(0xFFFFFFFF),
+                                              fontSize: 14,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                            softWrap: true,
                                           ),
                                         ),
                                       ],

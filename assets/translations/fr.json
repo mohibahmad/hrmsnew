@@ -593,5 +593,22 @@
   "payroll_saved_successfully": "Données de paie enregistrées avec succès",
   "failed_to_save_record": "Échec de l'enregistrement",
   "please_select_worker_first": "Veuillez d'abord sélectionner un travailleur",
-  "file_upload_failed": "Échec du téléchargement de {file}"
+  "file_upload_failed": "Échec du téléchargement de {file}",
+  "attendance_salary_details": "Détails d'Assistance et de Salaire",
+  "salary_after_deduction": "Salaire Après Déduction",
+  "discard_changes": "Abandonner les Modifications",
+  "save_payroll": "Enregistrer la Paie",
+  "current_pay_period": "PÉRIODE DE PAIE ACTUELLE",
+  "save_payroll_entry": "Enregistrer l'Entrée de Paie",
+  "system_generated_calculation": "Calcul généré par le système",
+  "daily_rate": "Taux Journalier",
+  "gross_pay": "Salaire Brut",
+  "overtime_pay": "Heures Supplémentaires",
+  "absent_deduction": "Déduction d'Absence",
+  "leave_deduction": "Déduction de Congé",
+  "net_pay": "Salaire Net",
+  "days_per_year": "jours/an",
+  "days": "jours",
+  "days_overtime_multiplier": "jours @ 1.5×",
+  "last_modified_by_admin_on": "Dernière modification par l'Administrateur le {date}"
 }

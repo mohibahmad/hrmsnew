@@ -16,8 +16,9 @@ class PayrollService {
   }
 
   static String formatNumber(num number) {
-    final rounded = number.round();
-    return rounded.toString().replaceAllMapped(
+    if (number.isNaN || number.isInfinite) return '0';
+    final roundedStr = number.toStringAsFixed(0);
+    return roundedStr.replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]},',
         );

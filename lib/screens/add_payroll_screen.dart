@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -207,7 +208,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Discard Changes', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: Text('discard_changes'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
             const SizedBox(width: 16),
             ElevatedButton(
@@ -219,7 +220,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Save Payroll', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: Text('save_payroll'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -295,7 +296,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                     const SizedBox(width: 24),
                     const Icon(Icons.corporate_fare_outlined, color: Color(0xB3FFFFFF), size: 16),
                     const SizedBox(width: 6),
-                    Text(_position, style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14)),
+                    Expanded(
+                      child: Text(
+                        _position,
+                        style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+                        softWrap: true,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -305,8 +312,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'CURRENT PAY PERIOD',
-                style: TextStyle(
+                'current_pay_period'.tr(),
+                style: const TextStyle(
                     color: Color(0xB3FFFFFF),
                     fontSize: 11,
                     letterSpacing: 1,
@@ -341,9 +348,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             children: [
               Container(width: 4, height: 24, color: _darkBlue),
               const SizedBox(width: 12),
-              const Text(
-                'Attendance & Salary Details',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
+              Text(
+                'attendance_salary_details'.tr(),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
               ),
             ],
           ),
@@ -352,9 +359,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             children: [
               Expanded(child: _buildInput('total_work_days'.tr(), '22', _workDaysCtrl)),
               const SizedBox(width: 24),
-              Expanded(child: _buildInput('absents'.tr(), '0', _absentsCtrl)),
+              Expanded(child: _buildInput('absents_label'.tr(), '0', _absentsCtrl)),
               const SizedBox(width: 24),
-              Expanded(child: _buildInput('leaves'.tr(), '0', _leavesCtrl)),
+              Expanded(child: _buildInput('leaves_label'.tr(), '0', _leavesCtrl)),
             ],
           ),
           const SizedBox(height: 24),
@@ -382,7 +389,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   const Icon(Icons.history, color: _textGrey, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Last modified by Admin on ${DateTime.now().toString().substring(0, 10)}',
+                    'last_modified_by_admin_on'.tr(namedArgs: {'date': DateTime.now().toString().substring(0, 10)}),
                     style: const TextStyle(color: _textGrey, fontSize: 13),
                   ),
                 ],
@@ -390,7 +397,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ElevatedButton.icon(
                 onPressed: _handleSave,
                 icon: const Icon(Icons.save_outlined, size: 20, color: Colors.white),
-                label: const Text('Save Payroll Entry', style: TextStyle(fontSize: 16)),
+                label: Text('save_payroll_entry'.tr(), style: const TextStyle(fontSize: 16)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0B50C3),
                   foregroundColor: Colors.white,
@@ -406,6 +413,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   Widget _buildInput(String label, String hint, TextEditingController? controller, {bool readOnly = false}) {
+    final isDaysInput = !readOnly && label != 'salary'.tr();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -416,6 +424,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           controller: controller,
           readOnly: readOnly,
           onChanged: readOnly ? null : (_) => _recalc(),
+          keyboardType: isDaysInput ? TextInputType.number : null,
+          inputFormatters: isDaysInput
+              ? [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ]
+              : null,
           decoration: InputDecoration(
             hintText: readOnly ? null : hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
@@ -442,8 +457,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Salary After Deduction',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _darkBlue)),
+        Text(
+          'salary_after_deduction'.tr(),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _darkBlue),
+        ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
@@ -453,13 +470,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFD2E3FC)),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(netAmount,
-                  style: const TextStyle(fontSize: 20, color: _darkBlue, fontWeight: FontWeight.bold)),
-            ],
+          child: Text(
+            netAmount,
+            style: const TextStyle(fontSize: 20, color: _darkBlue, fontWeight: FontWeight.bold),
+            softWrap: true,
           ),
         ),
         const SizedBox(height: 8),
@@ -467,8 +481,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           children: [
             const Icon(Icons.info_outline, size: 14, color: _darkBlue),
             const SizedBox(width: 4),
-            const Text('System generated calculation',
-                style: TextStyle(fontSize: 11, color: _darkBlue)),
+            Text(
+              'system_generated_calculation'.tr(),
+              style: const TextStyle(fontSize: 11, color: _darkBlue),
+            ),
           ],
         ),
       ],
@@ -485,14 +501,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       ),
       child: Column(
         children: [
-          _breakdownRow('Daily Rate', cr['formattedDailyRate'] as String, '${cr['totalWorkDaysPerYear']} days/year'),
+          _breakdownRow('daily_rate'.tr(), cr['formattedDailyRate'] as String, '${cr['totalWorkDaysPerYear']} ${'days_per_year'.tr()}'),
           const Divider(height: 16),
-          _breakdownRow('Gross Pay', cr['formattedGross'] as String, '${cr['workedDays']} days'),
-          _breakdownRow('Overtime Pay', cr['formattedOvertime'] as String, '${cr['overtimeDays']} days @ 1.5×'),
-          _breakdownRow('Absent Deduction', cr['formattedAbsentDeduct'] as String, '${cr['absentDays']} days'),
-          _breakdownRow('Leave Deduction', cr['formattedLeaveDeduct'] as String, '${cr['leaveDays']} days'),
+          _breakdownRow('gross_pay'.tr(), cr['formattedGross'] as String, '${cr['workedDays']} ${'days'.tr()}'),
+          _breakdownRow('overtime_pay'.tr(), cr['formattedOvertime'] as String, '${cr['overtimeDays']} ${'days_overtime_multiplier'.tr()}'),
+          _breakdownRow('absent_deduction'.tr(), cr['formattedAbsentDeduct'] as String, '${cr['absentDays']} ${'days'.tr()}'),
+          _breakdownRow('leave_deduction'.tr(), cr['formattedLeaveDeduct'] as String, '${cr['leaveDays']} ${'days'.tr()}'),
           const Divider(height: 16, thickness: 1.5),
-          _breakdownRow('Net Pay', cr['formattedNet'] as String, null, isTotal: true),
+          _breakdownRow('net_pay'.tr(), cr['formattedNet'] as String, null, isTotal: true),
         ],
       ),
     );
