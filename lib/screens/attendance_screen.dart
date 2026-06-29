@@ -793,17 +793,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             (a) => a['id'] == docId,
             orElse: () => {},
           );
-          final email = doc['email'];
-          if (email != null) {
-            final wIdx = DummyData.workers.indexWhere(
-              (w) => w['email'] == email,
-            );
-            if (wIdx != -1) {
-              DummyData.workers[wIdx].remove('status');
-            }
+          final email = doc['email']?.toString();
+          if (email != null && email.isNotEmpty) {
+            DummyData.workers.removeWhere((w) =>
+                (w['email'] ?? '').toString().toLowerCase() ==
+                email.toLowerCase());
+            DummyData.attendance.removeWhere((a) =>
+                (a['email'] ?? '').toString().toLowerCase() ==
+                email.toLowerCase());
+          } else {
+            _attendanceDocs.removeWhere((a) => a['id'] == docId);
+            DummyData.attendance.removeWhere((a) => a['id'] == docId);
           }
-          _attendanceDocs.removeWhere((a) => a['id'] == docId);
-          DummyData.attendance.removeWhere((a) => a['id'] == docId);
           DummyData.saveToPrefs();
           _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
           _rawAttendanceDocs = List<Map<String, dynamic>>.from(
@@ -812,25 +813,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _combineAttendance();
         });
       } else {
-        if (!docId.startsWith('norecord_')) {
-          await FirestoreService().deleteAttendanceRecord(docId);
-        }
-        final email = doc['email'];
-        if (email != null) {
+        final email = doc['email']?.toString();
+        if (email != null && email.isNotEmpty) {
           final worker = _workersList.firstWhere(
             (w) =>
                 (w['email'] ?? '').toString().toLowerCase() ==
-                email.toString().toLowerCase(),
+                email.toLowerCase(),
             orElse: () => <String, dynamic>{},
           );
-          final workerId = worker['id'];
-          if (workerId != null) {
-            final Map<String, dynamic> updatedWorker =
-                Map<String, dynamic>.from(worker);
-            updatedWorker['status'] = FieldValue.delete();
-            updatedWorker.remove('id');
-            await FirestoreService().updateWorker(workerId, updatedWorker);
+          final workerId = worker['id']?.toString();
+          if (workerId != null && workerId.isNotEmpty) {
+            await FirestoreService().deleteWorker(workerId);
           }
+        } else if (!docId.startsWith('norecord_')) {
+          await FirestoreService().deleteAttendanceRecord(docId);
         }
       }
     }
