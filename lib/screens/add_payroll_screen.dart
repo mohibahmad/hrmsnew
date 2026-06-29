@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -386,29 +387,40 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'current_pay_period'.tr(),
-                style: const TextStyle(
-                  color: Color(0xB3FFFFFF),
-                  fontSize: 11,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Oct 1 - Oct 31, 2023',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Builder(
+            builder: (_) {
+              final now = DateTime.now();
+              final firstDay = DateTime(now.year, now.month, 1);
+              final lastDay = DateTime(now.year, now.month + 1, 0);
+              final monthFmt = DateFormat('MMM');
+              final period =
+                  '${monthFmt.format(firstDay)} ${firstDay.day} - ${monthFmt.format(lastDay)} ${lastDay.day}, ${now.year}';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'current_pay_period'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xB3FFFFFF),
+                      fontSize: 11,
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    period,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
+
         ],
       ),
     );

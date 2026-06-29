@@ -567,6 +567,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 children: [
                   CircleAvatar(
                     radius: 20,
+                    backgroundColor: Colors.transparent,
                     backgroundImage: getProfileImage(
                       doc['profileImage']?.toString(),
                       doc['email']?.toString(),
