@@ -468,7 +468,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 24),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: _buildInput('overtime_days'.tr(), '2', _overtimeCtrl),
