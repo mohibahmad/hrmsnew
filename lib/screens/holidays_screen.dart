@@ -187,7 +187,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
                             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -302,7 +302,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       height: 44,
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       alignment: Alignment.centerLeft,
@@ -653,7 +653,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               isPremium: isPremium,
               isGuest: isGuest,
             )) {
-              final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+              final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                context,
+              );
               if (upgraded == true && mounted) {
                 _showAddHolidayModal(context);
               }
@@ -794,7 +796,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     if (mounted) {
                       FlashySnackBar.show(
                         context,
-                        message: 'error_updating_holiday'.tr(namedArgs: {'error': e.toString()}),
+                        message: 'error_updating_holiday'.tr(
+                          namedArgs: {'error': e.toString()},
+                        ),
                       );
                     }
                   }
