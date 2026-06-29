@@ -33,6 +33,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
   bool _isSaving = false;
+  final TextEditingController _netCtrl = TextEditingController(text: r'$ 0');
 
   static const _primaryBlue = Color(0xFF0A44C2);
   static const _darkBlue = Color(0xFF082C7C);
@@ -62,9 +63,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           overtimeDays: _overtimeCtrl.text,
         );
         _calculatedNet = _calcResult['formattedNet'] as String;
+        _netCtrl.text = _calculatedNet;
       } else {
         _calcResult = {};
         _calculatedNet = '';
+        _netCtrl.text = r'$ 0';
       }
     });
   }
@@ -96,6 +99,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     _leavesCtrl.dispose();
     _overtimeCtrl.dispose();
     _salaryCtrl.dispose();
+    _netCtrl.dispose();
     super.dispose();
   }
 
@@ -587,7 +591,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         const SizedBox(height: 8),
         TextField(
           readOnly: true,
-          controller: TextEditingController(text: netAmount),
+          controller: _netCtrl,
           style: const TextStyle(
             fontSize: 16,
             color: _darkBlue,
