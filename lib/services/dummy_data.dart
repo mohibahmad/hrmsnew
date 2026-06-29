@@ -2,12 +2,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
-  static bool _prefsLoaded = false;
 
   static Future<void> loadFromPrefs() async {
-    if (_prefsLoaded) return;
-    _prefsLoaded = true;
-
     try {
       final prefs = await SharedPreferences.getInstance();
 

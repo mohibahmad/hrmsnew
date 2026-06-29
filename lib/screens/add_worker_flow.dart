@@ -282,9 +282,18 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   }
 
   void _autoCalcAnnualLeaves() {
-    final sick = int.tryParse(_sickLeavesController.text) ?? 0;
-    final casual = int.tryParse(_casualLeavesController.text) ?? 0;
-    _annualLeavesController.text = (sick + casual).toString();
+    final sick = (int.tryParse(_sickLeavesController.text) ?? 0).clamp(0, 999);
+    final casual = (int.tryParse(_casualLeavesController.text) ?? 0).clamp(
+      0,
+      999,
+    );
+    final sum = sick + casual;
+    final sumText = sum.toString();
+    final truncated = sumText.length > 3 ? sumText.substring(0, 3) : sumText;
+    _annualLeavesController.value = TextEditingValue(
+      text: truncated,
+      selection: TextSelection.collapsed(offset: truncated.length),
+    );
   }
 
   Future<String?> _uploadToStorage(
@@ -3328,8 +3337,10 @@ Widget _buildInputField(
                   FilteringTextInputFormatter.allow(
                     isAmount ? RegExp(r'^\d*\.?\d*') : RegExp(r'^\d*'),
                   ),
+                  if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),
                   if (isNationalId) LengthLimitingTextInputFormatter(20),
+                  if (isLeaves) LengthLimitingTextInputFormatter(3),
                 ]
               : null,
           style: const TextStyle(

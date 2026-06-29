@@ -170,6 +170,7 @@ class AuthService {
   Future<void> signOut() async {
     await _auth.signOut();
     await PreferencesService.clear();
+    profilePicNotifier.value = null;
   }
 
   /// Sync the user's premium status from Firestore into local preferences.

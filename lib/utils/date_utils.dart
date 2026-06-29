@@ -47,7 +47,7 @@ class AppDateUtils {
           if (val1 > 12) {
             return DateTime(year, val2, val1);
           } else {
-            return DateTime(year, val1, val2);
+            return DateTime(year, val2, val1);
           }
         }
       }

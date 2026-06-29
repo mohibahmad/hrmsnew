@@ -125,27 +125,47 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     final combined = <Map<String, dynamic>>[];
 
-    for (var worker in _workersList) {
-      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+    for (var att in _rawAttendanceDocs) {
+      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
 
-      final attendanceRecord = _rawAttendanceDocs.firstWhere((att) {
-        final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-        final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-        return (email.isNotEmpty && attEmail == email) ||
-            (name.isNotEmpty && attName == name);
-      }, orElse: () => <String, dynamic>{});
+      final matchingWorker = _workersList.firstWhere(
+        (w) {
+          final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
+          final wName = (w['name'] ?? '').toString().trim().toLowerCase();
+          return (attEmail.isNotEmpty && wEmail == attEmail) ||
+              (attName.isNotEmpty && wName == attName);
+        },
+        orElse: () => <String, dynamic>{},
+      );
 
-      if (attendanceRecord.isNotEmpty) {
+      if (matchingWorker.isNotEmpty) {
         combined.add({
-          ...attendanceRecord,
-          'name': worker['name'] ?? attendanceRecord['name'],
-          'role': worker['position'] ?? attendanceRecord['role'] ?? '',
-          'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
+          ...att,
+          'name': matchingWorker['name'] ?? att['name'],
+          'role': matchingWorker['position'] ?? att['role'] ?? '',
+          'profileImage': matchingWorker['profileImage'],
+          'phone': matchingWorker['phone'] ?? '',
         });
       } else {
+        combined.add(att);
+      }
+    }
+
+    for (var worker in _workersList) {
+      final wEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+      final wName = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+      final hasRecord = _rawAttendanceDocs.any((att) {
+        final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+        final attName = (att['name'] ?? '').toString().trim().toLowerCase();
+        return (wEmail.isNotEmpty && attEmail == wEmail) ||
+            (wName.isNotEmpty && attName == wName);
+      });
+
+      if (!hasRecord) {
         combined.add({
+          'id': 'norecord_${worker['id'] ?? wEmail}',
           'name': worker['name'] ?? 'Worker',
           'email': worker['email'] ?? '',
           'role': worker['position'] ?? '',
@@ -154,15 +174,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           'profileImage': worker['profileImage'],
           'phone': worker['phone'] ?? '',
           'createdAt': null,
-          'id': 'norecord_${worker['id'] ?? email}',
+          'status': '',
         });
-      }
-    }
-
-    for (var att in _rawAttendanceDocs) {
-      final exists = combined.any((c) => c['id'] == att['id']);
-      if (!exists) {
-        combined.add(att);
       }
     }
 

@@ -909,18 +909,19 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: TextField(
-                                  controller: reasonController,
-                                  maxLines: null,
-                                  decoration: InputDecoration.collapsed(
-                                    hintText: 'enter_reason_hint'.tr(),
-                                    hintStyle: TextStyle(
-                                      color: Colors.black.withOpacity(0.38),
-                                      fontSize: 13,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
+                              child: TextField(
+                                controller: reasonController,
+                                maxLines: null,
+                                onChanged: (_) => setDialogState(() {}),
+                                decoration: InputDecoration.collapsed(
+                                  hintText: 'enter_reason_hint'.tr(),
+                                  hintStyle: TextStyle(
+                                    color: Colors.black.withOpacity(0.38),
+                                    fontSize: 13,
+                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
+                              ),
                               ),
                               const SizedBox(height: 16),
                               Row(
@@ -953,7 +954,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   ElevatedButton(
-                                    onPressed: _isSaving
+                                    onPressed: _isSaving ||
+                                            (selectedStatus != 'Present' &&
+                                                reasonController.text
+                                                    .trim()
+                                                    .isEmpty)
                                         ? null
                                         : () async {
                                             setState(() => _isSaving = true);

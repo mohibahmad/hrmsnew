@@ -9,7 +9,10 @@ final _base64Cache = <String, Uint8List>{};
 
 ImageProvider getProfileImage(String? url, String? email, int index) {
   final currentUser = AuthService().currentUser;
-  if (email != null && currentUser != null && email.toLowerCase() == currentUser.email?.toLowerCase()) {
+  final isCurrentUser = currentUser != null &&
+      (currentUser.email?.toLowerCase() == email?.toLowerCase() ||
+       currentUser.isAnonymous);
+  if (isCurrentUser) {
     final notifierUrl = AuthService.profilePicNotifier.value;
     if (notifierUrl != null && notifierUrl.isNotEmpty) {
       if (notifierUrl.startsWith('http')) {

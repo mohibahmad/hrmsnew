@@ -338,7 +338,11 @@ class _ProfileBodyState extends State<ProfileBody> {
   static Map<String, String>? _guestProfileCache;
 
   Future<void> _loadProfile() async {
-    if (AuthService().currentUser?.isAnonymous ?? false) {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (!isGuest) {
+      _guestProfileCache = null;
+    }
+    if (isGuest) {
       if (mounted) {
         setState(() {
           _businessNameController.text =

@@ -196,23 +196,35 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             ),
                             minimumSize: const Size(0, 32),
                           ),
-                          onPressed: () async {
-                            if (holidayNameController.text.isNotEmpty) {
-                              final dateObj = DateTime(
-                                calendarDate.year,
-                                calendarDate.month,
-                                selectedDay,
-                              );
-                              final dayOfWeekName =
-                                  weekdays[dateObj.weekday - 1];
-                              final remainingDaysVal = dateObj
-                                  .difference(DateTime.now())
-                                  .inDays;
-                              final remainingDaysStr = remainingDaysVal > 0
-                                  ? remainingDaysVal.toString().padLeft(2, '0')
-                                  : '00';
+                           onPressed: () async {
+                             if (holidayNameController.text.isNotEmpty) {
+                               final dateObj = DateTime(
+                                 calendarDate.year,
+                                 calendarDate.month,
+                                 selectedDay,
+                               );
+                               final dayOfWeekName =
+                                   weekdays[dateObj.weekday - 1];
+                               final remainingDaysVal = dateObj
+                                   .difference(DateTime.now())
+                                   .inDays;
+                               final remainingDaysStr = remainingDaysVal > 0
+                                   ? remainingDaysVal.toString().padLeft(2, '0')
+                                   : '00';
 
-                              final holidayMap = {
+                               final existingInMonth = _holidaysByMonth[selectedMonthName] ?? [];
+                               final alreadyExists = existingInMonth.any((h) => h.day == selectedDay);
+                               if (alreadyExists) {
+                                 if (!context.mounted) return;
+                                 FlashySnackBar.show(
+                                   context,
+                                   message: 'holiday_already_exists'.tr(),
+                                   isError: true,
+                                 );
+                                 return;
+                               }
+
+                               final holidayMap = {
                                 'day': selectedDay,
                                 'month': selectedMonthName,
                                 'remainingDays': remainingDaysStr,
