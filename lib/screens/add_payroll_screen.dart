@@ -299,16 +299,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Color(0x3DFFFFFF), width: 2),
-                  image: DecorationImage(
-                    image: getProfileImage(_profileImage, _email, 0),
-                    fit: BoxFit.cover,
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image(
+                  image: getProfileImage(_profileImage, _email, 0),
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
                 ),
               ),
               Positioned(
