@@ -177,7 +177,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                         Text(
                           'add_holiday'.tr(),
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
@@ -187,7 +187,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
                             ),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -291,7 +291,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     Text(
                       'holiday_name'.tr(),
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
@@ -302,7 +302,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       height: 44,
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(4),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       alignment: Alignment.centerLeft,
