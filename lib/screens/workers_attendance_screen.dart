@@ -283,21 +283,21 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                       const SizedBox(height: 16),
                                       Expanded(
-                                         child: Container(
-                                           padding: const EdgeInsets.all(24),
-                                           decoration: BoxDecoration(
-                                             color: Color(0xFFFFFFFF),
-                                             borderRadius: BorderRadius.circular(
-                                               6,
-                                             ),
-                                             border: Border.all(
-                                               color: const Color(0xFFEEEEEE),
-                                             ),
-                                           ),
-                                           child: Column(
-                                             children: [
-                                               Expanded(
-                                                 child: filteredWorkers.isEmpty
+                                        child: Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFEEEEEE),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Expanded(
+                                                child: filteredWorkers.isEmpty
                                                     ? Center(
                                                         child: Column(
                                                           mainAxisAlignment:
@@ -387,18 +387,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                       const SizedBox(height: 16),
                                       Expanded(
-                                         child: Container(
-                                           padding: const EdgeInsets.all(24),
-                                           decoration: BoxDecoration(
-                                             color: Color(0xFFFFFFFF),
-                                             borderRadius: BorderRadius.circular(
-                                               6,
-                                             ),
-                                             border: Border.all(
-                                               color: const Color(0xFFEEEEEE),
-                                             ),
-                                           ),
-                                           child: _todayAttendance.isEmpty
+                                        child: Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFFFFFFF),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFEEEEEE),
+                                            ),
+                                          ),
+                                          child: _todayAttendance.isEmpty
                                               ? Center(
                                                   child: Column(
                                                     mainAxisAlignment:
@@ -932,19 +932,19 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                              child: TextField(
-                                controller: reasonController,
-                                maxLines: null,
-                                onChanged: (_) => setDialogState(() {}),
-                                decoration: InputDecoration.collapsed(
-                                  hintText: 'enter_reason_hint'.tr(),
-                                  hintStyle: TextStyle(
-                                    color: Colors.black.withOpacity(0.38),
-                                    fontSize: 13,
-                                    fontFamily: 'SF Pro Display',
+                                child: TextField(
+                                  controller: reasonController,
+                                  maxLines: null,
+                                  onChanged: (_) => setDialogState(() {}),
+                                  decoration: InputDecoration.collapsed(
+                                    hintText: 'enter_reason_hint'.tr(),
+                                    hintStyle: TextStyle(
+                                      color: Colors.black.withOpacity(0.38),
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
-                              ),
                               ),
                               const SizedBox(height: 16),
                               Row(
@@ -977,7 +977,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   ElevatedButton(
-                                    onPressed: _isSaving ||
+                                    onPressed:
+                                        _isSaving ||
                                             (selectedStatus != 'Present' &&
                                                 reasonController.text
                                                     .trim()
@@ -992,11 +993,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               if (mounted) {
                                                 FlashySnackBar.show(
                                                   context,
-                                                  message: 'please_enter_reason'.tr(),
+                                                  message: 'please_enter_reason'
+                                                      .tr(),
                                                   isError: true,
                                                 );
                                               }
-                                              if (mounted) setState(() => _isSaving = false);
+                                              if (mounted)
+                                                setState(
+                                                  () => _isSaving = false,
+                                                );
                                               return;
                                             }
 
@@ -1006,30 +1011,38 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                       .currentUser
                                                       ?.isAnonymous ??
                                                   false;
-                                              final type = selectedStatus == 'Absent'
+                                              final type =
+                                                  selectedStatus == 'Absent'
                                                   ? (data['type'] ?? 'Absent')
                                                   : (selectedStatus == 'Leave'
                                                         ? (data['type'] ??
                                                               'Sick Leave')
                                                         : null);
-                                              final desc = selectedStatus == 'Present'
-                                                  ? (reason.isEmpty ? null : reason)
+                                              final desc =
+                                                  selectedStatus == 'Present'
+                                                  ? (reason.isEmpty
+                                                        ? null
+                                                        : reason)
                                                   : reason;
 
                                               if (isGuest) {
                                                 final wIdx = DummyData.workers
                                                     .indexWhere(
-                                                  (w) => w['email'] == email,
-                                                );
+                                                      (w) =>
+                                                          w['email'] == email,
+                                                    );
                                                 if (wIdx != -1) {
-                                                  DummyData.workers[wIdx]['status'] =
+                                                  DummyData
+                                                          .workers[wIdx]['status'] =
                                                       selectedStatus;
                                                 }
-                                                final index = DummyData.attendance
+                                                final index = DummyData
+                                                    .attendance
                                                     .indexWhere(
-                                                  (element) =>
-                                                      element['email'] == email,
-                                                );
+                                                      (element) =>
+                                                          element['email'] ==
+                                                          email,
+                                                    );
                                                 if (index != -1) {
                                                   DummyData
                                                           .attendance[index]['status'] =
@@ -1073,19 +1086,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   };
                                                   if (type != null)
                                                     newRecord['type'] = type;
-                                                  if (desc != null && desc.isNotEmpty)
+                                                  if (desc != null &&
+                                                      desc.isNotEmpty)
                                                     newRecord['desc'] = desc;
-                                                  DummyData.attendance.add(newRecord);
+                                                  DummyData.attendance.add(
+                                                    newRecord,
+                                                  );
                                                   DummyData.saveToPrefs();
                                                 }
                                                 if (mounted) {
                                                   setState(() {
                                                     _workers =
-                                                        List<Map<String, dynamic>>.from(
+                                                        List<
+                                                          Map<String, dynamic>
+                                                        >.from(
                                                           DummyData.workers,
                                                         );
                                                     _todayAttendance =
-                                                        List<Map<String, dynamic>>.from(
+                                                        List<
+                                                          Map<String, dynamic>
+                                                        >.from(
                                                           DummyData.attendance,
                                                         );
                                                   });
@@ -1095,7 +1115,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 if (workerId != null) {
                                                   final Map<String, dynamic>
                                                   updatedWorker =
-                                                      Map<String, dynamic>.from(data);
+                                                      Map<String, dynamic>.from(
+                                                        data,
+                                                      );
                                                   updatedWorker['status'] =
                                                       selectedStatus;
                                                   updatedWorker.remove('id');
@@ -1109,77 +1131,94 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     todayRecord['id'] != null) {
                                                   await _firestore
                                                       .updateAttendanceRecord(
-                                                    todayRecord['id'],
-                                                    {
-                                                      'name': name,
-                                                      'email': email,
-                                                      'role':
-                                                          data['role'] ??
-                                                          data['position'] ??
-                                                          '',
-                                                      'status': selectedStatus,
-                                                      'attendanceType':
-                                                          data['type2'] ??
-                                                          'Remote',
-                                                      'workType':
-                                                          data['type1'] ??
-                                                          'Full Time',
-                                                      'type': type,
-                                                      'desc': desc,
-                                                      'profileImage':
-                                                          data['profileImage'],
-                                                    },
-                                                  );
+                                                        todayRecord['id'],
+                                                        {
+                                                          'name': name,
+                                                          'email': email,
+                                                          'role':
+                                                              data['role'] ??
+                                                              data['position'] ??
+                                                              '',
+                                                          'status':
+                                                              selectedStatus,
+                                                          'attendanceType':
+                                                              data['type2'] ??
+                                                              'Remote',
+                                                          'workType':
+                                                              data['type1'] ??
+                                                              'Full Time',
+                                                          'type': type,
+                                                          'desc': desc,
+                                                          'profileImage':
+                                                              data['profileImage'],
+                                                        },
+                                                      );
                                                 } else {
                                                   await _firestore
                                                       .addAttendanceRecord({
-                                                    'name': name,
-                                                    'email': email,
-                                                    'role':
-                                                        data['role'] ??
-                                                        data['position'] ??
-                                                        '',
-                                                    'status': selectedStatus,
-                                                    'attendanceType':
-                                                        data['type2'] ?? 'Remote',
-                                                    'workType':
-                                                        data['type1'] ??
-                                                        'Full Time',
-                                                    'type': type,
-                                                    'desc': desc,
-                                                    'profileImage':
-                                                        data['profileImage'],
-                                                  });
+                                                        'name': name,
+                                                        'email': email,
+                                                        'role':
+                                                            data['role'] ??
+                                                            data['position'] ??
+                                                            '',
+                                                        'status':
+                                                            selectedStatus,
+                                                        'attendanceType':
+                                                            data['type2'] ??
+                                                            'Remote',
+                                                        'workType':
+                                                            data['type1'] ??
+                                                            'Full Time',
+                                                        'type': type,
+                                                        'desc': desc,
+                                                        'profileImage':
+                                                            data['profileImage'],
+                                                      });
                                                 }
                                               }
 
                                               if (!context.mounted) {
-                                                if (mounted) setState(() => _isSaving = false);
+                                                if (mounted)
+                                                  setState(
+                                                    () => _isSaving = false,
+                                                  );
                                                 return;
                                               }
                                               FlashySnackBar.show(
                                                 context,
-                                                message: 'attendance_updated_success'
-                                                    .tr(namedArgs: {'name': name}),
+                                                message:
+                                                    'attendance_updated_success'
+                                                        .tr(
+                                                          namedArgs: {
+                                                            'name': name,
+                                                          },
+                                                        ),
                                               );
                                             } catch (e) {
                                               if (!context.mounted) {
-                                                if (mounted) setState(() => _isSaving = false);
+                                                if (mounted)
+                                                  setState(
+                                                    () => _isSaving = false,
+                                                  );
                                                 return;
                                               }
                                               FlashySnackBar.show(
                                                 context,
-                                                message: 'attendance_update_failed'
-                                                    .tr(
-                                                      namedArgs: {
-                                                        'error': e.toString(),
-                                                      },
-                                                    ),
+                                                message:
+                                                    'attendance_update_failed'
+                                                        .tr(
+                                                          namedArgs: {
+                                                            'error': e
+                                                                .toString(),
+                                                          },
+                                                        ),
                                                 isError: true,
                                               );
                                             }
                                             if (mounted) Navigator.pop(context);
-                                            if (mounted) setState(() => _isSaving = false);
+                                            if (mounted)
+                                              setState(() => _isSaving = false);
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF0F52BA),
