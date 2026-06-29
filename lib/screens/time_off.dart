@@ -116,6 +116,17 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     _isLoading = false;
   }
 
+  void _refreshGuestData() {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+        _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
+        _combineTimeOff();
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -772,7 +783,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                               initialWorker: doc,
                                             ),
                                       ),
-                                    );
+                                    ).then((_) => _refreshGuestData());
                                   }
                                 },
                                 mouseCursor: SystemMouseCursors.click,

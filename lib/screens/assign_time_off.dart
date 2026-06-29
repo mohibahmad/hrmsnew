@@ -29,13 +29,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   bool _isLoading = false;
   String _timeOffType = 'Annual Leave';
   DateTime _startDate = DateTime.now();
-  DateTime _endDate = DateTime.now().add(const Duration(days: 9));
+  DateTime _endDate = DateTime.now();
   late DateTime _calendarMonth;
+  bool _hasSelection = false;
   final TextEditingController _notesController = TextEditingController();
 
   List<Map<String, dynamic>> _workers = [];
   Map<String, dynamic>? _selectedWorker;
   StreamSubscription? _workersSub;
+  List<Map<String, dynamic>> _timeoffRecords = [];
+  StreamSubscription? _timeoffSub;
 
   @override
   void initState() {
@@ -59,7 +62,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   void _resetFormFields() {
     _startDate = DateTime.now();
-    _endDate = DateTime.now().add(const Duration(days: 9));
+    _endDate = DateTime.now();
+    _hasSelection = false;
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
     _timeOffType = 'Annual Leave';
     _notesController.clear();
@@ -70,6 +74,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (isGuest) {
       setState(() {
         _workers = DummyData.workers;
+        _timeoffRecords = DummyData.timeoff;
         if (widget.initialWorker != null) {
           _selectedWorker = _workers.firstWhere(
             (w) => w['email'] == widget.initialWorker!['email'],
@@ -113,6 +118,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               } else {
                 _selectedWorker = null;
               }
+            });
+          }
+        },
+        onError: (e) {
+          // Stream error handling
+        },
+      );
+      _timeoffSub = FirestoreService().timeoffStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _timeoffRecords = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
             });
           }
         },
@@ -174,6 +193,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       ),
                       onPressed: () {
                         setState(() {
+                          _hasSelection = true;
                           if (isStartDate) {
                             _startDate = tempPickedDate;
                             _calendarMonth = DateTime(
@@ -223,36 +243,64 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   int get _requestedDays {
+    if (!_hasSelection) return 0;
     return _endDate.difference(_startDate).inDays + 1;
+  }
+
+  int get _alreadyUsedDays {
+    if (_selectedWorker == null) return 0;
+    final workerEmail = (_selectedWorker!['email'] ?? '').toString().toLowerCase();
+    String typeKey;
+    switch (_timeOffType) {
+      case 'Annual Leave':
+        typeKey = 'Annual Leave';
+      case 'Sick Leave':
+        typeKey = 'Sick Leave';
+      case 'Casual Leave':
+        typeKey = 'Casual Leave';
+      default:
+        return 0;
+    }
+    int used = 0;
+    for (final record in _timeoffRecords) {
+      final recordEmail = (record['email'] ?? '').toString().toLowerCase();
+      if (recordEmail != workerEmail) continue;
+      final action = (record['action'] ?? record['type'] ?? '').toString();
+      if (action != typeKey) continue;
+      final requestedDays = record['requestedDays'];
+      if (requestedDays is int) {
+        used += requestedDays;
+      }
+    }
+    return used;
   }
 
   int get _availableDays {
     if (_selectedWorker == null) return 0;
+    String key;
     switch (_timeOffType) {
       case 'Annual Leave':
-        return int.tryParse(
-              (_selectedWorker!['annualLeaves'] ?? '').toString(),
-            ) ??
-            0;
+        key = 'annualLeaves';
       case 'Sick Leave':
-        return int.tryParse(
-              (_selectedWorker!['sickLeaves'] ?? '').toString(),
-            ) ??
-            0;
+        key = 'sickLeaves';
       case 'Casual Leave':
-        return int.tryParse(
-              (_selectedWorker!['casualLeaves'] ?? '').toString(),
-            ) ??
-            0;
+        key = 'casualLeaves';
       default:
         return 0;
     }
+    final raw = (_selectedWorker![key] ?? '').toString();
+    final total = int.tryParse(raw);
+    if (total == null) return 0;
+    final used = _alreadyUsedDays;
+    final remaining = total - used;
+    return remaining < 0 ? 0 : remaining;
   }
 
   @override
   void dispose() {
     _notesController.dispose();
     _workersSub?.cancel();
+    _timeoffSub?.cancel();
     super.dispose();
   }
 
@@ -450,7 +498,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'start_date'.tr(),
-            _formatDate(_startDate),
+            _hasSelection ? _formatDate(_startDate) : 'select_date'.tr(),
             isStart: true,
           ),
         ),
@@ -459,7 +507,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'end_date'.tr(),
-            _formatDate(_endDate),
+            _hasSelection ? _formatDate(_endDate) : 'select_date'.tr(),
             isStart: false,
           ),
         ),
@@ -789,10 +837,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             _endDate.day,
           );
 
-          bool isSelected =
-              cellDate.isAtSameMomentAs(startStart) ||
-              cellDate.isAtSameMomentAs(endStart);
-          bool inRange =
+          bool isSelected = _hasSelection &&
+              (cellDate.isAtSameMomentAs(startStart) ||
+               cellDate.isAtSameMomentAs(endStart));
+          bool inRange = _hasSelection &&
               cellDate.isAfter(startStart) && cellDate.isBefore(endStart);
 
           rowChildren.add(
@@ -839,9 +887,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           onTap: () {
             if (date != null) {
               setState(() {
-                // Simple logic: if click is before start date, update start date
-                // else update end date
-                if (date.isBefore(_startDate)) {
+                if (!_hasSelection) {
+                  _startDate = date;
+                  _endDate = date;
+                  _hasSelection = true;
+                } else if (date.isBefore(_startDate)) {
                   _startDate = date;
                   if (_endDate.isBefore(_startDate)) {
                     _endDate = _startDate.add(const Duration(days: 1));
@@ -1049,6 +1099,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     // Notes are required
     if (_notesController.text.trim().isEmpty) {
       FlashySnackBar.show(context, message: 'please_enter_notes'.tr(), isError: true);
+      return;
+    }
+
+    if (!_hasSelection) {
+      FlashySnackBar.show(context, message: 'please_select_dates'.tr(), isError: true);
       return;
     }
 
