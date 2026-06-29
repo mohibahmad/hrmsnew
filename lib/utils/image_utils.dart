@@ -9,9 +9,10 @@ final _base64Cache = <String, Uint8List>{};
 
 ImageProvider getProfileImage(String? url, String? email, int index) {
   final currentUser = AuthService().currentUser;
-  final isCurrentUser = currentUser != null &&
+  final isCurrentUser =
+      currentUser != null &&
       (currentUser.email?.toLowerCase() == email?.toLowerCase() ||
-       currentUser.isAnonymous);
+          currentUser.isAnonymous);
   if (isCurrentUser) {
     final notifierUrl = AuthService.profilePicNotifier.value;
     if (notifierUrl != null && notifierUrl.isNotEmpty) {
@@ -36,7 +37,10 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
   if (url.startsWith('http')) {
     return CachedNetworkImageProvider(url);
   }
-  return AssetImage(url);
+  // If url doesn't match any known format, show placeholder
+  return AssetImage(
+    index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
+  );
 }
 
 Uint8List _decodeBase64(String url) {
