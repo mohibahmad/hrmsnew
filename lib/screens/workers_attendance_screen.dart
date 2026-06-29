@@ -1354,9 +1354,9 @@ class WorkerListItem extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Align(
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.centerRight,
               child: Container(
                 margin: const EdgeInsets.only(right: 16.0),
                 child: StatusPill(status: (data["status"] ?? '').toString()),
