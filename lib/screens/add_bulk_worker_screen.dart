@@ -59,11 +59,12 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'job_position','employee_type','work_model','experience_level_title','education_title',
       'salary_type','currency_title','salary_amount','leave_policy','annual_leaves_title',
       'sick_leaves_title','casual_leaves_title','joining_date_title','profile_image_url',
+      'front_id_image_url','back_id_image_url','cv_url',
     ].map((k) => k.tr()).join(',');
     const String dataRows =
-    'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,\n'
-    'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane\n'
-    'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,';
+    'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,,,,https://example.com/cv/john.pdf\n'
+    'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane,,,\n'
+    'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,,https://example.com/back_id.jpg,https://example.com/cv.pdf';
     final String templateStr = '$headerRow\n$dataRows';
 
     try {
@@ -165,11 +166,14 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'national id': 'nationalId',
       'professed religion': 'religion',
       'date of birth': 'dob',
+      'gender': 'gender',
+      'address': 'address',
       'relationship status': 'relationshipStatus',
       'job position': 'position',
       'employee type': 'type1',
       'work model': 'type2',
       'experience level': 'experienceLevel',
+      'education': 'education',
       'salary type': 'salaryType',
       'salary amount': 'salaryAmount',
       'leave policy': 'leavePolicy',
@@ -181,6 +185,12 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'profile image': 'profileImage',
       'profile pic': 'profileImage',
       'image url': 'profileImage',
+      'front id image url': 'frontId',
+      'front id': 'frontId',
+      'back id image url': 'backId',
+      'back id': 'backId',
+      'cv url': 'cv',
+      'cv': 'cv',
     };
 
     // Check basic required columns
@@ -284,6 +294,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'joiningDate':
             '${DateTime.now().month}/${DateTime.now().day}/${DateTime.now().year}',
         'profileImage': '',
+        'frontId': '',
+        'backId': '',
+        'cv': '',
       };
 
       for (int j = 0; j < headers.length && j < row.length; j++) {
@@ -749,6 +762,18 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       'profile_image_url'.tr(),
                                       200,
                                     ),
+                                    _buildHeaderCell(
+                                      'front_id_image_url'.tr(),
+                                      200,
+                                    ),
+                                    _buildHeaderCell(
+                                      'back_id_image_url'.tr(),
+                                      200,
+                                    ),
+                                    _buildHeaderCell(
+                                      'cv_url'.tr(),
+                                      200,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -997,6 +1022,24 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           profileImageUrl.isEmpty
                                               ? '-'
                                               : profileImageUrl,
+                                          200,
+                                        ),
+                                        _buildDataCell(
+                                          worker['frontId']?.toString().isEmpty == true
+                                              ? '-'
+                                              : worker['frontId']?.toString() ?? '-',
+                                          200,
+                                        ),
+                                        _buildDataCell(
+                                          worker['backId']?.toString().isEmpty == true
+                                              ? '-'
+                                              : worker['backId']?.toString() ?? '-',
+                                          200,
+                                        ),
+                                        _buildDataCell(
+                                          worker['cv']?.toString().isEmpty == true
+                                              ? '-'
+                                              : worker['cv']?.toString() ?? '-',
                                           200,
                                         ),
                                       ],
