@@ -422,7 +422,17 @@ class _ProfileBodyState extends State<ProfileBody> {
     }
   }
 
-  Future<void> _saveProfile() async {
+  Future<bool> _saveProfile() async {
+    if (_contact1Controller.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_contact_number'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -456,7 +466,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               );
             }
             setState(() => _isLoading = false);
-            return;
+            return false;
           }
         }
 
@@ -512,6 +522,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         });
         FlashySnackBar.show(context, message: 'profile_saved'.tr());
       }
+      return true;
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -525,6 +536,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           isError: true,
         );
       }
+      return false;
     }
   }
 
@@ -564,8 +576,8 @@ class _ProfileBodyState extends State<ProfileBody> {
                 onPressed: _isLoading
                     ? null
                     : () async {
-                        await _saveProfile();
-                        if (mounted) {
+                        final saved = await _saveProfile();
+                        if (saved && mounted) {
                           setState(() => _isEditing = false);
                           _showPreviewDialog();
                         }
