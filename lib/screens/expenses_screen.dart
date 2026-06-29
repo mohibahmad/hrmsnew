@@ -126,7 +126,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final compact = NumberFormat.compact(locale: locale).format(amount);
       return '\$$compact';
     }
-    final format = NumberFormat.currency(locale: locale, symbol: '\$ ', decimalDigits: 2);
+    final format = NumberFormat.currency(
+      locale: locale,
+      symbol: '\$ ',
+      decimalDigits: 2,
+    );
     return format.format(amount);
   }
 
@@ -206,7 +210,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final docId = doc['id']?.toString() ?? '';
 
     final workerNames = _workersMap.keys.toList()..sort();
-    String selectedWorkerName = doc['name']?.toString() ?? (workerNames.isNotEmpty ? workerNames[0] : '');
+    String selectedWorkerName =
+        doc['name']?.toString() ??
+        (workerNames.isNotEmpty ? workerNames[0] : '');
 
     final dateParts = (doc['date']?.toString() ?? '').split('/');
     int selectedDay = dateParts.isNotEmpty
@@ -567,7 +573,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final expenseMap = {
                               'name': selectedWorkerName.isNotEmpty
                                   ? selectedWorkerName
-                                  : (AuthService().currentUser?.displayName ?? 'Expense'),
+                                  : (AuthService().currentUser?.displayName ??
+                                        'Expense'),
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
@@ -870,7 +877,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 );
               }).toList(),
-              onChanged: isEmpty ? null : (v) { if (v != null) onChanged(v); },
+              onChanged: isEmpty
+                  ? null
+                  : (v) {
+                      if (v != null) onChanged(v);
+                    },
             ),
           ),
         ),
@@ -1068,9 +1079,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected ? Colors.red : Colors.transparent,
+            color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,
             border: Border.all(
-              color: isSelected ? Colors.red : Colors.grey.shade300,
+              color: isSelected
+                  ? const Color(0xFF0247C4)
+                  : Colors.grey.shade300,
               width: 1,
             ),
             borderRadius: BorderRadius.circular(3),
@@ -1253,7 +1266,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               isGuest: isGuest,
             )) {
               if (!mounted) return;
-              final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+              final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                context,
+              );
               if (upgraded == true && mounted) {
                 _showAddExpenseModal(context);
               }
@@ -1460,7 +1475,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader('date_header'.tr(), textAlign: TextAlign.center),
+                    child: _tableHeader(
+                      'date_header'.tr(),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -1613,7 +1631,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           fontFamily: 'SF Pro Display',
                         ),
                         maxLines: 2,
-
                       ),
                     ),
                   ),
@@ -1650,8 +1667,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
-                        maxLines: 2,
-                      ),
+                  maxLines: 2,
+                ),
               ),
             ),
           ),

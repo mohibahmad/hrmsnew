@@ -229,7 +229,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _fatherNameController.addListener(_onControllerChanged);
     _fatherNameController.addListener(() {
       if (_fatherNameController.text.length > 50) {
-        _fatherNameController.text = _fatherNameController.text.substring(0, 50);
+        _fatherNameController.text = _fatherNameController.text.substring(
+          0,
+          50,
+        );
         _fatherNameController.selection = TextSelection.fromPosition(
           TextPosition(offset: _fatherNameController.text.length),
         );
@@ -271,7 +274,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _sickLeavesController.addListener(_onControllerChanged);
     _casualLeavesController.addListener(_onControllerChanged);
 
-    _autoCalcAnnualLeaves();
+    if (widget.workerToEdit == null) {
+      _autoCalcAnnualLeaves();
+    }
     _sickLeavesController.addListener(_autoCalcAnnualLeaves);
     _casualLeavesController.addListener(_autoCalcAnnualLeaves);
   }
@@ -1344,7 +1349,9 @@ class WorkerDetailFormSection extends StatelessWidget {
                     mode: import_cupertino.CupertinoDatePickerMode.date,
                     initialDateTime: initialDate,
                     minimumDate: DateTime(1950),
-                    maximumDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+                    maximumDate: DateTime.now().subtract(
+                      const Duration(days: 365 * 18),
+                    ),
                     onDateTimeChanged: (DateTime newDate) {
                       tempPickedDate = newDate;
                     },
@@ -1492,7 +1499,9 @@ class WorkerDetailFormSection extends StatelessWidget {
                             onTap: () {
                               _showCupertinoDatePicker(
                                 context: context,
-                                initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+                                initialDate: DateTime.now().subtract(
+                                  const Duration(days: 365 * 18),
+                                ),
                                 onDateSelected: (date) {
                                   final day = date.day.toString().padLeft(
                                     2,

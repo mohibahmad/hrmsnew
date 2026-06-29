@@ -17,11 +17,15 @@ class PayrollService {
 
   static String formatNumber(num number) {
     if (number.isNaN || number.isInfinite) return '0';
-    final roundedStr = number.toStringAsFixed(0);
-    return roundedStr.replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        );
+    final isNegative = number < 0;
+    final absolute = isNegative ? -number : number;
+    final roundedStr = absolute.toStringAsFixed(0);
+    final formatted = roundedStr.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+    if (isNegative) return '($formatted)';
+    return formatted;
   }
 
   static String getCurrencyPrefix(String salaryStr) {
@@ -87,8 +91,12 @@ class PayrollService {
       periodBaseSalary = isAnnualSalary ? rawSalaryVal / 12 : rawSalaryVal;
     }
 
-    final dailyRate = totalWorkDaysVal > 0 ? periodBaseSalary / totalWorkDaysVal : 0.0;
-    final workedDaysVal = daysWorked.isEmpty ? totalWorkDaysVal : parseIntSafe(daysWorked);
+    final dailyRate = totalWorkDaysVal > 0
+        ? periodBaseSalary / totalWorkDaysVal
+        : 0.0;
+    final workedDaysVal = daysWorked.isEmpty
+        ? totalWorkDaysVal
+        : parseIntSafe(daysWorked);
     final overtimeRate = dailyRate * 1.5;
 
     final grossSalary = workedDaysVal * dailyRate;
@@ -117,9 +125,15 @@ class PayrollService {
       'formattedOvertimeRate': _fmt(overtimeRate, p),
       'formattedGross': _fmt(grossSalary, p),
       'formattedOvertime': _fmt(overtimePay, p),
-      'formattedAbsentDeduct': absentDeduction > 0 ? '-${_fmt(absentDeduction, p)}' : '0',
-      'formattedLeaveDeduct': leaveDeduction > 0 ? '-${_fmt(leaveDeduction, p)}' : '0',
-      'formattedTotalDeductions': totalDeductions > 0 ? '-${_fmt(totalDeductions, p)}' : '0',
+      'formattedAbsentDeduct': absentDeduction > 0
+          ? '-${_fmt(absentDeduction, p)}'
+          : '0',
+      'formattedLeaveDeduct': leaveDeduction > 0
+          ? '-${_fmt(leaveDeduction, p)}'
+          : '0',
+      'formattedTotalDeductions': totalDeductions > 0
+          ? '-${_fmt(totalDeductions, p)}'
+          : '0',
       'formattedNet': _fmt(netSalary, p),
     };
   }

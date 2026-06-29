@@ -355,7 +355,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               100, // Fixed width so it doesn't shrink when loading
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8EDF8),
+                            color: isLoading
+                                ? const Color(0xFFD0D5DD)
+                                : const Color(0xFFE8EDF8),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           alignment: Alignment.center,

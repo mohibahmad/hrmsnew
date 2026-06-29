@@ -795,12 +795,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           );
           final email = doc['email']?.toString();
           if (email != null && email.isNotEmpty) {
-            DummyData.workers.removeWhere((w) =>
-                (w['email'] ?? '').toString().toLowerCase() ==
-                email.toLowerCase());
-            DummyData.attendance.removeWhere((a) =>
-                (a['email'] ?? '').toString().toLowerCase() ==
-                email.toLowerCase());
+            DummyData.workers.removeWhere(
+              (w) =>
+                  (w['email'] ?? '').toString().toLowerCase() ==
+                  email.toLowerCase(),
+            );
+            DummyData.attendance.removeWhere(
+              (a) =>
+                  (a['email'] ?? '').toString().toLowerCase() ==
+                  email.toLowerCase(),
+            );
           } else {
             _attendanceDocs.removeWhere((a) => a['id'] == docId);
             DummyData.attendance.removeWhere((a) => a['id'] == docId);
@@ -813,19 +817,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _combineAttendance();
         });
       } else {
-        final email = doc['email']?.toString();
-        if (email != null && email.isNotEmpty) {
-          final worker = _workersList.firstWhere(
-            (w) =>
-                (w['email'] ?? '').toString().toLowerCase() ==
-                email.toLowerCase(),
-            orElse: () => <String, dynamic>{},
-          );
-          final workerId = worker['id']?.toString();
-          if (workerId != null && workerId.isNotEmpty) {
-            await FirestoreService().deleteWorker(workerId);
-          }
-        } else if (!docId.startsWith('norecord_')) {
+        final docId = doc['id'] as String;
+        if (!docId.startsWith('norecord_')) {
           await FirestoreService().deleteAttendanceRecord(docId);
         }
       }
@@ -1070,10 +1063,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                 ? Colors.grey
                                                 : orangeLeave)),
                                 fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            maxLines: 2,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 2,
                             ),
                           ),
                         ),
@@ -1088,13 +1081,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               localizeWorkType(workType),
                               style: const TextStyle(
                                 fontSize: 15,
-                              color: textDark,
-                              fontFamily: 'SF Pro Display',
+                                color: textDark,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 2,
                             ),
-                            maxLines: 2,
                           ),
                         ),
-                      ),
                       ),
                       Expanded(
                         flex: 2,
@@ -1104,12 +1097,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             role,
                             style: const TextStyle(
                               fontSize: 15,
-                            color: textDark,
-                            fontFamily: 'SF Pro Display',
+                              color: textDark,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            maxLines: 2,
                           ),
-                          maxLines: 2,
                         ),
-                      ),
                       ),
                       SizedBox(
                         width: 48,

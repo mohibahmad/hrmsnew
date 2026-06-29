@@ -427,10 +427,8 @@ class _ProfileBodyState extends State<ProfileBody> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_contact_number'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
-      return false;
     }
 
     setState(() {
@@ -898,7 +896,9 @@ class _ProfileBodyState extends State<ProfileBody> {
                       ? [
                           LengthLimitingTextInputFormatter(15),
                           if (isContact)
-                            FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]')),
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9+\-\s()]'),
+                            ),
                           if (isCompanyId)
                             FilteringTextInputFormatter.digitsOnly,
                         ]
@@ -926,21 +926,34 @@ class _ProfileBodyState extends State<ProfileBody> {
 
   Widget _buildCurrencyField(bool isEditing) {
     if (!isEditing) {
-      return _buildInputField('currency'.tr(), _currencyController, readOnly: true);
+      return _buildInputField(
+        'currency'.tr(),
+        _currencyController,
+        readOnly: true,
+      );
     }
 
     final currencies = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'RUB', 'BRL', 'SAR'];
     String localize(String val) {
       switch (val) {
-        case 'USD': return 'usd_desc'.tr();
-        case 'EUR': return 'eur_desc'.tr();
-        case 'GBP': return 'gbp_desc'.tr();
-        case 'JPY': return 'jpy_desc'.tr();
-        case 'INR': return 'inr_desc'.tr();
-        case 'RUB': return 'rub_desc'.tr();
-        case 'BRL': return 'brl_desc'.tr();
-        case 'SAR': return 'sar_desc'.tr();
-        default: return val;
+        case 'USD':
+          return 'usd_desc'.tr();
+        case 'EUR':
+          return 'eur_desc'.tr();
+        case 'GBP':
+          return 'gbp_desc'.tr();
+        case 'JPY':
+          return 'jpy_desc'.tr();
+        case 'INR':
+          return 'inr_desc'.tr();
+        case 'RUB':
+          return 'rub_desc'.tr();
+        case 'BRL':
+          return 'brl_desc'.tr();
+        case 'SAR':
+          return 'sar_desc'.tr();
+        default:
+          return val;
       }
     }
 
@@ -965,7 +978,9 @@ class _ProfileBodyState extends State<ProfileBody> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: currencies.contains(_currencyController.text) ? _currencyController.text : 'USD',
+              value: currencies.contains(_currencyController.text)
+                  ? _currencyController.text
+                  : 'USD',
               isExpanded: true,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
               style: const TextStyle(

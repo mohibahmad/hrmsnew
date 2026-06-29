@@ -120,10 +120,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
+        _isLoading = true;
         _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
         _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _combineTimeOff();
       });
+    } else {
+      _isLoading = true;
     }
   }
 
@@ -774,16 +777,19 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     widget.onAssignTimeOff!(doc);
                                   } else {
                                     // Fallback if rendered as standalone
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            AssignTimeOffScreen(
-                                              onBack: () =>
-                                                  Navigator.of(context).pop(),
-                                              initialWorker: doc,
-                                            ),
-                                      ),
-                                    ).then((_) => _refreshGuestData());
+                                    Navigator.of(context)
+                                        .push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AssignTimeOffScreen(
+                                                  onBack: () => Navigator.of(
+                                                    context,
+                                                  ).pop(),
+                                                  initialWorker: doc,
+                                                ),
+                                          ),
+                                        )
+                                        .then((_) => _refreshGuestData());
                                   }
                                 },
                                 mouseCursor: SystemMouseCursors.click,

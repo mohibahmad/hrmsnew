@@ -48,23 +48,45 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return value;
     }
   }
+
   bool _isSaving = false;
   List<Map<String, dynamic>> _validWorkers = [];
   bool _hasParsedFile = false;
 
   Future<void> _downloadTemplate() async {
     final String headerRow = [
-      'full_name','contact_number','email_address','father_name','national_id_title',
-      'religion_title','date_of_birth','gender_title','address_title','relationship_status_title',
-      'job_position','employee_type','work_model','experience_level_title','education_title',
-      'salary_type','currency_title','salary_amount','leave_policy','annual_leaves_title',
-      'sick_leaves_title','casual_leaves_title','joining_date_title','profile_image_url',
-      'front_id_image_url','back_id_image_url','cv_url',
+      'full_name',
+      'contact_number',
+      'email_address',
+      'father_name',
+      'national_id_title',
+      'religion_title',
+      'date_of_birth',
+      'gender_title',
+      'address_title',
+      'relationship_status_title',
+      'job_position',
+      'employee_type',
+      'work_model',
+      'experience_level_title',
+      'education_title',
+      'salary_type',
+      'currency_title',
+      'salary_amount',
+      'leave_policy',
+      'annual_leaves_title',
+      'sick_leaves_title',
+      'casual_leaves_title',
+      'joining_date_title',
+      'profile_image_url',
+      'front_id_image_url',
+      'back_id_image_url',
+      'cv_url',
     ].map((k) => k.tr()).join(',');
     const String dataRows =
-    'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,,,,https://example.com/cv/john.pdf\n'
-    'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane,,,\n'
-    'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,,https://example.com/back_id.jpg,https://example.com/cv.pdf';
+        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,,,,https://example.com/cv/john.pdf\n'
+        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane,,,\n'
+        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,,https://example.com/back_id.jpg,https://example.com/cv.pdf';
     final String templateStr = '$headerRow\n$dataRows';
 
     try {
@@ -261,6 +283,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     Set<String> csvEmails = {};
     Set<String> csvNames = {};
     int duplicateCount = 0;
+    int invalidDobCount = 0;
+    int missingRequiredCount = 0;
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -316,18 +340,29 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       // Ensure required fields
-      if (workerData['name'] == null || workerData['name'].toString().isEmpty)
+      if (workerData['name'] == null || workerData['name'].toString().isEmpty) {
+        missingRequiredCount++;
         continue;
-      if (workerData['phone'] == null || workerData['phone'].toString().isEmpty)
+      }
+      if (workerData['phone'] == null ||
+          workerData['phone'].toString().isEmpty) {
+        missingRequiredCount++;
         continue;
+      }
 
       // Validate DOB - must be 18+
       final dobStr = (workerData['dob'] ?? '').toString().trim();
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
-        if (dob == null) continue;
+        if (dob == null) {
+          invalidDobCount++;
+          continue;
+        }
         final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
-        if (dob.isAfter(cutoff)) continue;
+        if (dob.isAfter(cutoff)) {
+          invalidDobCount++;
+          continue;
+        }
       }
 
       final email = workerData['email']?.toString().toLowerCase().trim() ?? '';
@@ -359,6 +394,22 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         context,
         message: 'skipped_duplicates_message'.tr(
           namedArgs: {'count': duplicateCount.toString()},
+        ),
+      );
+    }
+    if (invalidDobCount > 0 && mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'skipped_invalid_dob_message'.tr(
+          namedArgs: {'count': invalidDobCount.toString()},
+        ),
+      );
+    }
+    if (missingRequiredCount > 0 && mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'skipped_missing_required_message'.tr(
+          namedArgs: {'count': missingRequiredCount.toString()},
         ),
       );
     }
@@ -770,10 +821,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       'back_id_image_url'.tr(),
                                       200,
                                     ),
-                                    _buildHeaderCell(
-                                      'cv_url'.tr(),
-                                      200,
-                                    ),
+                                    _buildHeaderCell('cv_url'.tr(), 200),
                                   ],
                                 ),
                               ),
@@ -975,12 +1023,14 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         ),
                                         _buildDataCell(
                                           _localizeType1(
-                                              worker['type1']?.toString() ?? ''),
+                                            worker['type1']?.toString() ?? '',
+                                          ),
                                           120,
                                         ),
                                         _buildDataCell(
                                           _localizeType2(
-                                              worker['type2']?.toString() ?? ''),
+                                            worker['type2']?.toString() ?? '',
+                                          ),
                                           120,
                                         ),
                                         _buildDataCell(
@@ -1025,19 +1075,28 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           200,
                                         ),
                                         _buildDataCell(
-                                          worker['frontId']?.toString().isEmpty == true
+                                          worker['frontId']
+                                                      ?.toString()
+                                                      .isEmpty ==
+                                                  true
                                               ? '-'
-                                              : worker['frontId']?.toString() ?? '-',
+                                              : worker['frontId']?.toString() ??
+                                                    '-',
                                           200,
                                         ),
                                         _buildDataCell(
-                                          worker['backId']?.toString().isEmpty == true
+                                          worker['backId']
+                                                      ?.toString()
+                                                      .isEmpty ==
+                                                  true
                                               ? '-'
-                                              : worker['backId']?.toString() ?? '-',
+                                              : worker['backId']?.toString() ??
+                                                    '-',
                                           200,
                                         ),
                                         _buildDataCell(
-                                          worker['cv']?.toString().isEmpty == true
+                                          worker['cv']?.toString().isEmpty ==
+                                                  true
                                               ? '-'
                                               : worker['cv']?.toString() ?? '-',
                                           200,

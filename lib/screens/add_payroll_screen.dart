@@ -12,7 +12,12 @@ class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onBack;
-  const AddPayrollScreen({super.key, required this.workerData, this.onNotificationTap, this.onBack});
+  const AddPayrollScreen({
+    super.key,
+    required this.workerData,
+    this.onNotificationTap,
+    this.onBack,
+  });
 
   @override
   State<AddPayrollScreen> createState() => _AddPayrollScreenState();
@@ -26,6 +31,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   final _salaryCtrl = TextEditingController();
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
+  bool _isSaving = false;
 
   static const _primaryBlue = Color(0xFF0A44C2);
   static const _darkBlue = Color(0xFF082C7C);
@@ -37,8 +43,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String get _email => (widget.workerData['email'] ?? '').toString();
   String get _position => (widget.workerData['position'] ?? '').toString();
   String get _status => (widget.workerData['status'] ?? 'Active').toString();
-  String get _phone => (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '').toString();
-  String get _profileImage => (widget.workerData['profileImage'] ?? '').toString();
+  String get _phone =>
+      (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '')
+          .toString();
+  String get _profileImage =>
+      (widget.workerData['profileImage'] ?? '').toString();
 
   void _recalc() {
     setState(() {
@@ -91,7 +100,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
   Future<void> _handleSave() async {
     if (_workDaysCtrl.text.trim().isEmpty) {
-      FlashySnackBar.show(context, message: 'Please enter Total Work Days', isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter Total Work Days',
+        isError: true,
+      );
       return;
     }
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
@@ -109,6 +122,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'salary': _salaryStr,
       'netSalary': _calculatedNet,
     };
+    setState(() => _isSaving = true);
     try {
       if (isGuest) {
         final existingIdx = DummyData.payroll.indexWhere((p) {
@@ -128,7 +142,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         await DummyData.saveToPrefs();
       } else {
         final existingId = widget.workerData['id']?.toString() ?? '';
-        final hasExistingRecord = (widget.workerData['totalWorkDays'] ?? '').toString().isNotEmpty;
+        final hasExistingRecord = (widget.workerData['totalWorkDays'] ?? '')
+            .toString()
+            .isNotEmpty;
         if (hasExistingRecord && existingId.isNotEmpty) {
           await FirestoreService().updatePayrollRecord(existingId, record);
         } else {
@@ -136,12 +152,19 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         }
       }
       if (mounted) {
-        FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
+        FlashySnackBar.show(
+          context,
+          message: 'payroll_saved_successfully'.tr(),
+        );
         widget.onBack?.call();
       }
     } catch (e) {
       if (mounted) {
-        FlashySnackBar.show(context, message: 'failed_to_save_record'.tr(), isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_save_record'.tr(),
+          isError: true,
+        );
       }
     }
   }
@@ -192,7 +215,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 ),
                 Text(
                   'payroll_data'.tr(),
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _textDark),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: _textDark,
+                  ),
                 ),
               ],
             ),
@@ -205,22 +232,47 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: _primaryBlue,
                 side: BorderSide(color: _primaryBlue.withValues(alpha: 0.5)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: Text('discard_changes'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                'discard_changes'.tr(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
             const SizedBox(width: 16),
             ElevatedButton(
-              onPressed: _handleSave,
+              onPressed: _isSaving ? null : _handleSave,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0B50C3),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 18,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: Text('save_payroll'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      'save_payroll'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
             ),
           ],
         ),
@@ -262,14 +314,21 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 bottom: -8,
                 right: -12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF00A63F),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     _status.toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -282,23 +341,43 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               children: [
                 Text(
                   _name,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 1,
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.badge_outlined, color: Color(0xB3FFFFFF), size: 16),
+                    const Icon(
+                      Icons.badge_outlined,
+                      color: Color(0xB3FFFFFF),
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
-                    Text('ID: EMP-${_email.hashCode.toString().substring(0, 5)}',
-                        style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14)),
+                    Text(
+                      'ID: EMP-${_email.hashCode.toString().substring(0, 5)}',
+                      style: const TextStyle(
+                        color: Color(0xB3FFFFFF),
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(width: 24),
-                    const Icon(Icons.corporate_fare_outlined, color: Color(0xB3FFFFFF), size: 16),
+                    const Icon(
+                      Icons.corporate_fare_outlined,
+                      color: Color(0xB3FFFFFF),
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         _position,
-                        style: const TextStyle(color: Color(0xB3FFFFFF), fontSize: 14),
+                        style: const TextStyle(
+                          color: Color(0xB3FFFFFF),
+                          fontSize: 14,
+                        ),
                         softWrap: true,
                       ),
                     ),
@@ -313,15 +392,20 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               Text(
                 'current_pay_period'.tr(),
                 style: const TextStyle(
-                    color: Color(0xB3FFFFFF),
-                    fontSize: 11,
-                    letterSpacing: 1,
-                    fontWeight: FontWeight.w600),
+                  color: Color(0xB3FFFFFF),
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 4),
               const Text(
                 'Oct 1 - Oct 31, 2023',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -349,26 +433,45 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(width: 12),
               Text(
                 'attendance_salary_details'.tr(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: _textDark,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 32),
           Row(
             children: [
-              Expanded(child: _buildInput('total_work_days'.tr(), '22', _workDaysCtrl)),
+              Expanded(
+                child: _buildInput('total_work_days'.tr(), '22', _workDaysCtrl),
+              ),
               const SizedBox(width: 24),
-              Expanded(child: _buildInput('absents_label'.tr(), '0', _absentsCtrl)),
+              Expanded(
+                child: _buildInput('absents_label'.tr(), '0', _absentsCtrl),
+              ),
               const SizedBox(width: 24),
-              Expanded(child: _buildInput('leaves_label'.tr(), '0', _leavesCtrl)),
+              Expanded(
+                child: _buildInput('leaves_label'.tr(), '0', _leavesCtrl),
+              ),
             ],
           ),
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _buildInput('overtime_days'.tr(), '2', _overtimeCtrl)),
+              Expanded(
+                child: _buildInput('overtime_days'.tr(), '2', _overtimeCtrl),
+              ),
               const SizedBox(width: 24),
-              Expanded(child: _buildInput('salary'.tr(), '', _salaryCtrl, readOnly: true)),
+              Expanded(
+                child: _buildInput(
+                  'salary'.tr(),
+                  '',
+                  _salaryCtrl,
+                  readOnly: true,
+                ),
+              ),
               const SizedBox(width: 24),
               Expanded(child: _buildCalculatedInput(cr)),
             ],
@@ -388,12 +491,15 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   const Icon(Icons.history, color: _textGrey, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'last_modified_by_admin_on'.tr(namedArgs: {'date': DateTime.now().toString().substring(0, 10)}),
+                    'last_modified_by_admin_on'.tr(
+                      namedArgs: {
+                        'date': DateTime.now().toString().substring(0, 10),
+                      },
+                    ),
                     style: const TextStyle(color: _textGrey, fontSize: 13),
                   ),
                 ],
               ),
-
             ],
           ),
         ],
@@ -401,13 +507,24 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  Widget _buildInput(String label, String hint, TextEditingController? controller, {bool readOnly = false}) {
+  Widget _buildInput(
+    String label,
+    String hint,
+    TextEditingController? controller, {
+    bool readOnly = false,
+  }) {
     final isDaysInput = !readOnly && label != 'salary'.tr();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textGrey)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _textGrey,
+          ),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -423,7 +540,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           decoration: InputDecoration(
             hintText: readOnly ? null : hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: _borderLight),
@@ -448,7 +568,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       children: [
         Text(
           'salary_after_deduction'.tr(),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _darkBlue),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _darkBlue,
+          ),
         ),
         const SizedBox(height: 8),
         Container(
@@ -461,7 +585,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           child: Text(
             netAmount,
-            style: const TextStyle(fontSize: 20, color: _darkBlue, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 20,
+              color: _darkBlue,
+              fontWeight: FontWeight.bold,
+            ),
             softWrap: true,
           ),
         ),
@@ -490,20 +618,50 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       ),
       child: Column(
         children: [
-          _breakdownRow('daily_rate'.tr(), cr['formattedDailyRate'] as String, '${cr['totalWorkDaysPerYear']} ${'days_per_year'.tr()}'),
+          _breakdownRow(
+            'daily_rate'.tr(),
+            cr['formattedDailyRate'] as String,
+            '${cr['totalWorkDaysPerYear']} ${'days_per_year'.tr()}',
+          ),
           const Divider(height: 16),
-          _breakdownRow('gross_pay'.tr(), cr['formattedGross'] as String, '${cr['workedDays']} ${'days'.tr()}'),
-          _breakdownRow('overtime_pay'.tr(), cr['formattedOvertime'] as String, '${cr['overtimeDays']} ${'days_overtime_multiplier'.tr()}'),
-          _breakdownRow('absent_deduction'.tr(), cr['formattedAbsentDeduct'] as String, '${cr['absentDays']} ${'days'.tr()}'),
-          _breakdownRow('leave_deduction'.tr(), cr['formattedLeaveDeduct'] as String, '${cr['leaveDays']} ${'days'.tr()}'),
+          _breakdownRow(
+            'gross_pay'.tr(),
+            cr['formattedGross'] as String,
+            '${cr['workedDays']} ${'days'.tr()}',
+          ),
+          _breakdownRow(
+            'overtime_pay'.tr(),
+            cr['formattedOvertime'] as String,
+            '${cr['overtimeDays']} ${'days_overtime_multiplier'.tr()}',
+          ),
+          _breakdownRow(
+            'absent_deduction'.tr(),
+            cr['formattedAbsentDeduct'] as String,
+            '${cr['absentDays']} ${'days'.tr()}',
+          ),
+          _breakdownRow(
+            'leave_deduction'.tr(),
+            cr['formattedLeaveDeduct'] as String,
+            '${cr['leaveDays']} ${'days'.tr()}',
+          ),
           const Divider(height: 16, thickness: 1.5),
-          _breakdownRow('net_pay'.tr(), cr['formattedNet'] as String, null, isTotal: true),
+          _breakdownRow(
+            'net_pay'.tr(),
+            cr['formattedNet'] as String,
+            null,
+            isTotal: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _breakdownRow(String label, String value, String? detail, {bool isTotal = false}) {
+  Widget _breakdownRow(
+    String label,
+    String value,
+    String? detail, {
+    bool isTotal = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
