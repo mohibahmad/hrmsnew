@@ -612,7 +612,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: SparklineCard(
                           title: 'total_salary'.tr(),
                           amount:
-                              '\$${NumberFormat.compact(locale: 'en_US').format(_totalSalarySum)}',
+                              '\$${NumberFormat.compact(locale: 'en_US').format(_totalSalarySum.clamp(0, double.infinity))}',
                           rawValue: _totalSalarySum,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF4C84E0),

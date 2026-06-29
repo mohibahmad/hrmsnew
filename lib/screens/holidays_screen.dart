@@ -154,8 +154,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               backgroundColor: Color(0xFFFFFFFF),
               elevation: 10,
               child: Container(
-                width: 380,
-                padding: const EdgeInsets.all(24),
+                width: 400,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +187,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -277,7 +277,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             'save'.tr(),
                             style: TextStyle(
                               color: Color(0xFFFFFFFF),
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),

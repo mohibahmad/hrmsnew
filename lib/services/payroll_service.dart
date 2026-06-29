@@ -88,7 +88,7 @@ class PayrollService {
     }
 
     final dailyRate = totalWorkDaysVal > 0 ? periodBaseSalary / totalWorkDaysVal : 0.0;
-    final workedDaysVal = daysWorked.isEmpty ? (totalWorkDaysVal - absentDays) : parseIntSafe(daysWorked);
+    final workedDaysVal = daysWorked.isEmpty ? totalWorkDaysVal : parseIntSafe(daysWorked);
     final overtimeRate = dailyRate * 1.5;
 
     final grossSalary = workedDaysVal * dailyRate;
