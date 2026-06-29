@@ -39,6 +39,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> _todayAttendance = [];
   bool _isLoading = true;
   bool _isDialogOpen = false;
+  bool _isSaving = false;
   String? _errorMessage;
   final FirestoreService _firestore = FirestoreService();
   StreamSubscription? _workersSub;
@@ -632,12 +633,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final name = data["name"] ?? "";
     final email = data["email"] ?? "";
 
-    // Calculate total working days for this worker
-    final totalWorkingDays = _todayAttendance
-        .where((att) => att['email'] == email)
-        .length;
-
-    // Find if there is an existing today's attendance record for this worker
     final todayRecord = _todayAttendance.firstWhere(
       (att) => att['email'] == email,
       orElse: () => <String, dynamic>{},
@@ -825,25 +820,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.calendar_today,
-                                            color: Color(0xFFFFFFFF),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            '${totalWorkingDays} ${'total_working_days'.tr()}',
-                                            style: const TextStyle(
-                                              color: Color(0xFFFFFFFF),
-                                              fontSize: 14,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -977,130 +953,158 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   ElevatedButton(
-                                    onPressed: () async {
-                                      final reason = reasonController.text
-                                          .trim();
-                                      if (selectedStatus != 'Present' &&
-                                          reason.isEmpty) {
-                                        FlashySnackBar.show(
-                                          context,
-                                          message: 'please_enter_reason'.tr(),
-                                          isError: true,
-                                        );
-                                        return;
-                                      }
-
-                                      try {
-                                        final isGuest =
-                                            AuthService()
-                                                .currentUser
-                                                ?.isAnonymous ??
-                                            false;
-                                        final type = selectedStatus == 'Absent'
-                                            ? (data['type'] ?? 'Absent')
-                                            : (selectedStatus == 'Leave'
-                                                  ? (data['type'] ??
-                                                        'Sick Leave')
-                                                  : null);
-                                        final desc = selectedStatus == 'Present'
-                                            ? (reason.isEmpty ? null : reason)
-                                            : reason;
-
-                                        if (isGuest) {
-                                          final wIdx = DummyData.workers
-                                              .indexWhere(
-                                                (w) => w['email'] == email,
-                                              );
-                                          if (wIdx != -1) {
-                                            DummyData.workers[wIdx]['status'] =
-                                                selectedStatus;
-                                          }
-                                          final index = DummyData.attendance
-                                              .indexWhere(
-                                                (element) =>
-                                                    element['email'] == email,
-                                              );
-                                          if (index != -1) {
-                                            DummyData
-                                                    .attendance[index]['status'] =
-                                                selectedStatus;
-                                            if (type != null) {
-                                              DummyData
-                                                      .attendance[index]['type'] =
-                                                  type;
-                                            } else {
-                                              DummyData.attendance[index]
-                                                  .remove('type');
-                                            }
-                                            if (desc != null &&
-                                                desc.isNotEmpty) {
-                                              DummyData
-                                                      .attendance[index]['desc'] =
-                                                  desc;
-                                            } else {
-                                              DummyData.attendance[index]
-                                                  .remove('desc');
-                                            }
-                                          } else {
-                                            final newRecord = {
-                                              'id':
-                                                  'dummy_a${DateTime.now().millisecondsSinceEpoch}',
-                                              'name': name,
-                                              'email': email,
-                                              'role':
-                                                  data['position'] ??
-                                                  data['role'] ??
-                                                  '',
-                                              'status': selectedStatus,
-                                              'attendanceType':
-                                                  data['attendanceType'] ??
-                                                  data['type2'] ??
-                                                  'On-Site',
-                                              'workType':
-                                                  data['workType'] ??
-                                                  data['type1'] ??
-                                                  'Full Time',
-                                            };
-                                            if (type != null)
-                                              newRecord['type'] = type;
-                                            if (desc != null && desc.isNotEmpty)
-                                              newRecord['desc'] = desc;
-                                            DummyData.attendance.add(newRecord);
-                                            DummyData.saveToPrefs();
-                                          }
-                                          setState(() {
-                                            _workers =
-                                                List<Map<String, dynamic>>.from(
-                                                  DummyData.workers,
+                                    onPressed: _isSaving
+                                        ? null
+                                        : () async {
+                                            setState(() => _isSaving = true);
+                                            final reason = reasonController.text
+                                                .trim();
+                                            if (selectedStatus != 'Present' &&
+                                                reason.isEmpty) {
+                                              if (mounted) {
+                                                FlashySnackBar.show(
+                                                  context,
+                                                  message: 'please_enter_reason'.tr(),
+                                                  isError: true,
                                                 );
-                                            _todayAttendance =
-                                                List<Map<String, dynamic>>.from(
-                                                  DummyData.attendance,
-                                                );
-                                          });
-                                        } else {
-                                          // 1. Update the worker document in Firestore to update status pill
-                                          final workerId = data['id'];
-                                          if (workerId != null) {
-                                            final Map<String, dynamic>
-                                            updatedWorker =
-                                                Map<String, dynamic>.from(data);
-                                            updatedWorker['status'] =
-                                                selectedStatus;
-                                            updatedWorker.remove('id');
-                                            await _firestore.updateWorker(
-                                              workerId,
-                                              updatedWorker,
-                                            );
-                                          }
+                                              }
+                                              if (mounted) setState(() => _isSaving = false);
+                                              return;
+                                            }
 
-                                          // 2. Add or Update attendance record in today attendance
-                                          if (todayRecord.isNotEmpty &&
-                                              todayRecord['id'] != null) {
-                                            await _firestore
-                                                .updateAttendanceRecord(
-                                                  todayRecord['id'],
-                                                  {
+                                            try {
+                                              final isGuest =
+                                                  AuthService()
+                                                      .currentUser
+                                                      ?.isAnonymous ??
+                                                  false;
+                                              final type = selectedStatus == 'Absent'
+                                                  ? (data['type'] ?? 'Absent')
+                                                  : (selectedStatus == 'Leave'
+                                                        ? (data['type'] ??
+                                                              'Sick Leave')
+                                                        : null);
+                                              final desc = selectedStatus == 'Present'
+                                                  ? (reason.isEmpty ? null : reason)
+                                                  : reason;
+
+                                              if (isGuest) {
+                                                final wIdx = DummyData.workers
+                                                    .indexWhere(
+                                                  (w) => w['email'] == email,
+                                                );
+                                                if (wIdx != -1) {
+                                                  DummyData.workers[wIdx]['status'] =
+                                                      selectedStatus;
+                                                }
+                                                final index = DummyData.attendance
+                                                    .indexWhere(
+                                                  (element) =>
+                                                      element['email'] == email,
+                                                );
+                                                if (index != -1) {
+                                                  DummyData
+                                                          .attendance[index]['status'] =
+                                                      selectedStatus;
+                                                  if (type != null) {
+                                                    DummyData
+                                                            .attendance[index]['type'] =
+                                                        type;
+                                                  } else {
+                                                    DummyData.attendance[index]
+                                                        .remove('type');
+                                                  }
+                                                  if (desc != null &&
+                                                      desc.isNotEmpty) {
+                                                    DummyData
+                                                            .attendance[index]['desc'] =
+                                                        desc;
+                                                  } else {
+                                                    DummyData.attendance[index]
+                                                        .remove('desc');
+                                                  }
+                                                } else {
+                                                  final newRecord = {
+                                                    'id':
+                                                        'dummy_a${DateTime.now().millisecondsSinceEpoch}',
+                                                    'name': name,
+                                                    'email': email,
+                                                    'role':
+                                                        data['position'] ??
+                                                        data['role'] ??
+                                                        '',
+                                                    'status': selectedStatus,
+                                                    'attendanceType':
+                                                        data['attendanceType'] ??
+                                                        data['type2'] ??
+                                                        'On-Site',
+                                                    'workType':
+                                                        data['workType'] ??
+                                                        data['type1'] ??
+                                                        'Full Time',
+                                                  };
+                                                  if (type != null)
+                                                    newRecord['type'] = type;
+                                                  if (desc != null && desc.isNotEmpty)
+                                                    newRecord['desc'] = desc;
+                                                  DummyData.attendance.add(newRecord);
+                                                  DummyData.saveToPrefs();
+                                                }
+                                                if (mounted) {
+                                                  setState(() {
+                                                    _workers =
+                                                        List<Map<String, dynamic>>.from(
+                                                          DummyData.workers,
+                                                        );
+                                                    _todayAttendance =
+                                                        List<Map<String, dynamic>>.from(
+                                                          DummyData.attendance,
+                                                        );
+                                                  });
+                                                }
+                                              } else {
+                                                final workerId = data['id'];
+                                                if (workerId != null) {
+                                                  final Map<String, dynamic>
+                                                  updatedWorker =
+                                                      Map<String, dynamic>.from(data);
+                                                  updatedWorker['status'] =
+                                                      selectedStatus;
+                                                  updatedWorker.remove('id');
+                                                  await _firestore.updateWorker(
+                                                    workerId,
+                                                    updatedWorker,
+                                                  );
+                                                }
+
+                                                if (todayRecord.isNotEmpty &&
+                                                    todayRecord['id'] != null) {
+                                                  await _firestore
+                                                      .updateAttendanceRecord(
+                                                    todayRecord['id'],
+                                                    {
+                                                      'name': name,
+                                                      'email': email,
+                                                      'role':
+                                                          data['role'] ??
+                                                          data['position'] ??
+                                                          '',
+                                                      'status': selectedStatus,
+                                                      'attendanceType':
+                                                          data['type2'] ??
+                                                          'Remote',
+                                                      'workType':
+                                                          data['type1'] ??
+                                                          'Full Time',
+                                                      'type': type,
+                                                      'desc': desc,
+                                                      'profileImage':
+                                                          data['profileImage'],
+                                                    },
+                                                  );
+                                                } else {
+                                                  await _firestore
+                                                      .addAttendanceRecord({
                                                     'name': name,
                                                     'email': email,
                                                     'role':
@@ -1109,8 +1113,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                         '',
                                                     'status': selectedStatus,
                                                     'attendanceType':
-                                                        data['type2'] ??
-                                                        'Remote',
+                                                        data['type2'] ?? 'Remote',
                                                     'workType':
                                                         data['type1'] ??
                                                         'Full Time',
@@ -1118,53 +1121,46 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     'desc': desc,
                                                     'profileImage':
                                                         data['profileImage'],
-                                                  },
-                                                );
-                                          } else {
-                                            await _firestore
-                                                .addAttendanceRecord({
-                                                  'name': name,
-                                                  'email': email,
-                                                  'role':
-                                                      data['role'] ??
-                                                      data['position'] ??
-                                                      '',
-                                                  'status': selectedStatus,
-                                                  'attendanceType':
-                                                      data['type2'] ?? 'Remote',
-                                                  'workType':
-                                                      data['type1'] ??
-                                                      'Full Time',
-                                                  'type': type,
-                                                  'desc': desc,
-                                                  'profileImage':
-                                                      data['profileImage'],
-                                                });
-                                          }
-                                        }
+                                                  });
+                                                }
+                                              }
 
-                                        if (!context.mounted) return;
-                                        FlashySnackBar.show(
-                                          context,
-                                          message: 'attendance_updated_success'
-                                              .tr(namedArgs: {'name': name}),
-                                        );
-                                      } catch (e) {
-                                        if (!context.mounted) return;
-                                        FlashySnackBar.show(
-                                          context,
-                                          message: 'attendance_update_failed'
-                                              .tr(
-                                                namedArgs: {
-                                                  'error': e.toString(),
-                                                },
-                                              ),
-                                          isError: true,
-                                        );
-                                      }
-                                    },
+                                              if (!context.mounted) {
+                                                if (mounted) setState(() => _isSaving = false);
+                                                return;
+                                              }
+                                              FlashySnackBar.show(
+                                                context,
+                                                message: 'attendance_updated_success'
+                                                    .tr(namedArgs: {'name': name}),
+                                              );
+                                            } catch (e) {
+                                              if (!context.mounted) {
+                                                if (mounted) setState(() => _isSaving = false);
+                                                return;
+                                              }
+                                              FlashySnackBar.show(
+                                                context,
+                                                message: 'attendance_update_failed'
+                                                    .tr(
+                                                      namedArgs: {
+                                                        'error': e.toString(),
+                                                      },
+                                                    ),
+                                                isError: true,
+                                              );
+                                            }
+                                            if (mounted) Navigator.pop(context);
+                                            if (mounted) setState(() => _isSaving = false);
+                                          },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF0F52BA),
+                                      disabledBackgroundColor: const Color(
+                                        0xFFB0BEC5,
+                                      ),
+                                      disabledForegroundColor: const Color(
+                                        0xFFE0E0E0,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(6),
                                       ),
