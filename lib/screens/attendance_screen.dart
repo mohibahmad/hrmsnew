@@ -104,6 +104,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>> _workersList = [];
   List<Map<String, dynamic>> _rawAttendanceDocs = [];
   bool _isLoading = true;
+  bool _workersLoaded = false;
+  bool _attendanceLoaded = false;
+  int _totalCount = 0;
+  int _presentCount = 0;
+  int _absentCount = 0;
+  int _leaveCount = 0;
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
   StreamSubscription? _attendanceSub;
@@ -125,30 +131,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     final combined = <Map<String, dynamic>>[];
 
+    final emailMap = <String, Map<String, dynamic>>{};
+    final nameMap = <String, Map<String, dynamic>>{};
+
     for (var att in _rawAttendanceDocs) {
       final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
       final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-
-      final matchingWorker = _workersList.firstWhere(
-        (w) {
-          final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
-          final wName = (w['name'] ?? '').toString().trim().toLowerCase();
-          return (attEmail.isNotEmpty && wEmail == attEmail) ||
-              (attName.isNotEmpty && wName == attName);
-        },
-        orElse: () => <String, dynamic>{},
-      );
-
-      if (matchingWorker.isNotEmpty) {
-        combined.add({
-          ...att,
-          'name': matchingWorker['name'] ?? att['name'],
-          'role': matchingWorker['position'] ?? att['role'] ?? '',
-          'profileImage': matchingWorker['profileImage'],
-          'phone': matchingWorker['phone'] ?? '',
-        });
-      } else {
-        combined.add(att);
+      if (attEmail.isNotEmpty) {
+        emailMap.putIfAbsent(attEmail, () => att);
+      }
+      if (attName.isNotEmpty) {
+        nameMap.putIfAbsent(attName, () => att);
       }
     }
 
@@ -156,14 +149,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final wEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
       final wName = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-      final hasRecord = _rawAttendanceDocs.any((att) {
-        final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-        final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-        return (wEmail.isNotEmpty && attEmail == wEmail) ||
-            (wName.isNotEmpty && attName == wName);
-      });
+      final matched = <String, dynamic>{};
+      if (wEmail.isNotEmpty && emailMap.containsKey(wEmail)) {
+        matched.addAll(emailMap[wEmail]!);
+      } else if (wName.isNotEmpty && nameMap.containsKey(wName)) {
+        matched.addAll(nameMap[wName]!);
+      }
 
-      if (!hasRecord) {
+      if (matched.isNotEmpty) {
+        combined.add({
+          ...matched,
+          'name': worker['name'] ?? matched['name'],
+          'role': worker['position'] ?? matched['role'] ?? '',
+          'profileImage': worker['profileImage'],
+          'phone': worker['phone'] ?? '',
+        });
+      } else {
         combined.add({
           'id': 'norecord_${worker['id'] ?? wEmail}',
           'name': worker['name'] ?? 'Worker',
@@ -179,7 +180,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
     }
 
-    combined.sort((a, b) {
+    final matchedKeys = <String>{};
+    for (var att in _rawAttendanceDocs) {
+      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
+      final hasWorker = (attEmail.isNotEmpty && emailMap.containsKey(attEmail)) ||
+          (attName.isNotEmpty && nameMap.containsKey(attName));
+      if (!hasWorker) {
+        combined.add(att);
+      } else {
+        matchedKeys.add(att['id']?.toString() ?? '');
+      }
+    }
+
+    final sorted = List<Map<String, dynamic>>.from(combined);
+    sorted.sort((a, b) {
       final aTime = a['createdAt'];
       final bTime = b['createdAt'];
       if (aTime == null && bTime == null) return 0;
@@ -191,8 +206,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return 0;
     });
 
-    _attendanceDocs = combined;
-    _isLoading = false;
+    _attendanceDocs = sorted;
+    if (_workersLoaded && _attendanceLoaded) {
+      _isLoading = false;
+    }
+    _totalCount = _attendanceDocs.where((d) => _matchesPeriod(d)).length;
+    _presentCount = _attendanceDocs
+        .where((d) => d['status'] == 'Present' && _matchesPeriod(d))
+        .length;
+    _absentCount = _attendanceDocs
+        .where((d) => d['status'] == 'Absent' && _matchesPeriod(d))
+        .length;
+    _leaveCount = _attendanceDocs
+        .where((d) => d['status'] == 'Leave' && _matchesPeriod(d))
+        .length;
   }
 
   @override
@@ -202,6 +229,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _workersList = [];
     _rawAttendanceDocs = [];
     _isLoading = true;
+    _workersLoaded = false;
+    _attendanceLoaded = false;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
@@ -210,6 +239,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _workersList = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
+            _workersLoaded = true;
             _combineAttendance();
           });
         }
@@ -221,6 +251,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               _rawAttendanceDocs = snapshot.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
+              _attendanceLoaded = true;
               _combineAttendance();
             });
           }
@@ -228,6 +259,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         onError: (e) {
           if (mounted) {
             setState(() {
+              _attendanceLoaded = true;
               _isLoading = false;
             });
           }
@@ -238,6 +270,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _rawAttendanceDocs = List<Map<String, dynamic>>.from(
         DummyData.attendance,
       );
+      _workersLoaded = true;
+      _attendanceLoaded = true;
       _combineAttendance();
     }
   }
@@ -268,17 +302,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return false;
     }).toList();
   }
-
-  int get _totalCount => _attendanceDocs.where((d) => _matchesPeriod(d)).length;
-  int get _presentCount => _attendanceDocs
-      .where((d) => d['status'] == 'Present' && _matchesPeriod(d))
-      .length;
-  int get _absentCount => _attendanceDocs
-      .where((d) => d['status'] == 'Absent' && _matchesPeriod(d))
-      .length;
-  int get _leaveCount => _attendanceDocs
-      .where((d) => d['status'] == 'Leave' && _matchesPeriod(d))
-      .length;
 
   @override
   Widget build(BuildContext context) {

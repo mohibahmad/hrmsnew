@@ -211,11 +211,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     } else {
       _loadDefaultCompanyCurrency();
     }
-    if (_joiningDate == null || _joiningDate!.isEmpty) {
-      final today = DateTime.now();
-      _joiningDate =
-          '${_localizedMonth(today.month)} ${today.day}, ${today.year}';
-    }
+    // Do not auto-default joining date - user must explicitly set it.
 
     _nameController.addListener(_onControllerChanged);
     _nameController.addListener(() {
@@ -960,6 +956,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_salary_amount'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (_joiningDate == null || _joiningDate!.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_a_joining_date'.tr(),
         title: 'validation_error'.tr(),
         isError: true,
       );
@@ -3249,27 +3255,38 @@ class DocumentationSection extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(height: 16, width: 200, color: Colors.grey.shade300),
-                const SizedBox(height: 8),
-                Container(height: 10, width: 150, color: Colors.grey.shade300),
-                const SizedBox(height: 40),
-                ...List.generate(
-                  8,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      height: 12,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
+          ImageFiltered(
+            imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    height: 16,
+                    width: 200,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 10,
+                    width: 150,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 40),
+                  ...List.generate(
+                    8,
+                    (index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Container(
+                        height: 12,
+                        width: double.infinity,
+                        color: Colors.grey.shade300,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Container(color: const Color(0xFFFFFFFF).withValues(alpha: 0.5)),

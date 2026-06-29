@@ -97,7 +97,7 @@ void main() {
       debugPrint('Firebase ready: $firebaseReady');
 
       // Restore guest data from previous session, if any.
-      await DummyData.loadFromPrefs();
+      DummyData.loadFromPrefs();
 
       // FIX #2: await window setup BEFORE runApp and launch hidden, then show,
       // to avoid the default-size flash / position jump on macOS.

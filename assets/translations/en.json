@@ -364,6 +364,7 @@
   "annual_leaves_days": "Annual Leaves (Days):",
   "sick_leaves_days": "Sick Leaves (Days):",
   "casual_leaves_days": "Casual Leaves (Days):",
+  "please_select_a_joining_date": "Please select a joining date",
   "joining_date_set": "Joining Date set",
   "personal_documentation": "Personal Documentation",
   "id_card_label": "ID Card:",

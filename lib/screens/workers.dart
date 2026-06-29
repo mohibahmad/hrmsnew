@@ -681,9 +681,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     try {
       if (isGuest) {
-        DummyData.workers.removeWhere(
-          (w) => w['id']?.toString() == docId,
-        );
+        DummyData.workers.removeWhere((w) => w['id']?.toString() == docId);
         await DummyData.saveToPrefs();
         setState(() {
           _allWorkers = DummyData.workers;
@@ -875,7 +873,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           isGuest: isGuest,
                         )) {
                           if (!mounted) return;
-                          final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+                          final upgraded =
+                              await PremiumGate.shouldShowUpgradeDialog(
+                                context,
+                              );
                           if (upgraded == true && mounted) {
                             widget.onAddWorker();
                           }
@@ -899,7 +900,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           isGuest: isGuest,
                         )) {
                           if (!mounted) return;
-                          final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+                          final upgraded =
+                              await PremiumGate.shouldShowUpgradeDialog(
+                                context,
+                              );
                           if (upgraded == true && mounted) {
                             (widget.onAddBulkWorker ?? () {})();
                           }
@@ -1898,6 +1902,8 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
