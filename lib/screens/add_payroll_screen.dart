@@ -394,17 +394,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   ),
                 ],
               ),
-              ElevatedButton.icon(
-                onPressed: _handleSave,
-                icon: const Icon(Icons.save_outlined, size: 20, color: Colors.white),
-                label: Text('save_payroll_entry'.tr(), style: const TextStyle(fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B50C3),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
+
             ],
           ),
         ],
