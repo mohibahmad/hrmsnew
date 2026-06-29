@@ -284,7 +284,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   _name,
                   style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Row(

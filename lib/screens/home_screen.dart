@@ -1095,7 +1095,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               Text(
                                 'get_to_pro'.tr(),
                                 maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
@@ -1108,7 +1107,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                               Text(
                                 'subscribe_now'.tr(),
                                 maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,
@@ -1202,7 +1200,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                             fontWeight: FontWeight.w500,
                             fontFamily: 'SF Pro',
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -1310,7 +1307,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   fontWeight: FontWeight.w600,
                   fontFamily: 'SF Pro',
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             const Icon(
@@ -1361,7 +1357,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                   fontWeight: isSelected ? FontWeight.w500 : FontWeight.w500,
                   fontFamily: 'SF Pro',
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1442,7 +1437,6 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           : FontWeight.w500,
                       fontFamily: 'SF Pro',
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (hasDropdown)
@@ -1972,7 +1966,6 @@ class SparklineCard extends StatelessWidget {
                                   fontSize: 18,
                                   fontFamily: 'SF Pro Display',
                                 ),
-                                overflow: TextOverflow.ellipsis,
                                 maxLines: 1,
                               ),
                             ),
@@ -3379,7 +3372,6 @@ class LeaveTypesPieChart extends StatelessWidget {
         Flexible(
           child: Text(
             text,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
@@ -3675,7 +3667,6 @@ class HolidayCard extends StatelessWidget {
                   Text(
                     holidayName,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: mainTextColor,
                       fontSize: 13,

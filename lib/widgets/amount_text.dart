@@ -31,8 +31,6 @@ class AmountText extends StatelessWidget {
       display,
       style: style,
       textAlign: textAlign ?? TextAlign.right,
-      overflow: TextOverflow.ellipsis,
-      maxLines: 1,
     );
   }
 }

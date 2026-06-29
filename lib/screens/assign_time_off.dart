@@ -351,7 +351,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             color: Color(0xFFFFFFFF),
             elevation: 8,
             tooltip: '',
-            child: const UserAvatar(radius: 21),
+            child: const UserAvatar(),
             itemBuilder: (context) => [
               PopupMenuItem<String>(
                 enabled: false,

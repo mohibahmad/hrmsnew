@@ -1655,7 +1655,6 @@ class WorkerDetailFormSection extends StatelessWidget {
             child: Text(
               profileImageName ?? 'Profile Image',
               textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -2852,7 +2851,6 @@ class DocumentationSection extends StatelessWidget {
                               fileName ?? 'pdf_document'.tr(),
                               textAlign: TextAlign.center,
                               maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.grey.shade600,
                                 fontSize: 13,
@@ -2896,7 +2894,6 @@ class DocumentationSection extends StatelessWidget {
                           Flexible(
                             child: Text(
                               fileName ?? 'file_uploaded'.tr(),
-                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,

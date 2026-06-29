@@ -1263,7 +1263,6 @@ class ProfilePreviewDialog extends StatelessWidget {
                 Text(
                   value,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'SF Pro',
                     fontSize: 13,

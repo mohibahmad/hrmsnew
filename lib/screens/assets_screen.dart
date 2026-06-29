@@ -1211,7 +1211,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       child: Text(
                         data.name,
                         maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
@@ -1234,7 +1233,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 child: Text(
                   data.position,
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
@@ -1254,7 +1252,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 child: Text(
                   data.type,
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 15,
                     color: Color(0xFF000000),
@@ -1271,7 +1268,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
               child: Text(
                 data.dateLoaned,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 15,
                   color: Color(0xFF000000),
@@ -1288,7 +1284,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
               child: Text(
                 data.dateReturned.tr(),
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,

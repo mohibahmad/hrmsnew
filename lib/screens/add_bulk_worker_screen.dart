@@ -894,7 +894,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                   color: Color(0xFF475569),
                                                   fontFamily: 'SF Pro Display',
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ),
@@ -1060,7 +1059,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           color: isBold ? const Color(0xFF0F172A) : const Color(0xFF334155),
           fontFamily: 'SF Pro Display',
         ),
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }

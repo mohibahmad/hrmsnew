@@ -668,7 +668,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           Expanded(
                             flex: 3,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 16.0),
+                              padding: const EdgeInsets.only(right: 24.0),
                               child: Row(
                                 children: [
                                   CircleAvatar(
@@ -696,19 +696,19 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                               fontFamily: 'SF Pro Display',
                                             ),
                                             maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        Text(
-                                          email,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black,
-                                            fontFamily: 'SF Pro Display',
+                                        Tooltip(
+                                          message: email,
+                                          child: Text(
+                                            email,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ),
@@ -721,7 +721,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           Expanded(
                             flex: 2,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 16.0),
+                              padding: const EdgeInsets.only(right: 24.0),
                               child: Tooltip(
                                 message: position,
                                 child: Text(
@@ -732,7 +732,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     fontFamily: 'SF Pro Display',
                                   ),
                                   maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
@@ -741,7 +740,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           Expanded(
                             flex: 2,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 16.0),
+                              padding: const EdgeInsets.only(right: 24.0),
                               child: Text(
                                 contact,
                                 style: const TextStyle(
@@ -750,7 +749,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   fontFamily: 'SF Pro Display',
                                 ),
                                 maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),

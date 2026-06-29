@@ -562,7 +562,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 3,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 24.0),
               child: Row(
                 children: [
                   CircleAvatar(
@@ -588,19 +588,19 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               fontFamily: 'SF Pro Display',
                             ),
                             maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          (doc['email'] ?? '').toString(),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                            fontFamily: 'SF Pro Display',
+                        Tooltip(
+                          message: (doc['email'] ?? '').toString(),
+                          child: Text(
+                            (doc['email'] ?? '').toString(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                              fontFamily: 'SF Pro Display',
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -612,7 +612,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 24.0),
               child: Tooltip(
                 message: (doc['position'] ?? '').toString(),
                 child: Text(
@@ -623,7 +623,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -631,7 +630,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 24.0),
               child: Text(
                 (doc['phone'] ?? doc['contact'] ?? '').toString(),
                 style: const TextStyle(
@@ -640,7 +639,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   fontFamily: 'SF Pro Display',
                 ),
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -772,7 +770,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             fontWeight: FontWeight.bold,
                             fontFamily: 'SF Pro Display',
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       GestureDetector(
@@ -874,15 +871,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text(
-                                    email,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
+                                  child: Tooltip(
+                                    message: email,
+                                    child: Text(
+                                      email,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -1072,7 +1071,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1083,8 +1081,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

@@ -180,7 +180,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                     Text(
                                       'get_to_pro'.tr(),
                                       maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: Color(0xFFFFFFFF),
                                         fontSize: 14,
@@ -192,7 +191,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                     Text(
                                       'subscribe_now'.tr(),
                                       maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: Color(0xFFFFFFFF),
                                         fontSize: 14,
@@ -1197,7 +1195,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           Expanded(
             flex: 3,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 24.0),
               child: Row(
                 children: [
                   CircleAvatar(
@@ -1218,7 +1216,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           child: Text(
                             name,
                             maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
@@ -1226,14 +1223,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             ),
                           ),
                         ),
-                        Text(
-                          email,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                            fontFamily: 'SF Pro Display',
+                        Tooltip(
+                          message: email,
+                          child: Text(
+                            email,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                              fontFamily: 'SF Pro Display',
+                            ),
                           ),
                         ),
                       ],
@@ -1246,11 +1244,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 24.0),
               child: Text(
                 localizedType1,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 15,
@@ -1262,13 +1259,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 24.0),
               child: Tooltip(
                 message: position,
                 child: Text(
                   position,
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w500,
                     fontSize: 15,
@@ -1283,7 +1279,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             child: Text(
               localizedType2,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
@@ -1692,13 +1687,17 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: Text(
-                                        email,
-                                        style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
+                                      child: Tooltip(
+                                        message: email,
+                                        child: Text(
+                                          email,
+                                          maxLines: 1,
+                                          style: const TextStyle(
+                                            color: Color(0xFFFFFFFF),
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1889,7 +1888,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1900,8 +1898,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
