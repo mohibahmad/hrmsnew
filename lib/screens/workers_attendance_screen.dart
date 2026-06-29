@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/preferences_service.dart';
 import 'home_screen.dart';
 import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
@@ -41,6 +42,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   bool _isDialogOpen = false;
   bool _isSaving = false;
   String? _errorMessage;
+  bool _isPremium = false;
   final FirestoreService _firestore = FirestoreService();
   StreamSubscription? _workersSub;
   StreamSubscription? _attendanceSub;
@@ -84,6 +86,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       });
       return;
     }
+
+    final user = AuthService().currentUser;
+    if (user != null && !user.isAnonymous) {
+      try {
+        final profile = await _firestore.getUserProfile();
+        if (mounted) {
+          setState(() {
+            _isPremium = profile?['isPremium'] == true;
+          });
+        }
+      } catch (_) {
+        final prefsPremium = await PreferencesService.isPremium();
+        if (mounted) {
+          setState(() {
+            _isPremium = prefsPremium;
+          });
+        }
+      }
+    }
+
     _workersSub = _firestore.workersStream.listen(
       (snapshot) {
         if (mounted) {
@@ -218,6 +240,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               selectedIndex: 2,
               selectedSubIndex: 0,
               isGuest: AuthService().currentUser?.isAnonymous ?? false,
+              isPremium: _isPremium,
               onItemSelected: (index, {subIndex}) {
                 Navigator.of(context, rootNavigator: true).pop();
               },
@@ -244,7 +267,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               children: [
                                 // Left List Section: Worker Attendance Statuses
                                 Expanded(
-                                  flex: 70,
+                                  flex: 65,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -260,21 +283,21 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                       const SizedBox(height: 16),
                                       Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: Color(0xFFFFFFFF),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFEEEEEE),
-                                            ),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              Expanded(
-                                                child: filteredWorkers.isEmpty
+                                         child: Container(
+                                           padding: const EdgeInsets.all(24),
+                                           decoration: BoxDecoration(
+                                             color: Color(0xFFFFFFFF),
+                                             borderRadius: BorderRadius.circular(
+                                               6,
+                                             ),
+                                             border: Border.all(
+                                               color: const Color(0xFFEEEEEE),
+                                             ),
+                                           ),
+                                           child: Column(
+                                             children: [
+                                               Expanded(
+                                                 child: filteredWorkers.isEmpty
                                                     ? Center(
                                                         child: Column(
                                                           mainAxisAlignment:
@@ -345,10 +368,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 20),
+                                const SizedBox(width: 8),
                                 // Right List Section: Today Detailed Attendance Logs
                                 Expanded(
-                                  flex: 30,
+                                  flex: 35,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -364,18 +387,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                       const SizedBox(height: 16),
                                       Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: Color(0xFFFFFFFF),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFEEEEEE),
-                                            ),
-                                          ),
-                                          child: _todayAttendance.isEmpty
+                                         child: Container(
+                                           padding: const EdgeInsets.all(24),
+                                           decoration: BoxDecoration(
+                                             color: Color(0xFFFFFFFF),
+                                             borderRadius: BorderRadius.circular(
+                                               6,
+                                             ),
+                                             border: Border.all(
+                                               color: const Color(0xFFEEEEEE),
+                                             ),
+                                           ),
+                                           child: _todayAttendance.isEmpty
                                               ? Center(
                                                   child: Column(
                                                     mainAxisAlignment:
@@ -1258,7 +1281,7 @@ class WorkerListItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: cardLightGray,
+        color: const Color(0xFFF7F8FC),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -1374,7 +1397,7 @@ class TodayAttendanceItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardLightGray,
+        color: const Color(0xFFF7F8FC),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -1444,7 +1467,7 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bgColor;
+    Color bgColor = pillGray;
     Color textColor = Color(0xFFFFFFFF);
     final displayStatus = (status.isEmpty || status == "*****")
         ? "*****"
@@ -1481,6 +1504,8 @@ class StatusPill extends StatelessWidget {
           fontFamily: 'SF Pro Display',
         ),
         textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

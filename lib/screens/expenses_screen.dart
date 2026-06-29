@@ -788,13 +788,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     keyboardType == TextInputType.number ||
                     label.toLowerCase().contains('amount'))
                 ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
-                : label.toLowerCase().contains('category')
-                    ? [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^[a-zA-Z\s]*'),
-                        ),
-                      ]
-                    : null,
+                : null,
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: const TextStyle(color: Colors.grey),
