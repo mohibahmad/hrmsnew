@@ -468,6 +468,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 24),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: _buildInput('overtime_days'.tr(), '2', _overtimeCtrl),
@@ -584,25 +585,32 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF2FA),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFD2E3FC)),
+        TextField(
+          readOnly: true,
+          controller: TextEditingController(text: netAmount),
+          style: const TextStyle(
+            fontSize: 16,
+            color: _darkBlue,
+            fontWeight: FontWeight.w600,
           ),
-          child: Text(
-            netAmount,
-            style: const TextStyle(
-              fontSize: 20,
-              color: _darkBlue,
-              fontWeight: FontWeight.bold,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
             ),
-            softWrap: true,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFEDF2FA),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Row(
           children: [
             const Icon(Icons.info_outline, size: 14, color: _darkBlue),
@@ -616,6 +624,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       ],
     );
   }
+
+
+
 
   Widget _buildCalcBreakdown(Map<String, dynamic> cr) {
     return Container(
