@@ -539,26 +539,98 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     if (filter == 'All') return true;
     final pos = position.toLowerCase();
     final f = filter.toLowerCase();
-    if (f == 'designer') {
-      return pos.contains('designer') &&
-          !pos.contains('engineer') &&
-          !pos.contains('developer');
-    } else if (f == 'developer') {
-      return (pos.contains('developer') || pos.contains('development')) &&
-          !pos.contains('designer');
-    } else if (f == 'engineering') {
-      return (pos.contains('engineer') ||
-              pos.contains('architect') ||
-              pos.contains('analyst') ||
-              pos.contains('scientist')) &&
-          !pos.contains('designer') &&
-          !pos.contains('developer');
-    } else if (f == 'sales') {
-      return pos.contains('sales') || pos.contains('marketing');
+    if (f == 'technology') {
+      return pos.contains('engineer') ||
+          pos.contains('developer') ||
+          pos.contains('architect') ||
+          pos.contains('devops') ||
+          pos.contains('cloud') ||
+          pos.contains('data') ||
+          pos.contains('scientist') ||
+          pos.contains('machine learning') ||
+          pos.contains('ml') ||
+          pos.contains('qa') ||
+          pos.contains('tester') ||
+          pos.contains('it support') ||
+          pos.contains('network') ||
+          pos.contains('database') ||
+          pos.contains('dba') ||
+          pos.contains('cyber') ||
+          pos.contains('security') ||
+          pos.contains('analyst') ||
+          pos.contains('cto') ||
+          pos.contains('chief technology');
+    } else if (f == 'design') {
+      return pos.contains('designer') ||
+          pos.contains('design lead') ||
+          pos.contains('creative director');
     } else if (f == 'management') {
       return pos.contains('manager') ||
-          pos.contains('writer') ||
-          pos.contains('hr');
+          pos.contains('director') ||
+          pos.contains('head') ||
+          pos.contains('lead') ||
+          pos.contains('chief') ||
+          pos.contains('cpo') ||
+          pos.contains('product') ||
+          pos.contains('project') ||
+          pos.contains('program') ||
+          pos.contains('scrum') ||
+          pos.contains('agile') ||
+          pos.contains('business analyst');
+    } else if (f == 'sales') {
+      return pos.contains('sales') ||
+          pos.contains('marketing') ||
+          pos.contains('seo') ||
+          pos.contains('content') ||
+          pos.contains('social media') ||
+          pos.contains('brand') ||
+          pos.contains('business development') ||
+          pos.contains('account executive') ||
+          pos.contains('customer success');
+    } else if (f == 'hr') {
+      return pos.contains('hr') ||
+          pos.contains('human resource') ||
+          pos.contains('recruitment') ||
+          pos.contains('talent') ||
+          pos.contains('learning') ||
+          pos.contains('training') ||
+          pos.contains('employee relations') ||
+          pos.contains('payroll') ||
+          pos.contains('benefits');
+    } else if (f == 'finance') {
+      return pos.contains('finance') ||
+          pos.contains('account') ||
+          pos.contains('cfo') ||
+          pos.contains('chief financial') ||
+          pos.contains('financial analyst') ||
+          pos.contains('budget') ||
+          pos.contains('tax') ||
+          pos.contains('payable') ||
+          pos.contains('receivable');
+    } else if (f == 'operations') {
+      return pos.contains('operations') ||
+          pos.contains('supply chain') ||
+          pos.contains('logistics') ||
+          pos.contains('procurement') ||
+          pos.contains('inventory') ||
+          pos.contains('warehouse') ||
+          pos.contains('facilities') ||
+          pos.contains('quality assurance') ||
+          pos.contains('coo') ||
+          pos.contains('chief operations');
+    } else if (f == 'support') {
+      return pos.contains('support') ||
+          pos.contains('help desk') ||
+          pos.contains('customer experience');
+    } else if (f == 'legal') {
+      return pos.contains('legal') ||
+          pos.contains('compliance') ||
+          pos.contains('privacy') ||
+          pos.contains('data protection') ||
+          pos.contains('attorney') ||
+          pos.contains('counsel') ||
+          pos.contains('clo') ||
+          pos.contains('chief legal');
     }
     return false;
   }
@@ -858,11 +930,12 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _buildFilterTab('All', 'all_filter'.tr()),
-                        _buildFilterTab('Designer', 'designer'.tr()),
-                        _buildFilterTab('Developer', 'developer'.tr()),
-                        _buildFilterTab('Engineering', 'engineering'.tr()),
-                        _buildFilterTab('Sales', 'sales'.tr()),
+                        _buildFilterTab('Technology', 'technology'.tr()),
+                        _buildFilterTab('Design', 'design'.tr()),
                         _buildFilterTab('Management', 'management'.tr()),
+                        _buildFilterTab('Sales', 'sales'.tr()),
+                        _buildFilterTab('HR', 'hr'.tr()),
+                        _buildFilterTab('Finance', 'finance'.tr()),
                       ],
                     ),
                   ),
