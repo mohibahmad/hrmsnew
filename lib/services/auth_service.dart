@@ -214,6 +214,10 @@ class UserAvatar extends StatelessWidget {
               width: size,
               height: size,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return _buildFallback(size);
+              },
               errorBuilder: (context, error, stackTrace) =>
                   _buildFallback(size),
             );
@@ -259,23 +263,15 @@ class UserAvatar extends StatelessWidget {
   }
 
   Widget _buildFallback(double size) {
-    return Image.asset(
-      'assets/profile_pic.png',
+    return Container(
       width: size,
       height: size,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          width: size,
-          height: size,
-          color: const Color(0xFFE2E8F0),
-          child: Icon(
-            Icons.person,
-            size: size * 0.6,
-            color: const Color(0xFF64748B),
-          ),
-        );
-      },
+      color: const Color(0xFFE2E8F0),
+      child: Icon(
+        Icons.person,
+        size: size * 0.6,
+        color: const Color(0xFF64748B),
+      ),
     );
   }
 }

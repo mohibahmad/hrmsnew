@@ -121,13 +121,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   String _formatCurrency(double amount) {
-    final locale = context.locale.toString();
     if (amount >= 1000) {
-      final compact = NumberFormat.compact(locale: locale).format(amount);
-      return '\$$compact';
+      return '\$${NumberFormat.compact(locale: 'en_US').format(amount)}';
     }
     final format = NumberFormat.currency(
-      locale: locale,
+      locale: 'en_US',
       symbol: '\$ ',
       decimalDigits: 2,
     );

@@ -10,6 +10,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
 
 class ProfileTopHeader extends StatelessWidget {
@@ -476,6 +477,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           await AuthService().currentUser?.updatePhotoURL(downloadUrl);
           _profilePicUrl = downloadUrl;
           AuthService.profilePicNotifier.value = downloadUrl;
+          await PreferencesService.setProfilePicUrl(downloadUrl);
           _newProfileImageBytes = null;
           _newProfileImagePath = null;
         }

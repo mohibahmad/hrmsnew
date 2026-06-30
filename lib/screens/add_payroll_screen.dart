@@ -156,6 +156,33 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           await FirestoreService().addPayrollRecord(record);
         }
       }
+
+      // Auto-create expense entry for salary payment
+      final netAmount = PayrollService.extractSalary(_calculatedNet);
+      if (netAmount > 0) {
+        final now = DateTime.now();
+        final dateStr =
+            '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+        final expenseRecord = {
+          'name': _name,
+          'date': dateStr,
+          'category': 'Salary',
+          'amount': netAmount,
+          'description': 'Salary payment for $_name',
+        };
+        if (isGuest) {
+          final expenseId =
+              'dummy_e${DateTime.now().millisecondsSinceEpoch}';
+          DummyData.expenses.insert(0, {
+            ...expenseRecord,
+            'id': expenseId,
+          });
+          await DummyData.saveToPrefs();
+        } else {
+          await FirestoreService().addExpense(expenseRecord);
+        }
+      }
+
       if (mounted) {
         FlashySnackBar.show(
           context,

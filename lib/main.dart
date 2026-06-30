@@ -8,21 +8,24 @@ import 'package:easy_localization/easy_localization.dart';
 import 'firebase_options.dart';
 import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
+import 'services/auth_service.dart';
+import 'services/preferences_service.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  // Route all uncaught framework and async errors through ErrorReporter so
-  // nothing is silently lost in production.
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
+      await PreferencesService.initFromPrefs();
+
+      final cachedUrl = PreferencesService.cachedProfilePicUrl;
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        AuthService.profilePicNotifier.value = cachedUrl;
+      }
+
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (FlutterErrorDetails details) {
-        // Suppress the noisy HardwareKeyboard assertion on macOS that fires
-        // when the app loses focus while a key is pressed (e.g. CMD+M/CMD+Tab).
-        // NOTE: brittle string match — revisit if the Flutter SDK changes this
-        // assertion message.
         if (details.exception is AssertionError &&
             details.exception.toString().contains(
               '!_pressedKeys.containsKey(event.physicalKey)',
@@ -35,9 +38,6 @@ void main() {
           context: 'FlutterError',
           fatal: true,
         );
-        // FIX #3: don't double-handle. Only forward to the original handler in
-        // debug so you still get the red error screen; in release we've already
-        // reported it.
         if (kDebugMode) {
           if (originalOnError != null) {
             originalOnError(details);
@@ -47,8 +47,6 @@ void main() {
         }
       };
 
-      // Errors from the platform side (e.g. plugins) that the framework can't
-      // catch otherwise.
       PlatformDispatcher.instance.onError = (error, stack) {
         ErrorReporter.report(
           error,
@@ -59,9 +57,6 @@ void main() {
         return true;
       };
 
-      // FIX #1: don't return Firebase.app() on timeout — the default app isn't
-      // registered yet when init times out, so it would throw [core/no-app].
-      // Track readiness with a flag and gate Firebase usage on it instead.
       bool firebaseReady = false;
       try {
         await Firebase.initializeApp(
@@ -69,11 +64,6 @@ void main() {
         ).timeout(
           const Duration(seconds: 5),
           onTimeout: () {
-            debugPrint(
-              'Firebase.initializeApp timed out — continuing without remote config.',
-            );
-            // Returning the in-flight future's value is impossible here, so
-            // signal a timeout by throwing a typed error we catch below.
             throw TimeoutException('Firebase.initializeApp timed out');
           },
         );
@@ -84,7 +74,6 @@ void main() {
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
       } on TimeoutException catch (e, st) {
-        // Non-fatal: app continues without Firebase-backed features.
         ErrorReporter.report(
           e,
           st,
@@ -96,11 +85,8 @@ void main() {
       }
       debugPrint('Firebase ready: $firebaseReady');
 
-      // Restore guest data from previous session, if any.
       DummyData.loadFromPrefs();
 
-      // FIX #2: await window setup BEFORE runApp and launch hidden, then show,
-      // to avoid the default-size flash / position jump on macOS.
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
         try {
           await windowManager.ensureInitialized();
@@ -155,12 +141,11 @@ class HRMSApp extends StatelessWidget {
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       builder: (context, child) {
-        // FIX #4: const TextScaler.
         return MediaQuery(
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: child ?? const SizedBox.shrink(), // FIX #6: safe fallback
+          child: child ?? const SizedBox.shrink(),
         );
       },
       home: const SplashScreen(),

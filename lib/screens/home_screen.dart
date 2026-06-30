@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -196,21 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    AuthService.profilePicNotifier.value = AuthService().currentUser?.photoURL;
     final currentUser = AuthService().currentUser;
-    if (currentUser != null && !currentUser.isAnonymous) {
-      FirestoreService()
-          .getUserProfile()
-          .then((profile) {
-            if (profile != null && mounted) {
-              final pic = profile['profilePic'];
-              if (pic != null && pic.toString().isNotEmpty) {
-                AuthService.profilePicNotifier.value = pic.toString();
-              }
-            }
-          })
-          .catchError((_) {});
-    }
+    // Try to restore profile pic from local storage first (survives restarts)
+    _restoreProfilePic(currentUser);
     _selectedIndex = 0;
     _loadDashboardData();
     // Real-time listener for premium status changes from Firestore
@@ -221,6 +210,33 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       await _checkPremiumAndShowDialog();
     });
+  }
+
+  Future<void> _restoreProfilePic(User? currentUser) async {
+    // 1) Use the sync cache first — set on the notifier immediately so the
+    //    first frame already shows the correct image (no async delay).
+    final cachedUrl = PreferencesService.cachedProfilePicUrl;
+    if (cachedUrl != null && cachedUrl.isNotEmpty) {
+      AuthService.profilePicNotifier.value = cachedUrl;
+      // Fall through to Firestore in case the cached URL is stale
+    } else {
+      // 2) No sync cache — try Firebase Auth photoURL as a quick initial value
+      AuthService.profilePicNotifier.value = currentUser?.photoURL;
+    }
+
+    // 3) Background: refresh from Firestore and persist for next launch
+    if (currentUser != null && !currentUser.isAnonymous) {
+      try {
+        final profile = await FirestoreService().getUserProfile();
+        if (mounted && profile != null) {
+          final pic = profile['profilePic'];
+          if (pic != null && pic.toString().isNotEmpty) {
+            AuthService.profilePicNotifier.value = pic.toString();
+            await PreferencesService.setProfilePicUrl(pic.toString());
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   void _startPremiumListener() {
@@ -788,32 +804,54 @@ class _HomeScreenState extends State<HomeScreen> {
                         final now = DateTime.now();
                         final activeHolidays = _holidays.where((h) {
                           if (h['isEnabled'] != true) return false;
-                          
+
                           // Build holiday date from month and day fields
                           final monthStr = (h['month'] ?? '').toString();
                           final dayStr = (h['day'] ?? '').toString();
                           if (monthStr.isEmpty || dayStr.isEmpty) return false;
-                          
+
                           // Map month name to number
                           final monthNames = {
-                            'January': 1, 'February': 2, 'March': 3, 'April': 4,
-                            'May': 5, 'June': 6, 'July': 7, 'August': 8,
-                            'September': 9, 'October': 10, 'November': 11, 'December': 12,
+                            'January': 1,
+                            'February': 2,
+                            'March': 3,
+                            'April': 4,
+                            'May': 5,
+                            'June': 6,
+                            'July': 7,
+                            'August': 8,
+                            'September': 9,
+                            'October': 10,
+                            'November': 11,
+                            'December': 12,
                           };
-                          final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
+                          final monthNum =
+                              monthNames[monthStr] ?? int.tryParse(monthStr);
                           if (monthNum == null) return false;
                           final dayNum = int.tryParse(dayStr);
                           if (dayNum == null) return false;
-                          
+
                           // Build holiday date (use next year if already passed this year)
-                          var holidayDate = DateTime(now.year, monthNum as int, dayNum);
-                          if (holidayDate.isBefore(now.subtract(const Duration(days: 1)))) {
-                            holidayDate = DateTime(now.year + 1, monthNum as int, dayNum);
+                          var holidayDate = DateTime(
+                            now.year,
+                            monthNum as int,
+                            dayNum,
+                          );
+                          if (holidayDate.isBefore(
+                            now.subtract(const Duration(days: 1)),
+                          )) {
+                            holidayDate = DateTime(
+                              now.year + 1,
+                              monthNum as int,
+                              dayNum,
+                            );
                           }
-                          
-                          final daysUntilHoliday = holidayDate.difference(now).inDays;
+
+                          final daysUntilHoliday = holidayDate
+                              .difference(now)
+                              .inDays;
                           if (daysUntilHoliday < 0) return false;
-                          
+
                           switch (holidaysPeriod) {
                             case 'Week':
                               return daysUntilHoliday <= 7;
@@ -828,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               return true;
                           }
                         }).toList();
-                        
+
                         for (final h in activeHolidays) {
                           final daysUntil = _daysUntilHoliday(h, now);
                           h['remainingDays'] = daysUntil != null
@@ -2958,9 +2996,7 @@ class LeaveTypesPieChart extends StatelessWidget {
     final int total = casualCount + sickCount + annualCount;
     final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0.0;
     final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0.0;
-    final double medicalPercent = total > 0
-        ? (annualCount / total) * 100
-        : 0.0;
+    final double medicalPercent = total > 0 ? (annualCount / total) * 100 : 0.0;
 
     final double casualVal = total > 0
         ? casualPercent
@@ -3449,9 +3485,18 @@ int? _daysUntilHoliday(Map<String, dynamic> h, DateTime now) {
   final dayStr = (h['day'] ?? '').toString();
   if (monthStr.isEmpty || dayStr.isEmpty) return null;
   const monthNames = {
-    'January': 1, 'February': 2, 'March': 3, 'April': 4,
-    'May': 5, 'June': 6, 'July': 7, 'August': 8,
-    'September': 9, 'October': 10, 'November': 11, 'December': 12,
+    'January': 1,
+    'February': 2,
+    'March': 3,
+    'April': 4,
+    'May': 5,
+    'June': 6,
+    'July': 7,
+    'August': 8,
+    'September': 9,
+    'October': 10,
+    'November': 11,
+    'December': 12,
   };
   final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
   final dayNum = int.tryParse(dayStr);

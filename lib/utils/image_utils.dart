@@ -11,8 +11,8 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
   final currentUser = AuthService().currentUser;
   final isCurrentUser =
       currentUser != null &&
-      (currentUser.email?.toLowerCase() == email?.toLowerCase() ||
-          currentUser.isAnonymous);
+      !currentUser.isAnonymous &&
+      currentUser.email?.toLowerCase() == email?.toLowerCase();
   if (isCurrentUser) {
     final notifierUrl = AuthService.profilePicNotifier.value;
     if (notifierUrl != null && notifierUrl.isNotEmpty) {
