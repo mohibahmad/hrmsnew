@@ -1252,10 +1252,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        ElevatedButton.icon(
-          onPressed: () async {
-            final isPremium = await PreferencesService.isPremium();
+        const SizedBox(width: 10),
+        SizedBox(
+          height: 44,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              final isPremium = await PreferencesService.isPremium();
             if (!mounted) return;
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (!PremiumGate.canAddEntry(
@@ -1300,6 +1302,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               fontFamily: 'SF Pro Display',
             ),
           ),
+        ),
         ),
       ],
     );

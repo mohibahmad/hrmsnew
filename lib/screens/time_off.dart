@@ -56,7 +56,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 8;
+  static const int _itemsPerPage = 15;
   StreamSubscription? _timeoffSub;
   StreamSubscription? _workersSub;
 
@@ -259,11 +259,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         content: Text(() {
           String localizedAction = action;
           if (action == 'Annual Leave') {
-            localizedAction = 'annual_leave'.tr();
+            localizedAction = 'annual'.tr();
           } else if (action == 'Sick Leave') {
-            localizedAction = 'sick_leave_type'.tr();
+            localizedAction = 'sick'.tr();
           } else if (action == 'Casual Leave') {
-            localizedAction = 'casual_leave_type'.tr();
+            localizedAction = 'casual'.tr();
           } else if (action == 'Maternity Leave') {
             localizedAction = 'maternity_leave'.tr();
           }

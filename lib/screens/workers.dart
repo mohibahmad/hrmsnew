@@ -14,6 +14,7 @@ import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/image_utils.dart';
+import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 
 void main() {
@@ -480,7 +481,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 8;
+  static const int _itemsPerPage = 15;
   StreamSubscription? _workersSub;
 
   @override
@@ -1159,34 +1160,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final profileImage = worker['profileImage'] as String?;
     final docId = (worker['id'] ?? '').toString();
 
-    String _localizeType1(String value) {
-      switch (value) {
-        case 'Full-Time':
-          return 'full_time'.tr();
-        case 'Part-Time':
-          return 'part_time'.tr();
-        case 'Contract':
-          return 'contract'.tr();
-        default:
-          return value;
-      }
-    }
-
-    String _localizeType2(String value) {
-      switch (value) {
-        case 'On-Site':
-          return 'on_site'.tr();
-        case 'Remote':
-          return 'remote'.tr();
-        case 'Hybrid':
-          return 'hybrid'.tr();
-        default:
-          return value;
-      }
-    }
-
-    final localizedType1 = _localizeType1(type1);
-    final localizedType2 = _localizeType2(type2);
+    final localizedType1 = LocalizationHelper.localizeType1(type1);
+    final localizedType2 = LocalizationHelper.localizeType2(type2);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

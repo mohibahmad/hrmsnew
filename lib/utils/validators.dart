@@ -28,7 +28,7 @@ class Validators {
   // Reasonable, permissive email shape. Intentionally not RFC-5322 strict —
   // the goal is to catch typos and empty/garbage values, not to reject valid
   // but unusual addresses.
-  static final RegExp _email = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static final RegExp _email = RegExp(r'^[^@\s]+@[^@\s]+(\.[^@\s]+)?$');
 
   static bool isValidEmail(String? value) {
     if (value == null) return false;

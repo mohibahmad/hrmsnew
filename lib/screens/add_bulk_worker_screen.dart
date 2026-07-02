@@ -10,6 +10,7 @@ import 'package:open_file_plus/open_file_plus.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 
@@ -23,32 +24,6 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
-  String _localizeType1(String value) {
-    switch (value) {
-      case 'Full-Time':
-        return 'full_time'.tr();
-      case 'Part-Time':
-        return 'part_time'.tr();
-      case 'Contract':
-        return 'contract'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeType2(String value) {
-    switch (value) {
-      case 'On-Site':
-        return 'on_site'.tr();
-      case 'Remote':
-        return 'remote'.tr();
-      case 'Hybrid':
-        return 'hybrid'.tr();
-      default:
-        return value;
-    }
-  }
-
   bool _isSaving = false;
   List<Map<String, dynamic>> _validWorkers = [];
   bool _hasParsedFile = false;
@@ -144,7 +119,19 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
       Uint8List? bytes = file.bytes;
       if (bytes == null && file.path != null) {
-        bytes = await io.File(file.path!).readAsBytes();
+        final diskFile = io.File(file.path!);
+        final fileSize = await diskFile.length();
+        if (fileSize > 5 * 1024 * 1024) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '5MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
+        bytes = await diskFile.readAsBytes();
       }
 
       if (bytes == null) return;
@@ -436,6 +423,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
 
+    _showBulkProgressDialog();
+
     try {
       if (isGuest) {
         for (var i = 0; i < _validWorkers.length; i++) {
@@ -449,6 +438,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       if (mounted) {
+        Navigator.of(context).pop();
         FlashySnackBar.show(
           context,
           message: 'workers_added_successfully'.tr(
@@ -458,6 +448,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         widget.onBack?.call();
       }
     } catch (e) {
+      if (mounted) Navigator.of(context).pop();
       debugPrint('Error saving bulk workers: $e');
       if (mounted) {
         FlashySnackBar.show(
@@ -473,6 +464,36 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         });
       }
     }
+  }
+
+  void _showBulkProgressDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              Text(
+                'saving_bulk_workers'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Display',
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -873,7 +894,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     const Color(0xFFC2410C),
                                   ];
                                   final colorIdx =
-                                      name.length % bgColors.length;
+                                      index % bgColors.length;
 
                                   final rowWidget = Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -1022,13 +1043,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           140,
                                         ),
                                         _buildDataCell(
-                                          _localizeType1(
+                                          LocalizationHelper.localizeType1(
                                             worker['type1']?.toString() ?? '',
                                           ),
                                           120,
                                         ),
                                         _buildDataCell(
-                                          _localizeType2(
+                                          LocalizationHelper.localizeType2(
                                             worker['type2']?.toString() ?? '',
                                           ),
                                           120,

@@ -1,5 +1,35 @@
+import 'package:intl/intl.dart';
 
 class AppDateUtils {
+  static const Map<String, int> _monthNames = {
+    'january': 1, 'jan': 1,
+    'february': 2, 'feb': 2,
+    'march': 3, 'mar': 3,
+    'april': 4, 'apr': 4,
+    'may': 5,
+    'june': 6, 'jun': 6,
+    'july': 7, 'jul': 7,
+    'august': 8, 'aug': 8,
+    'september': 9, 'sep': 9, 'sept': 9,
+    'october': 10, 'oct': 10,
+    'november': 11, 'nov': 11,
+    'december': 12, 'dec': 12,
+  };
+
+  static int? parseMonth(String monthStr, {String? locale}) {
+    final trimmed = monthStr.trim().toLowerCase();
+    final fromMap = _monthNames[trimmed];
+    if (fromMap != null) return fromMap;
+    final fromInt = int.tryParse(trimmed);
+    if (fromInt != null && fromInt >= 1 && fromInt <= 12) return fromInt;
+    try {
+      final fmt = locale != null ? DateFormat('MMMM', locale) : DateFormat('MMMM');
+      for (int i = 1; i <= 12; i++) {
+        if (fmt.format(DateTime(2024, i)) == monthStr.trim()) return i;
+      }
+    } catch (_) {}
+    return null;
+  }
   static DateTime? parseDateString(String dateStr) {
     try {
       // First try standard ISO format parsing

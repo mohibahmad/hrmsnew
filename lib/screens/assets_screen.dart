@@ -34,7 +34,7 @@ class AssetsScreen extends StatefulWidget {
 class _AssetsScreenState extends State<AssetsScreen> {
   String _searchQuery = '';
   int _currentPage = 1;
-  static const int _itemsPerPage = 8;
+  static const int _itemsPerPage = 15;
 
   List<AssetData> _assets = [];
   bool _isLoading = false;
@@ -118,7 +118,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             _isLoading = false;
           });
         }
-      }, onError: (e) {});
+      }, onError: (e) => debugPrint('assetsStream error: $e'));
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
@@ -271,7 +271,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'dateLoaned': formatDate(loanedDate),
                                 'dateReturned': isReturned
                                     ? formatDate(returnedDate)
-                                    : 'in_use'.tr(),
+                                    : _inUseKey,
                                 'isReturned': isReturned,
                                 'profileImage': workerProfileImage ?? '',
                                 'email': workerEmail ?? '',
@@ -288,9 +288,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   'position': positionController.text,
                                   'type': typeController.text,
                                   'dateLoaned': formatDate(loanedDate),
-                                  'dateReturned': isReturned
-                                      ? formatDate(returnedDate)
-                                      : 'in_use'.tr(),
+                                'dateReturned': isReturned
+                                    ? formatDate(returnedDate)
+                                    : _inUseKey,
                                   'isReturned': isReturned,
                                   'profileImage': workerProfileImage ?? '',
                                   'email': workerEmail ?? '',
@@ -308,7 +308,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       formatDate(loanedDate),
                                       isReturned
                                           ? formatDate(returnedDate)
-                                          : 'in_use'.tr(),
+                                          : _inUseKey,
                                       isReturned,
                                       profileImage: workerProfileImage,
                                       email: workerEmail,
@@ -676,10 +676,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
     ValueChanged<String?> onChanged,
   ) {
     final bool isEmpty = items.isEmpty;
-    final displayItems = isEmpty ? ['no_workers_found'.tr()] : items;
-    final displayValue = isEmpty
-        ? 'no_workers_found'.tr()
-        : (items.contains(value) ? value : null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,10 +699,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: displayValue,
+              value: isEmpty ? null : (items.contains(value) ? value : null),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(
-                hintText,
+                isEmpty ? 'no_workers_found'.tr() : hintText,
                 style: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 14,
@@ -725,20 +721,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
               ),
-              items: displayItems.map((String val) {
+              items: items.map((String val) {
                 return DropdownMenuItem<String>(
                   value: val,
                   child: Text(
                     val,
-                    style: TextStyle(
-                      color: isEmpty ? Colors.red.shade600 : Colors.black,
-                      fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w500,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
                 );
               }).toList(),
-              onChanged: isEmpty ? (val) {} : onChanged,
+              onChanged: isEmpty ? null : onChanged,
             ),
           ),
         ),
@@ -1398,8 +1393,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
+  static const _inUseKey = '__IN_USE__';
+
   DateTime? _parseDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty || dateStr == 'in_use'.tr())
+    if (dateStr == null || dateStr.isEmpty || dateStr == 'in_use'.tr() || dateStr == _inUseKey)
       return null;
     try {
       final parts = dateStr.split('/');
@@ -1501,7 +1498,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'dateLoaned': formatDate(loanedDate),
                                 'dateReturned': isReturned
                                     ? formatDate(returnedDate)
-                                    : 'in_use'.tr(),
+                                    : _inUseKey,
                                 'isReturned': isReturned,
                                 'profileImage': workerProfileImage ?? '',
                                 'email': workerEmail ?? '',
@@ -1525,7 +1522,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       formatDate(loanedDate),
                                       isReturned
                                           ? formatDate(returnedDate)
-                                          : 'in_use'.tr(),
+                                          : _inUseKey,
                                       isReturned,
                                       id: data.id,
                                       profileImage: workerProfileImage,
@@ -1837,6 +1834,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   // ================= EMPTY STATE =================
 
   Widget _buildEmptyState() {
+    final bool isSearchEmpty = _searchQuery.isNotEmpty;
     return Center(
       child: Container(
         width: double.infinity,
@@ -1856,7 +1854,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'no_assets_found'.tr(),
+              isSearchEmpty ? 'no_search_results'.tr() : 'no_assets_found'.tr(),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -1864,6 +1862,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
+            if (isSearchEmpty) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => setState(() { _searchQuery = ''; _currentPage = 1; }),
+                icon: const Icon(Icons.close, size: 16),
+                label: Text('clear_search'.tr()),
+              ),
+            ],
           ],
         ),
       ),

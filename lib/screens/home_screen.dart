@@ -27,6 +27,7 @@ import '../utils/logout_dialog.dart';
 import 'login_screen.dart';
 import '../services/payroll_service.dart';
 import '../services/dummy_data.dart';
+import '../utils/date_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -216,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // 1) Use the sync cache first — set on the notifier immediately so the
     //    first frame already shows the correct image (no async delay).
     final cachedUrl = PreferencesService.cachedProfilePicUrl;
-    if (cachedUrl != null && cachedUrl.isNotEmpty) {
+    if (cachedUrl != null && cachedUrl.isNotEmpty && cachedUrl.startsWith('http')) {
       AuthService.profilePicNotifier.value = cachedUrl;
       // Fall through to Firestore in case the cached URL is stale
     } else {
@@ -235,7 +236,9 @@ class _HomeScreenState extends State<HomeScreen> {
             await PreferencesService.setProfilePicUrl(pic.toString());
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to restore profile pic: $e');
+      }
     }
   }
 
@@ -244,12 +247,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null || user.isAnonymous) return;
     _profileSub = FirestoreService().userProfileStream.listen((profile) {
       final isPremium = profile?['isPremium'] == true;
-      // Update local preferences and UI state
       PreferencesService.setPremium(isPremium);
       if (mounted && _isPremium != isPremium) {
         setState(() => _isPremium = isPremium);
       }
-    });
+    }, onError: (e) => debugPrint('userProfileStream error: $e'));
   }
 
   void _loadDashboardData() {
@@ -266,19 +268,6 @@ class _HomeScreenState extends State<HomeScreen> {
             fCount++;
           } else if (genderStr == 'male') {
             mCount++;
-          } else {
-            final name = (w['name'] ?? '').toString().toLowerCase();
-            if (name.contains('emily') ||
-                name.contains('sophia') ||
-                name.contains('olivia') ||
-                name.contains('amelia') ||
-                name.contains('charlotte') ||
-                name.contains('harper') ||
-                name.contains('jane')) {
-              fCount++;
-            } else {
-              mCount++;
-            }
           }
         }
         _maleWorkersCount = mCount;
@@ -309,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }).toList();
           });
         }
-      });
+      }, onError: (e) => debugPrint('holidaysStream error: $e'));
 
       _workersSub = firestore.workersStream.listen((snap) {
         if (mounted) {
@@ -325,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 .toLowerCase();
             if (genderStr == 'female') {
               fCount++;
-            } else {
+            } else if (genderStr == 'male') {
               mCount++;
             }
           }
@@ -336,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _femaleWorkersCount = fCount;
           });
         }
-      });
+      }, onError: (e) => debugPrint('workersStream error: $e'));
 
       _attendanceSub = firestore.attendanceStream.listen((snap) {
         if (mounted) {
@@ -347,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _totalAttendanceCount = snap.docs.length;
           });
         }
-      });
+      }, onError: (e) => debugPrint('attendanceStream error: $e'));
 
       _timeoffSub = firestore.timeoffStream.listen((snap) {
         if (mounted) {
@@ -358,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _totalTimeoffCount = snap.docs.length;
           });
         }
-      });
+      }, onError: (e) => debugPrint('timeoffStream error: $e'));
 
       _expensesSub = firestore.expensesStream.listen((snap) {
         if (mounted) {
@@ -369,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           });
         }
-      });
+      }, onError: (e) => debugPrint('expensesStream error: $e'));
 
       _payrollSub = firestore.payrollStream.listen((snap) {
         if (mounted) {
@@ -378,6 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final data = doc.data() as Map<String, dynamic>?;
               if (data == null) return sum;
               final result = PayrollService.calculatePayroll(
+
                 salary: (data['salary'] ?? '').toString(),
                 totalWorkDays: (data['totalWorkDays'] ?? '').toString(),
                 absents: (data['absents'] ?? '').toString(),
@@ -388,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           });
         }
-      });
+      }, onError: (e) => debugPrint('payrollStream error: $e'));
     }
   }
 
@@ -399,7 +389,8 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final profile = await FirestoreService().getUserProfile();
         isPremium = profile?['isPremium'] == true;
-      } catch (_) {
+      } catch (e) {
+        debugPrint('Failed to check premium: $e');
         isPremium = await PreferencesService.isPremium();
       }
     }
@@ -810,23 +801,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           final dayStr = (h['day'] ?? '').toString();
                           if (monthStr.isEmpty || dayStr.isEmpty) return false;
 
-                          // Map month name to number
-                          final monthNames = {
-                            'January': 1,
-                            'February': 2,
-                            'March': 3,
-                            'April': 4,
-                            'May': 5,
-                            'June': 6,
-                            'July': 7,
-                            'August': 8,
-                            'September': 9,
-                            'October': 10,
-                            'November': 11,
-                            'December': 12,
-                          };
-                          final monthNum =
-                              monthNames[monthStr] ?? int.tryParse(monthStr);
+                          final monthNum = AppDateUtils.parseMonth(monthStr);
                           if (monthNum == null) return false;
                           final dayNum = int.tryParse(dayStr);
                           if (dayNum == null) return false;
@@ -3484,21 +3459,7 @@ int? _daysUntilHoliday(Map<String, dynamic> h, DateTime now) {
   final monthStr = (h['month'] ?? '').toString();
   final dayStr = (h['day'] ?? '').toString();
   if (monthStr.isEmpty || dayStr.isEmpty) return null;
-  const monthNames = {
-    'January': 1,
-    'February': 2,
-    'March': 3,
-    'April': 4,
-    'May': 5,
-    'June': 6,
-    'July': 7,
-    'August': 8,
-    'September': 9,
-    'October': 10,
-    'November': 11,
-    'December': 12,
-  };
-  final monthNum = monthNames[monthStr] ?? int.tryParse(monthStr);
+  final monthNum = AppDateUtils.parseMonth(monthStr);
   final dayNum = int.tryParse(dayStr);
   if (monthNum == null || dayNum == null) return null;
   var holidayDate = DateTime(now.year, monthNum, dayNum);

@@ -5,14 +5,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import '../services/upload_service.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'home_screen.dart'; // SidebarWidget is assumed to be here
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
-import 'add_worker_flow.dart' show CustomDropdownField;
+import '../widgets/custom_dropdown_field.dart';
 
 class WorkerManagementApp extends StatelessWidget {
   const WorkerManagementApp({super.key});
@@ -115,24 +115,6 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     }
   }
 
-  Future<String?> _uploadToStorage(
-    String folder,
-    String fileName,
-    Uint8List fileBytes,
-  ) async {
-    try {
-      final ref = FirebaseStorage.instance.ref().child(
-        'hrms_documents/$folder/${DateTime.now().millisecondsSinceEpoch}_$fileName',
-      );
-      final uploadTask = ref.putData(fileBytes);
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      debugPrint('Firebase Storage upload failed: $e');
-      return null;
-    }
-  }
-
   // FIREBASE SAVE LOGIC
   Future<void> _handleSave() async {
     // Basic validation
@@ -180,12 +162,19 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           profileImageUrl =
               'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
         } else {
-          profileImageUrl = await _uploadToStorage(
-            'profile_images',
-            _profileImageName ?? 'profile.jpg',
-            _profileImageBytes!,
+          final results = await UploadService.uploadFiles(
+            files: [
+              UploadFile(
+                folder: 'profile_images',
+                fileName: _profileImageName ?? 'profile.jpg',
+                bytes: _profileImageBytes!,
+                mimeType: 'image/jpeg',
+              ),
+            ],
           );
-          if (profileImageUrl == null) {
+          if (results.first.isSuccess) {
+            profileImageUrl = results.first.url;
+          } else {
             if (mounted) {
               FlashySnackBar.show(
                 context,

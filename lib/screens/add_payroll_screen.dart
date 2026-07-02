@@ -132,9 +132,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       if (isGuest) {
         final existingIdx = DummyData.payroll.indexWhere((p) {
           final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-          final pName = (p['name'] ?? '').toString().trim().toLowerCase();
-          return (pEmail.isNotEmpty && pEmail == _email.trim().toLowerCase()) ||
-              (pName.isNotEmpty && pName == _name.trim().toLowerCase());
+          return pEmail.isNotEmpty && pEmail == _email.trim().toLowerCase();
         });
         if (existingIdx != -1) {
           DummyData.payroll[existingIdx] = {
@@ -172,7 +170,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         };
         if (isGuest) {
           final expenseId =
-              'dummy_e${DateTime.now().millisecondsSinceEpoch}';
+              'dummy_e${DateTime.now().microsecondsSinceEpoch}_${record.hashCode.toString().replaceAll('-', '')}';
           DummyData.expenses.insert(0, {
             ...expenseRecord,
             'id': expenseId,

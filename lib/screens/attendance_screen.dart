@@ -11,12 +11,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/attendance_service.dart';
 
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
 import '../utils/image_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/delete_dialog.dart';
+import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -111,7 +113,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _absentCount = 0;
   int _leaveCount = 0;
   int _currentPage = 1;
-  static const int _itemsPerPage = 8;
+  static const int _itemsPerPage = 15;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
 
@@ -123,90 +125,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _combineAttendance() {
-    if (_workersList.isEmpty && _rawAttendanceDocs.isEmpty) {
-      _attendanceDocs = [];
-      _isLoading = false;
-      return;
-    }
-
-    final combined = <Map<String, dynamic>>[];
-
-    final emailMap = <String, Map<String, dynamic>>{};
-    final nameMap = <String, Map<String, dynamic>>{};
-
-    for (var att in _rawAttendanceDocs) {
-      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-      if (attEmail.isNotEmpty) {
-        emailMap.putIfAbsent(attEmail, () => att);
-      }
-      if (attName.isNotEmpty) {
-        nameMap.putIfAbsent(attName, () => att);
-      }
-    }
-
-    for (var worker in _workersList) {
-      final wEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final wName = (worker['name'] ?? '').toString().trim().toLowerCase();
-
-      final matched = <String, dynamic>{};
-      if (wEmail.isNotEmpty && emailMap.containsKey(wEmail)) {
-        matched.addAll(emailMap[wEmail]!);
-      } else if (wName.isNotEmpty && nameMap.containsKey(wName)) {
-        matched.addAll(nameMap[wName]!);
-      }
-
-      if (matched.isNotEmpty) {
-        combined.add({
-          ...matched,
-          'name': worker['name'] ?? matched['name'],
-          'role': worker['position'] ?? matched['role'] ?? '',
-          'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
-        });
-      } else {
-        combined.add({
-          'id': 'norecord_${worker['id'] ?? wEmail}',
-          'name': worker['name'] ?? 'Worker',
-          'email': worker['email'] ?? '',
-          'role': worker['position'] ?? '',
-          'attendanceType': worker['type2'] ?? 'On-Site',
-          'workType': worker['type1'] ?? 'Full Time',
-          'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
-          'createdAt': null,
-          'status': '',
-        });
-      }
-    }
-
-    final matchedKeys = <String>{};
-    for (var att in _rawAttendanceDocs) {
-      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-      final hasWorker = (attEmail.isNotEmpty && emailMap.containsKey(attEmail)) ||
-          (attName.isNotEmpty && nameMap.containsKey(attName));
-      if (!hasWorker) {
-        combined.add(att);
-      } else {
-        matchedKeys.add(att['id']?.toString() ?? '');
-      }
-    }
-
-    final sorted = List<Map<String, dynamic>>.from(combined);
-    sorted.sort((a, b) {
-      final aTime = a['createdAt'];
-      final bTime = b['createdAt'];
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      if (aTime is Timestamp && bTime is Timestamp) {
-        return bTime.compareTo(aTime);
-      }
-      return 0;
-    });
-
-    _attendanceDocs = sorted;
+    _attendanceDocs = AttendanceService.combineAttendance(
+      workersList: _workersList,
+      rawAttendanceDocs: _rawAttendanceDocs,
+    );
     if (_workersLoaded && _attendanceLoaded) {
       _isLoading = false;
     }
@@ -243,6 +165,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _combineAttendance();
           });
         }
+      }, onError: (e) {
+        debugPrint('workersStream error: $e');
+        if (mounted) {
+          setState(() {
+            _workersLoaded = true;
+            _isLoading = false;
+          });
+        }
       });
       _attendanceSub = FirestoreService().attendanceStream.listen(
         (snapshot) {
@@ -257,6 +187,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
         onError: (e) {
+          debugPrint('attendanceStream error: $e');
           if (mounted) {
             setState(() {
               _attendanceLoaded = true;
@@ -538,7 +469,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             countColor: const Color(0xFF0247C4),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
             title: 'present_workers'.tr(),
@@ -547,7 +478,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             countColor: const Color(0xFF00FF2A),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
             title: 'absent_workers'.tr(),
@@ -556,7 +487,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             countColor: const Color(0xFFFF0004),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
             title: 'leave_workers'.tr(),
@@ -694,6 +625,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildEmptyState() {
+    final bool isSearchEmpty = _searchQuery.isNotEmpty;
     double dynamicHeight = MediaQuery.of(context).size.height - 520;
     if (dynamicHeight < 300) dynamicHeight = 300;
     return Container(
@@ -712,7 +644,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'no_attendance_records'.tr(),
+              isSearchEmpty ? 'no_search_results'.tr() : 'no_attendance_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,
@@ -720,6 +652,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
+            if (isSearchEmpty) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => setState(() { _searchQuery = ''; _currentPage = 1; }),
+                icon: const Icon(Icons.close, size: 16),
+                label: Text('clear_search'.tr()),
+              ),
+            ],
           ],
         ),
       ),
@@ -825,10 +765,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       if (isGuest) {
         setState(() {
-          final doc = _attendanceDocs.firstWhere(
-            (a) => a['id'] == docId,
-            orElse: () => {},
+          final doc = _attendanceDocs.cast<Map<String, dynamic>?>().firstWhere(
+            (a) => a?['id'] == docId,
+            orElse: () => null,
           );
+          if (doc == null) return;
           final email = doc['email']?.toString();
           if (email != null && email.isNotEmpty) {
             DummyData.workers.removeWhere(
@@ -992,31 +933,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     .toString();
                 final workType = (doc['workType'] ?? 'Full Time').toString();
 
-                String localizeAttendanceType(String value) {
-                  switch (value) {
-                    case 'On-Site':
-                      return 'on_site'.tr();
-                    case 'Remote':
-                      return 'remote'.tr();
-                    case 'Hybrid':
-                      return 'hybrid'.tr();
-                    default:
-                      return value;
-                  }
-                }
-
-                String localizeWorkType(String value) {
-                  switch (value) {
-                    case 'Full Time':
-                      return 'full_time'.tr();
-                    case 'Part Time':
-                      return 'part_time'.tr();
-                    case 'Contract':
-                      return 'contract'.tr();
-                    default:
-                      return value;
-                  }
-                }
+                final localizeAttendanceType = LocalizationHelper.localizeAttendanceType;
+                final localizeWorkType = LocalizationHelper.localizeWorkType;
 
                 return Container(
                   padding: const EdgeInsets.symmetric(

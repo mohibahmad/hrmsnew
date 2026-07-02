@@ -16,7 +16,11 @@ class FlashySnackBar {
   }) {
     if (!context.mounted) return;
 
-    final messageKey = '$isError:$title:$message';
+    String? routeName;
+    if (context.mounted) {
+      routeName = ModalRoute.of(context)?.settings.name;
+    }
+    final messageKey = '$isError:$title:$message:${routeName ?? ''}';
     final now = DateTime.now();
     final isDuplicate =
         _lastMessageKey == messageKey &&

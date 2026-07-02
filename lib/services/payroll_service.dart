@@ -3,10 +3,91 @@ class PayrollService {
   factory PayrollService() => _instance;
   PayrollService._();
 
+  static List<Map<String, dynamic>> combinePayroll(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs,
+  ) {
+    if (workersList.isEmpty) return rawPayrollDocs;
+
+    final combined = <Map<String, dynamic>>[];
+    for (var worker in workersList) {
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+
+      final payrollRecord = rawPayrollDocs.firstWhere((p) {
+        final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+        final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+        return (email.isNotEmpty && pEmail == email) ||
+            (name.isNotEmpty && pName == name);
+      }, orElse: () => {});
+
+      if (payrollRecord.isNotEmpty) {
+        combined.add({
+          ...payrollRecord,
+          'profileImage':
+              worker['profileImage'] ?? payrollRecord['profileImage'],
+          'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
+        });
+      } else {
+        final currency = worker['currency']?.toString() ?? 'USD';
+        final currencySymbol = PayrollService.getCurrencySymbol(currency);
+        final salaryAmount = worker['salaryAmount']?.toString() ?? '';
+        combined.add({
+          'id': worker['id'] ?? '',
+          'name': worker['name'] ?? '',
+          'email': worker['email'] ?? '',
+          'position': worker['position'] ?? '',
+          'phone': worker['phone'] ?? '',
+          'profileImage': worker['profileImage'] ?? '',
+          'status': 'Active',
+          'totalWorkDays': '',
+          'absents': '',
+          'leaves': '',
+          'overtimeDays': '',
+          'salary': salaryAmount.isNotEmpty ? '$currencySymbol $salaryAmount' : '',
+          'netSalary': '',
+        });
+      }
+    }
+
+    for (var p in rawPayrollDocs) {
+      final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
+      final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+      final existsInCombined = combined.any((c) {
+        final cEmail = (c['email'] ?? '').toString().trim().toLowerCase();
+        final cName = (c['name'] ?? '').toString().trim().toLowerCase();
+        return (pEmail.isNotEmpty && cEmail == pEmail) ||
+            (pName.isNotEmpty && cName == pName);
+      });
+      if (!existsInCombined) {
+        combined.add(p);
+      }
+    }
+
+    return combined;
+  }
+
   static double extractSalary(String salaryStr) {
     if (salaryStr.isEmpty) return 0;
-    final cleaned = salaryStr.replaceAll(RegExp(r'[^0-9.]'), '');
+    String cleaned = salaryStr.replaceAll(RegExp(r'[^0-9.,]'), '');
     if (cleaned.isEmpty) return 0;
+    // Detect European format: last . is followed by exactly 3 digits.
+    // e.g. 1.234,56 -> treat as European; 1,234.56 -> treat as US
+    final lastDot = cleaned.lastIndexOf('.');
+    final lastComma = cleaned.lastIndexOf(',');
+    bool isEuropean = false;
+    if (lastComma > lastDot) {
+      isEuropean = true;
+    } else if (lastDot > lastComma &&
+        cleaned.length - lastDot == 4 &&
+        cleaned.indexOf(',') >= 0) {
+      isEuropean = true;
+    }
+    if (isEuropean) {
+      cleaned = cleaned.replaceAll('.', '').replaceFirst(',', '.');
+    } else {
+      cleaned = cleaned.replaceAll(',', '');
+    }
     return double.tryParse(cleaned) ?? 0;
   }
 
@@ -35,31 +116,23 @@ class PayrollService {
     return salaryStr.substring(0, match.start).trim();
   }
 
+  static const Map<String, String> _currencySymbols = {
+    'USD': r'$',
+    'EUR': '€',
+    'GBP': '£',
+    'POUND': '£',
+    'JPY': '¥',
+    'JAPANESE YEN': '¥',
+    'INR': '₹',
+    'RUB': '₽',
+    'BRL': r'R$',
+    'SAR': '﷼',
+    'PKR': 'Rs',
+  };
+
   static String getCurrencySymbol(String currency) {
-    switch (currency.trim().toUpperCase()) {
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-      case 'POUND':
-        return '£';
-      case 'JPY':
-      case 'JAPANESE YEN':
-        return '¥';
-      case 'INR':
-        return '₹';
-      case 'RUB':
-        return '₽';
-      case 'BRL':
-        return 'R\$';
-      case 'SAR':
-        return '﷼';
-      case 'PKR':
-        return 'Rs';
-      default:
-        return currency;
-    }
+    final key = currency.trim().toUpperCase();
+    return _currencySymbols[key] ?? currency;
   }
 
   static String _fmt(num val, String prefix) {

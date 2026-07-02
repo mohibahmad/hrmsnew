@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileTopHeader extends StatelessWidget {
   final VoidCallback onLogout;
@@ -429,11 +430,14 @@ class _ProfileBodyState extends State<ProfileBody> {
 
   Future<bool> _saveProfile() async {
     if (_contact1Controller.text.trim().isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_enter_contact_number'.tr(),
-        isError: true,
-      );
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'please_enter_contact_number'.tr(),
+          isError: true,
+        );
+      }
+      return false;
     }
 
     setState(() {
@@ -746,14 +750,13 @@ class _ProfileBodyState extends State<ProfileBody> {
       );
     } else if (hasCustomPic) {
       if (_profilePicUrl!.startsWith('http')) {
-        childWidget = Image.network(
-          _profilePicUrl!,
+        childWidget = CachedNetworkImage(
+          imageUrl: _profilePicUrl!,
           width: 90,
           height: 90,
           fit: BoxFit.cover,
-          loadingBuilder: (_, child, progress) =>
-              progress == null ? child : _buildLoadingIndicator(),
-          errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+          placeholder: (_, __) => _buildLoadingIndicator(),
+          errorWidget: (_, __, ___) => _buildFallbackIcon(),
         );
       } else if (_profilePicUrl!.startsWith('data:image')) {
         final String base64Content = _profilePicUrl!.substring(

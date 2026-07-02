@@ -1,7 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../utils/validators.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
+
+class BulkWorkerResult {
+  final int imported;
+  final int skipped;
+  BulkWorkerResult({required this.imported, required this.skipped});
+}
 
 class FirestoreService {
   static bool isTesting = false;
@@ -9,9 +16,11 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String get _userKey {
+    final uid = AuthService().currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) return uid;
     final email = AuthService().currentUser?.email?.trim().toLowerCase();
     if (email != null && email.isNotEmpty) return email;
-    return AuthService().currentUser?.uid ?? '';
+    return '';
   }
 
   DocumentReference get _userDoc => _db.collection('hrms_user').doc(_userKey);
@@ -92,8 +101,13 @@ class FirestoreService {
 
   Future<Map<String, dynamic>?> getUserProfile() async {
     if (isTesting) return {'isPremium': false, 'hasDummyData': false};
-    final doc = await _userDoc.get();
-    return doc.data() as Map<String, dynamic>?;
+    try {
+      final doc = await _userDoc.get();
+      return doc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      debugPrint('getUserProfile failed: $e');
+      return null;
+    }
   }
 
   /// Real-time stream of the user's profile document.
@@ -110,9 +124,10 @@ class FirestoreService {
     return docRef.id;
   }
 
-  Future<void> addBulkWorkers(List<Map<String, dynamic>> workersList) async {
+  Future<BulkWorkerResult> addBulkWorkers(List<Map<String, dynamic>> workersList) async {
     var batch = _db.batch();
     int count = 0;
+    int skipped = 0;
 
     for (var worker in workersList) {
       try {
@@ -129,7 +144,8 @@ class FirestoreService {
           batch = _db.batch();
         }
       } catch (e) {
-        // Skip invalid rows
+        debugPrint('Skipping invalid worker row: $e');
+        skipped++;
         continue;
       }
     }
@@ -137,6 +153,8 @@ class FirestoreService {
     if (count % 500 != 0 && count > 0) {
       await batch.commit();
     }
+
+    return BulkWorkerResult(imported: count, skipped: skipped);
   }
 
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {
@@ -290,14 +308,12 @@ class FirestoreService {
     required String uid,
     required String displayName,
     required String email,
+    bool force = false,
   }) async {
-    final userKey = email.trim().toLowerCase().isNotEmpty
-        ? email.trim().toLowerCase()
-        : uid;
-    final docRef = _db.collection('hrms_user').doc(userKey);
+    final docRef = _db.collection('hrms_user').doc(uid);
     final userSnap = await docRef.get();
 
-    if (userSnap.exists) {
+    if (!force && userSnap.exists) {
       final data = userSnap.data();
       if (data != null && data['hasDummyData'] == true) {
         return; // Already seeded

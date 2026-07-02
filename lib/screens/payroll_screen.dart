@@ -36,7 +36,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   List<Map<String, dynamic>> _rawPayrollDocs = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 8;
+  static const int _itemsPerPage = 15;
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
 
@@ -51,69 +51,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _combinePayroll() {
-    if (_workersList.isEmpty) {
-      _payrollDocs = _rawPayrollDocs;
-      _isLoading = false;
-      return;
-    }
-
-    final combined = <Map<String, dynamic>>[];
-    for (var worker in _workersList) {
-      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
-
-      final payrollRecord = _rawPayrollDocs.firstWhere((p) {
-        final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-        final pName = (p['name'] ?? '').toString().trim().toLowerCase();
-        return (email.isNotEmpty && pEmail == email) ||
-            (name.isNotEmpty && pName == name);
-      }, orElse: () => {});
-
-      if (payrollRecord.isNotEmpty) {
-        combined.add({
-          ...payrollRecord,
-          'profileImage':
-              worker['profileImage'] ?? payrollRecord['profileImage'],
-          'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
-        });
-      } else {
-        // Include workers without payroll records with default empty values
-        final currency = worker['currency']?.toString() ?? 'USD';
-        final currencySymbol = PayrollService.getCurrencySymbol(currency);
-        final salaryAmount = worker['salaryAmount']?.toString() ?? '';
-        combined.add({
-          'id': worker['id'] ?? '',
-          'name': worker['name'] ?? '',
-          'email': worker['email'] ?? '',
-          'position': worker['position'] ?? '',
-          'phone': worker['phone'] ?? '',
-          'profileImage': worker['profileImage'] ?? '',
-          'status': 'Active',
-          'totalWorkDays': '',
-          'absents': '',
-          'leaves': '',
-          'overtimeDays': '',
-          'salary': salaryAmount.isNotEmpty ? '$currencySymbol $salaryAmount' : '',
-          'netSalary': '',
-        });
-      }
-    }
-
-    for (var p in _rawPayrollDocs) {
-      final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-      final pName = (p['name'] ?? '').toString().trim().toLowerCase();
-      final existsInCombined = combined.any((c) {
-        final cEmail = (c['email'] ?? '').toString().trim().toLowerCase();
-        final cName = (c['name'] ?? '').toString().trim().toLowerCase();
-        return (pEmail.isNotEmpty && cEmail == pEmail) ||
-            (pName.isNotEmpty && cName == pName);
-      });
-      if (!existsInCombined) {
-        combined.add(p);
-      }
-    }
-
-    _payrollDocs = combined;
+    _payrollDocs = PayrollService.combinePayroll(_workersList, _rawPayrollDocs);
     _isLoading = false;
   }
 
@@ -437,6 +375,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildEmptyState() {
+    final bool isSearchEmpty = _searchQuery.isNotEmpty;
     double dynamicHeight = MediaQuery.of(context).size.height - 450;
     if (dynamicHeight < 300) dynamicHeight = 300;
     return Container(
@@ -455,7 +394,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'no_payroll_records'.tr(),
+              isSearchEmpty ? 'no_search_results'.tr() : 'no_payroll_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,
@@ -463,6 +402,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
+            if (isSearchEmpty) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => setState(() { _searchQuery = ''; _currentPage = 1; }),
+                icon: const Icon(Icons.close, size: 16),
+                label: Text('clear_search'.tr()),
+              ),
+            ],
           ],
         ),
       ),

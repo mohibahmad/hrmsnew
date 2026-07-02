@@ -233,30 +233,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // Step 1: Mark current user's profile as deleted in hrms_user
-        await FirestoreService().deleteUserData();
-
-        // Step 2: Try to delete Firebase Auth user (may fail with requires-recent-login)
-        String? deleteError;
         try {
           await user.delete();
         } on FirebaseAuthException catch (e) {
-          deleteError = e.code;
-        } catch (_) {}
+          if (e.code == 'requires-recent-login') {
+            final reauthed = await _reauthenticate(context);
+            if (reauthed != true) return;
+            await user.delete();
+          } else {
+            rethrow;
+          }
+        }
 
-        // Step 3: Always sign out and navigate to login
+        await FirestoreService().deleteUserData();
         await AuthService().signOut();
 
         if (context.mounted) {
-          String message = 'account_deleted_successfully'.tr();
-          if (deleteError == 'requires-recent-login') {
-            message = 'signed_out_for_security_delete_again'.tr();
-          }
           FlashySnackBar.show(
             context,
-            message: message,
+            message: 'account_deleted_successfully'.tr(),
             title: 'account_deleted'.tr(),
-            isError: deleteError == 'requires-recent-login',
           );
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -271,6 +267,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
           message: 'failed_to_delete_account'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
+      }
+    }
+  }
+
+  Future<bool?> _reauthenticate(BuildContext context) async {
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email == null) return false;
+
+    final passwordController = TextEditingController();
+    try {
+      return await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text('reauthenticate'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('reauthenticate_desc'.tr(namedArgs: {'email': email})),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                decoration: InputDecoration(
+                  labelText: 'password'.tr(),
+                  border: const OutlineInputBorder(),
+                ),
+                obscureText: true,
+                onSubmitted: (_) => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('cancel'.tr()),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('confirm'.tr()),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      final password = passwordController.text;
+      passwordController.dispose();
+      if (password.isEmpty) return false;
+      try {
+        final credential = EmailAuthProvider.credential(
+          email: email,
+          password: password,
+        );
+        await FirebaseAuth.instance.currentUser!
+            .reauthenticateWithCredential(credential);
+        return true;
+      } on FirebaseAuthException catch (e) {
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'reauthentication_failed'.tr(namedArgs: {'error': e.code}),
+            isError: true,
+          );
+        }
+        return false;
       }
     }
   }

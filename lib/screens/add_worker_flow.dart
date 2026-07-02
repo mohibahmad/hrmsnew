@@ -8,16 +8,18 @@ import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
+import '../widgets/custom_dropdown_field.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../utils/validators.dart';
+import '../services/upload_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
+import '../utils/localization_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 const List<String> _months = [
@@ -270,14 +272,19 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _sickLeavesController.addListener(_onControllerChanged);
     _casualLeavesController.addListener(_onControllerChanged);
 
+    _sickLeavesController.addListener(_autoCalcAnnualLeaves);
+    _casualLeavesController.addListener(_autoCalcAnnualLeaves);
     if (widget.workerToEdit == null) {
       _autoCalcAnnualLeaves();
     }
-    _sickLeavesController.addListener(_autoCalcAnnualLeaves);
-    _casualLeavesController.addListener(_autoCalcAnnualLeaves);
   }
 
+  bool _isAutoCalc = false;
+
   void _autoCalcAnnualLeaves() {
+    if (_annualLeavesController.text.isNotEmpty &&
+        !_isAutoCalc) return;
+    _isAutoCalc = true;
     final sick = (int.tryParse(_sickLeavesController.text) ?? 0).clamp(0, 999);
     final casual = (int.tryParse(_casualLeavesController.text) ?? 0).clamp(
       0,
@@ -290,31 +297,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       text: truncated,
       selection: TextSelection.collapsed(offset: truncated.length),
     );
-  }
-
-  Future<String?> _uploadToStorage(
-    String folder,
-    String fileName,
-    Uint8List fileBytes,
-  ) async {
-    try {
-      final ref = FirebaseStorage.instance.ref().child(
-        'hrms_documents/$folder/${DateTime.now().millisecondsSinceEpoch}_$fileName',
-      );
-      final uploadTask = ref.putData(fileBytes);
-      final snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      debugPrint('Firebase Storage upload failed: $e');
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'file_upload_failed'.tr(namedArgs: {'file': fileName}),
-          isError: true,
-        );
-      }
-      return null;
-    }
+    _isAutoCalc = false;
   }
 
   Future<void> _pickProfileImage() async {
@@ -487,6 +470,32 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
   }
 
+  DateTime? _validateAndParseDob() {
+    final dobStr = _dobController.text.trim();
+    if (dobStr.isEmpty) return DateTime.now();
+    final dob = AppDateUtils.parseDateString(dobStr);
+    if (dob == null) {
+      FlashySnackBar.show(
+        context,
+        message: 'invalid_date_format'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return null;
+    }
+    final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+    if (dob.isAfter(cutoff)) {
+      FlashySnackBar.show(
+        context,
+        message: 'worker_must_be_18'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return null;
+    }
+    return dob;
+  }
+
   Future<void> _loadDefaultCompanyCurrency() async {
     try {
       final profile = await FirestoreService().getUserProfile();
@@ -498,7 +507,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to load company currency: $e');
+    }
   }
 
   bool _hasChanges() {
@@ -656,29 +667,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    final dobStr = _dobController.text.trim();
-    if (dobStr.isNotEmpty) {
-      final dob = AppDateUtils.parseDateString(dobStr);
-      if (dob == null) {
-        FlashySnackBar.show(
-          context,
-          message: 'invalid_date_format'.tr(),
-          title: 'validation_error'.tr(),
-          isError: true,
-        );
-        return;
-      }
-      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
-      if (dob.isAfter(cutoff)) {
-        FlashySnackBar.show(
-          context,
-          message: 'worker_must_be_18'.tr(),
-          title: 'validation_error'.tr(),
-          isError: true,
-        );
-        return;
-      }
-    }
+    final dob = _validateAndParseDob();
+    if (dob == null) return;
 
     setState(() {
       _isSaving = true;
@@ -706,75 +696,82 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         cvUrl = 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
       }
     } else {
-      final uploads = <Future<String?>>[];
-
-      Future<String?> uploadWithFallback(
-        String folder,
-        String name,
-        Uint8List bytes,
-        String mime,
-      ) async {
-        final url = await _uploadToStorage(folder, name, bytes);
-        return url ?? 'data:$mime;base64,${base64Encode(bytes)}';
-      }
-
+      final uploadFiles = <UploadFile>[];
       if (_profileImageBytes != null) {
-        uploads.add(
-          uploadWithFallback(
-            'profile_images',
-            _profileImageName ?? 'profile.jpg',
-            _profileImageBytes!,
-            'image/jpeg',
-          ),
-        );
-      } else {
-        uploads.add(Future.value(profileImageUrl));
+        uploadFiles.add(UploadFile(
+          folder: 'profile_images',
+          fileName: _profileImageName ?? 'profile.jpg',
+          bytes: _profileImageBytes!,
+          mimeType: 'image/jpeg',
+        ));
       }
-
       if (_frontIdBytes != null) {
-        uploads.add(
-          uploadWithFallback(
-            'id_cards',
-            _frontIdName ?? 'front.jpg',
-            _frontIdBytes!,
-            'image/jpeg',
-          ),
-        );
-      } else {
-        uploads.add(Future.value(frontIdUrl));
+        uploadFiles.add(UploadFile(
+          folder: 'id_cards',
+          fileName: _frontIdName ?? 'front.jpg',
+          bytes: _frontIdBytes!,
+          mimeType: 'image/jpeg',
+        ));
       }
-
       if (_backIdBytes != null) {
-        uploads.add(
-          uploadWithFallback(
-            'id_cards',
-            _backIdName ?? 'back.jpg',
-            _backIdBytes!,
-            'image/jpeg',
-          ),
-        );
-      } else {
-        uploads.add(Future.value(backIdUrl));
+        uploadFiles.add(UploadFile(
+          folder: 'id_cards',
+          fileName: _backIdName ?? 'back.jpg',
+          bytes: _backIdBytes!,
+          mimeType: 'image/jpeg',
+        ));
       }
-
       if (_cvBytes != null) {
-        uploads.add(
-          uploadWithFallback(
-            'cvs',
-            _cvName ?? 'cv.pdf',
-            _cvBytes!,
-            'application/pdf',
-          ),
-        );
-      } else {
-        uploads.add(Future.value(cvUrl));
+        uploadFiles.add(UploadFile(
+          folder: 'cvs',
+          fileName: _cvName ?? 'cv.pdf',
+          bytes: _cvBytes!,
+          mimeType: 'application/pdf',
+        ));
       }
 
-      final results = await Future.wait(uploads);
-      profileImageUrl = results[0];
-      frontIdUrl = results[1];
-      backIdUrl = results[2];
-      cvUrl = results[3];
+      if (uploadFiles.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('uploading_files'.tr(namedArgs: {
+              'count': uploadFiles.length.toString(),
+            })),
+            duration: const Duration(seconds: 30),
+          ),
+        );
+
+        final results = await UploadService.uploadFiles(
+          files: uploadFiles,
+        );
+
+        for (final result in results) {
+          if (result.isSuccess) {
+            final url = result.url!;
+            switch (result.file.folder) {
+              case 'profile_images':
+                profileImageUrl = url;
+              case 'id_cards':
+                if (result.file.fileName.contains('front')) {
+                  frontIdUrl = url;
+                } else {
+                  backIdUrl = url;
+                }
+              case 'cvs':
+                cvUrl = url;
+            }
+          } else {
+            if (mounted) {
+              FlashySnackBar.show(
+                context,
+                message: 'file_upload_failed'
+                    .tr(namedArgs: {'file': result.file.fileName}),
+                isError: true,
+              );
+            }
+          }
+        }
+      }
     }
 
     final data = {
@@ -911,29 +908,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    final dobStr = _dobController.text.trim();
-    if (dobStr.isNotEmpty) {
-      final dob = AppDateUtils.parseDateString(dobStr);
-      if (dob == null) {
-        FlashySnackBar.show(
-          context,
-          message: 'invalid_date_format'.tr(),
-          title: 'validation_error'.tr(),
-          isError: true,
-        );
-        return;
-      }
-      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
-      if (dob.isAfter(cutoff)) {
-        FlashySnackBar.show(
-          context,
-          message: 'worker_must_be_18'.tr(),
-          title: 'validation_error'.tr(),
-          isError: true,
-        );
-        return;
-      }
-    }
+    if (_validateAndParseDob() == null) return;
 
     setState(() => _activeTabIndex = 1);
   }
@@ -998,9 +973,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _annualLeavesController.dispose();
     _sickLeavesController.dispose();
     _casualLeavesController.dispose();
+    _profileImageBytes?.fillRange(0, _profileImageBytes!.length, 0);
     _profileImageBytes = null;
+    _frontIdBytes?.fillRange(0, _frontIdBytes!.length, 0);
     _frontIdBytes = null;
+    _backIdBytes?.fillRange(0, _backIdBytes!.length, 0);
     _backIdBytes = null;
+    _cvBytes?.fillRange(0, _cvBytes!.length, 0);
     _cvBytes = null;
     super.dispose();
   }
@@ -1721,18 +1700,8 @@ class WorkerDetailFormSection extends StatelessWidget {
     );
   }
 
-  String _localizeGender(String value) {
-    switch (value) {
-      case 'Male':
-        return 'male'.tr();
-      case 'Female':
-        return 'female'.tr();
-      case 'Other':
-        return 'other'.tr();
-      default:
-        return value;
-    }
-  }
+  String _localizeGender(String value) =>
+      LocalizationHelper.localizeGender(value);
 }
 
 // ==========================================
@@ -1800,114 +1769,20 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     }
   }
 
-  String _localizeType1(String value) {
-    switch (value) {
-      case 'Full-Time':
-        return 'full_time'.tr();
-      case 'Part-Time':
-        return 'part_time'.tr();
-      case 'Contract':
-        return 'contract'.tr();
-      case 'Freelance':
-        return 'freelance'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeType2(String value) {
-    switch (value) {
-      case 'On-Site':
-        return 'on_site'.tr();
-      case 'Remote':
-        return 'remote'.tr();
-      case 'Hybrid':
-        return 'hybrid'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeExperience(String value) {
-    switch (value) {
-      case 'Fresher':
-        return 'fresher'.tr();
-      case 'Junior':
-        return 'junior'.tr();
-      case 'Mid-Level':
-        return 'mid_level'.tr();
-      case 'Senior':
-        return 'senior'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeEducation(String value) {
-    switch (value) {
-      case 'Matric':
-        return 'matric'.tr();
-      case 'Intermediate':
-        return 'intermediate'.tr();
-      case 'Bachelor':
-        return 'bachelor'.tr();
-      case 'Master':
-        return 'master'.tr();
-      case 'Other':
-        return 'other'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeSalaryType(String value) {
-    switch (value) {
-      case 'Monthly':
-        return 'monthly'.tr();
-      case 'Hourly':
-        return 'hourly'.tr();
-      case 'Contract':
-        return 'contract'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeCurrency(String value) {
-    switch (value) {
-      case 'USD':
-        return 'usd_desc'.tr();
-      case 'EUR':
-        return 'eur_desc'.tr();
-      case 'GBP':
-        return 'gbp_desc'.tr();
-      case 'JPY':
-        return 'jpy_desc'.tr();
-      case 'INR':
-        return 'inr_desc'.tr();
-      case 'RUB':
-        return 'rub_desc'.tr();
-      case 'BRL':
-        return 'brl_desc'.tr();
-      case 'SAR':
-        return 'sar_desc'.tr();
-      default:
-        return value;
-    }
-  }
-
-  String _localizeLeavePolicy(String value) {
-    switch (value) {
-      case 'Standard':
-        return 'standard'.tr();
-      case 'Custom':
-        return 'custom'.tr();
-      case 'Sick/Casual Only':
-        return 'sick_casual_only'.tr();
-      default:
-        return value;
-    }
-  }
+  String _localizeType1(String value) =>
+      LocalizationHelper.localizeType1(value);
+  String _localizeType2(String value) =>
+      LocalizationHelper.localizeType2(value);
+  String _localizeExperience(String value) =>
+      LocalizationHelper.localizeExperience(value);
+  String _localizeEducation(String value) =>
+      LocalizationHelper.localizeEducation(value);
+  String _localizeSalaryType(String value) =>
+      LocalizationHelper.localizeSalaryType(value);
+  String _localizeCurrency(String value) =>
+      LocalizationHelper.localizeCurrency(value);
+  String _localizeLeavePolicy(String value) =>
+      LocalizationHelper.localizeLeavePolicy(value);
 
   void _parseSelectedDate() {
     if (widget.selectedJoiningDate != null &&
@@ -2891,10 +2766,10 @@ class DocumentationSection extends StatelessWidget {
                     Image.memory(bytes, fit: BoxFit.cover)
                   else if (existingUrl != null &&
                       existingUrl.startsWith('http'))
-                    Image.network(
-                      existingUrl,
+                    CachedNetworkImage(
+                      imageUrl: existingUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
+                      errorWidget: (context, url, error) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
                   else
@@ -3075,12 +2950,11 @@ class DocumentationSection extends StatelessWidget {
                               )
                             : (existingCvUrl != null &&
                                       existingCvUrl!.isNotEmpty
-                                  ? Image.network(
-                                      existingCvUrl!,
+                                  ? CachedNetworkImage(
+                                      imageUrl: existingCvUrl!,
                                       fit: BoxFit.cover,
-                                      filterQuality: FilterQuality.high,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
+                                      errorWidget:
+                                          (context, url, error) =>
                                               const Center(
                                                 child: Icon(
                                                   Icons.broken_image,
@@ -3479,126 +3353,6 @@ Widget _buildMenuRadio(bool isSelected, String text) {
       ),
     ],
   );
-}
-
-class CustomDropdownField extends StatefulWidget {
-  final String label;
-  final String selectedValue;
-  final String hint;
-  final List<String> items;
-  final ValueChanged<String?> onChanged;
-  final String? Function(String item)? itemLabelBuilder;
-
-  const CustomDropdownField({
-    super.key,
-    required this.label,
-    required this.selectedValue,
-    required this.hint,
-    required this.items,
-    required this.onChanged,
-    this.itemLabelBuilder,
-  });
-
-  @override
-  State<CustomDropdownField> createState() => _CustomDropdownFieldState();
-}
-
-class _CustomDropdownFieldState extends State<CustomDropdownField> {
-  late String _currentValue;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentValue = widget.selectedValue;
-  }
-
-  @override
-  void didUpdateWidget(covariant CustomDropdownField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.selectedValue != oldWidget.selectedValue) {
-      _currentValue = widget.selectedValue;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.label,
-          style: const TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        const SizedBox(height: 8),
-        PopupMenuButton<String>(
-          tooltip: widget.label,
-          onSelected: (val) {
-            setState(() {
-              _currentValue = val;
-            });
-            widget.onChanged(val);
-          },
-          offset: const Offset(0, 48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-            side: BorderSide(color: Colors.grey.shade200, width: 1),
-          ),
-          color: const Color(0xFFFFFFFF),
-          elevation: 4,
-          itemBuilder: (context) {
-            return widget.items.map((String item) {
-              final bool isSelected =
-                  item.trim().toLowerCase() ==
-                  _currentValue.trim().toLowerCase();
-              final displayLabel = widget.itemLabelBuilder?.call(item) ?? item;
-              return PopupMenuItem<String>(
-                value: item,
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildMenuRadio(isSelected, displayLabel),
-              );
-            }).toList();
-          },
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _currentValue.isEmpty
-                      ? widget.hint
-                      : (widget.itemLabelBuilder?.call(_currentValue) ??
-                            _currentValue),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: _currentValue.isEmpty
-                        ? Colors.grey.shade400
-                        : const Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_drop_down,
-                  color: Colors.grey.shade400,
-                  size: 22,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 Widget _buildDropdownField({

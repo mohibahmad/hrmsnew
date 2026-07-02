@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../firebase_options.dart';
 import 'preferences_service.dart';
 import 'firestore_service.dart';
 import 'error_reporter.dart';
@@ -20,7 +22,8 @@ class AuthService {
   // static const bool useDemoAppleAuth = false;
 
   /// Set to `true` when a guest user logged in via fallback (no real Firebase user).
-  static bool isGuestUser = false;
+  bool get isGuestUser => _isGuestUser;
+  bool _isGuestUser = false;
 
   Stream<User?> get authStateChanges {
     if (FirestoreService.isTesting || isGuestUser) {
@@ -110,7 +113,7 @@ class AuthService {
       await _clearSeededDummyDataIfNeeded();
       return credential;
     } catch (_) {
-      isGuestUser = true;
+      _isGuestUser = true;
       await PreferencesService.setLoggedIn(true);
       return MockUserCredential();
     }
@@ -122,8 +125,7 @@ class AuthService {
       String? clientId;
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
-        clientId =
-            '343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com';
+        clientId = DefaultFirebaseOptions.currentPlatform.iosClientId;
       }
       await GoogleSignIn.instance.initialize(clientId: clientId);
       final GoogleSignInAccount googleUser = await GoogleSignIn.instance
@@ -199,7 +201,7 @@ class AuthService {
 
   /// Sign out
   Future<void> signOut() async {
-    isGuestUser = false;
+      _isGuestUser = false;
     await _auth.signOut();
     await PreferencesService.clear();
     profilePicNotifier.value = null;
@@ -215,8 +217,7 @@ class AuthService {
         await PreferencesService.setPremium(true);
       }
     } catch (e) {
-      // Silently fail – the user will see the upgrade dialog once but
-      // after that the flag will be set if they purchase again.
+      debugPrint('Failed to sync premium status: $e');
     }
   }
 
@@ -241,17 +242,13 @@ class UserAvatar extends StatelessWidget {
         Widget imageWidget;
         if (url != null && url.isNotEmpty) {
           if (url.startsWith('http')) {
-            imageWidget = Image.network(
-              url,
+            imageWidget = CachedNetworkImage(
+              imageUrl: url,
               width: size,
               height: size,
               fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return _buildFallback(size);
-              },
-              errorBuilder: (context, error, stackTrace) =>
-                  _buildFallback(size),
+              placeholder: (context, url) => _buildFallback(size),
+              errorWidget: (context, url, error) => _buildFallback(size),
             );
           } else if (url.startsWith('data:image')) {
             try {

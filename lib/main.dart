@@ -3,12 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'firebase_options.dart';
 import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'services/auth_service.dart';
+import 'services/firestore_service.dart';
 import 'services/preferences_service.dart';
 import 'screens/splash_screen.dart';
 
@@ -108,7 +110,13 @@ void main() {
           path: 'assets/translations',
           fallbackLocale: const Locale('en'),
           saveLocale: true,
-          child: const HRMSApp(),
+          child: MultiProvider(
+            providers: [
+              Provider<FirestoreService>(create: (_) => FirestoreService()),
+              Provider<AuthService>(create: (_) => AuthService()),
+            ],
+            child: const HRMSApp(),
+          ),
         ),
       );
     },
