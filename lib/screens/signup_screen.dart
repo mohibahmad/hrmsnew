@@ -879,10 +879,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 500),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 10,
-                        ),
+                        padding: const EdgeInsets.all(20),
                         decoration: cardDecoration,
                         child: SingleChildScrollView(
                           child: Column(

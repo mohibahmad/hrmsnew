@@ -113,7 +113,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _absentCount = 0;
   int _leaveCount = 0;
   int _currentPage = 1;
-  static const int _itemsPerPage = 15;
+  static const int _itemsPerPage = 8;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
 

@@ -34,7 +34,7 @@ class AssetsScreen extends StatefulWidget {
 class _AssetsScreenState extends State<AssetsScreen> {
   String _searchQuery = '';
   int _currentPage = 1;
-  static const int _itemsPerPage = 15;
+  static const int _itemsPerPage = 8;
 
   List<AssetData> _assets = [];
   bool _isLoading = false;

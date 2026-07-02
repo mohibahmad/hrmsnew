@@ -481,7 +481,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
   int _currentPage = 1;
-  static const int _itemsPerPage = 15;
+  static const int _itemsPerPage = 8;
   StreamSubscription? _workersSub;
 
   @override
