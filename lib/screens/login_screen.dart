@@ -469,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Center(
         child: SvgPicture.asset(
           'assets/HR_dark.svg',
-          height: 58,
+          height: 76,
           fit: BoxFit.contain,
         ),
       ),
