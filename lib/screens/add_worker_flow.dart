@@ -3429,6 +3429,11 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
           }
           final bytes = bytesBuilder.takeBytes();
           document = await PdfDocument.openData(bytes);
+        } else if (widget.existingCvUrl!.startsWith('data:application/pdf')) {
+          final base64Content =
+              widget.existingCvUrl!.split(',').last;
+          final bytes = base64Decode(base64Content);
+          document = await PdfDocument.openData(bytes);
         }
       }
 

@@ -59,6 +59,19 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
       currentUser != null &&
       !currentUser.isAnonymous &&
       currentUser.email?.toLowerCase() == email?.toLowerCase();
+
+  if (_isValidUrl(url)) {
+    if (url!.startsWith('data:image/')) {
+      return MemoryImage(_decodeBase64(url));
+    }
+    if (url.startsWith('http')) {
+      return CachedNetworkImageProvider(url);
+    }
+    if (_fileExists(url)) {
+      return FileImage(File(url));
+    }
+  }
+
   if (isCurrentUser) {
     final notifierUrl = AuthService.profilePicNotifier.value;
     if (_isValidUrl(notifierUrl)) {
@@ -74,20 +87,6 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
     }
   }
 
-  if (!_isValidUrl(url)) {
-    return AssetImage(
-      index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
-    );
-  }
-  if (url!.startsWith('data:image/')) {
-    return MemoryImage(_decodeBase64(url));
-  }
-  if (url.startsWith('http')) {
-    return CachedNetworkImageProvider(url);
-  }
-  if (_fileExists(url)) {
-    return FileImage(File(url));
-  }
   return AssetImage(
     index % 2 == 0 ? 'assets/profileimage.png' : 'assets/boy.png',
   );

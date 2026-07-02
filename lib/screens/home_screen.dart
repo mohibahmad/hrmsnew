@@ -214,18 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _restoreProfilePic(User? currentUser) async {
-    // 1) Use the sync cache first — set on the notifier immediately so the
-    //    first frame already shows the correct image (no async delay).
-    final cachedUrl = PreferencesService.cachedProfilePicUrl;
-    if (cachedUrl != null && cachedUrl.isNotEmpty && cachedUrl.startsWith('http')) {
-      AuthService.profilePicNotifier.value = cachedUrl;
-      // Fall through to Firestore in case the cached URL is stale
-    } else {
-      // 2) No sync cache — try Firebase Auth photoURL as a quick initial value
-      AuthService.profilePicNotifier.value = currentUser?.photoURL;
-    }
-
-    // 3) Background: refresh from Firestore and persist for next launch
     if (currentUser != null && !currentUser.isAnonymous) {
       try {
         final profile = await FirestoreService().getUserProfile();
@@ -234,11 +222,19 @@ class _HomeScreenState extends State<HomeScreen> {
           if (pic != null && pic.toString().isNotEmpty) {
             AuthService.profilePicNotifier.value = pic.toString();
             await PreferencesService.setProfilePicUrl(pic.toString());
+            return;
           }
         }
       } catch (e) {
         debugPrint('Failed to restore profile pic: $e');
       }
+    }
+
+    final cachedUrl = PreferencesService.cachedProfilePicUrl;
+    if (cachedUrl != null && cachedUrl.isNotEmpty && cachedUrl.startsWith('http')) {
+      AuthService.profilePicNotifier.value = cachedUrl;
+    } else {
+      AuthService.profilePicNotifier.value = currentUser?.photoURL;
     }
   }
 

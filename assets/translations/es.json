@@ -627,5 +627,6 @@
   "sar_desc": "SAR - Riyal saudí (﷼)",
   "worker_must_be_18": "El trabajador debe tener al menos 18 años.",
   "invalid_date_format": "Formato de fecha inválido. Use DD/MM/AAAA.",
-  "holiday_already_exists": "Ya existe un festivo para este día"
+  "holiday_already_exists": "Ya existe un festivo para este día",
+  "uploading_files": "Subiendo {count} archivo(s)..."
 }

@@ -774,16 +774,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          Text(
-            item.name,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Color(0xFF000000),
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
+          Expanded(
+            child: Text(
+              item.name,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF000000),
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           // CupertinoSwitch matches iOS toggles in style
           Transform.scale(
             scale: 0.8,
