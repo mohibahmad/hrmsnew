@@ -298,11 +298,21 @@ class UserAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      color: const Color(0xFFE2E8F0),
-      child: Icon(
-        Icons.person,
-        size: size * 0.6,
-        color: const Color(0xFF64748B),
+      color: Colors.white,
+      padding: EdgeInsets.all(size * 0.08),
+      child: Image.asset(
+        'assets/profile_pic.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: const Color(0xFFE2E8F0),
+            child: Icon(
+              Icons.person,
+              size: size * 0.6,
+              color: const Color(0xFF64748B),
+            ),
+          );
+        },
       ),
     );
   }
