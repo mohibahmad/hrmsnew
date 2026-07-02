@@ -491,7 +491,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 24),
+        const SizedBox(width: 12),
         SizedBox(
           height: 50,
           child: ElevatedButton(
