@@ -78,7 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.transparent,
                   child: Container(
                     width: 280,
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 20,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(6),
@@ -113,14 +116,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.pop(context);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               margin: const EdgeInsets.only(bottom: 4),
                               decoration: BoxDecoration(
-                                color: isSel ? const Color(0xFFF1F3F5) : Colors.transparent,
+                                color: isSel
+                                    ? const Color(0xFFF1F3F5)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     lang,
@@ -131,7 +140,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                                   if (isSel)
-                                    const Icon(Icons.check, size: 18, color: Color(0xFF0247C4)),
+                                    const Icon(
+                                      Icons.check,
+                                      size: 18,
+                                      color: Color(0xFF0247C4),
+                                    ),
                                 ],
                               ),
                             ),
@@ -148,6 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
   }
+
   bool _isAppleLoading = false;
   bool _isGuestLoading = false;
   bool _obscurePassword = true;
@@ -157,6 +171,19 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
 
   final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ── Quick test bypass ──────────────────────────────────────────────────
+    // Uncomment the block below to auto-login as guest after 1 second:
+    // Future.delayed(const Duration(seconds: 1), () {
+    //   if (!mounted) return;
+    //   _handleGuestLogin();
+    // });
+    // ────────────────────────────────────────────────────────────────────────
+  }
 
   @override
   void dispose() {
@@ -405,8 +432,8 @@ class _LoginScreenState extends State<LoginScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: SizedBox(
-                      width: 36,
-                      height: 36,
+                  width: 36,
+                  height: 36,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -766,7 +793,11 @@ class _LoginScreenState extends State<LoginScreen> {
       color: Color(0xFFFFFFFF),
       borderRadius: BorderRadius.circular(40),
       boxShadow: [
-        BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 20, offset: Offset(0, 10)),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.12),
+          blurRadius: 20,
+          offset: Offset(0, 10),
+        ),
       ],
     );
 
@@ -779,8 +810,8 @@ class _LoginScreenState extends State<LoginScreen> {
           Positioned(
             top: 50,
             right: 40,
-          child: GestureDetector(
-            onTap: _showLanguageModal,
+            child: GestureDetector(
+              onTap: _showLanguageModal,
               child: Container(
                 width: 42,
                 height: 42,

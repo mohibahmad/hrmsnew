@@ -30,6 +30,17 @@ class _SplashScreenState extends State<SplashScreen>
     // Start entrance animation
     _animationController.forward();
 
+    // ── Quick test bypass ──────────────────────────────────────────────────
+    // Uncomment the block below to ALWAYS go to HomeScreen (skip login):
+    // Future.delayed(const Duration(milliseconds: 500), () {
+    //   if (!mounted) return;
+    //   Navigator.of(context).pushReplacement(
+    //     MaterialPageRoute(builder: (_) => const HomeScreen()),
+    //   );
+    // });
+    // return; // <-- also uncomment this to prevent _navigateWhenReady
+    // ────────────────────────────────────────────────────────────────────────
+
     _navigateWhenReady();
   }
 

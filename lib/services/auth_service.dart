@@ -48,26 +48,45 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-    await PreferencesService.setLoggedIn(true);
-    return credential;
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      await PreferencesService.setLoggedIn(true);
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      // Real Firebase error — let the caller (signup_screen) handle it
+      debugPrint('signUp FirebaseAuthException: ${e.code}');
+      rethrow;
+    } catch (e) {
+      // Non-Firebase error (e.g. network) — also rethrow so caller can show error
+      debugPrint('signUp unexpected error: $e');
+      rethrow;
+    }
   }
 
   Future<UserCredential> signIn({
     required String email,
     required String password,
   }) async {
-    final credential = await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-    await PreferencesService.setLoggedIn(true);
-    await _syncPremiumStatusFromFirestore();
-    await _clearSeededDummyDataIfNeeded();
-    return credential;
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      await PreferencesService.setLoggedIn(true);
+      await _syncPremiumStatusFromFirestore();
+      await _clearSeededDummyDataIfNeeded();
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      // Let the caller handle specific Firebase errors (wrong password, etc.)
+      debugPrint('signIn FirebaseAuthException: ${e.code}');
+      rethrow;
+    } catch (e) {
+      debugPrint('signIn unexpected error: $e');
+      rethrow;
+    }
   }
 
   /// Sign in Anonymously (Continue as Guest)
@@ -78,10 +97,13 @@ class AuthService {
       await PreferencesService.setLoggedIn(true);
       return MockUserCredential();
     }
+
     try {
       final credential = await _auth.signInAnonymously();
       if (credential.user != null) {
-        await credential.user!.updateDisplayName(displayName).catchError((_) {});
+        await credential.user!
+            .updateDisplayName(displayName)
+            .catchError((_) {});
       }
       await PreferencesService.setLoggedIn(true);
       await _syncPremiumStatusFromFirestore();

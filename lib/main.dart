@@ -57,33 +57,22 @@ void main() {
         return true;
       };
 
-      bool firebaseReady = false;
       try {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
-        ).timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            throw TimeoutException('Firebase.initializeApp timed out');
-          },
         );
-        firebaseReady = true;
 
         FirebaseFirestore.instance.settings = const Settings(
           persistenceEnabled: true,
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
-      } on TimeoutException catch (e, st) {
-        ErrorReporter.report(
-          e,
-          st,
-          context: 'Firebase.initializeApp(timeout)',
-          fatal: false,
-        );
-      } catch (e, st) {
-        ErrorReporter.report(e, st, context: 'Firebase.initializeApp');
+
+        debugPrint('🔥 Firebase initialized successfully');
+      } catch (e) {
+        debugPrint('🔥 Firebase initialization FAILED: $e');
+
+        rethrow;
       }
-      debugPrint('Firebase ready: $firebaseReady');
 
       DummyData.loadFromPrefs();
 
