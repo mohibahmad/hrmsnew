@@ -262,7 +262,8 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Guest login error: $e\n$st');
       if (mounted) {
         _showErrorSnackBar('guest_login_failed'.tr());
       }
@@ -404,8 +405,8 @@ class _LoginScreenState extends State<LoginScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: SizedBox(
-                  width: 20,
-                  height: 20,
+                      width: 36,
+                      height: 36,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -778,8 +779,8 @@ class _LoginScreenState extends State<LoginScreen> {
           Positioned(
             top: 50,
             right: 40,
-            child: GestureDetector(
-              onTap: _showLanguageModal,
+          child: GestureDetector(
+            onTap: _showLanguageModal,
               child: Container(
                 width: 42,
                 height: 42,
@@ -788,9 +789,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-color: Colors.black.withValues(alpha: 0.12),
-                       blurRadius: 8,
-                       offset: Offset(0, 2),
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),

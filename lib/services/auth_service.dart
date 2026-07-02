@@ -19,15 +19,18 @@ class AuthService {
   static const bool useDemoAuth = false;
   // static const bool useDemoAppleAuth = false;
 
+  /// Set to `true` when a guest user logged in via fallback (no real Firebase user).
+  static bool isGuestUser = false;
+
   Stream<User?> get authStateChanges {
-    if (FirestoreService.isTesting) {
+    if (FirestoreService.isTesting || isGuestUser) {
       return Stream.value(MockUser());
     }
     return _auth.authStateChanges();
   }
 
   User? get currentUser {
-    if (FirestoreService.isTesting) {
+    if (FirestoreService.isTesting || isGuestUser) {
       return MockUser();
     }
     return _auth.currentUser;
@@ -75,14 +78,20 @@ class AuthService {
       await PreferencesService.setLoggedIn(true);
       return MockUserCredential();
     }
-    final credential = await _auth.signInAnonymously();
-    if (credential.user != null) {
-      await credential.user!.updateDisplayName(displayName).catchError((_) {});
+    try {
+      final credential = await _auth.signInAnonymously();
+      if (credential.user != null) {
+        await credential.user!.updateDisplayName(displayName).catchError((_) {});
+      }
+      await PreferencesService.setLoggedIn(true);
+      await _syncPremiumStatusFromFirestore();
+      await _clearSeededDummyDataIfNeeded();
+      return credential;
+    } catch (_) {
+      isGuestUser = true;
+      await PreferencesService.setLoggedIn(true);
+      return MockUserCredential();
     }
-    await PreferencesService.setLoggedIn(true);
-    await _syncPremiumStatusFromFirestore();
-    await _clearSeededDummyDataIfNeeded();
-    return credential;
   }
 
   /// Sign in with Google
@@ -168,6 +177,7 @@ class AuthService {
 
   /// Sign out
   Future<void> signOut() async {
+    isGuestUser = false;
     await _auth.signOut();
     await PreferencesService.clear();
     profilePicNotifier.value = null;

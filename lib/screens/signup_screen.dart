@@ -464,8 +464,8 @@ class _SignupScreenState extends State<SignupScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: SizedBox(
-                  width: 20,
-                  height: 20,
+                      width: 36,
+                      height: 36,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
