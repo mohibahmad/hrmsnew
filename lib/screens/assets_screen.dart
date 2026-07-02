@@ -903,7 +903,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
         // Search Bar
         Expanded(
           child: Container(
-            height: 50,
+            height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
@@ -985,7 +985,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
-            minimumSize: const Size(140, 50),
+            minimumSize: const Size(170, 44),
+            fixedSize: const Size.fromHeight(44),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
             ),

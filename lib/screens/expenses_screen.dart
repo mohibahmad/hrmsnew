@@ -753,7 +753,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _buildModalTextField(
     String label,
     TextEditingController controller, {
-    TextInputType? keyboardType,
+    TextInputType keyboardType = TextInputType.text,
     String hintText = '',
   }) {
     return Column(
