@@ -829,8 +829,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Center(
                   child: Image.asset(
                     'assets/langauge_icon.png',
-                    width: 26,
-                    height: 26,
+                    width: 28,
+                    height: 28,
                     color: const Color(0xFF0247C4),
                   ),
                 ),

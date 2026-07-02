@@ -232,8 +232,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: Center(
                   child: Image.asset(
                     'assets/langauge_icon.png',
-                    width: 22,
-                    height: 22,
+                    width: 28,
+                    height: 28,
                     color: const Color(0xFF0247C4),
                   ),
                 ),
