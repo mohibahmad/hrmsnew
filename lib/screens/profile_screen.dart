@@ -356,7 +356,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _currencyController.text = _guestProfileCache?['currency'] ?? 'USD';
           _contact1Controller.text =
               _guestProfileCache?['contact1'] ?? '+1 415-555-0198';
-          _contact2Controller.text = _guestProfileCache?['contact2'] ?? '';
+          _contact2Controller.text = _guestProfileCache?['contact2'] ?? '+1 415-555-0299';
           _addressController.text =
               _guestProfileCache?['address'] ?? '123 Demo Street, Test City';
           _profilePicUrl = AuthService.profilePicNotifier.value;
