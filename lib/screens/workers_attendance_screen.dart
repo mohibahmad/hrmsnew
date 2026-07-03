@@ -13,8 +13,7 @@ import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 
-// --- STYLING CONSTANTS ---
-const Color primaryBlue = Color(0xFF0B51C1);
+ const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
 const Color cardLightGray = Color(0xFFF3F5F8);
 const Color textDark = Color(0xFF000000);
@@ -37,6 +36,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
+  int _currentPage = 1;
+  static const int _itemsPerPage = 10;
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   bool _isLoading = true;
@@ -336,33 +337,35 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                           ],
                                                         ),
                                                       )
-                                                    : SingleChildScrollView(
+                                                      : SingleChildScrollView(
                                                         child: Column(
-                                                          children: filteredWorkers
-                                                              .asMap()
-                                                              .entries
-                                                              .map(
-                                                                (
-                                                                  entry,
-                                                                ) => WorkerListItem(
-                                                                  data: entry
-                                                                      .value,
-                                                                  index:
-                                                                      entry.key,
-                                                                  onMarkAttendance: () =>
-                                                                      _showMarkAttendanceDialog(
-                                                                        context,
-                                                                        entry
-                                                                            .value,
-                                                                      ),
-                                                                ),
-                                                              )
-                                                              .toList(),
+                                                          children: () {
+                                                            final startIndex = (_currentPage - 1) * _itemsPerPage;
+                                                            final paginatedList = filteredWorkers
+                                                                .skip(startIndex)
+                                                                .take(_itemsPerPage)
+                                                                .toList();
+                                                            return paginatedList
+                                                                .asMap()
+                                                                .entries
+                                                                .map(
+                                                                  (entry) => WorkerListItem(
+                                                                    data: entry.value,
+                                                                    index: entry.key,
+                                                                    onMarkAttendance: () =>
+                                                                        _showMarkAttendanceDialog(
+                                                                          context,
+                                                                          entry.value,
+                                                                        ),
+                                                                  ),
+                                                                )
+                                                                .toList();
+                                                          }(),
                                                         ),
                                                       ),
                                               ),
                                               const SizedBox(height: 8),
-                                              const PaginationWidget(),
+                                              _buildPagination(),
                                             ],
                                           ),
                                         ),
@@ -1271,6 +1274,58 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     });
   }
 
+  Widget _buildPagination() {
+    final filtered = _filteredWorkers;
+    final totalPages = (filtered.isEmpty)
+        ? 1
+        : (filtered.length / _itemsPerPage).ceil();
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        GestureDetector(
+          onTap: _currentPage > 1
+              ? () => setState(() => _currentPage--)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: Icon(
+            Icons.chevron_left,
+            size: 24,
+            color: _currentPage > 1 ? textDark : Colors.grey.shade400,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: primaryBlue,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            '$_currentPage',
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        GestureDetector(
+          onTap: _currentPage < totalPages
+              ? () => setState(() => _currentPage++)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: Icon(
+            Icons.chevron_right,
+            size: 24,
+            color: _currentPage < totalPages ? textDark : Colors.grey.shade400,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildToggleChip(
     String label,
     String svgAsset,
@@ -1550,39 +1605,6 @@ class StatusPill extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-    );
-  }
-}
-
-class PaginationWidget extends StatelessWidget {
-  const PaginationWidget({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        const Icon(Icons.chevron_left, size: 24, color: textDark),
-        const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: primaryBlue,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text(
-            "1",
-            style: TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Icon(Icons.chevron_right, size: 24, color: textDark),
-      ],
     );
   }
 }
