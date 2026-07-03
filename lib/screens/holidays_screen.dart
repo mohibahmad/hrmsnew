@@ -289,7 +289,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             'save'.tr(),
                             style: TextStyle(
                               color: Color(0xFFFFFFFF),
-                              fontSize: 14,
+              fontSize: 20,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),
