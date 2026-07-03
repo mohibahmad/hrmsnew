@@ -679,6 +679,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
             minimumSize: const Size(32, 60),
+            padding: const EdgeInsets.only(left: 12, right: 20),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
             ),
