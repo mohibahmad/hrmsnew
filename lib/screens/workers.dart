@@ -765,7 +765,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   children: [
                     Expanded(
                       child: Container(
-                        height: 50,
+                        height: 48,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
                           color: Color(0xFFFFFFFF),
@@ -826,7 +826,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     _buildActionButton(
                       svgPath: 'assets/add_worker.svg',
                       label: 'add_worker'.tr(),
@@ -853,7 +853,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         widget.onAddWorker();
                       },
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     _buildActionButton(
                       svgPath: 'assets/add_bulk_worker.svg',
                       label: 'add_bulk_workers'.tr(),
@@ -1374,7 +1374,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     required VoidCallback onTap,
   }) {
     return Container(
-      height: 50,
+      height: 48,
       decoration: BoxDecoration(
         color: buttonColor,
         borderRadius: BorderRadius.circular(6),
@@ -1431,7 +1431,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive ? buttonColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           displayLabel,

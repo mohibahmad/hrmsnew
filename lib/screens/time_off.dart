@@ -519,7 +519,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isSelected ? 10 : 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: const EdgeInsets.only(right: 4),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,

@@ -606,7 +606,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         });
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isActive ? 10 : 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? primaryBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
