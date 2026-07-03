@@ -32,6 +32,7 @@ class AssetsScreen extends StatefulWidget {
 }
 
 class _AssetsScreenState extends State<AssetsScreen> {
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
@@ -47,6 +48,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   void dispose() {
     _assetsSub?.cancel();
     _workersSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -920,6 +922,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
@@ -940,6 +943,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 if (_searchQuery.isNotEmpty)
                   GestureDetector(
                     onTap: () {
+                      _searchController.clear();
                       setState(() {
                         _searchQuery = '';
                         _currentPage = 1;

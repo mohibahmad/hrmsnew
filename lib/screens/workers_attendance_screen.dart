@@ -34,6 +34,7 @@ class WorkersAttendanceScreen extends StatefulWidget {
 }
 
 class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
   List<Map<String, dynamic>> _workers = [];
@@ -51,6 +52,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   void dispose() {
     _workersSub?.cancel();
     _attendanceSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -615,6 +617,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: _searchController,
               onChanged: (val) {
                 setState(() {
                   _searchQuery = val;
@@ -635,6 +638,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           if (_searchQuery.isNotEmpty)
             GestureDetector(
               onTap: () {
+                _searchController.clear();
                 setState(() {
                   _searchQuery = '';
                 });

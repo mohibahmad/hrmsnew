@@ -29,6 +29,7 @@ class PayrollScreen extends StatefulWidget {
 }
 
 class _PayrollScreenState extends State<PayrollScreen> {
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _payrollDocs = [];
@@ -47,6 +48,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   void dispose() {
     _payrollSub?.cancel();
     _workersSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -230,6 +232,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: _searchController,
               onChanged: (val) {
                 setState(() {
                   _searchQuery = val;
@@ -251,6 +254,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           if (_searchQuery.isNotEmpty)
             GestureDetector(
               onTap: () {
+                _searchController.clear();
                 setState(() {
                   _searchQuery = '';
                   _currentPage = 1;

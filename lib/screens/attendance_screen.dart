@@ -99,6 +99,7 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
   String _selectedTimeframe = 'Week';
@@ -121,6 +122,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void dispose() {
     _attendanceSub?.cancel();
     _workersSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -383,6 +385,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
@@ -404,6 +407,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 if (_searchQuery.isNotEmpty)
                   GestureDetector(
                     onTap: () {
+                      _searchController.clear();
                       setState(() {
                         _searchQuery = '';
                         _currentPage = 1;

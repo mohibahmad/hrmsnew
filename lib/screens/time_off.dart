@@ -50,6 +50,7 @@ class TimeOffScreen extends StatefulWidget {
 }
 
 class _TimeOffScreenState extends State<TimeOffScreen> {
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
   List<Map<String, dynamic>> _timeoffDocs = [];
@@ -64,6 +65,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   void dispose() {
     _timeoffSub?.cancel();
     _workersSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -452,6 +454,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: _searchController,
               onChanged: (val) {
                 setState(() {
                   _searchQuery = val;
@@ -473,6 +476,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           if (_searchQuery.isNotEmpty)
             GestureDetector(
               onTap: () {
+                _searchController.clear();
                 setState(() {
                   _searchQuery = '';
                   _currentPage = 1;

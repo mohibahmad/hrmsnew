@@ -476,6 +476,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   final Color actionBtnBlue = const Color(0xFF0E53C5);
   final Color buttonColor = const Color(0xFF0C51C1);
   final Color textDark = const Color(0xFF000000);
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _allWorkers = [];
@@ -487,6 +488,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   @override
   void dispose() {
     _workersSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -787,6 +789,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: TextField(
+                                controller: _searchController,
                                 onChanged: (val) {
                                   setState(() {
                                     _searchQuery = val;
@@ -808,6 +811,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             if (_searchQuery.isNotEmpty)
                               GestureDetector(
                                 onTap: () {
+                                  _searchController.clear();
                                   setState(() {
                                     _searchQuery = '';
                                     _currentPage = 1;

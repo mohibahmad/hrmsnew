@@ -35,6 +35,7 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
+  final _searchController = TextEditingController();
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
@@ -49,6 +50,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   void dispose() {
     _expensesSub?.cancel();
     _workersSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -1213,6 +1215,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
@@ -1234,6 +1237,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 if (_searchQuery.isNotEmpty)
                   GestureDetector(
                     onTap: () {
+                      _searchController.clear();
                       setState(() {
                         _searchQuery = '';
                         _currentPage = 1;
