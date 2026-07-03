@@ -349,7 +349,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             }),
             child: Container(
               margin: const EdgeInsets.only(right: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: isSelected ? 12 : 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFF0D4CC6)
