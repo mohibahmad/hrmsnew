@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -231,34 +230,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm != true) return;
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        try {
-          await user.delete();
-        } on FirebaseAuthException catch (e) {
-          if (e.code == 'requires-recent-login') {
-            final reauthed = await _reauthenticate(context);
-            if (reauthed != true) return;
-            await user.delete();
-          } else {
-            rethrow;
-          }
-        }
+      await FirestoreService().deleteUserData();
+      await AuthService().signOut();
 
-        await FirestoreService().deleteUserData();
-        await AuthService().signOut();
-
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'account_deleted_successfully'.tr(),
-            title: 'account_deleted'.tr(),
-          );
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-          );
-        }
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'account_deleted_successfully'.tr(),
+          title: 'account_deleted'.tr(),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -267,70 +251,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           message: 'failed_to_delete_account'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
-      }
-    }
-  }
-
-  Future<bool?> _reauthenticate(BuildContext context) async {
-    final email = FirebaseAuth.instance.currentUser?.email;
-    if (email == null) return false;
-
-    final passwordController = TextEditingController();
-    try {
-      return await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          title: Text('reauthenticate'.tr()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('reauthenticate_desc'.tr(namedArgs: {'email': email})),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                decoration: InputDecoration(
-                  labelText: 'password'.tr(),
-                  border: const OutlineInputBorder(),
-                ),
-                obscureText: true,
-                onSubmitted: (_) => Navigator.pop(ctx, true),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('cancel'.tr()),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('confirm'.tr()),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      final password = passwordController.text;
-      passwordController.dispose();
-      if (password.isEmpty) return false;
-      try {
-        final credential = EmailAuthProvider.credential(
-          email: email,
-          password: password,
-        );
-        await FirebaseAuth.instance.currentUser!
-            .reauthenticateWithCredential(credential);
-        return true;
-      } on FirebaseAuthException catch (e) {
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'reauthentication_failed'.tr(namedArgs: {'error': e.code}),
-            isError: true,
-          );
-        }
-        return false;
       }
     }
   }

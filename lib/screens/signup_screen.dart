@@ -314,6 +314,19 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final email = _emailController.text.trim();
+      final isDeleted = await FirestoreService().isEmailDeleted(email);
+      if (isDeleted) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'account_deleted_contact'.tr(),
+            isError: true,
+          );
+        }
+        return;
+      }
+
       final credential = await _authService.signUp(
         email: _emailController.text,
         password: _passwordController.text,
@@ -345,25 +358,7 @@ class _SignupScreenState extends State<SignupScreen> {
     } on FirebaseAuthException catch (e) {
       String message;
       if (e.code == 'email-already-in-use') {
-        try {
-          final credential = await _authService.signIn(
-            email: _emailController.text,
-            password: _passwordController.text,
-          );
-          // Don't overwrite existing profile — just sign in and navigate
-          if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-            );
-          }
-          return;
-        } on FirebaseAuthException catch (signInError) {
-          if (signInError.code == 'wrong-password') {
-            message = 'email_already_in_use_wrong_password'.tr();
-          } else {
-            message = 'email_already_in_use'.tr();
-          }
-        }
+        message = 'email_already_in_use'.tr();
       } else {
         switch (e.code) {
           case 'invalid-email':
@@ -571,18 +566,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _inputDecoration('email_hint'.tr()),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'email_required'.tr();
-                }
-                if (!value.trim().contains('@')) {
-                  return 'email_must_contain_at'.tr();
-                }
-                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
-                  return 'email_invalid'.tr();
-                }
-                return null;
-              },
+               validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'email_required'.tr();
+                  }
+                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
+                    return 'email_invalid'.tr();
+                  }
+                  return null;
+                },
             ),
             const SizedBox(height: 10),
             _InputLabel(label: 'password_label'.tr()),

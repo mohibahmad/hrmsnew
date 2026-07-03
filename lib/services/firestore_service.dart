@@ -16,10 +16,10 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String get _userKey {
-    final uid = AuthService().currentUser?.uid;
-    if (uid != null && uid.isNotEmpty) return uid;
     final email = AuthService().currentUser?.email?.trim().toLowerCase();
     if (email != null && email.isNotEmpty) return email;
+    final uid = AuthService().currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) return uid;
     return '';
   }
 
@@ -97,6 +97,14 @@ class FirestoreService {
   Future<bool> isCurrentUserDeleted() async {
     final profile = await getUserProfile();
     return profile?['isDeleted'] == true;
+  }
+
+  Future<bool> isEmailDeleted(String email) async {
+    if (email.trim().isEmpty) return false;
+    final doc =
+        await _db.collection('hrms_user').doc(email.trim().toLowerCase()).get();
+    if (!doc.exists) return false;
+    return doc.data()?['isDeleted'] == true;
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {

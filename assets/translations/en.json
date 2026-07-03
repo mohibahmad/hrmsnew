@@ -28,7 +28,7 @@
   "back_to_login": "Back to Login",
   "email_required": "Please enter your email",
   "email_must_contain_at": "Email must contain @",
-  "email_invalid": "Please enter a valid email (e.g. name@domain.com)",
+  "email_invalid": "Please enter a valid email (e.g. name.@gmail.com)",
   "password_required": "Please enter your password",
   "password_too_short": "Password must be at least 6 characters",
   "username_required": "Please enter your username",

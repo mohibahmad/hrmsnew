@@ -517,18 +517,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _inputDecoration('email_hint'.tr()),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'email_required'.tr();
-                }
-                if (!value.trim().contains('@')) {
-                  return 'email_must_contain_at'.tr();
-                }
-                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
-                  return 'email_invalid'.tr();
-                }
-                return null;
-              },
+               validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'email_required'.tr();
+                  }
+                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
+                    return 'email_invalid'.tr();
+                  }
+                  return null;
+                },
             ),
             const SizedBox(height: 12),
             _InputLabel(label: 'password_label'.tr()),
