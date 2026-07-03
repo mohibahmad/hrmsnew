@@ -74,17 +74,20 @@ class AuthService {
     required String password,
   }) async {
     try {
+      debugPrint('signIn attempt for email: ${email.trim()}');
+      debugPrint('signIn current user before: ${_auth.currentUser?.email}');
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      debugPrint('signIn success, user email: ${credential.user?.email}');
       await PreferencesService.setLoggedIn(true);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return credential;
     } on FirebaseAuthException catch (e) {
       // Let the caller handle specific Firebase errors (wrong password, etc.)
-      debugPrint('signIn FirebaseAuthException: ${e.code}');
+      debugPrint('signIn FirebaseAuthException: ${e.code} - ${e.message}');
       rethrow;
     } catch (e) {
       debugPrint('signIn unexpected error: $e');

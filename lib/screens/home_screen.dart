@@ -844,6 +844,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? daysUntil.toString()
                               : (h['remainingDays']?.toString() ?? '0');
                         }
+                        activeHolidays.sort((a, b) {
+                          final aDays = int.tryParse(a['remainingDays']?.toString() ?? '') ?? 9999;
+                          final bDays = int.tryParse(b['remainingDays']?.toString() ?? '') ?? 9999;
+                          return aDays.compareTo(bDays);
+                        });
                         if (activeHolidays.isEmpty) {
                           return Center(
                             child: Padding(

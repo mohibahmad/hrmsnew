@@ -306,11 +306,29 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final enteredEmail = _emailController.text.trim().toLowerCase();
       await _authService.signIn(
-        email: _emailController.text,
+        email: enteredEmail,
         password: _passwordController.text,
       );
       if (mounted) {
+        final loggedInEmail =
+            _authService.currentUser?.email?.trim().toLowerCase();
+        if (loggedInEmail != enteredEmail) {
+          await _authService.signOut();
+          if (mounted) {
+            _showErrorSnackBar('login_failed'.tr(namedArgs: {'code': 'email-mismatch'}));
+          }
+          return;
+        }
+        final profile = await FirestoreService().getUserProfile();
+        if (profile == null) {
+          await _authService.signOut();
+          if (mounted) {
+            _showErrorSnackBar('user_not_found'.tr());
+          }
+          return;
+        }
         if (await _handleDeletedAccountIfNeeded()) return;
         if (!mounted) return;
         FlashySnackBar.show(
