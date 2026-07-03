@@ -687,8 +687,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           ),
           icon: SvgPicture.asset(
             'assets/holidays_icon.svg',
-            width: 18,
-            height: 18,
+            width: 22,
+            height: 22,
             colorFilter: const ColorFilter.mode(
               Color(0xFFFFFFFF),
               BlendMode.srcIn,
