@@ -2938,7 +2938,7 @@ class DocumentationSection extends StatelessWidget {
                 ],
               ),
               child: ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+                imageFilter: ui.ImageFilter.blur(sigmaX: 1.0, sigmaY: 1.0),
                 child: isImage
                     ? GestureDetector(
                         onTap: () => _openDocumentPreview(buildContext),
@@ -2967,38 +2967,40 @@ class DocumentationSection extends StatelessWidget {
                     : Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Mock CV lines background inside the page sheet
-                          Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Container(
-                                  height: 16,
-                                  width: 150,
-                                  color: Colors.grey.shade200,
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  height: 10,
-                                  width: 100,
-                                  color: Colors.grey.shade200,
-                                ),
-                                const SizedBox(height: 40),
-                                ...List.generate(
-                                  6,
-                                  (index) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Container(
-                                      height: 10,
-                                      width: double.infinity,
-                                      color: Colors.grey.shade200,
+                          // Mock CV lines background - only show when no CV uploaded
+                          if (cvBytes == null &&
+                              (existingCvUrl == null || existingCvUrl!.isEmpty))
+                            Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    height: 16,
+                                    width: 150,
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    height: 10,
+                                    width: 100,
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  const SizedBox(height: 40),
+                                  ...List.generate(
+                                    6,
+                                    (index) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: Container(
+                                        height: 10,
+                                        width: double.infinity,
+                                        color: Colors.grey.shade200,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
 
                           // PDF Page Preview rendered directly on top of the mock lines (no text / icon overlays)
                           if (cvBytes != null ||
@@ -3020,8 +3022,8 @@ class DocumentationSection extends StatelessWidget {
                           ),
                         ],
                       ),
+                    ),
               ),
-            ),
           ),
 
           // Centered controls overlay (Edit / Delete) in the middle of the preview container
@@ -3440,8 +3442,8 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       if (document != null) {
         final page = await document.getPage(1);
         final pageImage = await page.render(
-          width: page.width * 1.5,
-          height: page.height * 1.5,
+          width: page.width * 5,
+          height: page.height * 5,
           format: PdfPageImageFormat.png,
         );
         if (pageImage != null) {
