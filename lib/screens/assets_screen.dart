@@ -958,7 +958,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 10),
         // Add Asset Button
         ElevatedButton.icon(
           onPressed: () async {
