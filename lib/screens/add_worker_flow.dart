@@ -2772,6 +2772,14 @@ class DocumentationSection extends StatelessWidget {
                       errorWidget: (context, url, error) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
+                  else if (existingUrl != null &&
+                      existingUrl.startsWith('data:image'))
+                    Image.memory(
+                      base64Decode(existingUrl.split(',').last),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildIdPlaceholder(label, hasFile),
+                    )
                   else
                     _buildIdPlaceholder(label, hasFile),
                   Positioned(
