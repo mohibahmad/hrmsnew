@@ -17,6 +17,7 @@ import '../services/upload_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
+import 'login_screen.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
@@ -96,7 +97,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _type1Controller = TextEditingController(text: 'Full-Time');
   final _type2Controller = TextEditingController(text: 'On-Site');
 
-  // Upgraded form controllers & state
+  // Upgr``aded form controllers & state
   final _experienceLevelController = TextEditingController(text: 'Mid-Level');
   final _educationController = TextEditingController(text: 'Bachelor\'s');
   final _salaryTypeController = TextEditingController(text: 'Monthly');
@@ -133,6 +134,19 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   @override
   void initState() {
     super.initState();
+    // Guest users should not access this screen directly
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      });
+      return;
+    }
     if (widget.workerToEdit != null) {
       _nameController.text = (widget.workerToEdit!['name'] ?? '').toString();
       _fatherNameController.text = (widget.workerToEdit!['fatherName'] ?? '')
@@ -282,6 +296,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   bool _isAutoCalc = false;
 
   void _autoCalcAnnualLeaves() {
+    if (_leavePolicyController.text == 'Custom') {
+      _isAutoCalc = false;
+      return;
+    }
     if (_annualLeavesController.text.isNotEmpty &&
         !_isAutoCalc) return;
     _isAutoCalc = true;

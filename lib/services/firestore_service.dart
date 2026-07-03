@@ -38,13 +38,26 @@ class FirestoreService {
     required String email,
     required String phone,
   }) async {
+    final companyId = _generateCompanyId();
     await _userDoc.set({
       'username': username,
       'email': email,
       'phone': phone,
+      'companyId': companyId,
       'hasDummyData': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  String _generateCompanyId() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final now = DateTime.now();
+    final year = now.year;
+    final random = StringBuffer();
+    for (int i = 0; i < 6; i++) {
+      random.write(chars[(now.millisecondsSinceEpoch + i * 7) % chars.length]);
+    }
+    return 'CMP-$year-${random}';
   }
 
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
