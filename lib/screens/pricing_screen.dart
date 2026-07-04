@@ -99,10 +99,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         ),
                       ),
 
-                       Expanded(
+                        Expanded(
                         flex: 11,
                         child: Container(
                           color: Color(0xFFFFFFFF),
+                          width: double.infinity,
+                          height: double.infinity,
                           padding: const EdgeInsets.fromLTRB(48, 16, 48, 24),
                            child: SingleChildScrollView(
                             child: Column(

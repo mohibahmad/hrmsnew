@@ -1296,7 +1296,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   value: 'preview',
                   height: 48,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         Icons.remove_red_eye,
@@ -1304,13 +1303,16 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         color: Color(0xFF000000),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'preview'.tr(),
-                        style: TextStyle(
-                          color: Color(0xFF000000),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
+                      Flexible(
+                        child: Text(
+                          'preview'.tr(),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF000000),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
                       ),
                     ],
@@ -1320,17 +1322,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   value: 'edit',
                   height: 48,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.edit, size: 16, color: actionBtnBlue),
                       const SizedBox(width: 8),
-                      Text(
-                        'edit_worker'.tr(),
-                        style: TextStyle(
-                          color: actionBtnBlue,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
+                      Flexible(
+                        child: Text(
+                          'edit_worker'.tr(),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: actionBtnBlue,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
                       ),
                     ],
@@ -1340,7 +1344,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   value: 'delete',
                   height: 48,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       SvgPicture.asset(
                         'assets/delete_icon.svg',
@@ -1352,13 +1355,16 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'delete'.tr(),
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'SF Pro Display',
+                      Flexible(
+                        child: Text(
+                          'delete'.tr(),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
                       ),
                     ],

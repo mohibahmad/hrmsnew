@@ -13,7 +13,6 @@ import '../services/dummy_data.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
-import 'login_screen.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -32,17 +31,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   @override
   void initState() {
     super.initState();
-     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-          );
-        }
-      });
-    }
   }
 
   Future<void> _downloadTemplate() async {

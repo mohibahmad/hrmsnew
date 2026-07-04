@@ -622,17 +622,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     ),
                   ),
                 ),
-                DropdownMenuItem(
-                  value: 'Custom Leave',
-                  child: Text(
-                    'custom_leave_type'.tr(),
-                    style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
               ],
               onChanged: (v) {
                 if (v != null) {

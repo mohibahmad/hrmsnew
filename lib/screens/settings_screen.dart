@@ -404,6 +404,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? null
                         : () => _deleteAccount(context),
                     disabled: widget.isGuest,
+                    buttonColor: const Color(0xFFFF0004),
                   ),
                   _buildLanguageItem(),
                   _buildSimpleSettingItem(
@@ -502,6 +503,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String buttonText, {
     VoidCallback? onTap,
     bool disabled = false,
+    Color? buttonColor,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -545,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: BoxDecoration(
                 color: disabled
                     ? const Color(0xFFE0E0E0)
-                    : const Color(0xFFF1F3F5),
+                    : buttonColor ?? const Color(0xFFF1F3F5),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -554,7 +556,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   fontSize: 16,
                   color: disabled
                       ? const Color(0xFFAAAAAA)
-                      : const Color(0xFF000000),
+                      : buttonColor != null ? Colors.white : const Color(0xFF000000),
                   fontWeight: FontWeight.w500,
                   fontFamily: 'SF Pro Display',
                   height: 1.0,

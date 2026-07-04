@@ -719,6 +719,7 @@ class _ProfileBodyState extends State<ProfileBody> {
   }) {
     final bool isEmailField = label == 'company_email'.tr();
     final bool isCompanyId = label == 'company_id_no'.tr();
+    final bool isBusinessName = label == 'business_name'.tr();
     final bool isContact =
         label.toLowerCase().contains('contact') ||
         label.toLowerCase().contains('phone');
@@ -770,9 +771,9 @@ class _ProfileBodyState extends State<ProfileBody> {
                   controller: controller,
                   maxLines: maxLines,
                   readOnly: readOnly,
-                  inputFormatters: isCompanyId || isContact
+                  inputFormatters: isCompanyId || isContact || isBusinessName
                       ? [
-                          LengthLimitingTextInputFormatter(15),
+                          LengthLimitingTextInputFormatter(isBusinessName ? 30 : 15),
                           if (isContact)
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[0-9+\-\s()]'),

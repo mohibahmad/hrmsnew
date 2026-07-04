@@ -18,7 +18,6 @@ import '../services/upload_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
-import 'login_screen.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
@@ -135,19 +134,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   @override
   void initState() {
     super.initState();
-    // Guest users should not access this screen directly
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-          );
-        }
-      });
-      return;
-    }
     if (widget.workerToEdit != null) {
       _nameController.text = (widget.workerToEdit!['name'] ?? '').toString();
       _fatherNameController.text = (widget.workerToEdit!['fatherName'] ?? '')
@@ -1695,7 +1681,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         isSelected: relationshipStatus == 'Married',
                         onTap: () => onRelationshipStatusChanged('Married'),
                       ),
-                      const SizedBox(width: 40),
+                      const Spacer(),
                       _buildCustomRadio(
                         label: 'single'.tr(),
                         isSelected: relationshipStatus == 'Single',
@@ -2525,7 +2511,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       label: 'leave_policy_label'.tr(),
                       selectedValue: widget.leavePolicyController.text,
                       hint: 'enter_leave_policy'.tr(),
-                      items: const ['Standard', 'Custom', 'Sick/Casual Only'],
+                      items: const ['Standard', 'Sick/Casual Only'],
                       itemLabelBuilder: (val) => _localizeLeavePolicy(val),
                       onChanged: (val) {
                         if (val != null) {
@@ -2972,7 +2958,7 @@ class DocumentationSection extends StatelessWidget {
     );
   }
 
-  void _openDocumentPreview(BuildContext context) {
+  void _openDocumentPreview(BuildContext context) async {
     final isImage =
         cvName != null &&
         (cvName!.toLowerCase().endsWith('.png') ||
@@ -2986,19 +2972,24 @@ class DocumentationSection extends StatelessWidget {
             cvName!.toLowerCase().endsWith('.docx'));
 
     if (isDoc) {
-      String? fileUrl;
       if (existingCvUrl != null && existingCvUrl!.isNotEmpty) {
-        fileUrl = existingCvUrl;
+        launchUrl(
+          Uri.parse(existingCvUrl!),
+          mode: LaunchMode.externalApplication,
+        );
+      } else if (cvBytes != null && cvName != null) {
+        try {
+          final tempDir = io.Directory.systemTemp;
+          final tempFile = io.File('${tempDir.path}/$cvName');
+          await tempFile.writeAsBytes(cvBytes!);
+          await launchUrl(
+            Uri.file(tempFile.path),
+            mode: LaunchMode.externalApplication,
+          );
+        } catch (e) {
+          debugPrint('Error opening doc: $e');
+        }
       }
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => _DocPreviewScreen(
-            fileUrl: fileUrl,
-            fileName: cvName,
-            cvBytes: cvBytes,
-          ),
-        ),
-      );
       return;
     }
 
@@ -3165,9 +3156,9 @@ class DocumentationSection extends StatelessWidget {
                                 : const SizedBox.shrink()),
                     )
                   : (isPdf || isDoc)
-                      ? ImageFiltered(
-                          imageFilter:
-                              ui.ImageFilter.blur(sigmaX: 1.0, sigmaY: 1.0),
+                      ? GestureDetector(
+                          onTap: () => _openDocumentPreview(buildContext),
+                          behavior: HitTestBehavior.opaque,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -3219,19 +3210,32 @@ class DocumentationSection extends StatelessWidget {
                                 ),
                               if (isDoc)
                                 Positioned.fill(
-                                  child: DocPagePreview(
-                                    fileUrl: existingCvUrl,
-                                    cvBytes: cvBytes,
-                                    fileName: cvName,
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          cvName?.endsWith('.docx') ?? false
+                                              ? Icons.article_outlined
+                                              : Icons.description_outlined,
+                                          size: 64,
+                                          color: const Color(0xFF0B50C3),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          cvName ?? 'Document',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey.shade600,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              Positioned.fill(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      _openDocumentPreview(buildContext),
-                                  behavior: HitTestBehavior.opaque,
-                                ),
-                              ),
                             ],
                           ),
                         )
@@ -3736,7 +3740,7 @@ class DocPagePreview extends StatefulWidget {
 }
 
 class _DocPagePreviewState extends State<DocPagePreview> {
-  iaw.InAppWebViewController? _controller;
+  iaw.InAppWebViewController? _webViewController;
 
   @override
   void initState() {
@@ -3753,6 +3757,26 @@ class _DocPagePreviewState extends State<DocPagePreview> {
   @override
   Widget build(BuildContext context) {
     final url = _getDocUrl();
+    final hasBytes = widget.cvBytes != null && widget.cvBytes!.isNotEmpty;
+    final hasUrl = url != null;
+
+    if (!hasUrl && !hasBytes) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.insert_drive_file, size: 48, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text(
+              widget.fileName ?? 'Document',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontFamily: 'SF Pro Display'),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(4),
       child: iaw.InAppWebView(
@@ -3760,8 +3784,8 @@ class _DocPagePreviewState extends State<DocPagePreview> {
           url: iaw.WebUri(url ?? 'about:blank'),
         ),
         onWebViewCreated: (controller) {
-          _controller = controller;
-          if (url == null && widget.cvBytes != null && widget.fileName != null) {
+          _webViewController = controller;
+          if (!hasUrl && hasBytes) {
             _loadLocalFile();
           }
         },
@@ -3770,12 +3794,12 @@ class _DocPagePreviewState extends State<DocPagePreview> {
   }
 
   Future<void> _loadLocalFile() async {
-    if (widget.cvBytes != null && widget.fileName != null) {
+    if (widget.cvBytes != null && widget.fileName != null && _webViewController != null) {
       try {
         final tempDir = io.Directory.systemTemp;
         final tempFile = io.File('${tempDir.path}/${widget.fileName}');
         await tempFile.writeAsBytes(widget.cvBytes!);
-        _controller?.loadUrl(
+        await _webViewController!.loadUrl(
           urlRequest: iaw.URLRequest(
             url: iaw.WebUri(tempFile.uri.toString()),
           ),
