@@ -99,13 +99,15 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         ),
                       ),
 
-                      Expanded(
+                       Expanded(
                         flex: 11,
                         child: Container(
                           color: Color(0xFFFFFFFF),
                           padding: const EdgeInsets.fromLTRB(48, 16, 48, 24),
-                          child: Column(
+                           child: SingleChildScrollView(
+                            child: Column(
                             mainAxisAlignment: MainAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
@@ -157,7 +159,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 height: 50,
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    // Current implementation is fake - just sets premium to true
                                     await PreferencesService.setPremium(true);
                                     try {
                                       await FirestoreService()
@@ -222,8 +223,10 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 24),
 
                               // --- Footer Links ---
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
                                 children: [
                                   _buildFooterLink(
                                     'privacy_policy'.tr(),
@@ -258,10 +261,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
+            ),
 
               Positioned(
                 top: -7,
