@@ -1205,9 +1205,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     child: Row(
                       children: [
                         Expanded(child: _buildTopTab('worker_detail'.tr(), 0)),
-                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0).withValues(alpha: 0.5)),
+                        VerticalDivider(
+                          width: 1,
+                          color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                        ),
                         Expanded(child: _buildTopTab('experience'.tr(), 1)),
-                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0).withValues(alpha: 0.5)),
+                        VerticalDivider(
+                          width: 1,
+                          color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                        ),
                         Expanded(child: _buildTopTab('documentation'.tr(), 2)),
                       ],
                     ),
@@ -1684,7 +1690,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         isSelected: relationshipStatus == 'Married',
                         onTap: () => onRelationshipStatusChanged('Married'),
                       ),
-                       const SizedBox(width: 120),
+                      const SizedBox(width: 120),
                       _buildCustomRadio(
                         label: 'single'.tr(),
                         isSelected: relationshipStatus == 'Single',
@@ -2127,19 +2133,19 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0xFF000000).withValues(alpha: 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF000000).withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: Column(
                       children: [
                         Row(
@@ -2191,19 +2197,37 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            Expanded(child: _buildDayPill('weekday_sun'.tr(), true)),
+                            Expanded(
+                              child: _buildDayPill('weekday_sun'.tr(), true),
+                            ),
                             const SizedBox(width: 4),
-                            Expanded(child: _buildDayPill('weekday_mon'.tr(), false)),
+                            Expanded(
+                              child: _buildDayPill('weekday_mon'.tr(), false),
+                            ),
                             const SizedBox(width: 4),
-                            Expanded(child: _buildDayPill('weekday_tue'.tr(), false)),
+                            Expanded(
+                              child: _buildDayPill('weekday_tue'.tr(), false),
+                            ),
                             const SizedBox(width: 4),
-                            Expanded(child: _buildDayPill('weekday_wed'.tr(), false)),
+                            Expanded(
+                              child: _buildDayPill('weekday_wed'.tr(), false),
+                            ),
                             const SizedBox(width: 4),
-                            Expanded(child: _buildDayPill('weekday_thu'.tr(), false)),
+                            Expanded(
+                              child: _buildDayPill('weekday_thu'.tr(), false),
+                            ),
                             const SizedBox(width: 4),
-                            Expanded(child: _buildDayPill('weekday_fri'.tr(), false, isGreen: true)),
+                            Expanded(
+                              child: _buildDayPill(
+                                'weekday_fri'.tr(),
+                                false,
+                                isGreen: true,
+                              ),
+                            ),
                             const SizedBox(width: 4),
-                            Expanded(child: _buildDayPill('weekday_sat'.tr(), false)),
+                            Expanded(
+                              child: _buildDayPill('weekday_sat'.tr(), false),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -2242,10 +2266,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                         _calendarMonth.month,
                                         day,
                                       );
-                                      final monthName = _localizedMonth(selected.month);
+                                      final monthName = _localizedMonth(
+                                        selected.month,
+                                      );
                                       final formatted =
                                           '$monthName ${selected.day}, ${selected.year}';
-                                      widget.onJoiningDateChanged?.call(formatted);
+                                      widget.onJoiningDateChanged?.call(
+                                        formatted,
+                                      );
                                       setState(() {
                                         _selectedDate = selected;
                                         _initialDate = selected;
@@ -2340,7 +2368,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             ),
           ],
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
 
         // Salary Section
         Text(
@@ -3137,15 +3165,15 @@ class DocumentationSection extends StatelessWidget {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                     Icon(
-                                       cvName?.endsWith('.docx') ?? false
-                                           ? Icons.article_outlined
-                                           : Icons.description_outlined,
-                                       size: 64,
-                                       color: const Color(0xFF0B50C3),
-                                     ),
-                                     const SizedBox(height: 8),
-                                     Text(
+                                    Icon(
+                                      cvName?.endsWith('.docx') ?? false
+                                          ? Icons.article_outlined
+                                          : Icons.description_outlined,
+                                      size: 64,
+                                      color: const Color(0xFF0B50C3),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
                                       cvName ?? 'Document',
                                       style: TextStyle(
                                         fontSize: 14,
