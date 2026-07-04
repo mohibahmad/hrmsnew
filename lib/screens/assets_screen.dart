@@ -1274,7 +1274,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                data.dateReturned,
+                data.dateReturned == 'in_use'
+                    ? 'in_use'.tr()
+                    : data.dateReturned,
                 maxLines: 1,
                 style: TextStyle(
                   fontSize: 15,
