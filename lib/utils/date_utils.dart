@@ -107,8 +107,6 @@ class AppDateUtils {
     if (diff < 0) return true; // Future date
 
     switch (period) {
-      case 'Today':
-        return diff == 0;
       case 'Week':
         return diff <= 7;
       case 'Month':

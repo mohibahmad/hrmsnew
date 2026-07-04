@@ -428,9 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _recalculateSumsForPeriod(String period) {
     final now = DateTime.now();
     DateTime? dateLimit;
-    if (period == 'Today') {
-      dateLimit = DateTime(now.year, now.month, now.day);
-    } else if (period == 'Week') {
+    if (period == 'Week') {
       dateLimit = now.subtract(const Duration(days: 7));
     } else if (period == 'Month') {
       dateLimit = now.subtract(const Duration(days: 30));
@@ -451,9 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
             int.tryParse(parts[1]) ?? 0,
             int.tryParse(parts[0]) ?? 0,
           );
-          if (period == 'Today') {
-            if (docDate.year != now.year || docDate.month != now.month || docDate.day != now.day) continue;
-          } else if (docDate.isBefore(dateLimit)) {
+          if (docDate.isBefore(dateLimit)) {
             continue;
           }
         }
@@ -472,9 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
             int.tryParse(parts[1]) ?? 0,
             int.tryParse(parts[0]) ?? 0,
           );
-          if (period == 'Today') {
-            if (docDate.year != now.year || docDate.month != now.month || docDate.day != now.day) continue;
-          } else if (docDate.isBefore(dateLimit)) {
+          if (docDate.isBefore(dateLimit)) {
             continue;
           }
         }
@@ -485,9 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _recalculateDummyTotals(String period) {
     double scale = 1.0;
-    if (period == 'Today')
-      scale = 0.02;
-    else if (period == 'Week')
+    if (period == 'Week')
       scale = 0.05;
     else if (period == 'Month')
       scale = 0.2;
@@ -882,8 +874,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (daysUntilHoliday < 0) return false;
 
                           switch (_selectedPeriod) {
-                            case 'Today':
-                              return daysUntilHoliday == 0;
                             case 'Week':
                               return daysUntilHoliday <= 7;
                             case 'Month':
@@ -2095,9 +2085,7 @@ class SparklineCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 650),
                     curve: Curves.easeOutQuart,
                     builder: (context, animValue, child) {
-                      final double m = period == 'Today'
-                          ? 0.2
-                          : period == 'Week'
+                      final double m = period == 'Week'
                           ? 0.3
                           : period == 'Month'
                           ? 0.6
@@ -2358,12 +2346,6 @@ ChartData getChartData(
 
   if (isGuest || docs.isEmpty) {
     switch (period) {
-      case 'Today':
-        final labels = <String>[];
-        final values = [12.0];
-        labels.add(DateFormat('E', locale).format(now).toUpperCase());
-        return ChartData(labels, values);
-
       case 'Week':
         final labels = <String>[];
         final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
@@ -2434,18 +2416,6 @@ ChartData getChartData(
   }
 
   switch (period) {
-    case 'Today':
-      final labels = <String>[];
-      final values = [0.0];
-      labels.add(DateFormat('E', locale).format(now).toUpperCase());
-
-      for (final dt in parsedRecords) {
-        if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
-          values[0] += 1.0;
-        }
-      }
-      return ChartData(labels, values);
-
     case 'Week':
       final labels = <String>[];
       final values = List.filled(7, 0.0);
@@ -2568,34 +2538,34 @@ class AttendanceLineChart extends StatelessWidget {
                   SizedBox(
                     height: 330,
                     child: TweenAnimationBuilder<double>(
-                      key: ValueKey(period),
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 750),
-                      curve: Curves.easeOutQuart,
-                      builder: (context, animValue, child) {
-                        final chartData = getChartData(
-                          period,
-                          attendanceDocs,
-                          AuthService().currentUser?.isAnonymous ?? false,
-                          context.locale.toString(),
-                        );
-                        final double rawMaxY = chartData.values.isEmpty
-                            ? 1.0
-                            : chartData.values.reduce((a, b) => a > b ? a : b);
-                        final range = getNiceRange(rawMaxY);
-                        final spots = List.generate(
-                          chartData.values.length,
-                          (i) => FlSpot(i.toDouble(), chartData.values[i]),
-                        );
+                        key: ValueKey(period),
+                        tween: Tween(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 750),
+                        curve: Curves.easeOutQuart,
+                        builder: (context, animValue, child) {
+                          final chartData = getChartData(
+                            period,
+                            attendanceDocs,
+                            AuthService().currentUser?.isAnonymous ?? false,
+                            context.locale.toString(),
+                          );
+                          final double rawMaxY = chartData.values.isEmpty
+                              ? 1.0
+                              : chartData.values.reduce((a, b) => a > b ? a : b);
+                          final range = getNiceRange(rawMaxY);
+                          final spots = List.generate(
+                            chartData.values.length,
+                            (i) => FlSpot(i.toDouble(), chartData.values[i]),
+                          );
 
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            right: 20.0,
-                            top: 4.0,
-                            bottom: 2.0,
-                          ),
-                          child: LineChart(
-                            LineChartData(
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              right: 20.0,
+                              top: 4.0,
+                              bottom: 2.0,
+                            ),
+                            child: LineChart(
+                              LineChartData(
                               // add horizontal padding so the line doesn't touch card edges
                               minX: -0.4,
                               maxX: (spots.length - 1).toDouble() + 0.4,
@@ -2884,20 +2854,6 @@ class LeaveTypesPieChart extends StatelessWidget {
   });
 
   static const Map<String, LeavePeriodConfig> _configs = {
-    'Today': LeavePeriodConfig(
-      casualVal: 70,
-      sickVal: 10,
-      medicalVal: 20,
-      casualPath: [Offset(145, 120), Offset(93, 60), Offset(55, 60)],
-      casualLeft: 65,
-      casualTop: 36,
-      sickPath: [Offset(235, 115), Offset(275, 60), Offset(325, 60)],
-      sickRight: 65,
-      sickTop: 36,
-      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
-      medicalLeft: 90,
-      medicalBottom: 18,
-    ),
     'Week': LeavePeriodConfig(
       casualVal: 60,
       sickVal: 15,
@@ -2971,9 +2927,7 @@ class LeaveTypesPieChart extends StatelessWidget {
 
     DateTime? dateLimit;
     final now = DateTime.now();
-    if (period == 'Today') {
-      dateLimit = DateTime(now.year, now.month, now.day);
-    } else if (period == 'Week') {
+    if (period == 'Week') {
       dateLimit = now.subtract(const Duration(days: 7));
     } else if (period == 'Month') {
       dateLimit = now.subtract(const Duration(days: 30));
