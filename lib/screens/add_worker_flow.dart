@@ -1646,7 +1646,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                     onTap: onUploadProfileTap,
                     child: Container(
                       height: 320,
-                      width: double.infinity,
+                      width: 320,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFFFFF),
@@ -1684,7 +1684,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         isSelected: relationshipStatus == 'Married',
                         onTap: () => onRelationshipStatusChanged('Married'),
                       ),
-                      const Spacer(),
+                       const SizedBox(width: 120),
                       _buildCustomRadio(
                         label: 'single'.tr(),
                         isSelected: relationshipStatus == 'Single',
@@ -3206,13 +3206,13 @@ class DocumentationSection extends StatelessWidget {
                                     width: 150,
                                     color: Colors.grey.shade200,
                                   ),
-                                   const SizedBox(height: 8),
-                                   Container(
-                      height: 420,
-                      width: double.infinity,
-                                     color: Colors.grey.shade200,
-                                   ),
-                                 ],
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    height: 420,
+                                    width: double.infinity,
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ],
                               ),
                             ),
                           if (isPdf &&
@@ -3238,7 +3238,7 @@ class DocumentationSection extends StatelessWidget {
                                       size: 64,
                                       color: const Color(0xFF0B50C3),
                                     ),
-                                    const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                                     Text(
                                       cvName ?? 'Document',
                                       style: TextStyle(
