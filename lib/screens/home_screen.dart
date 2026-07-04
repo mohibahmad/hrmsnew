@@ -40,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   int _selectedSubIndex = 0;
   String _selectedPeriod = 'Yearly';
-  final ValueNotifier<String> _selectedHolidaysPeriod = ValueNotifier('Yearly');
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
   final List<bool> _activatedScreens = List.filled(11, false);
@@ -416,12 +415,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _recalculateDummyTotals(String period) {
     double scale = 1.0;
-    if (period == 'Week')
+    if (period == 'Today')
+      scale = 0.02;
+    else if (period == 'Week')
       scale = 0.05;
     else if (period == 'Month')
       scale = 0.2;
-    else if (period == '3 Month')
-      scale = 0.5;
     else if (period == '6 Month')
       scale = 0.75;
     else if (period == 'Yearly')
@@ -753,16 +752,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    // Period Dropdown Button
-                    ValueListenableBuilder<String>(
-                      valueListenable: _selectedHolidaysPeriod,
-                      builder: (context, period, _) {
-                        return CustomTimeframeDropdown(
-                          selectedPeriod: period,
-                          onChanged: (p) => _selectedHolidaysPeriod.value = p,
-                        );
-                      },
-                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -770,9 +759,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 // ==========================================
                 // MAIN WHITE CONTAINER
                 // ==========================================
-                ValueListenableBuilder<String>(
-                  valueListenable: _selectedHolidaysPeriod,
-                  builder: (context, holidaysPeriod, _) {
+                Builder(
+                  builder: (context) {
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(32),
@@ -823,13 +811,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               .inDays;
                           if (daysUntilHoliday < 0) return false;
 
-                          switch (holidaysPeriod) {
+                          switch (_selectedPeriod) {
+                            case 'Today':
+                              return daysUntilHoliday == 0;
                             case 'Week':
                               return daysUntilHoliday <= 7;
                             case 'Month':
                               return daysUntilHoliday <= 30;
-                            case '3 Month':
-                              return daysUntilHoliday <= 90;
                             case '6 Month':
                               return daysUntilHoliday <= 180;
                             case 'Yearly':
@@ -2037,12 +2025,12 @@ class SparklineCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 650),
                     curve: Curves.easeOutQuart,
                     builder: (context, animValue, child) {
-                      final double m = period == 'Week'
+                      final double m = period == 'Today'
+                          ? 0.2
+                          : period == 'Week'
                           ? 0.3
                           : period == 'Month'
                           ? 0.6
-                          : period == '3 Month'
-                          ? 0.8
                           : period == '6 Month'
                           ? 0.9
                           : 1.0;
@@ -2300,6 +2288,12 @@ ChartData getChartData(
 
   if (isGuest || docs.isEmpty) {
     switch (period) {
+      case 'Today':
+        final labels = <String>[];
+        final values = [12.0];
+        labels.add(DateFormat('E', locale).format(now).toUpperCase());
+        return ChartData(labels, values);
+
       case 'Week':
         final labels = <String>[];
         final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
@@ -2317,15 +2311,6 @@ ChartData getChartData(
           'week_label_4'.tr(),
         ];
         final values = [48.0, 55.0, 50.0, 62.0];
-        return ChartData(labels, values);
-
-      case '3 Month':
-        final labels = <String>[];
-        final values = [210.0, 245.0, 230.0];
-        for (int i = 2; i >= 0; i--) {
-          final date = DateTime(now.year, now.month - i, 1);
-          labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
-        }
         return ChartData(labels, values);
 
       case '6 Month':
@@ -2379,6 +2364,18 @@ ChartData getChartData(
   }
 
   switch (period) {
+    case 'Today':
+      final labels = <String>[];
+      final values = [0.0];
+      labels.add(DateFormat('E', locale).format(now).toUpperCase());
+
+      for (final dt in parsedRecords) {
+        if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
+          values[0] += 1.0;
+        }
+      }
+      return ChartData(labels, values);
+
     case 'Week':
       final labels = <String>[];
       final values = List.filled(7, 0.0);
@@ -2421,26 +2418,6 @@ ChartData getChartData(
           final weekIdx = difference ~/ 7;
           if (weekIdx >= 0 && weekIdx < 4) {
             values[weekIdx] += 1.0;
-          }
-        }
-      }
-      return ChartData(labels, values);
-
-    case '3 Month':
-      final labels = <String>[];
-      final values = List.filled(3, 0.0);
-
-      for (int i = 2; i >= 0; i--) {
-        final date = DateTime(now.year, now.month - i, 1);
-        labels.add(DateFormat('MMM', locale).format(date).toUpperCase());
-      }
-
-      for (final dt in parsedRecords) {
-        for (int i = 0; i < 3; i++) {
-          final targetDate = DateTime(now.year, now.month - (2 - i), 1);
-          if (dt.year == targetDate.year && dt.month == targetDate.month) {
-            values[i] += 1.0;
-            break;
           }
         }
       }
@@ -2837,6 +2814,20 @@ class LeaveTypesPieChart extends StatelessWidget {
   });
 
   static const Map<String, LeavePeriodConfig> _configs = {
+    'Today': LeavePeriodConfig(
+      casualVal: 70,
+      sickVal: 10,
+      medicalVal: 20,
+      casualPath: [Offset(145, 120), Offset(93, 60), Offset(55, 60)],
+      casualLeft: 65,
+      casualTop: 36,
+      sickPath: [Offset(235, 115), Offset(275, 60), Offset(325, 60)],
+      sickRight: 65,
+      sickTop: 36,
+      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
+      medicalLeft: 90,
+      medicalBottom: 18,
+    ),
     'Week': LeavePeriodConfig(
       casualVal: 60,
       sickVal: 15,
@@ -2859,20 +2850,6 @@ class LeaveTypesPieChart extends StatelessWidget {
       casualLeft: 65,
       casualTop: 36,
       sickPath: [Offset(226.4, 103.5), Offset(275, 60), Offset(325, 60)],
-      sickRight: 65,
-      sickTop: 36,
-      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
-      medicalLeft: 90,
-      medicalBottom: 18,
-    ),
-    '3 Month': LeavePeriodConfig(
-      casualVal: 45,
-      sickVal: 25,
-      medicalVal: 30,
-      casualPath: [Offset(149, 111), Offset(101, 60), Offset(55, 60)],
-      casualLeft: 65,
-      casualTop: 36,
-      sickPath: [Offset(222, 98), Offset(275, 60), Offset(325, 60)],
       sickRight: 65,
       sickTop: 36,
       medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
@@ -2924,12 +2901,12 @@ class LeaveTypesPieChart extends StatelessWidget {
 
     DateTime? dateLimit;
     final now = DateTime.now();
-    if (period == 'Week') {
+    if (period == 'Today') {
+      dateLimit = DateTime(now.year, now.month, now.day);
+    } else if (period == 'Week') {
       dateLimit = now.subtract(const Duration(days: 7));
     } else if (period == 'Month') {
       dateLimit = now.subtract(const Duration(days: 30));
-    } else if (period == '3 Month') {
-      dateLimit = now.subtract(const Duration(days: 90));
     } else if (period == '6 Month') {
       dateLimit = now.subtract(const Duration(days: 180));
     } else if (period == 'Yearly') {

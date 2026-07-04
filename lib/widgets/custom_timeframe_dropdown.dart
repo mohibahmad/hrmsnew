@@ -14,12 +14,12 @@ class CustomTimeframeDropdown extends StatefulWidget {
 
   static String localizePeriod(String period) {
     switch (period) {
+      case 'Today':
+        return 'today'.tr();
       case 'Week':
         return 'week'.tr();
       case 'Month':
         return 'month'.tr();
-      case '3 Month':
-        return '3_month'.tr();
       case '6 Month':
         return '6_month'.tr();
       case 'Yearly':
@@ -40,9 +40,9 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
   OverlayEntry? _overlayEntry;
 
   static const List<String> _options = [
+    'Today',
     'Week',
     'Month',
-    '3 Month',
     '6 Month',
     'Yearly',
   ];

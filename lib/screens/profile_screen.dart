@@ -646,7 +646,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       }
     } else {
       childWidget = Image.asset(
-        'assets/profile_pic.png',
+        'assets/profile_placeholder.png',
         width: 75,
         height: 75,
         fit: BoxFit.contain,

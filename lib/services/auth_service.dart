@@ -301,7 +301,7 @@ class UserAvatar extends StatelessWidget {
       color: Colors.white,
       padding: EdgeInsets.all(size * 0.08),
       child: Image.asset(
-        'assets/profile_pic.png',
+        'assets/profile_placeholder.png',
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           return Container(

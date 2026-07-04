@@ -143,12 +143,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     final now = DateTime.now();
     int maxDays = 7;
-    if (period == 'Week')
+    if (period == 'Today')
+      maxDays = 1;
+    else if (period == 'Week')
       maxDays = 7;
     else if (period == 'Month')
       maxDays = 30;
-    else if (period == '3 Month')
-      maxDays = 90;
     else if (period == '6 Month')
       maxDays = 180;
     else if (period == 'Yearly')
