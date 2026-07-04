@@ -55,7 +55,7 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
         ),
         const SizedBox(height: 8),
         PopupMenuButton<String>(
-          tooltip: widget.label,
+          tooltip: '',
           onSelected: (val) {
             setState(() {
               _currentValue = val;
