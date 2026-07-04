@@ -2192,11 +2192,17 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         Row(
                           children: [
                             Expanded(child: _buildDayPill('weekday_sun'.tr(), true)),
+                            const SizedBox(width: 4),
                             Expanded(child: _buildDayPill('weekday_mon'.tr(), false)),
+                            const SizedBox(width: 4),
                             Expanded(child: _buildDayPill('weekday_tue'.tr(), false)),
+                            const SizedBox(width: 4),
                             Expanded(child: _buildDayPill('weekday_wed'.tr(), false)),
+                            const SizedBox(width: 4),
                             Expanded(child: _buildDayPill('weekday_thu'.tr(), false)),
+                            const SizedBox(width: 4),
                             Expanded(child: _buildDayPill('weekday_fri'.tr(), false, isGreen: true)),
+                            const SizedBox(width: 4),
                             Expanded(child: _buildDayPill('weekday_sat'.tr(), false)),
                           ],
                         ),
@@ -2224,20 +2230,33 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               physics: const NeverScrollableScrollPhysics(),
                               crossAxisCount: 7,
                               mainAxisSpacing: 8,
-                              crossAxisSpacing: 2,
+                              crossAxisSpacing: 4,
                               children: [
                                 for (int i = 0; i < padCount; i++)
                                   const SizedBox.shrink(),
                                 for (int day = 1; day <= daysInMonth; day++)
                                   GestureDetector(
                                     onTap: () {
+                                      final selected = DateTime(
+                                        _calendarMonth.year,
+                                        _calendarMonth.month,
+                                        day,
+                                      );
+                                      final monthName = _localizedMonth(selected.month);
+                                      final formatted =
+                                          '$monthName ${selected.day}, ${selected.year}';
+                                      widget.onJoiningDateChanged?.call(formatted);
                                       setState(() {
-                                        _selectedDate = DateTime(
-                                          _calendarMonth.year,
-                                          _calendarMonth.month,
-                                          day,
-                                        );
+                                        _selectedDate = selected;
+                                        _initialDate = selected;
                                       });
+                                      FlashySnackBar.show(
+                                        context,
+                                        message: 'joining_date_is'.tr(
+                                          namedArgs: {'date': formatted},
+                                        ),
+                                        isError: false,
+                                      );
                                     },
                                     child: Builder(
                                       builder: (context) {
@@ -2312,88 +2331,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               ],
                             );
                           },
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  if (_initialDate != null) {
-                                    _selectedDate = _initialDate;
-                                    _calendarMonth = DateTime(
-                                      _initialDate!.year,
-                                      _initialDate!.month,
-                                      1,
-                                    );
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'cancel'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () {
-                                if (_selectedDate != null) {
-                                  final monthName = _localizedMonth(
-                                    _selectedDate!.month,
-                                  );
-                                  final formatted =
-                                      '$monthName ${_selectedDate!.day}, ${_selectedDate!.year}';
-                                  widget.onJoiningDateChanged?.call(formatted);
-                                  setState(() {
-                                    _initialDate = _selectedDate;
-                                  });
-                                  FlashySnackBar.show(
-                                    context,
-                                    message: 'joining_date_is'.tr(
-                                      namedArgs: {'date': formatted},
-                                    ),
-                                    isError: false,
-                                  );
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0B50C3),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'set'.tr(),
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -2565,7 +2502,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     final display = text.length > 3 ? text.substring(0, 3) : text;
     return Container(
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(4),
@@ -3200,15 +3137,15 @@ class DocumentationSection extends StatelessWidget {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      cvName?.endsWith('.docx') ?? false
-                                          ? Icons.article_outlined
-                                          : Icons.description_outlined,
-                                      size: 64,
-                                      color: const Color(0xFF0B50C3),
-                                    ),
-                  const SizedBox(height: 8),
-                                    Text(
+                                     Icon(
+                                       cvName?.endsWith('.docx') ?? false
+                                           ? Icons.article_outlined
+                                           : Icons.description_outlined,
+                                       size: 64,
+                                       color: const Color(0xFF0B50C3),
+                                     ),
+                                     const SizedBox(height: 8),
+                                     Text(
                                       cvName ?? 'Document',
                                       style: TextStyle(
                                         fontSize: 14,
