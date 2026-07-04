@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
@@ -23,6 +22,7 @@ import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 const List<String> _months = [
   'January',
@@ -235,8 +235,8 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
          widget.workerToEdit!['id_front']?.toString(),
        ]);
        if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
-         _frontIdName = _existingFrontIdUrl!.split('/').last;
-       }
+          _frontIdName = _cleanFileName(_existingFrontIdUrl!);
+        }
 
       _existingFrontIdUrl = _firstNonEmpty([
         widget.workerToEdit!['frontId']?.toString(),
@@ -246,7 +246,7 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
         widget.workerToEdit!['id_front']?.toString(),
       ]);
       if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
-        _frontIdName = _existingFrontIdUrl!.split('/').last;
+        _frontIdName = _cleanFileName(_existingFrontIdUrl!);
       }
 
       _existingBackIdUrl = _firstNonEmpty([
@@ -257,13 +257,13 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
         widget.workerToEdit!['id_back']?.toString(),
       ]);
       if (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty) {
-        _backIdName = _existingBackIdUrl!.split('/').last;
+        _backIdName = _cleanFileName(_existingBackIdUrl!);
       }
 
       _existingCvUrl = widget.workerToEdit!['cv']?.toString();
       if (_existingCvUrl != null && _existingCvUrl!.isNotEmpty) {
         _isCvUploaded = true;
-        _cvName = _existingCvUrl!.split('/').last;
+        _cvName = _cleanFileName(_existingCvUrl!);
       }
       _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
     } else {
@@ -1008,6 +1008,39 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
     }
 
     setState(() => _activeTabIndex = 2);
+  }
+
+  String _cleanFileName(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final path = uri.path;
+      final oIndex = path.indexOf('/o/');
+      String rawName;
+      if (oIndex != -1) {
+        final encodedPath = path.substring(oIndex + 3);
+        final decoded = Uri.decodeComponent(encodedPath);
+        rawName = decoded.split('/').last;
+      } else {
+        rawName = path.split('/').last;
+      }
+      final nameWithoutExt = rawName.contains('.')
+          ? rawName.substring(0, rawName.lastIndexOf('.'))
+          : rawName;
+      if (RegExp(r'^\d{13}_').hasMatch(nameWithoutExt)) {
+        return rawName.substring(14);
+      }
+      return rawName;
+    } catch (_) {
+      final name = url.split('/').last.split('?').first;
+      final decoded = Uri.decodeComponent(name);
+      final nameWithoutExt = decoded.contains('.')
+          ? decoded.substring(0, decoded.lastIndexOf('.'))
+          : decoded;
+      if (RegExp(r'^\d{13}_').hasMatch(nameWithoutExt)) {
+        return decoded.substring(14);
+      }
+      return decoded;
+    }
   }
 
   @override
@@ -3792,20 +3825,6 @@ class _DocPagePreviewState extends State<DocPagePreview> {
   }
 }
 
-ImageProvider getProfileImageProvider(String? url) {
-  if (url == null || url.isEmpty) {
-    return const AssetImage('assets/profileimage.png');
-  }
-  if (url.startsWith('data:image/')) {
-    final base64Content = url.split(',').last;
-    return MemoryImage(base64Decode(base64Content));
-  }
-  if (url.startsWith('http')) {
-    return CachedNetworkImageProvider(url);
-  }
-  return AssetImage(url);
-}
-
 class _DocPreviewScreen extends StatefulWidget {
   final String? fileUrl;
   final String? fileName;
@@ -3863,8 +3882,7 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
         final tempDir = io.Directory.systemTemp;
         final tempFile = io.File('${tempDir.path}/${widget.fileName}');
         await tempFile.writeAsBytes(widget.cvBytes!);
-        final fileUri = tempFile.uri;
-        _controller.loadRequest(fileUri);
+        _controller.loadRequest(tempFile.uri);
       } catch (e) {
         if (mounted) {
           setState(() {
@@ -3935,4 +3953,18 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
       ),
     );
   }
+}
+
+ImageProvider getProfileImageProvider(String? url) {
+  if (url == null || url.isEmpty) {
+    return const AssetImage('assets/profileimage.png');
+  }
+  if (url.startsWith('data:image/')) {
+    final base64Content = url.split(',').last;
+    return MemoryImage(base64Decode(base64Content));
+  }
+  if (url.startsWith('http')) {
+    return CachedNetworkImageProvider(url);
+  }
+  return AssetImage(url);
 }
