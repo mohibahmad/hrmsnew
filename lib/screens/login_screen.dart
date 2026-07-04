@@ -329,6 +329,13 @@ class _LoginScreenState extends State<LoginScreen> {
           }
           return;
         }
+        if (_authService.currentUser?.displayName == null ||
+            _authService.currentUser!.displayName!.isEmpty) {
+          final username = profile['username']?.toString();
+          if (username != null && username.isNotEmpty) {
+            await _authService.currentUser?.updateDisplayName(username);
+          }
+        }
         if (await _handleDeletedAccountIfNeeded()) return;
         if (!mounted) return;
         FlashySnackBar.show(

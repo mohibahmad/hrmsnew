@@ -59,29 +59,24 @@ class UploadService {
     void Function(int completed, int total)? onProgress,
     CancellationToken? cancelToken,
   }) async {
-    final results = <UploadResult>[];
-    int completed = 0;
     final total = files.length;
+    if (total == 0) return [];
 
-    for (final file in files) {
+    // Parallel upload using Future.wait
+    final futures = files.map((file) async {
       if (cancelToken?.isCancelled == true) {
-        results.add(UploadResult.cancelled(file: file));
-        completed++;
-        onProgress?.call(completed, total);
-        continue;
+        return UploadResult.cancelled(file: file);
       }
       try {
         final url = await _uploadToStorage(file);
-        completed++;
-        onProgress?.call(completed, total);
-        results.add(UploadResult.success(file: file, url: url));
+        return UploadResult.success(file: file, url: url);
       } catch (e) {
-        completed++;
-        onProgress?.call(completed, total);
-        results.add(UploadResult.failure(file: file, error: e.toString()));
+        return UploadResult.failure(file: file, error: e.toString());
       }
-    }
+    }).toList();
 
+    final results = await Future.wait(futures);
+    onProgress?.call(total, total);
     return results;
   }
 

@@ -234,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (cachedUrl != null && cachedUrl.isNotEmpty && cachedUrl.startsWith('http')) {
       AuthService.profilePicNotifier.value = cachedUrl;
     } else {
-      AuthService.profilePicNotifier.value = currentUser?.photoURL;
+      AuthService.profilePicNotifier.value = null;
     }
   }
 

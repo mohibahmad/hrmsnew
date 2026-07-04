@@ -214,10 +214,51 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           (widget.workerToEdit!['relationshipStatus'] ?? 'Single').toString();
       if (_relationshipStatus.isEmpty) _relationshipStatus = 'Single';
 
-      _existingProfileImageUrl = widget.workerToEdit!['profileImage']
-          ?.toString();
-      _existingFrontIdUrl = widget.workerToEdit!['frontId']?.toString();
-      _existingBackIdUrl = widget.workerToEdit!['backId']?.toString();
+_existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
+
+       // Backward/forward compatible keys:
+       // Some worker documents may store id images under different key names.
+       String? _firstNonEmpty(List<String?> values) {
+         for (final v in values) {
+           final s = v?.toString();
+           if (s != null && s.isNotEmpty && s != 'null') return s;
+         }
+         return null;
+       }
+
+       _existingFrontIdUrl = _firstNonEmpty([
+         widget.workerToEdit!['frontId']?.toString(),
+         widget.workerToEdit!['front_id']?.toString(),
+         widget.workerToEdit!['idFront']?.toString(),
+         widget.workerToEdit!['frontID']?.toString(),
+         widget.workerToEdit!['id_front']?.toString(),
+       ]);
+       if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
+         _frontIdName = _existingFrontIdUrl!.split('/').last;
+       }
+
+      _existingFrontIdUrl = _firstNonEmpty([
+        widget.workerToEdit!['frontId']?.toString(),
+        widget.workerToEdit!['front_id']?.toString(),
+        widget.workerToEdit!['idFront']?.toString(),
+        widget.workerToEdit!['frontID']?.toString(),
+        widget.workerToEdit!['id_front']?.toString(),
+      ]);
+      if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
+        _frontIdName = _existingFrontIdUrl!.split('/').last;
+      }
+
+      _existingBackIdUrl = _firstNonEmpty([
+        widget.workerToEdit!['backId']?.toString(),
+        widget.workerToEdit!['back_id']?.toString(),
+        widget.workerToEdit!['idBack']?.toString(),
+        widget.workerToEdit!['backID']?.toString(),
+        widget.workerToEdit!['id_back']?.toString(),
+      ]);
+      if (_existingBackIdUrl != null && _existingBackIdUrl!.isNotEmpty) {
+        _backIdName = _existingBackIdUrl!.split('/').last;
+      }
+
       _existingCvUrl = widget.workerToEdit!['cv']?.toString();
       if (_existingCvUrl != null && _existingCvUrl!.isNotEmpty) {
         _isCvUploaded = true;
@@ -293,16 +334,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
   }
 
-  bool _isAutoCalc = false;
-
   void _autoCalcAnnualLeaves() {
-    if (_leavePolicyController.text == 'Custom') {
-      _isAutoCalc = false;
-      return;
-    }
-    if (_annualLeavesController.text.isNotEmpty &&
-        !_isAutoCalc) return;
-    _isAutoCalc = true;
+    if (_leavePolicyController.text == 'Custom') return;
     final sick = (int.tryParse(_sickLeavesController.text) ?? 0).clamp(0, 999);
     final casual = (int.tryParse(_casualLeavesController.text) ?? 0).clamp(
       0,
@@ -315,7 +348,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       text: truncated,
       selection: TextSelection.collapsed(offset: truncated.length),
     );
-    _isAutoCalc = false;
   }
 
   Future<void> _pickProfileImage() async {
@@ -699,139 +731,136 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
 
-    if (isGuest) {
-      if (_profileImageBytes != null) {
-        profileImageUrl =
-            'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
-      }
-      if (_frontIdBytes != null) {
-        frontIdUrl = 'data:image/jpeg;base64,${base64Encode(_frontIdBytes!)}';
-      }
-      if (_backIdBytes != null) {
-        backIdUrl = 'data:image/jpeg;base64,${base64Encode(_backIdBytes!)}';
-      }
-      if (_cvBytes != null) {
-        cvUrl = 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
-      }
-    } else {
-      final uploadFiles = <UploadFile>[];
-      if (_profileImageBytes != null) {
-        uploadFiles.add(UploadFile(
-          folder: 'profile_images',
-          fileName: _profileImageName ?? 'profile.jpg',
-          bytes: _profileImageBytes!,
-          mimeType: 'image/jpeg',
-        ));
-      }
-      if (_frontIdBytes != null) {
-        uploadFiles.add(UploadFile(
-          folder: 'id_cards',
-          fileName: _frontIdName ?? 'front.jpg',
-          bytes: _frontIdBytes!,
-          mimeType: 'image/jpeg',
-        ));
-      }
-      if (_backIdBytes != null) {
-        uploadFiles.add(UploadFile(
-          folder: 'id_cards',
-          fileName: _backIdName ?? 'back.jpg',
-          bytes: _backIdBytes!,
-          mimeType: 'image/jpeg',
-        ));
-      }
-      if (_cvBytes != null) {
-        uploadFiles.add(UploadFile(
-          folder: 'cvs',
-          fileName: _cvName ?? 'cv.pdf',
-          bytes: _cvBytes!,
-          mimeType: 'application/pdf',
-        ));
-      }
+    try {
+      if (isGuest) {
+        if (_profileImageBytes != null) {
+          profileImageUrl =
+              'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
+        }
+        if (_frontIdBytes != null) {
+          frontIdUrl = 'data:image/jpeg;base64,${base64Encode(_frontIdBytes!)}';
+        }
+        if (_backIdBytes != null) {
+          backIdUrl = 'data:image/jpeg;base64,${base64Encode(_backIdBytes!)}';
+        }
+        if (_cvBytes != null) {
+          cvUrl = 'data:application/pdf;base64,${base64Encode(_cvBytes!)}';
+        }
+      } else {
+        final uploadFiles = <UploadFile>[];
+        if (_profileImageBytes != null) {
+          uploadFiles.add(UploadFile(
+            folder: 'profile_images',
+            fileName: _profileImageName ?? 'profile.jpg',
+            bytes: _profileImageBytes!,
+            mimeType: 'image/jpeg',
+          ));
+        }
+        if (_frontIdBytes != null) {
+          uploadFiles.add(UploadFile(
+            folder: 'id_cards/front',
+            fileName: _frontIdName ?? 'front.jpg',
+            bytes: _frontIdBytes!,
+            mimeType: 'image/jpeg',
+          ));
+        }
+        if (_backIdBytes != null) {
+          uploadFiles.add(UploadFile(
+            folder: 'id_cards/back',
+            fileName: _backIdName ?? 'back.jpg',
+            bytes: _backIdBytes!,
+            mimeType: 'image/jpeg',
+          ));
+        }
+        if (_cvBytes != null) {
+          uploadFiles.add(UploadFile(
+            folder: 'cvs',
+            fileName: _cvName ?? 'cv.pdf',
+            bytes: _cvBytes!,
+            mimeType: 'application/pdf',
+          ));
+        }
 
-      if (uploadFiles.isNotEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('uploading_files'.tr(namedArgs: {
-              'count': uploadFiles.length.toString(),
-            })),
-            duration: const Duration(seconds: 30),
-          ),
-        );
+        if (uploadFiles.isNotEmpty) {
+          final results = await UploadService.uploadFiles(
+            files: uploadFiles,
+          );
 
-        final results = await UploadService.uploadFiles(
-          files: uploadFiles,
-        );
-
-        for (final result in results) {
-          if (result.isSuccess) {
-            final url = result.url!;
-            switch (result.file.folder) {
-              case 'profile_images':
-                profileImageUrl = url;
-              case 'id_cards':
-                if (result.file.fileName.contains('front')) {
+          for (final result in results) {
+            if (result.isSuccess) {
+              final url = result.url!;
+              switch (result.file.folder) {
+                case 'profile_images':
+                  profileImageUrl = url;
+                case 'id_cards/front':
                   frontIdUrl = url;
-                } else {
+                case 'id_cards/back':
                   backIdUrl = url;
-                }
-              case 'cvs':
-                cvUrl = url;
-            }
-          } else {
-            if (mounted) {
-              FlashySnackBar.show(
-                context,
-                message: 'file_upload_failed'
-                    .tr(namedArgs: {'file': result.file.fileName}),
-                isError: true,
-              );
+                case 'cvs':
+                  cvUrl = url;
+              }
+            } else {
+              if (mounted) {
+                FlashySnackBar.show(
+                  context,
+                  message: 'file_upload_failed'
+                      .tr(namedArgs: {'file': result.file.fileName}),
+                  isError: true,
+                );
+              }
             }
           }
         }
       }
-    }
 
-    final data = {
-      'name': name,
-      'fatherName': _fatherNameController.text.trim(),
-      'email': email.isNotEmpty ? email : 'worker@email.com',
-      'phone': phone,
-      'nationalId': _nationalIdController.text.trim(),
-      'religion': _religionController.text.trim(),
-      'dob': _dobController.text.trim(),
-      'gender': _genderController.text.trim(),
-      'address': _addressController.text.trim(),
-      'relationshipStatus': _relationshipStatus,
-      'type1': _type1Controller.text.isNotEmpty
-          ? _type1Controller.text
-          : 'Full-Time',
-      'position': _positionController.text.isNotEmpty
-          ? _positionController.text.trim()
-          : 'Employee',
-      'type2': _type2Controller.text.isNotEmpty
-          ? _type2Controller.text
-          : 'On-Site',
-      'experienceLevel': _experienceLevelController.text.trim(),
-      'education': _educationController.text.trim(),
-      'salaryType': _salaryTypeController.text.trim(),
-      'currency': _currencyController.text.trim(),
-      'salaryAmount': _salaryAmountController.text.trim(),
-      'leavePolicy': _leavePolicyController.text.trim(),
-      'annualLeaves': _annualLeavesController.text.trim(),
-      'sickLeaves': _sickLeavesController.text.trim(),
-      'casualLeaves': _casualLeavesController.text.trim(),
-      'joiningDate':
-          _joiningDate ?? DateFormat('MMMM d, yyyy').format(DateTime.now()),
-      'profileImage': profileImageUrl,
-      'frontId': frontIdUrl,
-      'backId': backIdUrl,
-      'cv': cvUrl,
-    };
+      final data = {
+        'name': name,
+        'fatherName': _fatherNameController.text.trim(),
+        'email': email.isNotEmpty ? email : 'worker@email.com',
+        'phone': phone,
+        'nationalId': _nationalIdController.text.trim(),
+        'religion': _religionController.text.trim(),
+        'dob': _dobController.text.trim(),
+        'gender': _genderController.text.trim(),
+        'address': _addressController.text.trim(),
+        'relationshipStatus': _relationshipStatus,
+        'type1': _type1Controller.text.isNotEmpty
+            ? _type1Controller.text
+            : 'Full-Time',
+        'position': _positionController.text.isNotEmpty
+            ? _positionController.text.trim()
+            : 'Employee',
+        'type2': _type2Controller.text.isNotEmpty
+            ? _type2Controller.text
+            : 'On-Site',
+        'experienceLevel': _experienceLevelController.text.trim(),
+        'education': _educationController.text.trim(),
+        'salaryType': _salaryTypeController.text.trim(),
+        'currency': _currencyController.text.trim(),
+        'salaryAmount': _salaryAmountController.text.trim(),
+        'leavePolicy': _leavePolicyController.text.trim(),
+        'annualLeaves': _annualLeavesController.text.trim(),
+        'sickLeaves': _sickLeavesController.text.trim(),
+        'casualLeaves': _casualLeavesController.text.trim(),
+        'joiningDate':
+            _joiningDate ?? DateFormat('MMMM d, yyyy').format(DateTime.now()),
+        'profileImage': profileImageUrl,
 
-    bool success = false;
-    String? errorMessage;
-    try {
+        // Canonical keys (UI expects these):
+        'frontId': frontIdUrl,
+        'backId': backIdUrl,
+
+        // Legacy keys (older docs / other screens might use these):
+        'front_id': frontIdUrl,
+        'back_id': backIdUrl,
+        'idFront': frontIdUrl,
+        'idBack': backIdUrl,
+        'id_front': frontIdUrl,
+        'id_back': backIdUrl,
+
+        'cv': cvUrl,
+      };
+
       if (widget.workerToEdit != null) {
         final editId = widget.workerToEdit!['id']?.toString();
         if (editId == null || editId.isEmpty) {
@@ -864,28 +893,40 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           await FirestoreService().addWorker(data);
         }
       }
-      success = true;
-    } on ValidationException catch (e) {
-      errorMessage = e.message;
-    } catch (e) {
-      debugPrint('Error saving worker: $e');
-      errorMessage = 'could_not_save_worker'.tr();
-    }
 
-    if (!mounted) return;
-
-    setState(() {
-      _isSaving = false;
-    });
-
-    if (success) {
-      widget.onBack?.call();
-    } else {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+      });
+      if (!context.mounted) return;
       FlashySnackBar.show(
         context,
-        message: errorMessage ?? 'could_not_save_worker'.tr(),
-        isError: true,
+        message: 'worker_added_successfully'.tr(),
       );
+      widget.onBack?.call();
+    } on ValidationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        FlashySnackBar.show(
+          context,
+          message: e.message,
+          isError: true,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error saving worker: $e');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_save_worker'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -2728,7 +2769,7 @@ class DocumentationSection extends StatelessWidget {
         bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
     final bool isPdf =
         (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
-        (existingUrl != null && existingUrl.toLowerCase().contains('.pdf'));
+        (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
 
     return GestureDetector(
       onTap: onTap,
