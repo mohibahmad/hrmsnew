@@ -1664,7 +1664,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                       child: _buildProfileContent(),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 20),
 
                   // Relationship Status Section
                   Text(
