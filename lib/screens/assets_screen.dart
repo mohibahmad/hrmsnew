@@ -1272,7 +1272,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           Expanded(
             flex: 2,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: const EdgeInsets.only(right: 16.0, left: 8.0),
               child: Text(
                 data.dateReturned == 'in_use'
                     ? 'in_use'.tr()
