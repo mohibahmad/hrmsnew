@@ -2444,6 +2444,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
               Row(
                 children: [
                   Expanded(
+                    child: _buildInputField(
+                      'annual_leaves_days'.tr(),
+                      'hint_annual_leaves'.tr(),
+                      controller: widget.annualLeavesController,
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
                     child: _buildDropdownField(
                       label: 'leave_policy_label'.tr(),
                       selectedValue: widget.leavePolicyController.text,
@@ -2455,14 +2463,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                           widget.leavePolicyController.text = val;
                         }
                       },
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: _buildInputField(
-                      'annual_leaves_days'.tr(),
-                      'hint_annual_leaves'.tr(),
-                      controller: widget.annualLeavesController,
                     ),
                   ),
                 ],
