@@ -1389,10 +1389,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  static const _inUseKey = '__IN_USE__';
+  static const _inUseKey = 'in_use';
 
   DateTime? _parseDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty || dateStr == 'in_use'.tr() || dateStr == _inUseKey)
+    if (dateStr == null || dateStr.isEmpty || dateStr == _inUseKey || dateStr == '__IN_USE__')
       return null;
     try {
       final parts = dateStr.split('/');

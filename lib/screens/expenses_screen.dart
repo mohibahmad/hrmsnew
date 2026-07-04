@@ -1045,21 +1045,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       for (int j = 0; j < 7; j++) {
         int index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
+          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
         } else if (currentDay <= daysInMonth) {
           final day = currentDay;
+          final cellDate = DateTime(calendarDate.year, calendarDate.month, day);
           rowChildren.add(
             Expanded(
               child: _buildDayCell(
                 '$day',
                 day == selectedDay,
                 () => onDaySelected(day),
+                cellDate,
               ),
             ),
           );
           currentDay++;
         } else {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null)));
+          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 4));
       }
@@ -1070,8 +1072,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
+  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap, DateTime? date) {
     if (day.isEmpty) return const SizedBox();
+    final isSunday = date?.weekday == 7;
+    final isFriday = date?.weekday == 5;
+    final dayColor = isSunday
+        ? const Color(0xFFFF0004)
+        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
+    final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFF0247C4);
     return AspectRatio(
       aspectRatio: 1.1,
       child: GestureDetector(
@@ -1079,11 +1087,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,
+            color: isSelected ? selectedBg : Colors.transparent,
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFF0247C4)
-                  : Colors.grey.shade300,
+                  ? selectedBg
+                  : (isSunday
+                      ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                      : (isFriday
+                          ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                          : Colors.grey.shade300)),
               width: 1,
             ),
             borderRadius: BorderRadius.circular(3),
@@ -1091,7 +1103,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: Text(
             day,
             style: TextStyle(
-              color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
+              color: isSelected ? Color(0xFFFFFFFF) : dayColor,
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               fontFamily: 'SF Pro Display',

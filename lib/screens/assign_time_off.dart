@@ -882,6 +882,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (day.isEmpty) {
       return const SizedBox(width: 50, height: 50);
     }
+    final isSunday = date?.weekday == 7;
+    final isFriday = date?.weekday == 5;
+    final dayColor = isSunday
+        ? const Color(0xFFFF0004)
+        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
+    final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
+    final selectedBorder = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
+    final rangeColor = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
     return Center(
       child: SizedBox(
         width: 50,
@@ -912,16 +920,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFFFF0004)
+                  ? selectedBg
                   : (inRange
-                        ? const Color(0xFFFF0004).withValues(alpha: 0.1)
+                        ? rangeColor.withValues(alpha: 0.1)
                         : Colors.transparent),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFFFF0004)
+                    ? selectedBorder
                     : (inRange
-                          ? const Color(0xFFFF0004).withValues(alpha: 0.3)
-                          : Colors.grey.shade300),
+                          ? rangeColor.withValues(alpha: 0.3)
+                          : isSunday
+                              ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                              : (isFriday
+                                  ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                                  : Colors.grey.shade300)),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -931,7 +943,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               style: TextStyle(
                 color: isSelected
                     ? const Color(0xFFFFFFFF)
-                    : (inRange ? const Color(0xFFFF0004) : Colors.black),
+                    : (inRange ? rangeColor : dayColor),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',

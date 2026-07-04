@@ -496,18 +496,19 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       for (int j = 0; j < 7; j++) {
         int index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(_buildDayCell('', false, null));
+          rowChildren.add(_buildDayCell('', false, null, null));
         } else if (currentDay <= daysInMonth) {
           final int tapDay = currentDay;
           final bool isSelected = (currentDay == selectedDay);
+          final cellDate = DateTime(calendarDate.year, calendarDate.month, currentDay);
           rowChildren.add(
             _buildDayCell('$currentDay', isSelected, () {
               onDaySelected(tapDay);
-            }),
+            }, cellDate),
           );
           currentDay++;
         } else {
-          rowChildren.add(_buildDayCell('', false, null));
+          rowChildren.add(_buildDayCell('', false, null, null));
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 8));
       }
@@ -518,12 +519,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap) {
+  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap, DateTime? date) {
     if (day.isEmpty) {
       return const Expanded(
         child: AspectRatio(aspectRatio: 1, child: SizedBox()),
       );
     }
+    final isSunday = date?.weekday == 7;
+    final isFriday = date?.weekday == 5;
+    final dayColor = isSunday
+        ? const Color(0xFFFF0004)
+        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
+    final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
@@ -532,11 +539,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFFF0004) : Colors.transparent,
+              color: isSelected ? selectedBg : Colors.transparent,
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFFFF0004)
-                    : Colors.grey.shade300,
+                    ? selectedBg
+                    : (isSunday
+                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                        : (isFriday
+                            ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                            : Colors.grey.shade300)),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -544,7 +555,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             child: Text(
               day,
               style: TextStyle(
-                color: isSelected ? Color(0xFFFFFFFF) : Colors.black,
+                color: isSelected ? Color(0xFFFFFFFF) : dayColor,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',

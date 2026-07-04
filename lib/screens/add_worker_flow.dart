@@ -2277,16 +2277,27 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                             _selectedDate!.month ==
                                                 _calendarMonth.month &&
                                             _selectedDate!.day == day;
+                                        final cellDate = DateTime(_calendarMonth.year, _calendarMonth.month, day);
+                                        final isSunday = cellDate.weekday == 7;
+                                        final isFriday = cellDate.weekday == 5;
+                                        final dayColor = isSunday
+                                            ? const Color(0xFFFF0004)
+                                            : (isFriday ? const Color(0xFF4AC000) : Colors.black);
+                                        final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFF0B50C3);
                                         return Container(
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: isSelected
-                                                ? const Color(0xFF0B50C3)
+                                                ? selectedBg
                                                 : Color(0xFFFFFFFF),
                                             border: isSelected
                                                 ? null
                                                 : Border.all(
-                                                    color: Colors.grey.shade300,
+                                                    color: isSunday
+                                                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                                                        : (isFriday
+                                                            ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                                                            : Colors.grey.shade300),
                                                   ),
                                             borderRadius: BorderRadius.circular(
                                               8,
@@ -2298,7 +2309,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                               fontSize: 13,
                                               color: isSelected
                                                   ? Color(0xFFFFFFFF)
-                                                  : Colors.black,
+                                                  : dayColor,
                                               fontWeight: isSelected
                                                   ? FontWeight.bold
                                                   : FontWeight.w500,
