@@ -670,142 +670,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  TapDownDetails? _tapPosition;
-
-  Future<void> _showRowMenu(
-    BuildContext context,
-    Map<String, dynamic> doc,
-  ) async {
-    final renderObj = context.findRenderObject();
-    final RenderBox? button = renderObj is RenderBox ? renderObj : null;
-    final overlayObj = Overlay.of(context).context.findRenderObject();
-    final RenderBox? overlay = overlayObj is RenderBox ? overlayObj : null;
-    if (overlay == null) return;
-
-    final docId = doc['id'] as String;
-
-    final value = await showMenu<String>(
-      context: context,
-      position: _tapPosition != null
-          ? RelativeRect.fromRect(
-              Rect.fromLTWH(
-                _tapPosition!.globalPosition.dx,
-                _tapPosition!.globalPosition.dy,
-                0,
-                0,
-              ),
-              Offset.zero & overlay.size,
-            )
-          : (button != null
-                ? RelativeRect.fromRect(
-                    Rect.fromPoints(
-                      button.localToGlobal(Offset.zero, ancestor: overlay),
-                      button.localToGlobal(
-                        button.size.bottomRight(Offset.zero),
-                        ancestor: overlay,
-                      ),
-                    ),
-                    Offset.zero & overlay.size,
-                  )
-                : RelativeRect.fromRect(
-                    Rect.fromLTWH(
-                      overlay.size.width / 2,
-                      overlay.size.height / 2,
-                      0,
-                      0,
-                    ),
-                    Offset.zero & overlay.size,
-                  )),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: const BorderSide(color: Color(0xFFCBCBCB)),
-      ),
-      color: const Color(0xFFFBFBFC),
-      items: [
-        PopupMenuItem(
-          value: 'preview',
-          child: Row(
-            children: [
-              Icon(Icons.visibility, size: 18, color: Colors.black),
-              SizedBox(width: 8),
-              Text('preview'.tr(), style: TextStyle(fontSize: 14)),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              SvgPicture.asset(
-                'assets/delete_icon.svg',
-                width: 16,
-                height: 16,
-                colorFilter: const ColorFilter.mode(
-                  Colors.red,
-                  BlendMode.srcIn,
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                'delete'.tr(),
-                style: TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (value == 'preview') {
-      _showAttendancePreview(context, doc);
-    } else if (value == 'delete') {
-      final confirmed = await DeleteDialog.show(
-        context: context,
-        title: 'delete_attendance_record'.tr(),
-        content: 'delete_attendance_desc'.tr(),
-      );
-      if (!confirmed) return;
-
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-      if (isGuest) {
-        setState(() {
-          final doc = _attendanceDocs.cast<Map<String, dynamic>?>().firstWhere(
-            (a) => a?['id'] == docId,
-            orElse: () => null,
-          );
-          if (doc == null) return;
-          final email = doc['email']?.toString();
-          if (email != null && email.isNotEmpty) {
-            DummyData.workers.removeWhere(
-              (w) =>
-                  (w['email'] ?? '').toString().toLowerCase() ==
-                  email.toLowerCase(),
-            );
-            DummyData.attendance.removeWhere(
-              (a) =>
-                  (a['email'] ?? '').toString().toLowerCase() ==
-                  email.toLowerCase(),
-            );
-          } else {
-            _attendanceDocs.removeWhere((a) => a['id'] == docId);
-            DummyData.attendance.removeWhere((a) => a['id'] == docId);
-          }
-          DummyData.saveToPrefs();
-          _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-          _rawAttendanceDocs = List<Map<String, dynamic>>.from(
-            DummyData.attendance,
-          );
-          _combineAttendance();
-        });
-      } else {
-        final docId = doc['id'] as String;
-        if (!docId.startsWith('norecord_')) {
-          await FirestoreService().deleteAttendanceRecord(docId);
-        }
-      }
-    }
-  }
-
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
     final email = (doc['email'] ?? '').toString().trim().toLowerCase();
     final name = (doc['name'] ?? '').toString().trim().toLowerCase();
@@ -1045,12 +909,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       SizedBox(
                         width: 48,
                         child: GestureDetector(
-                          onTapDown: (details) {
-                            _tapPosition = details;
-                          },
-                          onTap: () => _showRowMenu(context, doc),
+                          onTap: () => _showAttendancePreview(context, doc),
                           child: const Icon(
-                            Icons.more_vert,
+                            Icons.visibility,
                             color: Colors.black,
                             size: 24,
                           ),
