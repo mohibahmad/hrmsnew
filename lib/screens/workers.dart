@@ -1229,7 +1229,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           SizedBox(
             width: 48,
             child: PopupMenuButton<String>(
-              tooltip: 'actions'.tr(),
+              tooltip: '',
               icon: const Icon(Icons.more_vert, size: 24),
               padding: EdgeInsets.zero,
               shape: RoundedRectangleBorder(

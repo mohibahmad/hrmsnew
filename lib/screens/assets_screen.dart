@@ -1295,6 +1295,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(
+        tooltip: '',
         icon: const Icon(Icons.more_vert, color: Colors.black),
         offset: const Offset(0, 40),
         shape: RoundedRectangleBorder(
