@@ -258,6 +258,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         typeKey = 'Sick Leave';
       case 'Casual Leave':
         typeKey = 'Casual Leave';
+      case 'Custom Leave':
+        typeKey = 'Custom Leave';
       default:
         return 0;
     }
@@ -277,6 +279,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   int get _availableDays {
     if (_selectedWorker == null) return 0;
+    if (_timeOffType == 'Custom Leave') return 999;
     String key;
     switch (_timeOffType) {
       case 'Annual Leave':
@@ -612,6 +615,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   value: 'Maternity Leave',
                   child: Text(
                     'maternity_leave'.tr(),
+                    style: const TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'Custom Leave',
+                  child: Text(
+                    'custom_leave_type'.tr(),
                     style: const TextStyle(
                       fontFamily: 'SF Pro Display',
                       fontSize: 14,

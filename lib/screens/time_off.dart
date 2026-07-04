@@ -662,6 +662,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   action = 'casual_leave_type'.tr();
                 } else if (action == 'Maternity Leave') {
                   action = 'maternity_leave'.tr();
+                } else if (action == 'Custom Leave') {
+                  action = 'custom_leave_type'.tr();
                 } else if (action.isEmpty) {
                   action = 'no_time_off'.tr();
                 }

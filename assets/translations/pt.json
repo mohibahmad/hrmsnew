@@ -331,6 +331,7 @@
   "end_date": "Data de término",
   "annual_leave": "Licença anual",
   "maternity_leave": "Licença maternidade",
+  "custom_leave_type": "Licença Personalizada",
   "done": "Concluído",
   "assign_success": "{type} atribuído com sucesso de {start} a {end} ({days} dias)",
   "notes_label": "Notas",
@@ -628,5 +629,6 @@
   "worker_must_be_18": "O trabalhador deve ter pelo menos 18 anos.",
   "invalid_date_format": "Formato de data inválido. Use DD/MM/AAAA.",
   "holiday_already_exists": "Já existe um feriado para este dia",
-  "uploading_files": "Enviando {count} arquivo(s)..."
+  "uploading_files": "Enviando {count} arquivo(s)...",
+  "custom_leave_info": "Modo personalizado: Insira férias anuais, sick leave e casual manualmente"
 }

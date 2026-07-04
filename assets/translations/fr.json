@@ -331,6 +331,7 @@
   "end_date": "Date de fin",
   "annual_leave": "Congé annuel",
   "maternity_leave": "Congé maternité",
+  "custom_leave_type": "Congé Personnalisé",
   "done": "Terminé",
   "assign_success": "{type} attribué avec succès du {start} au {end} ({days} jours)",
   "notes_label": "Notes",
@@ -628,5 +629,6 @@
   "worker_must_be_18": "Le travailleur doit avoir au moins 18 ans.",
   "invalid_date_format": "Format de date invalide. Utilisez JJ/MM/AAAA.",
   "holiday_already_exists": "Un jour férié existe déjà pour cette date",
-  "uploading_files": "Téléchargement de {count} fichier(s)..."
+  "uploading_files": "Téléchargement de {count} fichier(s)...",
+  "custom_leave_info": "Mode personnalisé: Entrez les congés annuels, maladie et occasionnels manuellement"
 }

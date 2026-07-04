@@ -335,6 +335,7 @@
   "end_date": "End Date",
   "annual_leave": "Annual Leave",
   "maternity_leave": "Maternity Leave",
+  "custom_leave_type": "Custom Leave",
   "done": "Done",
   "assign_success": "Successfully assigned {type} from {start} to {end} ({days} days)",
   "notes_label": "Notes",
@@ -633,5 +634,6 @@
   "worker_must_be_18": "Worker must be at least 18 years old.",
   "invalid_date_format": "Invalid date format. Please use DD/MM/YYYY.",
   "holiday_already_exists": "Holiday already exists for this day",
-  "uploading_files": "Uploading {count} file(s)..."
+  "uploading_files": "Uploading {count} file(s)...",
+  "custom_leave_info": "Custom mode: Enter annual, sick and casual leaves manually"
 }

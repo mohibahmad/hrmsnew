@@ -331,6 +331,7 @@
   "end_date": "Fecha de fin",
   "annual_leave": "Permiso anual",
   "maternity_leave": "Permiso de maternidad",
+  "custom_leave_type": "Permiso Personalizado",
   "done": "Hecho",
   "assign_success": "{type} asignado exitosamente del {start} al {end} ({days} días)",
   "notes_label": "Notas",
@@ -628,5 +629,6 @@
   "worker_must_be_18": "El trabajador debe tener al menos 18 años.",
   "invalid_date_format": "Formato de fecha inválido. Use DD/MM/AAAA.",
   "holiday_already_exists": "Ya existe un festivo para este día",
-  "uploading_files": "Subiendo {count} archivo(s)..."
+  "uploading_files": "Subiendo {count} archivo(s)...",
+  "custom_leave_info": "Modo personalizado: Ingrese permisos anuales, por enfermedad y casual manualmente"
 }
