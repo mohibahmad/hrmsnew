@@ -2127,19 +2127,19 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF000000).withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF000000).withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
                     child: Column(
                       children: [
                         Row(
@@ -2191,45 +2191,13 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill('weekday_sun'.tr(), true),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill('weekday_mon'.tr(), false),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill('weekday_tue'.tr(), false),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill('weekday_wed'.tr(), false),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill('weekday_thu'.tr(), false),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill(
-                                  'weekday_fri'.tr(),
-                                  false,
-                                  isGreen: true,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Center(
-                                child: _buildDayPill('weekday_sat'.tr(), false),
-                              ),
-                            ),
+                            Expanded(child: _buildDayPill('weekday_sun'.tr(), true)),
+                            Expanded(child: _buildDayPill('weekday_mon'.tr(), false)),
+                            Expanded(child: _buildDayPill('weekday_tue'.tr(), false)),
+                            Expanded(child: _buildDayPill('weekday_wed'.tr(), false)),
+                            Expanded(child: _buildDayPill('weekday_thu'.tr(), false)),
+                            Expanded(child: _buildDayPill('weekday_fri'.tr(), false, isGreen: true)),
+                            Expanded(child: _buildDayPill('weekday_sat'.tr(), false)),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -2256,7 +2224,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               physics: const NeverScrollableScrollPhysics(),
                               crossAxisCount: 7,
                               mainAxisSpacing: 8,
-                              crossAxisSpacing: 8,
+                              crossAxisSpacing: 2,
                               children: [
                                 for (int i = 0; i < padCount; i++)
                                   const SizedBox.shrink(),
@@ -2596,10 +2564,11 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         : (isGreen ? Colors.green : const Color(0xFF0B50C3));
     final display = text.length > 3 ? text.substring(0, 3) : text;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         display,
