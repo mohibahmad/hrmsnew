@@ -201,28 +201,29 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           (widget.workerToEdit!['relationshipStatus'] ?? 'Single').toString();
       if (_relationshipStatus.isEmpty) _relationshipStatus = 'Single';
 
-_existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
+      _existingProfileImageUrl = widget.workerToEdit!['profileImage']
+          ?.toString();
 
-       // Backward/forward compatible keys:
-       // Some worker documents may store id images under different key names.
-       String? _firstNonEmpty(List<String?> values) {
-         for (final v in values) {
-           final s = v?.toString();
-           if (s != null && s.isNotEmpty && s != 'null') return s;
-         }
-         return null;
-       }
-
-       _existingFrontIdUrl = _firstNonEmpty([
-         widget.workerToEdit!['frontId']?.toString(),
-         widget.workerToEdit!['front_id']?.toString(),
-         widget.workerToEdit!['idFront']?.toString(),
-         widget.workerToEdit!['frontID']?.toString(),
-         widget.workerToEdit!['id_front']?.toString(),
-       ]);
-       if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
-          _frontIdName = _cleanFileName(_existingFrontIdUrl!);
+      // Backward/forward compatible keys:
+      // Some worker documents may store id images under different key names.
+      String? _firstNonEmpty(List<String?> values) {
+        for (final v in values) {
+          final s = v?.toString();
+          if (s != null && s.isNotEmpty && s != 'null') return s;
         }
+        return null;
+      }
+
+      _existingFrontIdUrl = _firstNonEmpty([
+        widget.workerToEdit!['frontId']?.toString(),
+        widget.workerToEdit!['front_id']?.toString(),
+        widget.workerToEdit!['idFront']?.toString(),
+        widget.workerToEdit!['frontID']?.toString(),
+        widget.workerToEdit!['id_front']?.toString(),
+      ]);
+      if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
+        _frontIdName = _cleanFileName(_existingFrontIdUrl!);
+      }
 
       _existingFrontIdUrl = _firstNonEmpty([
         widget.workerToEdit!['frontId']?.toString(),
@@ -736,42 +737,48 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
       } else {
         final uploadFiles = <UploadFile>[];
         if (_profileImageBytes != null) {
-          uploadFiles.add(UploadFile(
-            folder: 'profile_images',
-            fileName: _profileImageName ?? 'profile.jpg',
-            bytes: _profileImageBytes!,
-            mimeType: 'image/jpeg',
-          ));
+          uploadFiles.add(
+            UploadFile(
+              folder: 'profile_images',
+              fileName: _profileImageName ?? 'profile.jpg',
+              bytes: _profileImageBytes!,
+              mimeType: 'image/jpeg',
+            ),
+          );
         }
         if (_frontIdBytes != null) {
-          uploadFiles.add(UploadFile(
-            folder: 'id_cards/front',
-            fileName: _frontIdName ?? 'front.jpg',
-            bytes: _frontIdBytes!,
-            mimeType: 'image/jpeg',
-          ));
+          uploadFiles.add(
+            UploadFile(
+              folder: 'id_cards/front',
+              fileName: _frontIdName ?? 'front.jpg',
+              bytes: _frontIdBytes!,
+              mimeType: 'image/jpeg',
+            ),
+          );
         }
         if (_backIdBytes != null) {
-          uploadFiles.add(UploadFile(
-            folder: 'id_cards/back',
-            fileName: _backIdName ?? 'back.jpg',
-            bytes: _backIdBytes!,
-            mimeType: 'image/jpeg',
-          ));
+          uploadFiles.add(
+            UploadFile(
+              folder: 'id_cards/back',
+              fileName: _backIdName ?? 'back.jpg',
+              bytes: _backIdBytes!,
+              mimeType: 'image/jpeg',
+            ),
+          );
         }
         if (_cvBytes != null) {
-          uploadFiles.add(UploadFile(
-            folder: 'cvs',
-            fileName: _cvName ?? 'cv.pdf',
-            bytes: _cvBytes!,
-            mimeType: 'application/pdf',
-          ));
+          uploadFiles.add(
+            UploadFile(
+              folder: 'cvs',
+              fileName: _cvName ?? 'cv.pdf',
+              bytes: _cvBytes!,
+              mimeType: 'application/pdf',
+            ),
+          );
         }
 
         if (uploadFiles.isNotEmpty) {
-          final results = await UploadService.uploadFiles(
-            files: uploadFiles,
-          );
+          final results = await UploadService.uploadFiles(files: uploadFiles);
 
           for (final result in results) {
             if (result.isSuccess) {
@@ -790,8 +797,9 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
               if (mounted) {
                 FlashySnackBar.show(
                   context,
-                  message: 'file_upload_failed'
-                      .tr(namedArgs: {'file': result.file.fileName}),
+                  message: 'file_upload_failed'.tr(
+                    namedArgs: {'file': result.file.fileName},
+                  ),
                   isError: true,
                 );
               }
@@ -886,21 +894,14 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
         _isSaving = false;
       });
       if (!context.mounted) return;
-      FlashySnackBar.show(
-        context,
-        message: 'worker_added_successfully'.tr(),
-      );
+      FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
       widget.onBack?.call();
     } on ValidationException catch (e) {
       if (mounted) {
         setState(() {
           _isSaving = false;
         });
-        FlashySnackBar.show(
-          context,
-          message: e.message,
-          isError: true,
-        );
+        FlashySnackBar.show(context, message: e.message, isError: true);
       }
     } catch (e) {
       debugPrint('Error saving worker: $e');
@@ -1204,7 +1205,9 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
                     child: Row(
                       children: [
                         Expanded(child: _buildTopTab('worker_detail'.tr(), 0)),
+                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0)),
                         Expanded(child: _buildTopTab('experience'.tr(), 1)),
+                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0)),
                         Expanded(child: _buildTopTab('documentation'.tr(), 2)),
                       ],
                     ),
@@ -1642,7 +1645,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   GestureDetector(
                     onTap: onUploadProfileTap,
                     child: Container(
-                      height: 280,
+                      height: 320,
                       width: double.infinity,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
@@ -1661,7 +1664,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                       child: _buildProfileContent(),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
 
                   // Relationship Status Section
                   Text(
@@ -2277,13 +2280,21 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                             _selectedDate!.month ==
                                                 _calendarMonth.month &&
                                             _selectedDate!.day == day;
-                                        final cellDate = DateTime(_calendarMonth.year, _calendarMonth.month, day);
+                                        final cellDate = DateTime(
+                                          _calendarMonth.year,
+                                          _calendarMonth.month,
+                                          day,
+                                        );
                                         final isSunday = cellDate.weekday == 7;
                                         final isFriday = cellDate.weekday == 5;
                                         final dayColor = isSunday
                                             ? const Color(0xFFFF0004)
-                                            : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-                                        final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFF0B50C3);
+                                            : (isFriday
+                                                  ? const Color(0xFF4AC000)
+                                                  : Colors.black);
+                                        final selectedBg = isFriday
+                                            ? const Color(0xFF4AC000)
+                                            : const Color(0xFF0B50C3);
                                         return Container(
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
@@ -2294,10 +2305,20 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                                 ? null
                                                 : Border.all(
                                                     color: isSunday
-                                                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                                                        ? const Color(
+                                                            0xFFFF0004,
+                                                          ).withValues(
+                                                            alpha: 0.4,
+                                                          )
                                                         : (isFriday
-                                                            ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                                                            : Colors.grey.shade300),
+                                                              ? const Color(
+                                                                  0xFF4AC000,
+                                                                ).withValues(
+                                                                  alpha: 0.4,
+                                                                )
+                                                              : Colors
+                                                                    .grey
+                                                                    .shade300),
                                                   ),
                                             borderRadius: BorderRadius.circular(
                                               8,
@@ -2975,8 +2996,7 @@ class DocumentationSection extends StatelessWidget {
         (cvName!.toLowerCase().endsWith('.png') ||
             cvName!.toLowerCase().endsWith('.jpg') ||
             cvName!.toLowerCase().endsWith('.jpeg'));
-    final isPdf =
-        cvName != null && cvName!.toLowerCase().endsWith('.pdf');
+    final isPdf = cvName != null && cvName!.toLowerCase().endsWith('.pdf');
     final isDoc =
         cvName != null &&
         (cvName!.toLowerCase().endsWith('.doc') ||
@@ -3045,7 +3065,9 @@ class DocumentationSection extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     color: const Color(0xFFF5F5F5),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3081,9 +3103,11 @@ class DocumentationSection extends StatelessWidget {
                                     fit: BoxFit.contain,
                                     errorWidget: (context, url, error) =>
                                         const Center(
-                                      child: Icon(Icons.broken_image,
-                                          size: 48),
-                                    ),
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 48,
+                                          ),
+                                        ),
                                   ),
                           )
                         : PdfPagePreview(
@@ -3106,8 +3130,7 @@ class DocumentationSection extends StatelessWidget {
         (cvName!.toLowerCase().endsWith('.png') ||
             cvName!.toLowerCase().endsWith('.jpg') ||
             cvName!.toLowerCase().endsWith('.jpeg'));
-    final isPdf =
-        cvName != null && cvName!.toLowerCase().endsWith('.pdf');
+    final isPdf = cvName != null && cvName!.toLowerCase().endsWith('.pdf');
     final isDoc =
         cvName != null &&
         (cvName!.toLowerCase().endsWith('.doc') ||
@@ -3150,131 +3173,113 @@ class DocumentationSection extends StatelessWidget {
                               fit: BoxFit.cover,
                               filterQuality: FilterQuality.high,
                             )
-                          : (existingCvUrl != null &&
-                                    existingCvUrl!.isNotEmpty
+                          : (existingCvUrl != null && existingCvUrl!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: existingCvUrl!,
                                     fit: BoxFit.cover,
-                                    errorWidget:
-                                        (context, url, error) =>
-                                            const Center(
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 48,
-                                              ),
-                                            ),
+                                    errorWidget: (context, url, error) =>
+                                        const Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 48,
+                                          ),
+                                        ),
                                   )
                                 : const SizedBox.shrink()),
                     )
                   : (isPdf || isDoc)
-                      ? GestureDetector(
-                          onTap: () => _openDocumentPreview(buildContext),
-                          behavior: HitTestBehavior.opaque,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (cvBytes == null &&
-                                  (existingCvUrl == null ||
-                                      existingCvUrl!.isEmpty))
-                                Padding(
-                                  padding: const EdgeInsets.all(24.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        height: 16,
-                                        width: 150,
-                                        color: Colors.grey.shade200,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        height: 10,
-                                        width: 100,
-                                        color: Colors.grey.shade200,
-                                      ),
-                                      const SizedBox(height: 40),
-                                      ...List.generate(
-                                        6,
-                                        (index) => Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 12),
-                                          child: Container(
-                                            height: 10,
-                                            width: double.infinity,
-                                            color: Colors.grey.shade200,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                  ? GestureDetector(
+                      onTap: () => _openDocumentPreview(buildContext),
+                      behavior: HitTestBehavior.opaque,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (cvBytes == null &&
+                              (existingCvUrl == null || existingCvUrl!.isEmpty))
+                            Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    height: 16,
+                                    width: 150,
+                                    color: Colors.grey.shade200,
                                   ),
-                                ),
-                              if (isPdf &&
-                                  (cvBytes != null ||
-                                      (existingCvUrl != null &&
-                                          existingCvUrl!.isNotEmpty)))
-                                Positioned.fill(
-                                  child: PdfPagePreview(
-                                    cvBytes: cvBytes,
-                                    existingCvUrl: existingCvUrl,
-                                  ),
-                                ),
-                              if (isDoc)
-                                Positioned.fill(
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          cvName?.endsWith('.docx') ?? false
-                                              ? Icons.article_outlined
-                                              : Icons.description_outlined,
-                                          size: 64,
-                                          color: const Color(0xFF0B50C3),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          cvName ?? 'Document',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey.shade600,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () => _openDocumentPreview(buildContext),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.insert_drive_file,
-                                  size: 64,
-                                  color: Colors.grey.shade400,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  cvName ?? 'CV',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                                   const SizedBox(height: 8),
+                                   Container(
+                      height: 420,
+                      width: double.infinity,
+                                     color: Colors.grey.shade200,
+                                   ),
+                                 ],
+                              ),
                             ),
-                          ),
+                          if (isPdf &&
+                              (cvBytes != null ||
+                                  (existingCvUrl != null &&
+                                      existingCvUrl!.isNotEmpty)))
+                            Positioned.fill(
+                              child: PdfPagePreview(
+                                cvBytes: cvBytes,
+                                existingCvUrl: existingCvUrl,
+                              ),
+                            ),
+                          if (isDoc)
+                            Positioned.fill(
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      cvName?.endsWith('.docx') ?? false
+                                          ? Icons.article_outlined
+                                          : Icons.description_outlined,
+                                      size: 64,
+                                      color: const Color(0xFF0B50C3),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      cvName ?? 'Document',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () => _openDocumentPreview(buildContext),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.insert_drive_file,
+                              size: 64,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              cvName ?? 'CV',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
             ),
           ),
 
@@ -3526,6 +3531,10 @@ Widget _buildCustomRadio({
   required bool isSelected,
   required VoidCallback onTap,
 }) {
+  final selectedColor = Color(0xFF0247C4);
+  final borderColor = isSelected ? selectedColor : Color(0xFF000000);
+  final textColor = isSelected ? selectedColor : Color(0xFF000000);
+
   return GestureDetector(
     onTap: onTap,
     behavior: HitTestBehavior.opaque,
@@ -3537,16 +3546,16 @@ Widget _buildCustomRadio({
           height: 20,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF000000), width: 2),
+            border: Border.all(color: borderColor, width: 2),
           ),
           child: isSelected
               ? Center(
                   child: Container(
                     width: 10,
                     height: 10,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Color(0xFF000000),
+                      color: selectedColor,
                     ),
                   ),
                 )
@@ -3555,10 +3564,10 @@ Widget _buildCustomRadio({
         const SizedBox(width: 10),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF000000),
+          style: TextStyle(
+            color: textColor,
             fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -3642,8 +3651,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
           final bytes = bytesBuilder.takeBytes();
           document = await PdfDocument.openData(bytes);
         } else if (widget.existingCvUrl!.startsWith('data:application/pdf')) {
-          final base64Content =
-              widget.existingCvUrl!.split(',').last;
+          final base64Content = widget.existingCvUrl!.split(',').last;
           final bytes = base64Decode(base64Content);
           document = await PdfDocument.openData(bytes);
         }
@@ -3739,12 +3747,7 @@ class DocPagePreview extends StatefulWidget {
   final Uint8List? cvBytes;
   final String? fileName;
 
-  const DocPagePreview({
-    super.key,
-    this.fileUrl,
-    this.cvBytes,
-    this.fileName,
-  });
+  const DocPagePreview({super.key, this.fileUrl, this.cvBytes, this.fileName});
 
   @override
   State<DocPagePreview> createState() => _DocPagePreviewState();
@@ -3776,11 +3779,19 @@ class _DocPagePreviewState extends State<DocPagePreview> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.insert_drive_file, size: 48, color: Colors.grey.shade400),
+            Icon(
+              Icons.insert_drive_file,
+              size: 48,
+              color: Colors.grey.shade400,
+            ),
             const SizedBox(height: 8),
             Text(
               widget.fileName ?? 'Document',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontFamily: 'SF Pro Display'),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontFamily: 'SF Pro Display',
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -3805,15 +3816,15 @@ class _DocPagePreviewState extends State<DocPagePreview> {
   }
 
   Future<void> _loadLocalFile() async {
-    if (widget.cvBytes != null && widget.fileName != null && _webViewController != null) {
+    if (widget.cvBytes != null &&
+        widget.fileName != null &&
+        _webViewController != null) {
       try {
         final tempDir = io.Directory.systemTemp;
         final tempFile = io.File('${tempDir.path}/${widget.fileName}');
         await tempFile.writeAsBytes(widget.cvBytes!);
         await _webViewController!.loadUrl(
-          urlRequest: iaw.URLRequest(
-            url: iaw.WebUri(tempFile.uri.toString()),
-          ),
+          urlRequest: iaw.URLRequest(url: iaw.WebUri(tempFile.uri.toString())),
         );
       } catch (e) {
         debugPrint('Error loading doc: $e');
@@ -3827,11 +3838,7 @@ class _DocPreviewScreen extends StatefulWidget {
   final String? fileName;
   final Uint8List? cvBytes;
 
-  const _DocPreviewScreen({
-    this.fileUrl,
-    this.fileName,
-    this.cvBytes,
-  });
+  const _DocPreviewScreen({this.fileUrl, this.fileName, this.cvBytes});
 
   @override
   State<_DocPreviewScreen> createState() => _DocPreviewScreenState();
@@ -3884,8 +3891,11 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline,
-                      size: 48, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     _error!,
@@ -3919,9 +3929,7 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
               },
             ),
           if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(strokeWidth: 2.0),
-            ),
+            const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
         ],
       ),
     );
@@ -3934,9 +3942,7 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
         final tempFile = io.File('${tempDir.path}/${widget.fileName}');
         await tempFile.writeAsBytes(widget.cvBytes!);
         _controller?.loadUrl(
-          urlRequest: iaw.URLRequest(
-            url: iaw.WebUri(tempFile.uri.toString()),
-          ),
+          urlRequest: iaw.URLRequest(url: iaw.WebUri(tempFile.uri.toString())),
         );
       } catch (e) {
         if (mounted) {
