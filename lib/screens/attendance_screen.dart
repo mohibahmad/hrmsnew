@@ -1471,7 +1471,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               padding: const EdgeInsets.all(1),
-              child: Icon(Icons.check_circle, color: color, size: 14),
+              child: Icon(Icons.check_circle, color: Colors.white, size: 14),
             ),
           ),
         ],

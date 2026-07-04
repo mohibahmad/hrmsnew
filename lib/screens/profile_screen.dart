@@ -720,6 +720,7 @@ class _ProfileBodyState extends State<ProfileBody> {
     final bool isContact =
         label.toLowerCase().contains('contact') ||
         label.toLowerCase().contains('phone');
+    final bool isAddress = label.toLowerCase().contains('address');
     final Color bgColor = readOnly
         ? const Color(0xFFEEEFF2)
         : const Color(0xFFFFFFFF);
@@ -768,9 +769,9 @@ class _ProfileBodyState extends State<ProfileBody> {
                   controller: controller,
                   maxLines: maxLines,
                   readOnly: readOnly,
-                  inputFormatters: isCompanyId || isContact || isBusinessName
+                  inputFormatters: isCompanyId || isContact || isBusinessName || isAddress
                       ? [
-                          LengthLimitingTextInputFormatter(isBusinessName ? 30 : 15),
+                          LengthLimitingTextInputFormatter(isBusinessName ? 30 : isAddress ? 100 : 15),
                           if (isContact)
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[0-9+\-\s()]'),
