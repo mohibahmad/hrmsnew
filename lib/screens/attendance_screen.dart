@@ -1396,7 +1396,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
 
   Widget _buildBottomDetails() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
       child: IntrinsicHeight(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
