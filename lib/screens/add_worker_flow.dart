@@ -1205,9 +1205,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     child: Row(
                       children: [
                         Expanded(child: _buildTopTab('worker_detail'.tr(), 0)),
-                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0)),
+                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0).withValues(alpha: 0.5)),
                         Expanded(child: _buildTopTab('experience'.tr(), 1)),
-                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0)),
+                        VerticalDivider(width: 1, color: Color(0xFFE0E0E0).withValues(alpha: 0.5)),
                         Expanded(child: _buildTopTab('documentation'.tr(), 2)),
                       ],
                     ),
