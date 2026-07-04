@@ -29,8 +29,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _selectedLanguage = 'English';
-
   static const Map<String, Locale> _languageMap = {
     'English': Locale('en'),
     'Español': Locale('es'),
@@ -320,9 +318,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               final locale = _languageMap[lang]!;
                               context.setLocale(locale);
                               setModalState(() {});
-                              setState(() {
-                                _selectedLanguage = lang;
-                              });
                               Future.delayed(
                                 const Duration(milliseconds: 150),
                                 () {

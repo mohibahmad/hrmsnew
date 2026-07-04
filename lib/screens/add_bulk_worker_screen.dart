@@ -880,8 +880,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       worker['position']?.toString() ?? '';
                                   final salary =
                                       worker['salaryAmount']?.toString() ?? '';
-                                  final currency =
-                                      worker['currency']?.toString() ?? 'USD';
                                   final profileImageUrl =
                                       worker['profileImage']?.toString() ?? '';
 

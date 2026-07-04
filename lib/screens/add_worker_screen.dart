@@ -1,5 +1,4 @@
 import 'dart:io' as io;
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -13,23 +12,6 @@ import '../utils/date_utils.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_dropdown_field.dart';
-
-class WorkerManagementApp extends StatelessWidget {
-  const WorkerManagementApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'worker_management'.tr(),
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display',
-        scaffoldBackgroundColor: const Color(0xFFF9FAFC),
-      ),
-      home: const AddNewWorkerScreen(),
-    );
-  }
-}
 
 class AddNewWorkerScreen extends StatefulWidget {
   const AddNewWorkerScreen({super.key});

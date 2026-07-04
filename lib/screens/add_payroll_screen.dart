@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -601,7 +600,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   Widget _buildCalculatedInput(Map<String, dynamic> cr) {
-    final netAmount = cr.isNotEmpty ? cr['formattedNet'] as String : r'$ 0';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

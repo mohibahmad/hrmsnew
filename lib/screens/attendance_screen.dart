@@ -933,11 +933,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 final email = (doc['email'] ?? '').toString();
                 final role = (doc['role'] ?? '').toString();
                 final status = (doc['status'] ?? '').toString();
-                final attendanceType = (doc['attendanceType'] ?? 'Remote')
-                    .toString();
                 final workType = (doc['workType'] ?? 'Full Time').toString();
 
-                final localizeAttendanceType = LocalizationHelper.localizeAttendanceType;
                 final localizeWorkType = LocalizationHelper.localizeWorkType;
 
                 return Container(

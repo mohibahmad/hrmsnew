@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iaw;
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
@@ -22,7 +23,6 @@ import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 const List<String> _months = [
   'January',
@@ -1147,13 +1147,6 @@ _existingProfileImageUrl = widget.workerToEdit!['profileImage']?.toString();
                     final bool isEditMode = widget.workerToEdit != null;
                     final bool hasChanges = _hasChanges();
 
-                    final bool hasFrontId =
-                        _frontIdBytes != null ||
-                        (_existingFrontIdUrl != null &&
-                            _existingFrontIdUrl!.isNotEmpty);
-                    final bool hasCv =
-                        _cvBytes != null ||
-                        (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
                     final bool isSaveReady = isEditMode
                         ? hasChanges
                         : (_activeTabIndex == 2 &&
@@ -3559,48 +3552,6 @@ Widget _buildCustomRadio({
   );
 }
 
-Widget _buildMenuRadio(bool isSelected, String text) {
-  final Color activeColor = const Color(0xFF0B50C3);
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 16,
-        height: 16,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? activeColor : Colors.grey.shade300,
-            width: 1.5,
-          ),
-        ),
-        child: isSelected
-            ? Center(
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: activeColor,
-                  ),
-                ),
-              )
-            : const SizedBox.shrink(),
-      ),
-      const SizedBox(width: 12),
-      Text(
-        text,
-        style: TextStyle(
-          color: isSelected ? activeColor : Colors.grey.shade500,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          fontSize: 14,
-          fontFamily: 'SF Pro Display',
-        ),
-      ),
-    ],
-  );
-}
-
 Widget _buildDropdownField({
   required String label,
   required String selectedValue,
@@ -3631,14 +3582,14 @@ class PdfPagePreview extends StatefulWidget {
 }
 
 class _PdfPagePreviewState extends State<PdfPagePreview> {
-  Uint8List? _pageImageBytes;
+  List<Uint8List> _pageImages = [];
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _renderPdfPage();
+    _renderPdfPages();
   }
 
   @override
@@ -3646,16 +3597,16 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
     super.didUpdateWidget(oldWidget);
     if (widget.cvBytes != oldWidget.cvBytes ||
         widget.existingCvUrl != oldWidget.existingCvUrl) {
-      _renderPdfPage();
+      _renderPdfPages();
     }
   }
 
-  Future<void> _renderPdfPage() async {
+  Future<void> _renderPdfPages() async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
-      _pageImageBytes = null;
+      _pageImages = [];
     });
 
     try {
@@ -3684,21 +3635,24 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       }
 
       if (document != null) {
-        final page = await document.getPage(1);
-        final pageImage = await page.render(
-          width: page.width * 5,
-          height: page.height * 5,
-          format: PdfPageImageFormat.png,
-        );
-        if (pageImage != null) {
-          if (mounted) {
-            setState(() {
-              _pageImageBytes = pageImage.bytes;
-              _isLoading = false;
-            });
+        final pages = <Uint8List>[];
+        for (int i = 1; i <= document.pagesCount; i++) {
+          final page = await document.getPage(i);
+          final pageImage = await page.render(
+            width: page.width * 3,
+            height: page.height * 3,
+            format: PdfPageImageFormat.png,
+          );
+          if (pageImage != null) {
+            pages.add(pageImage.bytes);
           }
-        } else {
-          throw Exception('Failed to render PDF page');
+          await page.close();
+        }
+        if (mounted) {
+          setState(() {
+            _pageImages = pages;
+            _isLoading = false;
+          });
         }
         await document.close();
       } else {
@@ -3709,7 +3663,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
         }
       }
     } catch (e) {
-      debugPrint('Error rendering PDF page preview: $e');
+      debugPrint('Error rendering PDF pages: $e');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -3723,23 +3677,42 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.0),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Loading document...',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
         ),
       );
     }
     if (_error != null) {
       return const SizedBox.shrink();
     }
-    if (_pageImageBytes != null) {
-      return Image.memory(
-        _pageImageBytes!,
-        fit: BoxFit.cover,
-        filterQuality: FilterQuality.high,
-        width: double.infinity,
-        height: double.infinity,
+    if (_pageImages.isNotEmpty) {
+      return ListView.builder(
+        padding: EdgeInsets.zero,
+        itemCount: _pageImages.length,
+        itemBuilder: (context, index) {
+          return Image.memory(
+            _pageImages[index],
+            fit: BoxFit.fitWidth,
+            filterQuality: FilterQuality.high,
+            width: double.infinity,
+          );
+        },
       );
     }
     return const SizedBox.shrink();
@@ -3763,65 +3736,54 @@ class DocPagePreview extends StatefulWidget {
 }
 
 class _DocPagePreviewState extends State<DocPagePreview> {
-  late final WebViewController _controller;
-  bool _isLoading = true;
+  iaw.InAppWebViewController? _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (_) {
-            if (mounted) setState(() => _isLoading = true);
-          },
-          onPageFinished: (_) {
-            if (mounted) setState(() => _isLoading = false);
-          },
-          onWebResourceError: (_) {
-            if (mounted) setState(() => _isLoading = false);
-          },
-        ),
-      );
-    _loadDocument();
   }
 
-  Future<void> _loadDocument() async {
+  String? _getDocUrl() {
     if (widget.fileUrl != null && widget.fileUrl!.isNotEmpty) {
-      final googleDocsUrl =
-          'https://docs.google.com/gview?url=${Uri.encodeComponent(widget.fileUrl!)}&embedded=true';
-      _controller.loadRequest(Uri.parse(googleDocsUrl));
-    } else if (widget.cvBytes != null && widget.fileName != null) {
-      try {
-        final tempDir = io.Directory.systemTemp;
-        final tempFile = io.File('${tempDir.path}/${widget.fileName}');
-        await tempFile.writeAsBytes(widget.cvBytes!);
-        _controller.loadRequest(tempFile.uri);
-      } catch (e) {
-        if (mounted) setState(() => _isLoading = false);
-      }
-    } else {
-      if (mounted) setState(() => _isLoading = false);
+      return 'https://docs.google.com/gview?url=${Uri.encodeComponent(widget.fileUrl!)}&embedded=true';
     }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        WebViewWidget(controller: _controller),
-        if (_isLoading)
-          const Center(
-            child: SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.0),
-            ),
-          ),
-      ],
+    final url = _getDocUrl();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: iaw.InAppWebView(
+        initialUrlRequest: iaw.URLRequest(
+          url: iaw.WebUri(url ?? 'about:blank'),
+        ),
+        onWebViewCreated: (controller) {
+          _controller = controller;
+          if (url == null && widget.cvBytes != null && widget.fileName != null) {
+            _loadLocalFile();
+          }
+        },
+      ),
     );
+  }
+
+  Future<void> _loadLocalFile() async {
+    if (widget.cvBytes != null && widget.fileName != null) {
+      try {
+        final tempDir = io.Directory.systemTemp;
+        final tempFile = io.File('${tempDir.path}/${widget.fileName}');
+        await tempFile.writeAsBytes(widget.cvBytes!);
+        _controller?.loadUrl(
+          urlRequest: iaw.URLRequest(
+            url: iaw.WebUri(tempFile.uri.toString()),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error loading doc: $e');
+      }
+    }
   }
 }
 
@@ -3841,68 +3803,25 @@ class _DocPreviewScreen extends StatefulWidget {
 }
 
 class _DocPreviewScreenState extends State<_DocPreviewScreen> {
-  late final WebViewController _controller;
+  iaw.InAppWebViewController? _controller;
   bool _isLoading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _initWebView();
   }
 
-  Future<void> _initWebView() async {
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (_) {
-            if (mounted) setState(() => _isLoading = true);
-          },
-          onPageFinished: (_) {
-            if (mounted) setState(() => _isLoading = false);
-          },
-          onWebResourceError: (error) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-                _error = 'Failed to load document';
-              });
-            }
-          },
-        ),
-      );
-
+  String? _getDocUrl() {
     if (widget.fileUrl != null && widget.fileUrl!.isNotEmpty) {
-      final googleDocsUrl =
-          'https://docs.google.com/gview?url=${Uri.encodeComponent(widget.fileUrl!)}&embedded=true';
-      _controller.loadRequest(Uri.parse(googleDocsUrl));
-    } else if (widget.cvBytes != null && widget.fileName != null) {
-      try {
-        final tempDir = io.Directory.systemTemp;
-        final tempFile = io.File('${tempDir.path}/${widget.fileName}');
-        await tempFile.writeAsBytes(widget.cvBytes!);
-        _controller.loadRequest(tempFile.uri);
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _error = 'Failed to load document: $e';
-          });
-        }
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _error = 'No document data available';
-        });
-      }
+      return 'https://docs.google.com/gview?url=${Uri.encodeComponent(widget.fileUrl!)}&embedded=true';
     }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final url = _getDocUrl();
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -3930,7 +3849,8 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.grey.shade400),
+                  Icon(Icons.error_outline,
+                      size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   Text(
                     _error!,
@@ -3944,7 +3864,25 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
               ),
             )
           else
-            WebViewWidget(controller: _controller),
+            iaw.InAppWebView(
+              initialUrlRequest: iaw.URLRequest(
+                url: iaw.WebUri(url ?? 'about:blank'),
+              ),
+              onWebViewCreated: (controller) {
+                _controller = controller;
+                if (url == null &&
+                    widget.cvBytes != null &&
+                    widget.fileName != null) {
+                  _loadLocalFile();
+                }
+              },
+              onLoadStart: (controller, url) {
+                if (mounted) setState(() => _isLoading = true);
+              },
+              onLoadStop: (controller, url) {
+                if (mounted) setState(() => _isLoading = false);
+              },
+            ),
           if (_isLoading)
             const Center(
               child: CircularProgressIndicator(strokeWidth: 2.0),
@@ -3952,6 +3890,28 @@ class _DocPreviewScreenState extends State<_DocPreviewScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _loadLocalFile() async {
+    if (widget.cvBytes != null && widget.fileName != null) {
+      try {
+        final tempDir = io.Directory.systemTemp;
+        final tempFile = io.File('${tempDir.path}/${widget.fileName}');
+        await tempFile.writeAsBytes(widget.cvBytes!);
+        _controller?.loadUrl(
+          urlRequest: iaw.URLRequest(
+            url: iaw.WebUri(tempFile.uri.toString()),
+          ),
+        );
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _error = 'Failed to load document: $e';
+          });
+        }
+      }
+    }
   }
 }
 

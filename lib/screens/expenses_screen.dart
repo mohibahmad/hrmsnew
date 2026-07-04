@@ -1811,11 +1811,4 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 }
 
-class ExpenseItem {
-  final String name;
-  final String date;
-  final String category;
-  final double amount;
 
-  ExpenseItem(this.name, this.date, this.category, this.amount);
-}
