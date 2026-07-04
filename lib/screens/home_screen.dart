@@ -146,6 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _femaleWorkersCount = 0;
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
+  List<Map<String, dynamic>> _rawExpensesDocs = [];
+  List<Map<String, dynamic>> _rawPayrollDocs = [];
   List<Map<String, dynamic>> _holidays = [];
   StreamSubscription? _holidaysSub;
   StreamSubscription? _workersSub;
@@ -346,10 +348,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _expensesSub = firestore.expensesStream.listen((snap) {
         if (mounted) {
           setState(() {
-            _totalExpensesSum = snap.docs.fold(0.0, (sum, doc) {
+            _rawExpensesDocs = snap.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>?;
-              return sum + ((data?['amount'] ?? 0.0) as num).toDouble();
-            });
+              return {
+                'id': doc.id,
+                'amount': (data?['amount'] ?? 0.0) as num,
+                'date': (data?['date'] ?? '') as String,
+              };
+            }).toList();
+            _recalculateSumsForPeriod(_selectedPeriod);
           });
         }
       }, onError: (e) => debugPrint('expensesStream error: $e'));
@@ -357,19 +364,22 @@ class _HomeScreenState extends State<HomeScreen> {
       _payrollSub = firestore.payrollStream.listen((snap) {
         if (mounted) {
           setState(() {
-            _totalSalarySum = snap.docs.fold(0.0, (sum, doc) {
+            _rawPayrollDocs = snap.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>?;
-              if (data == null) return sum;
               final result = PayrollService.calculatePayroll(
-
-                salary: (data['salary'] ?? '').toString(),
-                totalWorkDays: (data['totalWorkDays'] ?? '').toString(),
-                absents: (data['absents'] ?? '').toString(),
-                leaves: (data['leaves'] ?? '').toString(),
-                overtimeDays: (data['overtimeDays'] ?? '').toString(),
+                salary: (data?['salary'] ?? '').toString(),
+                totalWorkDays: (data?['totalWorkDays'] ?? '').toString(),
+                absents: (data?['absents'] ?? '').toString(),
+                leaves: (data?['leaves'] ?? '').toString(),
+                overtimeDays: (data?['overtimeDays'] ?? '').toString(),
               );
-              return sum + (result['netSalary'] as double);
-            });
+              return {
+                'id': doc.id,
+                'netSalary': result['netSalary'] as double,
+                'date': (data?['date'] ?? '') as String,
+              };
+            }).toList();
+            _recalculateSumsForPeriod(_selectedPeriod);
           });
         }
       }, onError: (e) => debugPrint('payrollStream error: $e'));
@@ -409,8 +419,68 @@ class _HomeScreenState extends State<HomeScreen> {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       if (isGuest) {
         _recalculateDummyTotals(period);
+      } else {
+        _recalculateSumsForPeriod(period);
       }
     });
+  }
+
+  void _recalculateSumsForPeriod(String period) {
+    final now = DateTime.now();
+    DateTime? dateLimit;
+    if (period == 'Today') {
+      dateLimit = DateTime(now.year, now.month, now.day);
+    } else if (period == 'Week') {
+      dateLimit = now.subtract(const Duration(days: 7));
+    } else if (period == 'Month') {
+      dateLimit = now.subtract(const Duration(days: 30));
+    } else if (period == '6 Month') {
+      dateLimit = now.subtract(const Duration(days: 180));
+    } else if (period == 'Yearly') {
+      dateLimit = now.subtract(const Duration(days: 365));
+    }
+
+    _totalExpensesSum = 0.0;
+    for (final doc in _rawExpensesDocs) {
+      if (dateLimit != null) {
+        final dateStr = (doc['date'] ?? '').toString();
+        final parts = dateStr.split('/');
+        if (parts.length == 3) {
+          final docDate = DateTime(
+            int.tryParse(parts[2]) ?? 0,
+            int.tryParse(parts[1]) ?? 0,
+            int.tryParse(parts[0]) ?? 0,
+          );
+          if (period == 'Today') {
+            if (docDate.year != now.year || docDate.month != now.month || docDate.day != now.day) continue;
+          } else if (docDate.isBefore(dateLimit)) {
+            continue;
+          }
+        }
+      }
+      _totalExpensesSum += (doc['amount'] as num).toDouble();
+    }
+
+    _totalSalarySum = 0.0;
+    for (final doc in _rawPayrollDocs) {
+      if (dateLimit != null) {
+        final dateStr = (doc['date'] ?? '').toString();
+        final parts = dateStr.split('/');
+        if (parts.length == 3) {
+          final docDate = DateTime(
+            int.tryParse(parts[2]) ?? 0,
+            int.tryParse(parts[1]) ?? 0,
+            int.tryParse(parts[0]) ?? 0,
+          );
+          if (period == 'Today') {
+            if (docDate.year != now.year || docDate.month != now.month || docDate.day != now.day) continue;
+          } else if (docDate.isBefore(dateLimit)) {
+            continue;
+          }
+        }
+      }
+      _totalSalarySum += doc['netSalary'] as double;
+    }
   }
 
   void _recalculateDummyTotals(String period) {
