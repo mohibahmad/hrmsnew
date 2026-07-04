@@ -967,29 +967,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Tooltip(
-                                      message: name,
-                                      child: Text(
-                                        name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                          color: textDark,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        maxLines: 2,
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: textDark,
+                                        fontFamily: 'SF Pro Display',
                                       ),
+                                      maxLines: 2,
                                     ),
                                     const SizedBox(height: 4),
-                                    Tooltip(
-                                      message: email,
-                                      child: Text(
-                                        email,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
+                                    Text(
+                                      email,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
                                   ],
@@ -1003,26 +997,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         flex: 2,
                         child: Padding(
                           padding: const EdgeInsets.only(right: 24.0),
-                          child: Tooltip(
-                            message: status.isEmpty
-                                ? '-'
-                                : status.toLowerCase().tr(),
-                            child: Text(
-                              status.isEmpty ? '-' : status.toLowerCase().tr(),
-                              style: TextStyle(
-                                color: status == 'Present'
-                                    ? greenPresent
-                                    : (status == 'Absent'
-                                          ? redAbsent
-                                          : (status.isEmpty
-                                                ? Colors.grey
-                                                : orangeLeave)),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              maxLines: 2,
+                          child: Text(
+                            status.isEmpty ? '-' : status.toLowerCase().tr(),
+                            style: TextStyle(
+                              color: status == 'Present'
+                                  ? greenPresent
+                                  : (status == 'Absent'
+                                        ? redAbsent
+                                        : (status.isEmpty
+                                              ? Colors.grey
+                                              : orangeLeave)),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
                             ),
+                            maxLines: 2,
                           ),
                         ),
                       ),
@@ -1030,26 +1019,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         flex: 2,
                         child: Padding(
                           padding: const EdgeInsets.only(right: 24.0),
-                          child: Tooltip(
-                            message: localizeWorkType(workType),
-                            child: Text(
-                              localizeWorkType(workType),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: textDark,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              maxLines: 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Tooltip(
-                          message: role,
                           child: Text(
-                            role,
+                            localizeWorkType(workType),
                             style: const TextStyle(
                               fontSize: 15,
                               color: textDark,
@@ -1057,6 +1028,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             ),
                             maxLines: 2,
                           ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          role,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: textDark,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                          maxLines: 2,
                         ),
                       ),
                       SizedBox(
@@ -1321,15 +1304,12 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Tooltip(
-                            message: record.email,
-                            child: Text(
-                              record.email,
-                              style: const TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          child: Text(
+                            record.email,
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),

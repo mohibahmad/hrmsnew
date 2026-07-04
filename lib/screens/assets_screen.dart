@@ -1207,17 +1207,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Tooltip(
-                      message: data.name,
-                      child: Text(
-                        data.name,
-                        maxLines: 2,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
+                    child: Text(
+                      data.name,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ),
@@ -1229,17 +1226,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: data.position,
-                child: Text(
-                  data.position,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
+              child: Text(
+                data.position,
+                maxLines: 2,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
@@ -1248,16 +1242,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: data.type,
-                child: Text(
-                  data.type,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
+              child: Text(
+                data.type,
+                maxLines: 2,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),

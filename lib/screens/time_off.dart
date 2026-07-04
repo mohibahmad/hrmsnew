@@ -667,22 +667,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 } else if (action.isEmpty) {
                   action = 'no_time_off'.tr();
                 }
-                return Tooltip(
-                  message: 'long_press_to_delete'.tr(),
-                  child: GestureDetector(
-                    onLongPress: (doc['action'] ?? '').toString().isNotEmpty
-                        ? () => _handleDelete(doc)
-                        : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF6F8FA),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
+                return GestureDetector(
+                  onLongPress: (doc['action'] ?? '').toString().isNotEmpty
+                      ? () => _handleDelete(doc)
+                      : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F8FA),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
                         children: [
                           // Worker Name with Avatar
                           Expanded(
@@ -705,29 +703,23 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Tooltip(
-                                          message: name,
-                                          child: Text(
-                                            name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                              color: Color(0xFF000000),
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                            maxLines: 2,
+                                        Text(
+                                          name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Color(0xFF000000),
+                                            fontFamily: 'SF Pro Display',
                                           ),
+                                          maxLines: 2,
                                         ),
                                         const SizedBox(height: 4),
-                                        Tooltip(
-                                          message: email,
-                                          child: Text(
-                                            email,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.black,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
+                                        Text(
+                                          email,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black,
+                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ],
@@ -742,17 +734,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             flex: 2,
                             child: Padding(
                               padding: const EdgeInsets.only(right: 24.0),
-                              child: Tooltip(
-                                message: position,
-                                child: Text(
-                                  position,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                  maxLines: 2,
+                              child: Text(
+                                position,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black,
+                                  fontFamily: 'SF Pro Display',
                                 ),
+                                maxLines: 2,
                               ),
                             ),
                           ),
@@ -830,8 +819,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ],
                       ),
                     ),
-                  ),
-                );
+                  );
               },
             ),
           ),

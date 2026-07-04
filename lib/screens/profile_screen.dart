@@ -493,22 +493,19 @@ class _ProfileBodyState extends State<ProfileBody> {
               InkWell(
                 onTap: () => setState(() => _isEditing = true),
                 borderRadius: BorderRadius.circular(6),
-                child: Tooltip(
-                  message: 'edit_profile'.tr(),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F0FE),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/edit_icon.svg',
-                      width: 22,
-                      height: 22,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF155ED5),
-                        BlendMode.srcIn,
-                      ),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F0FE),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: SvgPicture.asset(
+                    'assets/edit_icon.svg',
+                    width: 22,
+                    height: 22,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFF155ED5),
+                      BlendMode.srcIn,
                     ),
                   ),
                 ),

@@ -1299,8 +1299,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1420,9 +1419,8 @@ class _SidebarWidgetState extends State<SidebarWidget> {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 50),
-            height: 42,
             margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
                   ? const Color(0xFFFFFFFF).withValues(alpha: 0.36)

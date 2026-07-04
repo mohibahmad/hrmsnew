@@ -1160,27 +1160,21 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Tooltip(
-                          message: name,
-                          child: Text(
-                            name,
-                            maxLines: 2,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              fontFamily: 'SF Pro Display',
-                            ),
+                        Text(
+                          name,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontFamily: 'SF Pro Display',
                           ),
                         ),
-                        Tooltip(
-                          message: email,
-                          child: Text(
-                            email,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black,
-                              fontFamily: 'SF Pro Display',
-                            ),
+                        Text(
+                          email,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ],
@@ -1209,16 +1203,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(right: 24.0),
-              child: Tooltip(
-                message: position,
-                child: Text(
-                  position,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 15,
-                    fontFamily: 'SF Pro Display',
-                  ),
+              child: Text(
+                position,
+                maxLines: 2,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
@@ -1642,17 +1633,14 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: Tooltip(
-                                        message: email,
-                                        child: Text(
-                                          email,
-                                          maxLines: 1,
-                                          style: const TextStyle(
-                                            color: Color(0xFFFFFFFF),
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
+                                      child: Text(
+                                        email,
+                                        maxLines: 1,
+                                        style: const TextStyle(
+                                          color: Color(0xFFFFFFFF),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
                                         ),
                                       ),
                                     ),

@@ -530,28 +530,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Tooltip(
-                          message: (doc['name'] ?? '').toString(),
-                          child: Text(
-                            (doc['name'] ?? '').toString(),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            maxLines: 2,
+                        Text(
+                          (doc['name'] ?? '').toString(),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
                           ),
+                          maxLines: 2,
                         ),
                         const SizedBox(height: 4),
-                        Tooltip(
-                          message: (doc['email'] ?? '').toString(),
-                          child: Text(
-                            (doc['email'] ?? '').toString(),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black,
-                              fontFamily: 'SF Pro Display',
-                            ),
+                        Text(
+                          (doc['email'] ?? '').toString(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ],
@@ -565,17 +559,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
             flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(right: 24.0),
-              child: Tooltip(
-                message: (doc['position'] ?? '').toString(),
-                child: Text(
-                  (doc['position'] ?? '').toString(),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Colors.black,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 2,
+              child: Text(
+                (doc['position'] ?? '').toString(),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.black,
+                  fontFamily: 'SF Pro Display',
                 ),
+                maxLines: 2,
               ),
             ),
           ),
@@ -823,16 +814,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Tooltip(
-                                    message: email,
-                                    child: Text(
-                                      email,
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
+                                  child: Text(
+                                    email,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),

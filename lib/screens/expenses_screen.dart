@@ -1625,18 +1625,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Tooltip(
-                      message: name,
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF000000),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                        maxLines: 2,
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
                       ),
+                      maxLines: 2,
                     ),
                   ),
                 ],
@@ -1663,17 +1660,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             flex: 3,
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
-              child: Tooltip(
-                message: category,
-                child: Text(
-                  category,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 2,
+              child: Text(
+                category,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
+                maxLines: 2,
               ),
             ),
           ),
