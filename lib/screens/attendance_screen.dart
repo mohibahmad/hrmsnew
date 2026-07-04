@@ -1396,13 +1396,13 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
 
   Widget _buildBottomDetails() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: IntrinsicHeight(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
+            SizedBox(
+              width: 220,
               child: _buildDetailCard(
                 title: 'attendance_label'.tr(),
                 rows: [
@@ -1434,8 +1434,9 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 205,
               child: _buildDetailCard(
                 title: 'worker_information'.tr(),
                 rows: [
@@ -1465,7 +1466,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
 
   Widget _buildDetailCard({required String title, required List<Widget> rows}) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
