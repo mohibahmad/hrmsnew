@@ -245,6 +245,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         children: [
           // ================= LEFT SIDEBAR =================
           SidebarWidget(
+            key: ValueKey('sidebar_${context.locale.languageCode}'),
             selectedIndex: 1,
             onItemSelected: (index, {subIndex}) {
               _safePop();

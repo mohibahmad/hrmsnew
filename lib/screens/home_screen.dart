@@ -493,6 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   SidebarWidget(
+                    key: ValueKey('sidebar_${context.locale.languageCode}'),
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
                     isGuest: AuthService().currentUser?.isAnonymous ?? false,

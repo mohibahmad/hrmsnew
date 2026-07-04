@@ -240,6 +240,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           IgnorePointer(
             ignoring: _isDialogOpen,
             child: SidebarWidget(
+              key: ValueKey('sidebar_${context.locale.languageCode}'),
               selectedIndex: 2,
               selectedSubIndex: 0,
               isGuest: AuthService().currentUser?.isAnonymous ?? false,
