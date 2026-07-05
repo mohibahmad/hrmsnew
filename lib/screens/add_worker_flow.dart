@@ -2881,7 +2881,8 @@ class DocumentationSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                    height: 615,
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(6),
@@ -3288,7 +3289,7 @@ class DocumentationSection extends StatelessWidget {
             cvName!.toLowerCase().endsWith('.docx'));
 
     return Container(
-      height: 632,
+      height: 615,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
@@ -3522,7 +3523,7 @@ class DocumentationSection extends StatelessWidget {
 
   Widget _buildCvContainer({required Widget overlay}) {
     return Container(
-      height: 632,
+      height: 615,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
