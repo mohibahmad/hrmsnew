@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iaw;
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
@@ -2884,7 +2883,7 @@ class DocumentationSection extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F5F8),
+                      color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Column(
@@ -3154,29 +3153,29 @@ class DocumentationSection extends StatelessWidget {
         (cvName!.toLowerCase().endsWith('.doc') ||
             cvName!.toLowerCase().endsWith('.docx'));
 
-    if (isDoc) {
-      if (existingCvUrl != null && existingCvUrl!.isNotEmpty) {
-        launchUrl(
-          Uri.parse(existingCvUrl!),
-          mode: LaunchMode.externalApplication,
-        );
-      } else if (cvBytes != null && cvName != null) {
-        try {
-          final tempDir = io.Directory.systemTemp;
-          final tempFile = io.File('${tempDir.path}/$cvName');
-          await tempFile.writeAsBytes(cvBytes!);
-          await launchUrl(
-            Uri.file(tempFile.path),
-            mode: LaunchMode.externalApplication,
-          );
-        } catch (e) {
-          debugPrint('Error opening doc: $e');
-        }
-      }
-      return;
-    }
+     if (isDoc) {
+       if (existingCvUrl != null && existingCvUrl!.isNotEmpty) {
+         launchUrl(
+           Uri.parse(existingCvUrl!),
+           mode: LaunchMode.externalApplication,
+         );
+       } else if (cvBytes != null && cvName != null) {
+         try {
+           final tempDir = io.Directory.systemTemp;
+           final tempFile = io.File('${tempDir.path}/$cvName');
+           await tempFile.writeAsBytes(cvBytes!);
+           launchUrl(
+             Uri.file(tempFile.path),
+             mode: LaunchMode.externalApplication,
+           );
+         } catch (e) {
+           debugPrint('Error opening doc: $e');
+         }
+       }
+       return;
+     }
 
-    if (!isImage && !isPdf) {
+     if (!isImage && !isPdf) {
       if (existingCvUrl != null && existingCvUrl!.isNotEmpty) {
         launchUrl(
           Uri.parse(existingCvUrl!),
@@ -3292,7 +3291,7 @@ class DocumentationSection extends StatelessWidget {
       height: 580,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F8),
+        color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Stack(
@@ -3340,73 +3339,64 @@ class DocumentationSection extends StatelessWidget {
                                 : const SizedBox.shrink()),
                     )
                   : (isPdf || isDoc)
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (cvBytes == null &&
-                            (existingCvUrl == null || existingCvUrl!.isEmpty))
-                          Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Container(
-                                  height: 16,
-                                  width: 150,
-                                  color: Colors.grey.shade200,
-                                ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  height: 420,
-                                  width: double.infinity,
-                                  color: Colors.grey.shade200,
-                                ),
-                              ],
+                  ? GestureDetector(
+                      onTap: () => _openDocumentPreview(buildContext),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (cvBytes == null &&
+                              (existingCvUrl == null || existingCvUrl!.isEmpty))
+                            Container(
+                              height: double.infinity,
+                              width: double.infinity,
+                              color: Colors.grey.shade200,
                             ),
-                          ),
-                        if (isPdf &&
-                            (cvBytes != null ||
-                                (existingCvUrl != null &&
-                                    existingCvUrl!.isNotEmpty)))
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: PdfPagePreview(
-                                cvBytes: cvBytes,
-                                existingCvUrl: existingCvUrl,
+                          if (isDoc &&
+                              (cvBytes != null ||
+                                  (existingCvUrl != null &&
+                                      existingCvUrl!.isNotEmpty)))
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        cvName?.endsWith('.docx') ?? false
+                                            ? Icons.article_outlined
+                                            : Icons.description_outlined,
+                                        size: 64,
+                                        color: const Color(0xFF0B50C3),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        cvName ?? 'Document',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade600,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        if (isDoc &&
-                            (cvBytes != null ||
-                                (existingCvUrl != null &&
-                                    existingCvUrl!.isNotEmpty)))
-                          Positioned.fill(
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    cvName?.endsWith('.docx') ?? false
-                                        ? Icons.article_outlined
-                                        : Icons.description_outlined,
-                                    size: 64,
-                                    color: const Color(0xFF0B50C3),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    cvName ?? 'Document',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
+                          if (isPdf &&
+                              (cvBytes != null ||
+                                  (existingCvUrl != null &&
+                                      existingCvUrl!.isNotEmpty)))
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: PdfPagePreview(
+                                  cvBytes: cvBytes,
+                                  existingCvUrl: existingCvUrl,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     )
                   : GestureDetector(
                       onTap: () => _openDocumentPreview(buildContext),
@@ -3535,7 +3525,7 @@ class DocumentationSection extends StatelessWidget {
       height: 580,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F8),
+        color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Stack(
@@ -3575,7 +3565,7 @@ class DocumentationSection extends StatelessWidget {
               ),
             ),
           ),
-          Container(color: const Color(0xFFFFFFFF).withValues(alpha: 0.5)),
+          const SizedBox.shrink(),
           overlay,
         ],
       ),
@@ -3890,220 +3880,6 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       );
     }
     return const SizedBox.shrink();
-  }
-}
-
-class DocPagePreview extends StatefulWidget {
-  final String? fileUrl;
-  final Uint8List? cvBytes;
-  final String? fileName;
-
-  const DocPagePreview({super.key, this.fileUrl, this.cvBytes, this.fileName});
-
-  @override
-  State<DocPagePreview> createState() => _DocPagePreviewState();
-}
-
-class _DocPagePreviewState extends State<DocPagePreview> {
-  iaw.InAppWebViewController? _webViewController;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  String? _getDocUrl() {
-    if (widget.fileUrl != null && widget.fileUrl!.isNotEmpty) {
-      return 'https://docs.google.com/gview?url=${Uri.encodeComponent(widget.fileUrl!)}&embedded=true';
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final url = _getDocUrl();
-    final hasBytes = widget.cvBytes != null && widget.cvBytes!.isNotEmpty;
-    final hasUrl = url != null;
-
-    if (!hasUrl && !hasBytes) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.insert_drive_file,
-              size: 48,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.fileName ?? 'Document',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-                fontFamily: 'SF Pro Display',
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: iaw.InAppWebView(
-        initialUrlRequest: iaw.URLRequest(
-          url: iaw.WebUri(url ?? 'about:blank'),
-        ),
-        onWebViewCreated: (controller) {
-          _webViewController = controller;
-          if (!hasUrl && hasBytes) {
-            _loadLocalFile();
-          }
-        },
-      ),
-    );
-  }
-
-  Future<void> _loadLocalFile() async {
-    if (widget.cvBytes != null &&
-        widget.fileName != null &&
-        _webViewController != null) {
-      try {
-        final tempDir = io.Directory.systemTemp;
-        final tempFile = io.File('${tempDir.path}/${widget.fileName}');
-        await tempFile.writeAsBytes(widget.cvBytes!);
-        await _webViewController!.loadUrl(
-          urlRequest: iaw.URLRequest(url: iaw.WebUri(tempFile.uri.toString())),
-        );
-      } catch (e) {
-        debugPrint('Error loading doc: $e');
-      }
-    }
-  }
-}
-
-class _DocPreviewScreen extends StatefulWidget {
-  final String? fileUrl;
-  final String? fileName;
-  final Uint8List? cvBytes;
-
-  const _DocPreviewScreen({this.fileUrl, this.fileName, this.cvBytes});
-
-  @override
-  State<_DocPreviewScreen> createState() => _DocPreviewScreenState();
-}
-
-class _DocPreviewScreenState extends State<_DocPreviewScreen> {
-  iaw.InAppWebViewController? _controller;
-  bool _isLoading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  String? _getDocUrl() {
-    if (widget.fileUrl != null && widget.fileUrl!.isNotEmpty) {
-      return 'https://docs.google.com/gview?url=${Uri.encodeComponent(widget.fileUrl!)}&embedded=true';
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final url = _getDocUrl();
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.fileName ?? 'Document',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'SF Pro Display',
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: Stack(
-        children: [
-          if (_error != null)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            iaw.InAppWebView(
-              initialUrlRequest: iaw.URLRequest(
-                url: iaw.WebUri(url ?? 'about:blank'),
-              ),
-              onWebViewCreated: (controller) {
-                _controller = controller;
-                if (url == null &&
-                    widget.cvBytes != null &&
-                    widget.fileName != null) {
-                  _loadLocalFile();
-                }
-              },
-              onLoadStart: (controller, url) {
-                if (mounted) setState(() => _isLoading = true);
-              },
-              onLoadStop: (controller, url) {
-                if (mounted) setState(() => _isLoading = false);
-              },
-            ),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _loadLocalFile() async {
-    if (widget.cvBytes != null && widget.fileName != null) {
-      try {
-        final tempDir = io.Directory.systemTemp;
-        final tempFile = io.File('${tempDir.path}/${widget.fileName}');
-        await tempFile.writeAsBytes(widget.cvBytes!);
-        _controller?.loadUrl(
-          urlRequest: iaw.URLRequest(url: iaw.WebUri(tempFile.uri.toString())),
-        );
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _error = 'Failed to load document: $e';
-          });
-        }
-      }
-    }
   }
 }
 
