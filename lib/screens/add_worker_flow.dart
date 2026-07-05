@@ -2970,7 +2970,7 @@ class DocumentationSection extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 200,
+        height: 250,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -3288,7 +3288,7 @@ class DocumentationSection extends StatelessWidget {
             cvName!.toLowerCase().endsWith('.docx'));
 
     return Container(
-      height: 580,
+      height: 632,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
@@ -3522,7 +3522,7 @@ class DocumentationSection extends StatelessWidget {
 
   Widget _buildCvContainer({required Widget overlay}) {
     return Container(
-      height: 580,
+      height: 632,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
