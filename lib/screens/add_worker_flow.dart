@@ -2881,7 +2881,7 @@ class DocumentationSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                     decoration: BoxDecoration(
                       color: const Color(0xFFCBCBCB).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(6),
@@ -2905,7 +2905,7 @@ class DocumentationSection extends StatelessWidget {
                           existingUrl: existingFrontIdUrl,
                           onTap: onUploadFrontTap,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 12),
                         Text(
                           'upload_back_side'.tr(),
                           style: TextStyle(
@@ -2928,7 +2928,7 @@ class DocumentationSection extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 32),
+            const SizedBox(width: 16),
             // Right Side: CV Upload Preview
             Expanded(
               flex: 1,
