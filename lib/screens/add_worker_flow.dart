@@ -3532,41 +3532,53 @@ class DocumentationSection extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          ImageFiltered(
-            imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 16,
-                    width: 200,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 10,
-                    width: 150,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 40),
-                  ...List.generate(
-                    8,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        height: 12,
-                        width: double.infinity,
+          Positioned(
+            top: 12,
+            bottom: 12,
+            left: 48,
+            right: 48,
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: 200,
                         color: Colors.grey.shade300,
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 10,
+                        width: 150,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 40),
+                      ...List.generate(
+                        8,
+                        (index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            height: 12,
+                            width: double.infinity,
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-          const SizedBox.shrink(),
           overlay,
         ],
       ),
