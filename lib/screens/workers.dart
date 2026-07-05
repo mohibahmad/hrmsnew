@@ -1573,6 +1573,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         children: [
                           // Avatar with White Border
                           Container(
+                            margin: const EdgeInsets.only(left: 12),
                             width: 140,
                             height: 140,
                             decoration: BoxDecoration(
