@@ -479,7 +479,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 12),
           _buildNotesAndSummary(),
         ],
       ),
@@ -863,7 +863,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
       }
       rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
-      if (currentDay > daysInMonth && i >= 4) {
+      if (currentDay > daysInMonth && i >= 5) {
         break;
       }
       if (i < 5) {
