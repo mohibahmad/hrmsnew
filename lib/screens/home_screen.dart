@@ -3562,11 +3562,18 @@ class HolidayCard extends StatelessWidget {
     final Color inactiveBadgeBg = const Color(0xFF4C84E0); // Blue badge
 
     // Assign chosen colors
-    Color leftBg = isActive ? activeLeftBg : inactiveLeftBg;
-    Color rightBg = isActive ? activeRightBg : inactiveRightBg;
-    Color mainTextColor = isActive ? activeTextColor : inactiveTextColor;
-    Color subTextColor = isActive ? activeSubTextColor : inactiveSubTextColor;
-    Color badgeBg = isActive ? activeBadgeBg : inactiveBadgeBg;
+    final bool isFriday = dayOfWeek == 'Friday';
+    Color leftBg = isFriday
+        ? const Color(0xFF97FFA9)
+        : (isActive ? activeLeftBg : inactiveLeftBg);
+    Color rightBg = isFriday
+        ? const Color(0xFF97FFA9)
+        : (isActive ? activeRightBg : inactiveRightBg);
+    Color mainTextColor = isActive || isFriday ? activeTextColor : inactiveTextColor;
+    Color subTextColor = isActive || isFriday ? activeSubTextColor : inactiveSubTextColor;
+    Color badgeBg = isFriday
+        ? const Color(0xFF6BBF3F)
+        : (isActive ? activeBadgeBg : inactiveBadgeBg);
 
     return Container(
       height: 115,
