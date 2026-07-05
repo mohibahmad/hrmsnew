@@ -391,37 +391,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   DateTime(calendarDate.year, calendarDate.month - 1, 1),
                 );
               },
-              child: const Icon(
-                Icons.chevron_left,
-                size: 20,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(width: 32),
-            Text(
-              monthYearStr,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            const SizedBox(width: 32),
-            GestureDetector(
-              onTap: () {
-                onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
-                );
-              },
-              child: const Icon(
+             child: const Icon(
                 Icons.chevron_right,
-                size: 20,
+                size: 16,
                 color: Colors.black,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         Row(
           children: [
             _buildWeekday('weekday_sun'.tr(), const Color(0xFFFF0004)),

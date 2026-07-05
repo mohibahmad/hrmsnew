@@ -13,7 +13,7 @@ import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 
- const Color primaryBlue = Color(0xFF0B51C1);
+const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
 const Color cardLightGray = Color(0xFFF3F5F8);
 const Color textDark = Color(0xFF000000);
@@ -338,25 +338,38 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                           ],
                                                         ),
                                                       )
-                                                      : SingleChildScrollView(
+                                                    : SingleChildScrollView(
                                                         child: Column(
                                                           children: () {
-                                                            final startIndex = (_currentPage - 1) * _itemsPerPage;
-                                                            final paginatedList = filteredWorkers
-                                                                .skip(startIndex)
-                                                                .take(_itemsPerPage)
-                                                                .toList();
+                                                            final startIndex =
+                                                                (_currentPage -
+                                                                    1) *
+                                                                _itemsPerPage;
+                                                            final paginatedList =
+                                                                filteredWorkers
+                                                                    .skip(
+                                                                      startIndex,
+                                                                    )
+                                                                    .take(
+                                                                      _itemsPerPage,
+                                                                    )
+                                                                    .toList();
                                                             return paginatedList
                                                                 .asMap()
                                                                 .entries
                                                                 .map(
-                                                                  (entry) => WorkerListItem(
-                                                                    data: entry.value,
-                                                                    index: entry.key,
+                                                                  (
+                                                                    entry,
+                                                                  ) => WorkerListItem(
+                                                                    data: entry
+                                                                        .value,
+                                                                    index: entry
+                                                                        .key,
                                                                     onMarkAttendance: () =>
                                                                         _showMarkAttendanceDialog(
                                                                           context,
-                                                                          entry.value,
+                                                                          entry
+                                                                              .value,
                                                                         ),
                                                                   ),
                                                                 )
@@ -767,7 +780,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   image: DecorationImage(
                                     image: _getProfileImage(
-                                      data['profileImage']?.toString(),
+                                      data['profileImage'] is String
+                                          ? data['profileImage'] as String
+                                          : null,
                                       data['email']?.toString(),
                                       0,
                                     ),
@@ -1284,9 +1299,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         GestureDetector(
-          onTap: _currentPage > 1
-              ? () => setState(() => _currentPage--)
-              : null,
+          onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
           behavior: HitTestBehavior.opaque,
           child: Icon(
             Icons.chevron_left,
@@ -1388,7 +1401,9 @@ class WorkerListItem extends StatelessWidget {
           CircleAvatar(
             radius: 22,
             backgroundImage: _getProfileImage(
-              data['profileImage']?.toString(),
+              data['profileImage'] is String
+                  ? data['profileImage'] as String
+                  : null,
               data['email']?.toString(),
               index,
             ),
@@ -1507,7 +1522,9 @@ class TodayAttendanceItem extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundImage: _getProfileImage(
-                  data['profileImage']?.toString(),
+                  data['profileImage'] is String
+                      ? data['profileImage'] as String
+                      : null,
                   data['email']?.toString(),
                   index,
                 ),

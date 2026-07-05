@@ -21,20 +21,24 @@ void _touchKey(String key) {
   _cacheKeys.add(key);
 }
 
-Uint8List _decodeBase64(String url) {
+Uint8List? _decodeBase64(String url) {
   final cached = _base64Cache[url];
   if (cached != null) {
     _touchKey(url);
     return cached;
   }
-  final base64Content = url.split(',').last;
-  final bytes = base64Decode(base64Content);
-  if (_base64Cache.length >= _maxCacheEntries) {
-    _cleanCacheIfNeeded();
+  try {
+    final base64Content = url.split(',').last;
+    final bytes = base64Decode(base64Content);
+    if (_base64Cache.length >= _maxCacheEntries) {
+      _cleanCacheIfNeeded();
+    }
+    _base64Cache[url] = bytes;
+    _cacheKeys.add(url);
+    return bytes;
+  } catch (_) {
+    return null;
   }
-  _base64Cache[url] = bytes;
-  _cacheKeys.add(url);
-  return bytes;
 }
 
 bool _isValidUrl(String? url) {
@@ -62,7 +66,10 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
 
   if (_isValidUrl(url)) {
     if (url!.startsWith('data:image/')) {
-      return MemoryImage(_decodeBase64(url));
+      final bytes = _decodeBase64(url);
+      if (bytes != null) {
+        return MemoryImage(bytes);
+      }
     }
     if (url.startsWith('http')) {
       return CachedNetworkImageProvider(url);
@@ -79,7 +86,10 @@ ImageProvider getProfileImage(String? url, String? email, int index) {
         return CachedNetworkImageProvider(notifierUrl);
       }
       if (notifierUrl.startsWith('data:image/')) {
-        return MemoryImage(_decodeBase64(notifierUrl));
+        final bytes = _decodeBase64(notifierUrl);
+        if (bytes != null) {
+          return MemoryImage(bytes);
+        }
       }
       if (_fileExists(notifierUrl)) {
         return FileImage(File(notifierUrl));

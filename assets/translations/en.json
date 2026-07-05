@@ -635,5 +635,8 @@
   "invalid_date_format": "Invalid date format. Please use DD/MM/YYYY.",
   "holiday_already_exists": "Holiday already exists for this day",
   "uploading_files": "Uploading {count} file(s)...",
-  "custom_leave_info": "Custom mode: Enter annual, sick and casual leaves manually"
+  "custom_leave_info": "Custom mode: Enter annual, sick and casual leaves manually",
+  "confirm_delete": "Confirm Delete",
+  "delete_cv_confirmation": "Are you sure you want to delete this CV? This action cannot be undone.",
+  "delete_profile_confirmation": "Are you sure you want to delete this profile image? This action cannot be undone."
 }

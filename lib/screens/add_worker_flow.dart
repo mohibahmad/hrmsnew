@@ -1220,23 +1220,30 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Switch Content based on active tab
-                  if (_activeTabIndex == 0)
-                    WorkerDetailFormSection(
-                      nameController: _nameController,
-                      fatherNameController: _fatherNameController,
-                      emailController: _emailController,
-                      phoneController: _phoneController,
-                      nationalIdController: _nationalIdController,
-                      religionController: _religionController,
-                      dobController: _dobController,
-                      genderController: _genderController,
-                      addressController: _addressController,
-                      profileImageBytes: _profileImageBytes,
-                      profileImageName: _profileImageName,
-                      existingProfileImageUrl: _existingProfileImageUrl,
-                      onUploadProfileTap: _pickProfileImage,
-                      relationshipStatus: _relationshipStatus,
+// Switch Content based on active tab
+                   if (_activeTabIndex == 0)
+                     WorkerDetailFormSection(
+                       nameController: _nameController,
+                       fatherNameController: _fatherNameController,
+                       emailController: _emailController,
+                       phoneController: _phoneController,
+                       nationalIdController: _nationalIdController,
+                       religionController: _religionController,
+                       dobController: _dobController,
+                       genderController: _genderController,
+                       addressController: _addressController,
+                       profileImageBytes: _profileImageBytes,
+                       profileImageName: _profileImageName,
+                       existingProfileImageUrl: _existingProfileImageUrl,
+                       onUploadProfileTap: _pickProfileImage,
+                       onDeleteProfileTap: () {
+                         setState(() {
+                           _profileImageBytes = null;
+                           _profileImageName = null;
+                           _existingProfileImageUrl = null;
+                         });
+                       },
+                       relationshipStatus: _relationshipStatus,
                       onRelationshipStatusChanged: (status) {
                         setState(() {
                           _relationshipStatus = status;
@@ -1280,14 +1287,162 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       existingCvUrl: _existingCvUrl,
                       isCvUploaded: _isCvUploaded,
                       onUploadCvTap: _pickCv,
-                      onDeleteCvTap: () {
-                        setState(() {
-                          _cvBytes = null;
-                          _cvName = null;
-                          _existingCvUrl = null;
-                          _isCvUploaded = false;
-                        });
-                      },
+                        onDeleteCvTap: () {
+                          showGeneralDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            barrierLabel: 'DeleteCvDialog',
+                            barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                            transitionDuration: const Duration(milliseconds: 400),
+                            pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+                            transitionBuilder: (context, animation, secondaryAnimation, child) {
+                              final curve = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutBack,
+                              );
+                              return BackdropFilter(
+                                filter: ui.ImageFilter.blur(
+                                  sigmaX: 12 * animation.value,
+                                  sigmaY: 12 * animation.value,
+                                ),
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: curve,
+                                    child: Dialog(
+                                      backgroundColor: Colors.transparent,
+                                      child: Container(
+                                        width: 380,
+                                        padding: const EdgeInsets.all(28),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF000000).withValues(alpha: 0.15),
+                                              blurRadius: 24,
+                                              offset: const Offset(0, 8),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 64,
+                                              height: 64,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFFFEE2E2),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.warning_rounded,
+                                                  color: Color(0xFFEF4444),
+                                                  size: 36,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 20),
+                                            Text(
+                                              'confirm_delete'.tr(),
+                                              style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF000000),
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'delete_cv_confirmation'.tr(),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Color(0xFF64748B),
+                                                fontWeight: FontWeight.w400,
+                                                fontFamily: 'SF Pro Display',
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 28),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: GestureDetector(
+                                                    onTap: () => Navigator.of(context).pop(),
+                                                    behavior: HitTestBehavior.opaque,
+                                                    child: Container(
+                                                      height: 48,
+                                                      alignment: Alignment.center,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFF1F5F9),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                      child: Text(
+                                                        'cancel'.tr(),
+                                                        style: const TextStyle(
+                                                          color: Color(0xFF000000),
+                                                          fontSize: 15,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontFamily: 'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      Navigator.of(context).pop();
+                                                      setState(() {
+                                                        _cvBytes = null;
+                                                        _cvName = null;
+                                                        _existingCvUrl = null;
+                                                        _isCvUploaded = false;
+                                                      });
+                                                    },
+                                                    behavior: HitTestBehavior.opaque,
+                                                    child: Container(
+                                                      height: 48,
+                                                      alignment: Alignment.center,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFEF4444),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                                            blurRadius: 8,
+                                                            offset: const Offset(0, 4),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Text(
+                                                        'delete'.tr(),
+                                                        style: const TextStyle(
+                                                          color: Color(0xFFFFFFFF),
+                                                          fontSize: 15,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontFamily: 'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       onPrevStep: () => setState(() => _activeTabIndex = 1),
                     ),
                 ],
@@ -1352,6 +1507,7 @@ class WorkerDetailFormSection extends StatelessWidget {
   final String? profileImageName;
   final String? existingProfileImageUrl;
   final VoidCallback? onUploadProfileTap;
+  final VoidCallback? onDeleteProfileTap;
   final String relationshipStatus;
   final ValueChanged<String> onRelationshipStatusChanged;
 
@@ -1371,6 +1527,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     this.profileImageName,
     this.existingProfileImageUrl,
     this.onUploadProfileTap,
+    this.onDeleteProfileTap,
     required this.relationshipStatus,
     required this.onRelationshipStatusChanged,
   });
@@ -1667,7 +1824,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: _buildProfileContent(),
+                      child: _buildProfileContent(context),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -1707,7 +1864,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileContent() {
+  Widget _buildProfileContent(BuildContext context) {
     final hasImageBytes = profileImageBytes != null;
     final hasImageUrl =
         existingProfileImageUrl != null && existingProfileImageUrl!.isNotEmpty;
@@ -1721,13 +1878,13 @@ class WorkerDetailFormSection extends StatelessWidget {
           Image.memory(
             profileImageBytes!,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildUploadPlaceholder(),
+            errorBuilder: (context, error, stackTrace) => _buildUploadPlaceholder(),
           )
         else
           Image(
             image: getProfileImageProvider(existingProfileImageUrl),
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildUploadPlaceholder(),
+            errorBuilder: (context, error, stackTrace) => _buildUploadPlaceholder(),
           ),
         Positioned(
           bottom: 0,
@@ -1747,6 +1904,67 @@ class WorkerDetailFormSection extends StatelessWidget {
             ),
           ),
         ),
+        if (onDeleteProfileTap != null)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('confirm_delete'.tr()),
+                    content: Text('delete_profile_confirmation'.tr()),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text('cancel'.tr()),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          onDeleteProfileTap?.call();
+                        },
+                        child: Text('delete'.tr()),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.54),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+        if (onUploadProfileTap != null)
+          Positioned(
+            top: 12,
+            left: 12,
+            child: GestureDetector(
+              onTap: onUploadProfileTap,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.54),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.edit,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -3122,72 +3340,73 @@ class DocumentationSection extends StatelessWidget {
                                 : const SizedBox.shrink()),
                     )
                   : (isPdf || isDoc)
-                  ? GestureDetector(
-                      onTap: () => _openDocumentPreview(buildContext),
-                      behavior: HitTestBehavior.opaque,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          if (cvBytes == null &&
-                              (existingCvUrl == null || existingCvUrl!.isEmpty))
-                            Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    height: 16,
-                                    width: 150,
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    height: 420,
-                                    width: double.infinity,
-                                    color: Colors.grey.shade200,
-                                  ),
-                                ],
-                              ),
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (cvBytes == null &&
+                            (existingCvUrl == null || existingCvUrl!.isEmpty))
+                          Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  height: 16,
+                                  width: 150,
+                                  color: Colors.grey.shade200,
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  height: 420,
+                                  width: double.infinity,
+                                  color: Colors.grey.shade200,
+                                ),
+                              ],
                             ),
-                          if (isPdf &&
-                              (cvBytes != null ||
-                                  (existingCvUrl != null &&
-                                      existingCvUrl!.isNotEmpty)))
-                            Positioned.fill(
+                          ),
+                        if (isPdf &&
+                            (cvBytes != null ||
+                                (existingCvUrl != null &&
+                                    existingCvUrl!.isNotEmpty)))
+                          Positioned.fill(
+                            child: IgnorePointer(
                               child: PdfPagePreview(
                                 cvBytes: cvBytes,
                                 existingCvUrl: existingCvUrl,
                               ),
                             ),
-                          if (isDoc)
-                            Positioned.fill(
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      cvName?.endsWith('.docx') ?? false
-                                          ? Icons.article_outlined
-                                          : Icons.description_outlined,
-                                      size: 64,
-                                      color: const Color(0xFF0B50C3),
+                          ),
+                        if (isDoc &&
+                            (cvBytes != null ||
+                                (existingCvUrl != null &&
+                                    existingCvUrl!.isNotEmpty)))
+                          Positioned.fill(
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    cvName?.endsWith('.docx') ?? false
+                                        ? Icons.article_outlined
+                                        : Icons.description_outlined,
+                                    size: 64,
+                                    color: const Color(0xFF0B50C3),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    cvName ?? 'Document',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                      fontFamily: 'SF Pro Display',
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      cvName ?? 'Document',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     )
                   : GestureDetector(
                       onTap: () => _openDocumentPreview(buildContext),
@@ -3593,8 +3812,9 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
 
       if (document != null) {
         final pages = <Uint8List>[];
-        for (int i = 1; i <= document.pagesCount; i++) {
-          final page = await document.getPage(i);
+        // Only render the first page for preview
+        if (document.pagesCount >= 1) {
+          final page = await document.getPage(1);
           final pageImage = await page.render(
             width: page.width * 3,
             height: page.height * 3,
@@ -3659,17 +3879,14 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       return const SizedBox.shrink();
     }
     if (_pageImages.isNotEmpty) {
-      return ListView.builder(
-        padding: EdgeInsets.zero,
-        itemCount: _pageImages.length,
-        itemBuilder: (context, index) {
-          return Image.memory(
-            _pageImages[index],
-            fit: BoxFit.fitWidth,
-            filterQuality: FilterQuality.high,
-            width: double.infinity,
-          );
-        },
+      return ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
+        child: Image.memory(
+          _pageImages[0],
+          fit: BoxFit.fitWidth,
+          filterQuality: FilterQuality.high,
+          width: double.infinity,
+        ),
       );
     }
     return const SizedBox.shrink();
