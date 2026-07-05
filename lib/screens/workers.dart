@@ -600,7 +600,22 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           pos.contains('agile') ||
           pos.contains('business analyst');
     }
-    return false;
+    return pos.contains(f) || f.contains(pos);
+  }
+
+  static const _defaultFilters = ['All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+
+  List<String> get _extraPositions {
+    final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
+    final extras = <String>{};
+    for (final doc in _allWorkers) {
+      final pos = (doc['position'] ?? '').toString().trim();
+      if (pos.isNotEmpty && !existing.contains(pos.toLowerCase())) {
+        extras.add(pos);
+      }
+    }
+    final sorted = extras.toList()..sort();
+    return sorted;
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
@@ -909,6 +924,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         _buildFilterTab('Engineering', 'engineering'.tr()),
                         _buildFilterTab('Sales', 'sales'.tr()),
                         _buildFilterTab('Management', 'management'.tr()),
+                        ..._extraPositions.map((pos) => _buildFilterTab(pos, pos)),
                       ],
                     ),
                   ),
