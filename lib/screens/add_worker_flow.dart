@@ -3298,10 +3298,10 @@ class DocumentationSection extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Positioned(
-            top: 24,
-            bottom: 24,
-            left: 24,
-            right: 24,
+            top: 12,
+            bottom: 12,
+            left: 32,
+            right: 32,
             child: Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
