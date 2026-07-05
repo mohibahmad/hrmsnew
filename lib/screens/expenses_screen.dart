@@ -207,11 +207,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     final docId = doc['id']?.toString() ?? '';
 
-    final workerNames = _workersMap.keys.toList()..sort();
-    String selectedWorkerName =
-        doc['name']?.toString() ??
-        (workerNames.isNotEmpty ? workerNames[0] : '');
-
     final dateParts = (doc['date']?.toString() ?? '').split('/');
     int selectedDay = dateParts.isNotEmpty
         ? int.tryParse(dateParts[0]) ?? DateTime.now().day
@@ -295,9 +290,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final dateStr =
                                 '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
                             final updatedMap = {
-                              'name': selectedWorkerName.isNotEmpty
-                                  ? selectedWorkerName
-                                  : (doc['name']?.toString() ?? ''),
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
@@ -350,32 +342,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    if (workerNames.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildWorkerDropdown(
-                              label: 'select_worker'.tr(),
-                              value: selectedWorkerName,
-                              items: workerNames,
-                              onChanged: (v) {
-                                setModalState(() {
-                                  selectedWorkerName = v;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
                     Row(
                       children: [
                         Expanded(
                           child: _buildModalTextField(
                             'expense_category'.tr(),
                             categoryController,
-                            hintText: 'expense_category_hint'.tr(),
+                            hintText: 'Enter Expense category',
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -424,7 +397,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   controller: descriptionController,
                                   maxLines: null,
                                   decoration: InputDecoration(
-                                    hintText: 'expense_title_hint'.tr(),
+                                    hintText: 'Enter Expense Title',
                                     contentPadding: const EdgeInsets.only(
                                       top: 1,
                                     ),
@@ -486,8 +459,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final descriptionController = TextEditingController();
     int selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
-    final workerNames = _workersMap.keys.toList()..sort();
-    String selectedWorkerName = workerNames.isNotEmpty ? workerNames[0] : '';
 
     showDialog(
       context: context,
@@ -569,10 +540,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final isGuest =
                                 AuthService().currentUser?.isAnonymous ?? false;
                             final expenseMap = {
-                              'name': selectedWorkerName.isNotEmpty
-                                  ? selectedWorkerName
-                                  : (AuthService().currentUser?.displayName ??
-                                        'Expense'),
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
@@ -617,102 +584,81 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // === Worker Selector ===
-                    if (workerNames.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildWorkerDropdown(
-                              label: 'select_worker'.tr(),
-                              value: selectedWorkerName,
-                              items: workerNames,
-                              onChanged: (v) {
-                                setModalState(() {
-                                  selectedWorkerName = v;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // === Modal Form Rows ===
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildModalTextField(
-                            'expense_category'.tr(),
-                            categoryController,
-                            hintText: 'expense_category_hint'.tr(),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildModalTextField(
-                            'amount_dollar'.tr(),
-                            amountController,
-                            hintText: 'hint_amount'.tr(),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'expense_title'.tr(),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF000000),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 215,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: TextField(
-                                  controller: descriptionController,
-                                  maxLines: null,
-                                  decoration: InputDecoration(
-                                    hintText: 'expense_title_hint'.tr(),
-                                    contentPadding: const EdgeInsets.only(
-                                      top: 1,
-                                    ),
-                                    hintStyle: const TextStyle(
-                                      color: Colors.grey,
-                                    ),
-                                    border: InputBorder.none,
-                                  ),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+// === Modal Form Rows ===
+                     Row(
+                       children: [
+                         Expanded(
+                           child: _buildModalTextField(
+                             'expense_category'.tr(),
+                             categoryController,
+                             hintText: 'Enter Expense category',
+                           ),
+                         ),
+                         const SizedBox(width: 16),
+                         Expanded(
+                           child: _buildModalTextField(
+                             'amount_dollar'.tr(),
+                             amountController,
+                             hintText: 'hint_amount'.tr(),
+                             keyboardType: const TextInputType.numberWithOptions(
+                               decimal: true,
+                             ),
+                           ),
+                         ),
+                       ],
+                     ),
+                     const SizedBox(height: 16),
+                     Row(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         Expanded(
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(
+                                 'expense_title'.tr(),
+                                 style: TextStyle(
+                                   fontSize: 13,
+                                   fontWeight: FontWeight.w600,
+                                   color: Color(0xFF000000),
+                                   fontFamily: 'SF Pro Display',
+                                 ),
+                               ),
+                               const SizedBox(height: 8),
+                               Container(
+                                 height: 215,
+                                 padding: const EdgeInsets.symmetric(
+                                   horizontal: 12,
+                                 ),
+                                 decoration: BoxDecoration(
+                                   border: Border.all(
+                                     color: Colors.grey.shade300,
+                                   ),
+                                   borderRadius: BorderRadius.circular(6),
+                                 ),
+                                 child: TextField(
+                                   controller: descriptionController,
+                                   maxLines: null,
+                                   decoration: InputDecoration(
+                                     hintText: 'Enter Expense Title',
+                                     contentPadding: const EdgeInsets.only(
+                                       top: 1,
+                                     ),
+                                     hintStyle: const TextStyle(
+                                       color: Colors.grey,
+                                     ),
+                                     border: InputBorder.none,
+                                   ),
+                                   style: const TextStyle(
+                                     fontSize: 14,
+                                     color: Colors.black,
+                                     fontFamily: 'SF Pro Display',
+                                   ),
+                                 ),
+                               ),
+                             ],
+                           ),
+                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildModalCalendar(
@@ -791,103 +737,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               hintText: hintText,
               hintStyle: const TextStyle(color: Colors.grey),
               border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+isDense: true,
+               contentPadding: EdgeInsets.zero,
+             ),
+             style: const TextStyle(
+               fontSize: 14,
+               color: Colors.black,
+               fontWeight: FontWeight.w500,
+               fontFamily: 'SF Pro Display',
+             ),
+           ),
+         ),
+       ],
+     );
+   }
 
-  Widget _buildWorkerDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String> onChanged,
-  }) {
-    final bool isEmpty = items.isEmpty;
-    final displayItems = isEmpty ? ['no_workers_found'.tr()] : items;
-    final displayValue = isEmpty
-        ? 'no_workers_found'.tr()
-        : (items.contains(value) ? value : null);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 44,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: displayValue,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              hint: Text(
-                label,
-                style: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 14,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              isExpanded: true,
-              icon: const Icon(
-                Icons.arrow_drop_down,
-                color: Colors.black,
-                size: 24,
-              ),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-              ),
-              items: displayItems.map((String val) {
-                return DropdownMenuItem<String>(
-                  value: isEmpty ? null : val,
-                  child: Text(
-                    val,
-                    style: TextStyle(
-                      color: isEmpty ? Colors.red.shade600 : Colors.black,
-                      fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: isEmpty
-                  ? null
-                  : (v) {
-                      if (v != null) onChanged(v);
-                    },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModalCalendar(
+   Widget _buildModalCalendar(
     DateTime calendarDate,
     int selectedDay,
     ValueChanged<int> onDaySelected,

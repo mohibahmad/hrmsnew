@@ -155,7 +155,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               elevation: 10,
               child: Container(
                 width: 400,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +177,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                         Text(
                           'add_holiday'.tr(),
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF000000),
                             fontFamily: 'SF Pro Display',
@@ -285,33 +285,33 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               );
                             }
                           },
-                          child: Text(
-                            'save'.tr(),
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
+                           child: Text(
+                             'save'.tr(),
+                             style: TextStyle(
+                               color: Color(0xFFFFFFFF),
+                               fontSize: 16,
+                               fontWeight: FontWeight.bold,
+                               fontFamily: 'SF Pro Display',
+                             ),
+                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Input Field
                     Text(
                       'holiday_name'.tr(),
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Container(
-                      height: 44,
+                      height: 38,
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(4),
@@ -321,10 +321,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       child: TextField(
                         controller: holidayNameController,
                         decoration: InputDecoration.collapsed(
-                          hintText: 'holiday_name_hint'.tr(),
+                          hintText: 'Enter holiday name',
                           hintStyle: TextStyle(
                             color: Colors.grey.shade400,
-              fontSize: 22,
+                            fontSize: 14,
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -336,7 +336,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Calendar Widget inside Modal
                     _buildModalCalendar(
