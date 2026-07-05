@@ -479,7 +479,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 2),
           _buildNotesAndSummary(),
         ],
       ),
