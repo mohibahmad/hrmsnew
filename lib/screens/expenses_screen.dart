@@ -1348,7 +1348,7 @@ isDense: true,
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader('worker_name_header'.tr()),
+                    child: _tableHeader('expense_title'.tr()),
                   ),
                 ),
                 Expanded(
@@ -1468,14 +1468,6 @@ isDense: true,
     final category = (doc['category'] ?? '').toString();
     final amount = (doc['amount'] ?? 0).toDouble();
 
-    String? profileImage;
-    String? email;
-    if (_workersMap.containsKey(name)) {
-      final workerData = _workersMap[name]!;
-      profileImage = workerData['profileImage']?.toString();
-      email = workerData['email']?.toString();
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -1488,30 +1480,16 @@ isDense: true,
             flex: 3,
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundImage: getProfileImage(
-                      profileImage,
-                      email,
-                      index,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                      maxLines: 2,
-                    ),
-                  ),
-                ],
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
