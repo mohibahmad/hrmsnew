@@ -38,42 +38,45 @@ class _NotificationBellState extends State<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          SvgPicture.asset(
-            'assets/notification_icon.svg',
-            width: 22,
-            height: 26,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF000000),
-              BlendMode.srcIn,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SvgPicture.asset(
+              'assets/notification_icon.svg',
+              width: 22,
+              height: 26,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF000000),
+                BlendMode.srcIn,
+              ),
             ),
-          ),
-          if (_unreadCount > 0)
-            Positioned(
-              right: -4,
-              top: -4,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEF4444),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '$_unreadCount',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    fontFamily: 'SF Pro Display',
+            if (_unreadCount > 0)
+              Positioned(
+                right: -4,
+                top: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$_unreadCount',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontFamily: 'SF Pro Display',
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
