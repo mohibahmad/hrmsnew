@@ -1,8 +1,7 @@
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 class InvoiceService {
@@ -272,20 +271,16 @@ class InvoiceService {
     );
   }
 
-  static Future<File> saveInvoice(Uint8List bytes, String fileName) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/$fileName');
-    await file.writeAsBytes(bytes);
-    return file;
-  }
-
   static Future<void> shareInvoice(Uint8List bytes, String fileName) async {
-    final file = await saveInvoice(bytes, fileName);
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        subject: 'Payroll Invoice - $fileName',
-      ),
+    final result = await FilePicker.saveFile(
+      dialogTitle: 'Save Invoice',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
     );
+    if (result != null) {
+      final file = File(result);
+      await file.writeAsBytes(bytes);
+    }
   }
 }
