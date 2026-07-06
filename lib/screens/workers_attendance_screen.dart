@@ -1468,15 +1468,13 @@ class WorkerListItem extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 1,
+            flex: 2,
             child: Align(
               alignment: Alignment.centerRight,
-              child: Container(
-                margin: const EdgeInsets.only(right: 16.0),
-                child: StatusPill(status: (data["status"] ?? '').toString()),
-              ),
+              child: StatusPill(status: (data["status"] ?? '').toString()),
             ),
           ),
+          const SizedBox(width: 64),
           GestureDetector(
             onTap: onMarkAttendance,
             child: SvgPicture.asset(
