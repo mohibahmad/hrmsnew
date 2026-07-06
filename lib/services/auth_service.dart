@@ -232,7 +232,7 @@ class AuthService {
 
 class UserAvatar extends StatelessWidget {
   final double radius;
-  const UserAvatar({super.key, this.radius = 18});
+  const UserAvatar({super.key, this.radius = 20});
 
   @override
   Widget build(BuildContext context) {
