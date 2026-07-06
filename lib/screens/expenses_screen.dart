@@ -203,7 +203,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       text: doc['amount']?.toString() ?? '0.00',
     );
     final descriptionController = TextEditingController(
-      text: doc['description']?.toString() ?? '',
+      text: doc['name']?.toString() ?? doc['description']?.toString() ?? '',
     );
     final docId = doc['id']?.toString() ?? '';
 
@@ -293,6 +293,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
+                              'name': descriptionController.text,
                               'description': descriptionController.text,
                             };
                             final isGuest =
@@ -543,6 +544,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               'date': dateStr,
                               'category': categoryController.text,
                               'amount': amt,
+                              'name': descriptionController.text,
                               'description': descriptionController.text,
                             };
                             if (isGuest) {
