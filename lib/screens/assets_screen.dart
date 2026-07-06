@@ -174,7 +174,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
   List<AssetData> get _filteredAssets {
     return _assets.where((asset) {
       final nameClean = asset.name.trim().toLowerCase();
-      final workerExists = _workersMap.keys.any((k) => k.trim().toLowerCase() == nameClean);
+      final workerExists = _workersMap.keys.any(
+        (k) => k.trim().toLowerCase() == nameClean,
+      );
       if (!workerExists) return false;
 
       final matchesSearch =
@@ -291,9 +293,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   'position': positionController.text,
                                   'type': typeController.text,
                                   'dateLoaned': formatDate(loanedDate),
-                                'dateReturned': isReturned
-                                    ? formatDate(returnedDate)
-                                    : _inUseKey,
+                                  'dateReturned': isReturned
+                                      ? formatDate(returnedDate)
+                                      : _inUseKey,
                                   'isReturned': isReturned,
                                   'profileImage': workerProfileImage ?? '',
                                   'email': workerEmail ?? '',
@@ -963,7 +965,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
               isPremium: isPremium,
               isGuest: isGuest,
             )) {
-              final upgraded = await PremiumGate.shouldShowUpgradeDialog(context);
+              final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                context,
+              );
               if (upgraded == true && mounted) {
                 _showAddAssetModal(context);
               }
@@ -1193,7 +1197,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: getProfileImage(profileImage, email, index),
+                    backgroundImage: getProfileImage(
+                      profileImage,
+                      email,
+                      index,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1384,7 +1392,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
   static const _inUseKey = 'in_use';
 
   DateTime? _parseDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty || dateStr == _inUseKey || dateStr == '__IN_USE__')
+    if (dateStr == null ||
+        dateStr.isEmpty ||
+        dateStr == _inUseKey ||
+        dateStr == '__IN_USE__')
       return null;
     try {
       final parts = dateStr.split('/');
@@ -1850,14 +1861,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            if (isSearchEmpty) ...[
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => setState(() { _searchQuery = ''; _currentPage = 1; }),
-                icon: const Icon(Icons.close, size: 16),
-                label: Text('clear_search'.tr()),
-              ),
-            ],
           ],
         ),
       ),

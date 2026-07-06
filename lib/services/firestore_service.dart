@@ -32,7 +32,8 @@ class FirestoreService {
   CollectionReference get _timeoff => _userDoc.collection('hrms_timeoff');
   CollectionReference get _assets => _userDoc.collection('hrms_assets');
   CollectionReference get _holidays => _userDoc.collection('hrms_holidays');
-  CollectionReference get _notifications => _userDoc.collection('hrms_notifications');
+  CollectionReference get _notifications =>
+      _userDoc.collection('hrms_notifications');
 
   Future<void> createUserProfile({
     required String username,
@@ -115,8 +116,10 @@ class FirestoreService {
 
   Future<bool> isEmailDeleted(String email) async {
     if (email.trim().isEmpty) return false;
-    final doc =
-        await _db.collection('hrms_user').doc(email.trim().toLowerCase()).get();
+    final doc = await _db
+        .collection('hrms_user')
+        .doc(email.trim().toLowerCase())
+        .get();
     if (!doc.exists) return false;
     return doc.data()?['isDeleted'] == true;
   }
@@ -154,7 +157,9 @@ class FirestoreService {
     return docRef.id;
   }
 
-  Future<BulkWorkerResult> addBulkWorkers(List<Map<String, dynamic>> workersList) async {
+  Future<BulkWorkerResult> addBulkWorkers(
+    List<Map<String, dynamic>> workersList,
+  ) async {
     var batch = _db.batch();
     int count = 0;
     int skipped = 0;
@@ -213,7 +218,9 @@ class FirestoreService {
     final amount = (expense['amount'] ?? '').toString();
     await addNotification({
       'type': 'expense_added',
-      'title': category.isNotEmpty ? 'New expense: $category' : 'New expense added',
+      'title': category.isNotEmpty
+          ? 'New expense: $category'
+          : 'New expense added',
       'message': amount.isNotEmpty
           ? 'An expense of \$$amount has been recorded.'
           : 'A new expense has been recorded.',
@@ -393,7 +400,8 @@ class FirestoreService {
     required String email,
     bool force = false,
   }) async {
-    final docRef = _db.collection('hrms_user').doc(uid);
+    // Use email as the document key (same as _userKey in FirestoreService)
+    final docRef = _db.collection('hrms_user').doc(email.trim().toLowerCase());
     final userSnap = await docRef.get();
 
     if (!force && userSnap.exists) {

@@ -343,7 +343,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
             }),
             child: Container(
               margin: const EdgeInsets.only(right: 4),
-              padding: EdgeInsets.symmetric(horizontal: isSelected ? 12 : 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSelected ? 12 : 16,
+                vertical: 8,
+              ),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFF0D4CC6)
@@ -388,7 +391,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              isSearchEmpty ? 'no_search_results'.tr() : 'no_payroll_records'.tr(),
+              isSearchEmpty
+                  ? 'no_search_results'.tr()
+                  : 'no_payroll_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,
@@ -396,14 +401,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            if (isSearchEmpty) ...[
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => setState(() { _searchQuery = ''; _currentPage = 1; }),
-                icon: const Icon(Icons.close, size: 16),
-                label: Text('clear_search'.tr()),
-              ),
-            ],
           ],
         ),
       ),
@@ -581,8 +578,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
               alignment: Alignment.centerLeft,
               child: Builder(
                 builder: (context) {
-                  final isPaid = (doc['status'] ?? '').toString().toLowerCase() == 'paid';
-                  final hasData = (doc['totalWorkDays'] ?? '').toString().isNotEmpty;
+                  final isPaid =
+                      (doc['status'] ?? '').toString().toLowerCase() == 'paid';
+                  final hasData = (doc['totalWorkDays'] ?? '')
+                      .toString()
+                      .isNotEmpty;
                   return InkWell(
                     onTap: () {
                       if (isPaid && hasData) {
@@ -603,7 +603,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: isPaid ? const Color(0xFF27AE60) : const Color(0xFFE74C3C),
+                            color: isPaid
+                                ? const Color(0xFF27AE60)
+                                : const Color(0xFFE74C3C),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -629,7 +631,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  void _showPayrollDataDialog(BuildContext context, Map<String, dynamic> data, int index) async {
+  void _showPayrollDataDialog(
+    BuildContext context,
+    Map<String, dynamic> data,
+    int index,
+  ) async {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
     final String contact = (data['contact'] ?? '').toString();

@@ -767,48 +767,78 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // CupertinoSwitch matches iOS toggles in style
-          Transform.scale(
-            scale: 0.8,
-            child: CupertinoSwitch(
-              value: item.isEnabled,
-              activeTrackColor: const Color(0xFF0247C4),
-              inactiveTrackColor: Colors.grey.shade300,
-              onChanged: (bool value) async {
-                setState(() {
-                  item.isEnabled = value;
-                });
-                final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-                if (!isGuest && item.id != null) {
-                  try {
-                    await FirestoreService().updateHoliday(item.id!, {
-                      'isEnabled': value,
-                    });
-                  } catch (e) {
-                    setState(() {
-                      item.isEnabled = !value;
-                    });
-                    if (mounted) {
-                      FlashySnackBar.show(
-                        context,
-                        message: 'error_updating_holiday'.tr(
-                          namedArgs: {'error': e.toString()},
-                        ),
-                      );
-                    }
+          // Custom blue toggle switch
+          GestureDetector(
+            onTap: () async {
+              final value = !item.isEnabled;
+              setState(() {
+                item.isEnabled = value;
+              });
+              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+              if (!isGuest && item.id != null) {
+                try {
+                  await FirestoreService().updateHoliday(item.id!, {
+                    'isEnabled': value,
+                  });
+                } catch (e) {
+                  setState(() {
+                    item.isEnabled = !value;
+                  });
+                  if (mounted) {
+                    FlashySnackBar.show(
+                      context,
+                      message: 'error_updating_holiday'.tr(
+                        namedArgs: {'error': e.toString()},
+                      ),
+                    );
                   }
-                } else if (isGuest) {
-                  final monthList = DummyData.holidays[item.month];
-                  if (monthList != null) {
-                    for (var h in monthList) {
-                      if (h['day'] == item.day && h['name'] == item.name) {
-                        h['isEnabled'] = value;
-                        break;
-                      }
+                }
+              } else if (isGuest) {
+                final monthList = DummyData.holidays[item.month];
+                if (monthList != null) {
+                  for (var h in monthList) {
+                    if (h['day'] == item.day && h['name'] == item.name) {
+                      h['isEnabled'] = value;
+                      break;
                     }
                   }
                 }
-              },
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              width: 50,
+              height: 28,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: item.isEnabled
+                    ? const Color(0xFF0247C4)
+                    : const Color(0xFFD1D5DB),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                alignment: item.isEnabled
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
