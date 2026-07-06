@@ -632,7 +632,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _getScreen(9),
                                 // 10: Profile View
                                 _activatedScreens[10]
-                                    ? _buildProfileView()
+                                    ? _buildProfileView(stackIndex == 10)
                                     : const SizedBox.shrink(),
                               ],
                             );
@@ -1009,17 +1009,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProfileView() {
+  Widget _buildProfileView(bool isActive) {
     return Column(
       children: [
         ProfileInlineHeader(
           onLogout: _handleLogout,
           onNotificationTap: _toggleNotifications,
         ),
-        const Expanded(
+        Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(horizontal: 40.0, vertical: 30.0),
-            child: ProfileBody(),
+            child: ProfileBody(isActive: isActive),
           ),
         ),
       ],

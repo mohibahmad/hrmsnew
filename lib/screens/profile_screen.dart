@@ -84,7 +84,8 @@ class ProfileInlineHeader extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ProfileBody extends StatefulWidget {
-  const ProfileBody({super.key});
+  final bool isActive;
+  const ProfileBody({super.key, this.isActive = true});
 
   @override
   State<ProfileBody> createState() => _ProfileBodyState();
@@ -115,6 +116,22 @@ class _ProfileBodyState extends State<ProfileBody> {
     _contact2Controller = TextEditingController();
     _addressController = TextEditingController();
     _loadProfile();
+  }
+
+  @override
+  void didUpdateWidget(ProfileBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isActive && oldWidget.isActive) {
+      // Screen became inactive, clear unsaved changes
+      if (mounted) {
+        setState(() {
+          _isEditing = false;
+          _newProfileImageBytes = null;
+          _newProfileImagePath = null;
+          _loadProfile();
+        });
+      }
+    }
   }
 
   @override
