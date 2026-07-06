@@ -11,6 +11,7 @@ import '../services/dummy_data.dart';
 
 import '../utils/date_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
+import '../widgets/notification_bell.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/premium_gate.dart';
@@ -350,6 +351,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             'expense_category'.tr(),
                             categoryController,
                             hintText: 'Enter Expense category',
+                            maxLength: 50,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -397,8 +399,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 child: TextField(
                                   controller: descriptionController,
                                   maxLines: null,
+                                  maxLength: 150,
                                   decoration: InputDecoration(
                                     hintText: 'Enter Expense Title',
+                                    counterText: '',
                                     contentPadding: const EdgeInsets.only(
                                       top: 1,
                                     ),
@@ -594,6 +598,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                              'expense_category'.tr(),
                              categoryController,
                              hintText: 'Enter Expense category',
+                             maxLength: 50,
                            ),
                          ),
                          const SizedBox(width: 16),
@@ -641,8 +646,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                  child: TextField(
                                    controller: descriptionController,
                                    maxLines: null,
+                                   maxLength: 150,
                                    decoration: InputDecoration(
                                      hintText: 'Enter Expense Title',
+                                     counterText: '',
                                      contentPadding: const EdgeInsets.only(
                                        top: 1,
                                      ),
@@ -703,6 +710,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     TextEditingController controller, {
     TextInputType keyboardType = TextInputType.text,
     String hintText = '',
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -728,31 +736,42 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
-            inputFormatters:
-                (keyboardType ==
-                        const TextInputType.numberWithOptions(decimal: true) ||
-                    keyboardType == TextInputType.number ||
-                    label.toLowerCase().contains('amount'))
-                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
-                : null,
+            maxLength: maxLength,
+            inputFormatters: () {
+              final isAmount = keyboardType ==
+                      const TextInputType.numberWithOptions(decimal: true) ||
+                  keyboardType == TextInputType.number ||
+                  label.toLowerCase().contains('amount');
+              if (isAmount) {
+                return [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  LengthLimitingTextInputFormatter(21),
+                ];
+              }
+              if (maxLength != null) {
+                return [LengthLimitingTextInputFormatter(maxLength)];
+              }
+              return null;
+            }(),
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: const TextStyle(color: Colors.grey),
               border: InputBorder.none,
-isDense: true,
-               contentPadding: EdgeInsets.zero,
-             ),
-             style: const TextStyle(
-               fontSize: 14,
-               color: Colors.black,
-               fontWeight: FontWeight.w500,
-               fontFamily: 'SF Pro Display',
-             ),
-           ),
-         ),
-       ],
-     );
-   }
+              counterText: '',
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
    Widget _buildModalCalendar(
     DateTime calendarDate,
@@ -1043,18 +1062,7 @@ isDense: true,
             ],
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,

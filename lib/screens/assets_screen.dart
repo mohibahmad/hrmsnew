@@ -13,6 +13,7 @@ import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
 import '../utils/premium_gate.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
 
 class AssetsScreen extends StatefulWidget {
@@ -872,18 +873,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
           const Spacer(),
           // Notification Bell
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,

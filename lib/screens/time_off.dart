@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
+import '../widgets/notification_bell.dart';
 
 import 'assign_time_off.dart';
 
@@ -408,18 +409,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ),
           const Spacer(),
           // Notification Bell
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,

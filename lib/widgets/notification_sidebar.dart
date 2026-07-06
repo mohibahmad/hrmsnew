@@ -44,6 +44,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         setState(() {
           _notifications = snap.docs
               .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+              .where((n) => n['isRead'] != true)
               .toList();
           _isLoading = false;
         });
@@ -51,8 +52,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     }, onError: (_) {
       if (mounted) setState(() => _isLoading = false);
     });
-
-    FirestoreService().markAllNotificationsRead();
   }
 
   @override
@@ -131,10 +130,12 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         );
       case 'expense_added':
         return _NotifStyle(
-          icon: Icons.receipt_long_rounded,
+          icon: Icons.receipt_rounded,
           color: const Color(0xFFEF4444),
           bgColor: const Color(0xFFFFECEC),
           label: 'Expense',
+          iconAsset: 'assets/expenses.png',
+          iconSize: 32,
         );
       default:
         return _NotifStyle(
@@ -164,13 +165,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                 height: MediaQuery.of(context).size.height - headerHeight,
                 decoration: const BoxDecoration(
                   color: Color(0xFFFFFFFF),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      blurRadius: 24,
-                      offset: Offset(-4, 0),
-                    ),
-                  ],
                 ),
                 child: Column(
                   children: [
@@ -236,20 +230,52 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               ],
             ],
           ),
-          GestureDetector(
-            onTap: _close,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              if (unreadCount > 1)
+                GestureDetector(
+                  onTap: () async {
+                    for (final notif in _notifications) {
+                      final id = notif['id']?.toString();
+                      if (id != null && notif['isRead'] != true) {
+                        await FirestoreService().markNotificationRead(id);
+                      }
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'mark_all_read'.tr(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4C84E0),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _close,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    size: 20,
+                    color: Color(0xFF000000),
+                  ),
+                ),
               ),
-              child: const Icon(
-                Icons.close,
-                size: 20,
-                color: Color(0xFF000000),
-              ),
-            ),
+            ],
           ),
         ],
       ),
@@ -326,11 +352,12 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           message: message,
           timeAgo: _getTimeAgo(createdAt),
           isRead: isRead,
-          onTap: () {
+          onTap: () async {
             final id = notif['id']?.toString();
             if (id != null && !isRead) {
-              FirestoreService().markNotificationRead(id);
+              await FirestoreService().markNotificationRead(id);
             }
+            _close();
           },
         );
       },
@@ -505,7 +532,25 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                 color: style.bgColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(style.icon, size: 22, color: style.color),
+              child: Center(
+                child: style.iconAsset != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: ColorFiltered(
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFFEF4444),
+                            BlendMode.srcIn,
+                          ),
+                          child: Image.asset(
+                            style.iconAsset!,
+                            width: style.iconSize,
+                            height: style.iconSize,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      )
+                    : Icon(style.icon, size: style.iconSize, color: style.color),
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -588,6 +633,8 @@ class _NotifStyle {
   final Color bgColor;
   final String label;
   final bool isWelcome;
+  final String? iconAsset;
+  final double iconSize;
 
   const _NotifStyle({
     required this.icon,
@@ -595,5 +642,7 @@ class _NotifStyle {
     required this.bgColor,
     required this.label,
     this.isWelcome = false,
+    this.iconAsset,
+    this.iconSize = 22,
   });
 }

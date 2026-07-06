@@ -146,12 +146,16 @@ class PayrollService {
     required String absents,
     required String leaves,
     required String overtimeDays,
+    String absentDeductionPerDay = '',
+    String leaveDeductionPerDay = '',
   }) {
     final rawSalaryVal = extractSalary(salary);
     final totalWorkDaysVal = parseIntSafe(totalWorkDays);
     final absentDays = parseIntSafe(absents);
     final leaveDays = parseIntSafe(leaves);
     final overtime = parseIntSafe(overtimeDays);
+    final customAbsentDeduction = extractSalary(absentDeductionPerDay);
+    final customLeaveDeduction = extractSalary(leaveDeductionPerDay);
     final currency = getCurrencyPrefix(salary);
     final p = currency.isNotEmpty ? '$currency ' : '';
 
@@ -174,8 +178,8 @@ class PayrollService {
 
     final grossSalary = workedDaysVal * dailyRate;
     final overtimePay = overtime * overtimeRate;
-    final absentDeduction = absentDays * dailyRate;
-    final leaveDeduction = leaveDays * dailyRate;
+    final absentDeduction = absentDays * customAbsentDeduction;
+    final leaveDeduction = leaveDays * customLeaveDeduction;
     final totalDeductions = absentDeduction + leaveDeduction;
     final netSalary = grossSalary + overtimePay - totalDeductions;
 

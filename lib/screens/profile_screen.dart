@@ -12,6 +12,7 @@ import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/notification_bell.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileInlineHeader — used inside HomeScreen's profile view
@@ -59,18 +60,7 @@ class ProfileInlineHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: onNotificationTap),
           const SizedBox(width: 20),
           const UserAvatar(),
         ],

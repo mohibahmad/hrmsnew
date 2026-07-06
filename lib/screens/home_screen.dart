@@ -157,9 +157,11 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _payrollSub;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _timeoffSub;
+  StreamSubscription? _notifSub;
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
   int _totalAttendanceCount = 0;
   int _totalTimeoffCount = 0;
+  int _unreadNotifCount = 0;
   List<Map<String, dynamic>> _attendanceDocs = [];
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
@@ -174,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _payrollSub?.cancel();
     _attendanceSub?.cancel();
     _timeoffSub?.cancel();
+    _notifSub?.cancel();
     _profileSub?.cancel();
     super.dispose();
   }
@@ -385,6 +388,17 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       }, onError: (e) => debugPrint('payrollStream error: $e'));
+
+      _notifSub = firestore.notificationsStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _unreadNotifCount = snap.docs.where((d) {
+              final data = d.data() as Map<String, dynamic>?;
+              return data?['isRead'] != true;
+            }).length;
+          });
+        }
+      }, onError: (e) => debugPrint('notificationsStream error: $e'));
     }
   }
 
@@ -658,6 +672,7 @@ class _HomeScreenState extends State<HomeScreen> {
         TopHeader(
           onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
+          unreadCount: _unreadNotifCount,
         ),
         Expanded(
           child: SingleChildScrollView(
@@ -1555,10 +1570,12 @@ class _SidebarWidgetState extends State<SidebarWidget> {
 class TopHeader extends StatelessWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onNotificationTap;
+  final int unreadCount;
   const TopHeader({
     super.key,
     required this.onProfileTap,
     required this.onNotificationTap,
+    this.unreadCount = 0,
   });
 
   @override
@@ -1615,14 +1632,40 @@ class TopHeader extends StatelessWidget {
               // Notification bell
               GestureDetector(
                 onTap: onNotificationTap,
-                child: SvgPicture.asset(
-                  'assets/notification_icon.svg',
-                  width: 22,
-                  height: 26,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF000000),
-                    BlendMode.srcIn,
-                  ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    SvgPicture.asset(
+                      'assets/notification_icon.svg',
+                      width: 22,
+                      height: 26,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF000000),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(width: 20),

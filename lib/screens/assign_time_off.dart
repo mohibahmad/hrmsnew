@@ -9,6 +9,7 @@ import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/logout_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../widgets/notification_bell.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -375,18 +376,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 24),
           PopupMenuButton<String>(
             onSelected: (value) {

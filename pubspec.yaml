@@ -58,6 +58,7 @@ dependencies:
   cached_network_image: ^3.4.1
   provider: ^6.1.2
   flutter_inappwebview: ^6.1.5
+  pdf: ^3.11.2
 
 flutter_launcher_icons:
   android: true
@@ -163,6 +164,7 @@ flutter:
     - assets/apple_icon.svg
     - assets/guest_icon.svg
     - assets/expense.png
+    - assets/expenses.png
 
   #   - images/a_dot_ham.jpeg
 

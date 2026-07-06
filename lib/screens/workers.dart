@@ -13,6 +13,7 @@ import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
+import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
@@ -734,32 +735,14 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               ),
               const Spacer(),
               if (widget.onProfileTap != null && widget.onLogout != null) ...[
-                GestureDetector(
-                  onTap: widget.onNotificationTap,
-                  child: SvgPicture.asset(
-                    'assets/notification_icon.svg',
-                    width: 22,
-                    height: 26,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFF000000),
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                ),
+                NotificationBell(onTap: widget.onNotificationTap),
                 const SizedBox(width: 20),
                 GestureDetector(
                   onTap: widget.onProfileTap,
                   child: const UserAvatar(),
                 ),
               ] else ...[
-                GestureDetector(
-                  onTap: widget.onNotificationTap,
-                  child: const Icon(
-                    Icons.notifications_active,
-                    color: Color(0xFF000000),
-                    size: 28,
-                  ),
-                ),
+                NotificationBell(onTap: widget.onNotificationTap),
                 const SizedBox(width: 24),
                 const UserAvatar(),
               ],

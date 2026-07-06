@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/attendance_service.dart';
+import '../widgets/notification_bell.dart';
 
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
@@ -336,18 +337,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           const Spacer(),
           // Notification Bell
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,
@@ -433,7 +423,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const WorkersAttendanceScreen(),
+                  pageBuilder: (_, __, ___) => WorkersAttendanceScreen(
+                    onNotificationTap: widget.onNotificationTap,
+                  ),
                   transitionsBuilder: (_, __, ___, child) => child,
                   transitionDuration: Duration.zero,
                 ),

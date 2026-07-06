@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:pdfx/pdfx.dart' as pdfx;
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
+import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 
@@ -29,6 +31,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   final _leavesCtrl = TextEditingController();
   final _overtimeCtrl = TextEditingController();
   final _salaryCtrl = TextEditingController();
+  final _absentDeductionCtrl = TextEditingController();
+  final _leaveDeductionCtrl = TextEditingController();
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
   bool _isSaving = false;
@@ -60,6 +64,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           absents: _absentsCtrl.text,
           leaves: _leavesCtrl.text,
           overtimeDays: _overtimeCtrl.text,
+          absentDeductionPerDay: _absentDeductionCtrl.text,
+          leaveDeductionPerDay: _leaveDeductionCtrl.text,
         );
         _calculatedNet = _calcResult['formattedNet'] as String;
         _netCtrl.text = _calculatedNet;
@@ -87,6 +93,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       _absentsCtrl.text = (widget.workerData['absents'] ?? '').toString();
       _leavesCtrl.text = (widget.workerData['leaves'] ?? '').toString();
       _overtimeCtrl.text = (widget.workerData['overtimeDays'] ?? '').toString();
+      _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '').toString();
+      _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '').toString();
       _recalc();
     }
   }
@@ -98,6 +106,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     _leavesCtrl.dispose();
     _overtimeCtrl.dispose();
     _salaryCtrl.dispose();
+    _absentDeductionCtrl.dispose();
+    _leaveDeductionCtrl.dispose();
     _netCtrl.dispose();
     super.dispose();
   }
@@ -117,12 +127,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'email': _email,
       'position': _position,
       'contact': _phone,
-      'status': _status,
+      'status': 'Paid',
       'profileImage': _profileImage,
       'totalWorkDays': _workDaysCtrl.text.trim(),
       'absents': _absentsCtrl.text.trim(),
       'leaves': _leavesCtrl.text.trim(),
       'overtimeDays': _overtimeCtrl.text.trim(),
+      'absentDeduction': _absentDeductionCtrl.text.trim(),
+      'leaveDeduction': _leaveDeductionCtrl.text.trim(),
       'salary': _salaryStr,
       'netSalary': _calculatedNet,
     };
@@ -185,6 +197,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           context,
           message: 'payroll_saved_successfully'.tr(),
         );
+        await _generateAndShowInvoice();
         widget.onBack?.call();
       }
     } catch (e) {
@@ -196,6 +209,109 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         );
       }
     }
+  }
+
+  Future<void> _generateAndShowInvoice() async {
+    final cr = _calcResult;
+    if (cr.isEmpty) return;
+
+    final now = DateTime.now();
+    final payPeriod = '${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final fileName = 'payroll_${_name.replaceAll(' ', '_')}_$payPeriod.pdf';
+
+    final bytes = await InvoiceService.generatePayrollInvoice(
+      employeeName: _name,
+      email: _email,
+      position: _position,
+      payPeriod: payPeriod,
+      totalWorkDays: _workDaysCtrl.text.trim(),
+      daysWorked: _workDaysCtrl.text.trim(),
+      absents: _absentsCtrl.text.trim(),
+      leaves: _leavesCtrl.text.trim(),
+      overtimeDays: _overtimeCtrl.text.trim(),
+      salary: _salaryStr,
+      dailyRate: cr['formattedDailyRate'] as String? ?? '',
+      grossPay: cr['formattedGross'] as String? ?? '',
+      overtimePay: cr['formattedOvertime'] as String? ?? '',
+      absentDeduction: cr['formattedAbsentDeduct'] as String? ?? '',
+      leaveDeduction: cr['formattedLeaveDeduct'] as String? ?? '',
+      totalDeductions: cr['formattedTotalDeductions'] as String? ?? '',
+      netSalary: cr['formattedNet'] as String? ?? '',
+    );
+
+    if (mounted) {
+      _showInvoicePreviewDialog(bytes, fileName);
+    }
+  }
+
+  void _showInvoicePreviewDialog(Uint8List pdfBytes, String fileName) {
+    final controller = pdfx.PdfController(
+      document: pdfx.PdfDocument.openData(pdfBytes),
+    );
+
+    showDialog(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          width: 600,
+          height: 700,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'invoice_preview'.tr(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF27AE60),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          await InvoiceService.shareInvoice(pdfBytes, fileName);
+                        },
+                        icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                        label: Text(
+                          'share'.tr(),
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: const Icon(Icons.close, size: 24),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: pdfx.PdfView(
+                    controller: controller,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((_) => controller.dispose());
   }
 
   @override
@@ -514,6 +630,45 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               Expanded(child: _buildCalculatedInput(cr)),
             ],
           ),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInput('absent_deduction_per_day'.tr(), '0', _absentDeductionCtrl, isCurrency: true),
+                    if (cr.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInput('leave_deduction_per_day'.tr(), '0', _leaveDeductionCtrl, isCurrency: true),
+                    if (cr.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
           const SizedBox(height: 32),
           if (cr.isNotEmpty) ...[
             _buildCalcBreakdown(cr),
@@ -550,8 +705,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     String hint,
     TextEditingController? controller, {
     bool readOnly = false,
+    bool isCurrency = false,
   }) {
-    final isDaysInput = !readOnly && label != 'salary'.tr();
+    final isDaysInput = !readOnly && !isCurrency && label != 'salary'.tr();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -568,13 +724,22 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           controller: controller,
           readOnly: readOnly,
           onChanged: readOnly ? null : (_) => _recalc(),
-          keyboardType: isDaysInput ? TextInputType.number : null,
-          inputFormatters: isDaysInput
+          keyboardType: isCurrency
+              ? const TextInputType.numberWithOptions(decimal: true)
+              : isDaysInput
+                  ? TextInputType.number
+                  : null,
+          inputFormatters: isCurrency
               ? [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(3),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  LengthLimitingTextInputFormatter(10),
                 ]
-              : null,
+              : isDaysInput
+                  ? [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(3),
+                    ]
+                  : null,
           decoration: InputDecoration(
             hintText: readOnly ? null : hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
@@ -636,17 +801,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             filled: true,
             fillColor: const Color(0xFFEDF2FA),
           ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            const Icon(Icons.info_outline, size: 14, color: _darkBlue),
-            const SizedBox(width: 4),
-            Text(
-              'system_generated_calculation'.tr(),
-              style: const TextStyle(fontSize: 11, color: _darkBlue),
-            ),
-          ],
         ),
       ],
     );

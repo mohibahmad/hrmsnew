@@ -12,6 +12,7 @@ import 'home_screen.dart';
 import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
+import '../widgets/notification_bell.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
@@ -25,7 +26,8 @@ const Color orangeLeave = Color(0xFFFF7B00);
 const Color pillGray = Color(0xFFE2E5EA);
 
 class WorkersAttendanceScreen extends StatefulWidget {
-  const WorkersAttendanceScreen({super.key});
+  final VoidCallback? onNotificationTap;
+  const WorkersAttendanceScreen({super.key, this.onNotificationTap});
 
   @override
   State<WorkersAttendanceScreen> createState() =>
@@ -525,18 +527,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           PopupMenuButton<String>(
             onSelected: (value) {

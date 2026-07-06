@@ -9,6 +9,7 @@ import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../utils/image_utils.dart';
 import 'add_payroll_screen.dart';
+import '../widgets/notification_bell.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -186,18 +187,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ],
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,
@@ -466,7 +456,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   flex: 2,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8.0),
-                    child: Text('payroll_data'.tr(), style: _headerStyle()),
+                    child: Text('status_header'.tr(), style: _headerStyle()),
                   ),
                 ),
               ],
@@ -589,39 +579,48 @@ class _PayrollScreenState extends State<PayrollScreen> {
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
-              child: InkWell(
-                onTap: () {
-                  final hasData = (doc['totalWorkDays'] ?? '')
-                      .toString()
-                      .isNotEmpty;
-                  if (hasData) {
-                    _showPayrollDataDialog(context, doc, index);
-                  } else {
-                    setState(() {
-                      _isAddingPayroll = true;
-                      _workerForPayroll = doc;
-                    });
-                  }
-                },
-                mouseCursor: SystemMouseCursors.click,
-                borderRadius: BorderRadius.circular(6),
-                splashColor: const Color(0xFF0D4CC6).withValues(alpha: 0.15),
-                highlightColor: const Color(0xFF0D4CC6).withValues(alpha: 0.05),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Text(
-                      'payroll_data'.tr(),
-                      style: TextStyle(
-                        color: Color(0xFF0D4CC6),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
+              child: Builder(
+                builder: (context) {
+                  final isPaid = (doc['status'] ?? '').toString().toLowerCase() == 'paid';
+                  final hasData = (doc['totalWorkDays'] ?? '').toString().isNotEmpty;
+                  return InkWell(
+                    onTap: () {
+                      if (isPaid && hasData) {
+                        _showPayrollDataDialog(context, doc, index);
+                      } else {
+                        setState(() {
+                          _isAddingPayroll = true;
+                          _workerForPayroll = doc;
+                        });
+                      }
+                    },
+                    mouseCursor: SystemMouseCursors.click,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isPaid ? const Color(0xFF27AE60) : const Color(0xFFE74C3C),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isPaid ? 'paid'.tr() : 'pay'.tr(),
+                          style: const TextStyle(
+                            color: Color(0xFF0247C4),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),

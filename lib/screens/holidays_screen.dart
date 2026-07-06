@@ -11,6 +11,7 @@ import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/premium_gate.dart';
+import '../widgets/notification_bell.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -606,18 +607,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ],
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,

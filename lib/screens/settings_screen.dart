@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -475,18 +476,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: widget.onNotificationTap,
-            child: SvgPicture.asset(
-              'assets/notification_icon.svg',
-              width: 22,
-              height: 26,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,
