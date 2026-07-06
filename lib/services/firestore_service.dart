@@ -147,8 +147,8 @@ class FirestoreService {
     if (name.isNotEmpty) {
       await addNotification({
         'type': 'worker_added',
-        'title': 'Welcome $name to the team!',
-        'message': '$name has been added as a worker.',
+        'title': 'Welcome $name, to the Team!',
+        'message': '$name has been successfully added as a new team member.',
       });
     }
     return docRef.id;
@@ -209,6 +209,15 @@ class FirestoreService {
       ...expense,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final category = (expense['category'] ?? expense['type'] ?? '').toString();
+    final amount = (expense['amount'] ?? '').toString();
+    await addNotification({
+      'type': 'expense_added',
+      'title': category.isNotEmpty ? 'New expense: $category' : 'New expense added',
+      'message': amount.isNotEmpty
+          ? 'An expense of \$$amount has been recorded.'
+          : 'A new expense has been recorded.',
+    });
     return docRef.id;
   }
 
@@ -262,6 +271,17 @@ class FirestoreService {
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final name = (record['workerName'] ?? record['name'] ?? '').toString();
+    final amount = (record['totalAmount'] ?? record['amount'] ?? '').toString();
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'payroll_added',
+        'title': 'Payroll processed for $name',
+        'message': amount.isNotEmpty
+            ? 'Salary of \$$amount has been processed for $name.'
+            : 'Payroll has been recorded for $name.',
+      });
+    }
     return docRef.id;
   }
 
@@ -282,6 +302,15 @@ class FirestoreService {
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final name = (record['workerName'] ?? record['name'] ?? '').toString();
+    final type = (record['type'] ?? record['leaveType'] ?? 'Leave').toString();
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'time_off_added',
+        'title': 'Time Off assigned to $name',
+        'message': '$type has been assigned to $name.',
+      });
+    }
     return docRef.id;
   }
 
@@ -303,6 +332,14 @@ class FirestoreService {
       ...asset,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final assetName = (asset['name'] ?? asset['assetName'] ?? '').toString();
+    if (assetName.isNotEmpty) {
+      await addNotification({
+        'type': 'asset_added',
+        'title': 'New asset added: $assetName',
+        'message': '$assetName has been added to the company assets.',
+      });
+    }
     return docRef.id;
   }
 

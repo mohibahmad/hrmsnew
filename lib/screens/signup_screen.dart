@@ -345,6 +345,14 @@ class _SignupScreenState extends State<SignupScreen> {
         phone: "",
       );
 
+      // Welcome notification for new signup
+      final userName = _usernameController.text.trim();
+      await FirestoreService().addNotification({
+        'type': 'worker_added',
+        'title': 'Welcome $userName, to the Team!',
+        'message': 'Your HRMS account has been successfully created. Let\'s get started!',
+      });
+
       if (mounted) {
         FlashySnackBar.show(
           context,
