@@ -1355,17 +1355,17 @@ isDense: true,
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader(
-                      'date_header'.tr(),
-                      textAlign: TextAlign.center,
-                    ),
+                    child: _tableHeader('expense_category'.tr()),
                   ),
                 ),
                 Expanded(
                   flex: 3,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: _tableHeader('expense_category'.tr()),
+                    child: _tableHeader(
+                      'date_header'.tr(),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -1520,14 +1520,13 @@ isDense: true,
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                date,
-                textAlign: TextAlign.center,
+                category,
                 style: const TextStyle(
                   fontSize: 15,
                   color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
-                maxLines: 1,
+                maxLines: 2,
               ),
             ),
           ),
@@ -1536,13 +1535,14 @@ isDense: true,
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Text(
-                category,
+                date,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,
                   color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
-                maxLines: 2,
+                maxLines: 1,
               ),
             ),
           ),
