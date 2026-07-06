@@ -26,10 +26,33 @@ class DummyData {
         if (expensesJson != null && expensesJson.isNotEmpty) {
           final list = (jsonDecode(expensesJson) as List)
               .cast<Map<String, dynamic>>();
-          final hasOldWorkerNames = list.any((e) =>
-              e['name'] == 'Michael Johnson' ||
-              e['name'] == 'Sarah Connor' ||
-              e['name'] == 'Mike Peters');
+          final hasOldWorkerNames = list.any((e) {
+            final name = (e['name'] ?? '').toString();
+            return name == 'Michael Johnson' ||
+                name == 'Emily Davis' ||
+                name == 'Robert Wilson' ||
+                name == 'David Brown' ||
+                name == 'James Miller' ||
+                name == 'Sophia Martinez' ||
+                name == 'Daniel Anderson' ||
+                name == 'Olivia Thomas' ||
+                name == 'Lucas Taylor' ||
+                name == 'Amelia White' ||
+                name == 'John Smith' ||
+                name == 'Benjamin Harris' ||
+                name == 'Charlotte Martin' ||
+                name == 'Henry Thompson' ||
+                name == 'Sarah Connor' ||
+                name == 'Mike Peters' ||
+                name == 'Laura Palmer' ||
+                name == 'Tom Hardy' ||
+                name == 'Nina Dobrev' ||
+                name == 'Ryan Gosling' ||
+                name == 'Emma Watson' ||
+                name == 'Chris Evans' ||
+                name == 'Scarlett Johansson' ||
+                name == 'Robert Downey';
+          });
           if (hasOldWorkerNames) {
             await prefs.remove('dummy_expenses');
           } else {
