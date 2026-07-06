@@ -650,6 +650,6 @@
   "welcome_to_team": "¡Bienvenido {name} al equipo!",
   "holiday_notification": "El día festivo \"{name}\" ha sido añadido",
   "attendance_notification": "Asistencia registrada para {name",
-  "no_search_results": "Sin resultados",
+  "no_search_results": "Sin resultados de búsqueda",
   "clear_search": "Borrar búsqueda"
 }

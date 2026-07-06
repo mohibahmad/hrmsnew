@@ -1073,19 +1073,22 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: SvgPicture.asset(
-                    'assets/share1.svg',
-                    height: 18,
-                    width: 18,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFFFFFFFF),
-                      BlendMode.srcIn,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: SvgPicture.asset(
+                      'assets/share1.svg',
+                      height: 18,
+                      width: 18,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFFFFFFFF),
+                        BlendMode.srcIn,
+                      ),
                     ),
+                    onPressed: () => _exportCsv(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
-                  onPressed: () => _exportCsv(context),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ),
             ],
