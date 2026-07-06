@@ -118,8 +118,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   double get _totalExpenseSum {
-    return _filteredExpenses.fold(0.0, (sum, doc) {
+    return _expensesDocs.fold(0.0, (sum, doc) {
       return sum + ((doc['amount'] ?? 0).toDouble());
+    });
+  }
+
+  double get _monthExpenseSum {
+    final now = DateTime.now();
+    return _expensesDocs.fold(0.0, (sum, doc) {
+      final dateStr = (doc['date'] ?? '').toString();
+      if (dateStr.isEmpty) return sum;
+      final parts = dateStr.split('/');
+      if (parts.length != 3) return sum;
+      final month = int.tryParse(parts[1]) ?? 0;
+      final year = int.tryParse(parts[2]) ?? 0;
+      if (month == now.month && year == now.year) {
+        return sum + ((doc['amount'] ?? 0).toDouble());
+      }
+      return sum;
     });
   }
 
@@ -1204,7 +1220,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           child: _buildCard(
             title: 'this_month_expense'.tr(),
             titleColor: const Color(0xFF0247C4),
-            amount: _formatCurrency(_totalExpenseSum),
+            amount: _formatCurrency(_monthExpenseSum),
             iconWidget: SvgPicture.asset(
               'assets/expense_month.svg',
               width: 44,

@@ -583,7 +583,6 @@
   "other": "Autre",
   "failed_to_pick_image": "Échec de la sélection de l'image",
   "failed_to_pick_file": "Échec de la sélection du fichier",
-  "error_selecting_image": "Erreur lors de la sélection de l'image : {error}",
   "file_too_large": "Fichier trop volumineux. La taille maximale est de {size}.",
   "uploaded": "Téléchargé",
   "not_uploaded": "Non téléchargé",
@@ -626,7 +625,6 @@
   "leave_deduction": "Déduction de Congé",
   "net_pay": "Salaire Net",
   "days_per_year": "jours/an",
-  "days": "jours",
   "days_overtime_multiplier": "jours @ 1.5×",
   "last_modified_by_admin_on": "Dernière modification par l'Administrateur le {date}",
   "secondary_contact": "Téléphone",
@@ -648,5 +646,7 @@
   "just_now": "À l'instant",
   "welcome_to_team": "Bienvenue {name} dans l'équipe !",
   "holiday_notification": "Le jour férié \"{name}\" a été ajouté",
-  "attendance_notification": "Présence enregistrée pour {name}"
+  "attendance_notification": "Présence enregistrée pour {name",
+  "no_search_results": "Aucun résultat",
+  "clear_search": "Effacer la recherche"
 }

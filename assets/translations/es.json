@@ -583,7 +583,6 @@
   "other": "Otro",
   "failed_to_pick_image": "Error al seleccionar imagen",
   "failed_to_pick_file": "Error al seleccionar archivo",
-  "error_selecting_image": "Error al seleccionar imagen: {error}",
   "file_too_large": "Archivo demasiado grande. El tamaño máximo es {size}.",
   "uploaded": "Subido",
   "not_uploaded": "No subido",
@@ -626,7 +625,6 @@
   "leave_deduction": "Deducción por Licencia",
   "net_pay": "Salario Neto",
   "days_per_year": "días/año",
-  "days": "días",
   "days_overtime_multiplier": "días @ 1.5×",
   "last_modified_by_admin_on": "Última modificación por el Administrador el {date}",
   "secondary_contact": "Teléfono",
@@ -651,5 +649,7 @@
   "just_now": "Ahora mismo",
   "welcome_to_team": "¡Bienvenido {name} al equipo!",
   "holiday_notification": "El día festivo \"{name}\" ha sido añadido",
-  "attendance_notification": "Asistencia registrada para {name}"
+  "attendance_notification": "Asistencia registrada para {name",
+  "no_search_results": "Sin resultados",
+  "clear_search": "Borrar búsqueda"
 }

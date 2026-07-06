@@ -142,7 +142,7 @@
   "profile_preview": "Предпросмотр профиля",
   "profile_saved": "Профиль успешно сохранён!",
   "error_saving_profile": "Ошибка сохранения профиля: {error}",
-  "error_selecting_image": "Ошибка выбора изображения: {error}",
+  "error_selecting_image": "Ошибка при выборе изображения: {error}",
   "user": "Пользователь",
   "choose_your_plan": "Выберите план",
   "select_subscription": "Выберите подписку, которая лучше всего подходит\nдля вашей команды",
@@ -583,7 +583,6 @@
   "other": "Другое",
   "failed_to_pick_image": "Не удалось выбрать изображение",
   "failed_to_pick_file": "Не удалось выбрать файл",
-  "error_selecting_image": "Ошибка при выборе изображения: {error}",
   "file_too_large": "Файл слишком большой. Максимальный размер {size}.",
   "uploaded": "Загружено",
   "not_uploaded": "Не загружено",
@@ -626,7 +625,6 @@
   "leave_deduction": "Вычет за отпуск",
   "net_pay": "Чистая зарплата",
   "days_per_year": "дней/год",
-  "days": "дней",
   "days_overtime_multiplier": "дней @ 1.5×",
   "last_modified_by_admin_on": "Последнее изменение: Администратор, {date}",
   "secondary_contact": "Телефон",
@@ -648,5 +646,7 @@
   "just_now": "Только что",
   "welcome_to_team": "Добро пожаловать, {name}, в команду!",
   "holiday_notification": "Праздник \"{name}\" был добавлен",
-  "attendance_notification": "Посещаемость отмечена для {name}"
+  "attendance_notification": "Посещаемость отмечена для {name",
+  "no_search_results": "Нет результатов",
+  "clear_search": "Очистить поиск"
 }

@@ -588,7 +588,6 @@
   "other": "Other",
   "failed_to_pick_image": "Failed to select image",
   "failed_to_pick_file": "Failed to select file",
-  "error_selecting_image": "Error selecting image: {error}",
   "file_too_large": "File too large. Maximum size is {size}.",
   "uploaded": "Uploaded",
   "not_uploaded": "Not Uploaded",
@@ -631,7 +630,6 @@
   "leave_deduction": "Leave Deduction",
   "net_pay": "Net Pay",
   "days_per_year": "days/year",
-  "days": "days",
   "days_overtime_multiplier": "days @ 1.5×",
   "last_modified_by_admin_on": "Last modified by Admin on {date}",
   "secondary_contact": "Telephone No",
@@ -656,5 +654,7 @@
   "just_now": "Just now",
   "welcome_to_team": "Welcome {name} to the team!",
   "holiday_notification": "Holiday \"{name}\" has been added",
-  "attendance_notification": "Attendance marked for {name}"
+  "attendance_notification": "Attendance marked for {name",
+  "no_search_results": "No search results",
+  "clear_search": "Clear search"
 }
