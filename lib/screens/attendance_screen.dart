@@ -158,25 +158,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _attendanceLoaded = false;
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      _workersSub = FirestoreService().workersStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _workersList = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-            _workersLoaded = true;
-            _combineAttendance();
-          });
-        }
-      }, onError: (e) {
-        debugPrint('workersStream error: $e');
-        if (mounted) {
-          setState(() {
-            _workersLoaded = true;
-            _isLoading = false;
-          });
-        }
-      });
+      _workersSub = FirestoreService().workersStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _workersList = snapshot.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .toList();
+              _workersLoaded = true;
+              _combineAttendance();
+            });
+          }
+        },
+        onError: (e) {
+          debugPrint('workersStream error: $e');
+          if (mounted) {
+            setState(() {
+              _workersLoaded = true;
+              _isLoading = false;
+            });
+          }
+        },
+      );
       _attendanceSub = FirestoreService().attendanceStream.listen(
         (snapshot) {
           if (mounted) {
@@ -602,7 +605,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         });
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isActive ? 12 : 24, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isActive ? 12 : 24,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isActive ? primaryBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
@@ -640,7 +646,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              isSearchEmpty ? 'no_search_results'.tr() : 'no_attendance_records'.tr(),
+              isSearchEmpty
+                  ? 'no_search_results'.tr()
+                  : 'no_attendance_records'.tr(),
               style: TextStyle(
                 color: Color(0xFF0247C4),
                 fontSize: 16,
@@ -648,14 +656,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            if (isSearchEmpty) ...[
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () => setState(() { _searchQuery = ''; _currentPage = 1; }),
-                icon: const Icon(Icons.close, size: 16),
-                label: Text('clear_search'.tr()),
-              ),
-            ],
           ],
         ),
       ),
