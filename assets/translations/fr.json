@@ -630,5 +630,11 @@
   "invalid_date_format": "Format de date invalide. Utilisez JJ/MM/AAAA.",
   "holiday_already_exists": "Un jour férié existe déjà pour cette date",
   "uploading_files": "Téléchargement de {count} fichier(s)...",
-  "custom_leave_info": "Mode personnalisé: Entrez les congés annuels, maladie et occasionnels manuellement"
+  "custom_leave_info": "Mode personnalisé: Entrez les congés annuels, maladie et occasionnels manuellement",
+  "notifications": "Notifications",
+  "no_notifications_yet": "Aucune notification",
+  "just_now": "À l'instant",
+  "welcome_to_team": "Bienvenue {name} dans l'équipe !",
+  "holiday_notification": "Le jour férié \"{name}\" a été ajouté",
+  "attendance_notification": "Présence enregistrée pour {name}"
 }

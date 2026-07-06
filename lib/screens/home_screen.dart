@@ -23,6 +23,7 @@ import 'expenses_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import '../utils/logout_dialog.dart';
+import '../widgets/notification_sidebar.dart';
 import 'login_screen.dart';
 import '../services/payroll_service.dart';
 import '../services/dummy_data.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedPeriod = 'Yearly';
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
+  bool _showNotifications = false;
   final List<bool> _activatedScreens = List.filled(11, false);
 
   Widget _getScreen(int index) {
@@ -53,13 +55,13 @@ class _HomeScreenState extends State<HomeScreen> {
         return WorkersScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 2:
         return AttendanceScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 3:
         return PayrollScreen(
@@ -71,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _showAssignTimeOff = true;
             });
           },
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 4:
         return TimeOffScreen(
@@ -83,32 +85,32 @@ class _HomeScreenState extends State<HomeScreen> {
               _showAssignTimeOff = true;
             });
           },
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 5:
         return AssetsScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 6:
         return HolidaysScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 7:
         return ExpensesScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 8:
         return SettingsScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           isGuest: AuthService().currentUser?.isAnonymous ?? false,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         );
       case 9:
         return AssignTimeOffScreen(
@@ -116,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _showAssignTimeOff = false;
             _selectedTimeOffWorker = null;
           }),
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
           initialWorker: _selectedTimeOffWorker,
         );
       default:
@@ -532,7 +534,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedSubIndex = 0;
       _showProfile = false;
       _showAssignTimeOff = false;
+      _showNotifications = false;
       _selectedTimeOffWorker = null;
+    });
+  }
+
+  void _toggleNotifications() {
+    setState(() {
+      _showNotifications = !_showNotifications;
     });
   }
 
@@ -571,57 +580,63 @@ class _HomeScreenState extends State<HomeScreen> {
                     onBackToLogin: _handleBackToLogin,
                   ),
                   Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        final int stackIndex = _getStackIndex();
-                        _activatedScreens[stackIndex] = true;
-                        return IndexedStack(
-                          index: stackIndex,
-                          children: [
-                            // 0: Dashboard View
-                            _activatedScreens[0]
-                                ? TweenAnimationBuilder<double>(
-                                    key: ValueKey(stackIndex == 0),
-                                    tween: Tween<double>(begin: 0, end: 1),
-                                    duration: const Duration(milliseconds: 650),
-                                    curve: Curves.easeOutQuart,
-                                    builder: (context, value, child) {
-                                      return Opacity(
-                                        opacity: value,
-                                        child: Transform.translate(
-                                          offset: Offset(0, 15 * (1 - value)),
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    child: _buildDashboardView(),
-                                  )
-                                : const SizedBox.shrink(),
-                            // 1: Workers Screen
-                            _getScreen(1),
-                            // 2: Attendance Screen
-                            _getScreen(2),
-                            // 3: Payroll Screen
-                            _getScreen(3),
-                            // 4: Time Off Screen
-                            _getScreen(4),
-                            // 5: Assets Screen
-                            _getScreen(5),
-                            // 6: Holidays Screen
-                            _getScreen(6),
-                            // 7: Expenses Screen
-                            _getScreen(7),
-                            // 8: Settings Screen
-                            _getScreen(8),
-                            // 9: Assign Time Off
-                            _getScreen(9),
-                            // 10: Profile View
-                            _activatedScreens[10]
-                                ? _buildProfileView()
-                                : const SizedBox.shrink(),
-                          ],
-                        );
-                      },
+                    child: Stack(
+                      children: [
+                        Builder(
+                          builder: (context) {
+                            final int stackIndex = _getStackIndex();
+                            _activatedScreens[stackIndex] = true;
+                            return IndexedStack(
+                              index: stackIndex,
+                              children: [
+                                // 0: Dashboard View
+                                _activatedScreens[0]
+                                    ? TweenAnimationBuilder<double>(
+                                        key: ValueKey(stackIndex == 0),
+                                        tween: Tween<double>(begin: 0, end: 1),
+                                        duration: const Duration(milliseconds: 650),
+                                        curve: Curves.easeOutQuart,
+                                        builder: (context, value, child) {
+                                          return Opacity(
+                                            opacity: value,
+                                            child: Transform.translate(
+                                              offset: Offset(0, 15 * (1 - value)),
+                                              child: child,
+                                            ),
+                                          );
+                                        },
+                                        child: _buildDashboardView(),
+                                      )
+                                    : const SizedBox.shrink(),
+                                // 1: Workers Screen
+                                _getScreen(1),
+                                // 2: Attendance Screen
+                                _getScreen(2),
+                                // 3: Payroll Screen
+                                _getScreen(3),
+                                // 4: Time Off Screen
+                                _getScreen(4),
+                                // 5: Assets Screen
+                                _getScreen(5),
+                                // 6: Holidays Screen
+                                _getScreen(6),
+                                // 7: Expenses Screen
+                                _getScreen(7),
+                                // 8: Settings Screen
+                                _getScreen(8),
+                                // 9: Assign Time Off
+                                _getScreen(9),
+                                // 10: Profile View
+                                _activatedScreens[10]
+                                    ? _buildProfileView()
+                                    : const SizedBox.shrink(),
+                              ],
+                            );
+                          },
+                        ),
+                        if (_showNotifications)
+                          NotificationSidebar(onClose: _toggleNotifications),
+                      ],
                     ),
                   ),
                 ],
@@ -638,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         TopHeader(
           onProfileTap: _openProfile,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         ),
         Expanded(
           child: SingleChildScrollView(
@@ -995,7 +1010,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         ProfileInlineHeader(
           onLogout: _handleLogout,
-          onNotificationTap: _navigateToAttendance,
+          onNotificationTap: _toggleNotifications,
         ),
         const Expanded(
           child: SingleChildScrollView(
@@ -3567,7 +3582,7 @@ class HolidayCard extends StatelessWidget {
         ? const Color(0xFF4AC000)
         : (isActive ? activeLeftBg : inactiveLeftBg);
     Color rightBg = isFriday
-        ? const Color(0xFF3DA000)
+        ? const Color(0xFF45B800)
         : (isActive ? activeRightBg : inactiveRightBg);
     Color mainTextColor = isFriday || isActive ? activeTextColor : inactiveTextColor;
     Color subTextColor = isFriday || isActive ? activeSubTextColor : inactiveSubTextColor;

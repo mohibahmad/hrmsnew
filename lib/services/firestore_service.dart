@@ -32,6 +32,7 @@ class FirestoreService {
   CollectionReference get _timeoff => _userDoc.collection('hrms_timeoff');
   CollectionReference get _assets => _userDoc.collection('hrms_assets');
   CollectionReference get _holidays => _userDoc.collection('hrms_holidays');
+  CollectionReference get _notifications => _userDoc.collection('hrms_notifications');
 
   Future<void> createUserProfile({
     required String username,
@@ -142,6 +143,14 @@ class FirestoreService {
       ...worker,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final name = (worker['name'] ?? '').toString();
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'worker_added',
+        'title': 'Welcome $name to the team!',
+        'message': '$name has been added as a worker.',
+      });
+    }
     return docRef.id;
   }
 
@@ -221,6 +230,14 @@ class FirestoreService {
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final name = (record['name'] ?? record['workerName'] ?? '').toString();
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'attendance_marked',
+        'title': 'Attendance marked for $name',
+        'message': 'Attendance has been recorded for $name.',
+      });
+    }
     return docRef.id;
   }
 
@@ -308,6 +325,14 @@ class FirestoreService {
       ...holiday,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
+    final name = (holiday['name'] ?? '').toString();
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'holiday_added',
+        'title': 'Holiday "$name" has been added',
+        'message': '$name has been added to the holiday calendar.',
+      });
+    }
     return docRef.id;
   }
 
@@ -468,5 +493,38 @@ class FirestoreService {
     if (count % 500 != 0) {
       await batch.commit();
     }
+  }
+
+  // ==================== NOTIFICATIONS ====================
+
+  Future<void> addNotification(Map<String, dynamic> notification) async {
+    await _notifications.add({
+      ...notification,
+      'isRead': false,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  Stream<QuerySnapshot> get notificationsStream =>
+      _notifications.orderBy('createdAt', descending: true).snapshots();
+
+  Future<void> markNotificationRead(String id) async {
+    await _notifications.doc(id).update({'isRead': true});
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    final unread = await _notifications.where('isRead', isEqualTo: false).get();
+    final batch = _db.batch();
+    for (final doc in unread.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    if (unread.docs.isNotEmpty) {
+      await batch.commit();
+    }
+  }
+
+  Future<int> getUnreadNotificationCount() async {
+    final unread = await _notifications.where('isRead', isEqualTo: false).get();
+    return unread.docs.length;
   }
 }

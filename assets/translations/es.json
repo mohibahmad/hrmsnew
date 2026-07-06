@@ -633,5 +633,11 @@
   "custom_leave_info": "Modo personalizado: Ingrese permisos anuales, por enfermedad y casual manualmente",
   "confirm_delete": "Confirmar eliminación",
   "delete_cv_confirmation": "¿Está seguro de que desea eliminar este CV? Esta acción no se puede deshacer.",
-  "delete_profile_confirmation": "¿Está seguro de que desea eliminar esta imagen de perfil? Esta acción no se puede deshacer."
+  "delete_profile_confirmation": "¿Está seguro de que desea eliminar esta imagen de perfil? Esta acción no se puede deshacer.",
+  "notifications": "Notificaciones",
+  "no_notifications_yet": "No hay notificaciones",
+  "just_now": "Ahora mismo",
+  "welcome_to_team": "¡Bienvenido {name} al equipo!",
+  "holiday_notification": "El día festivo \"{name}\" ha sido añadido",
+  "attendance_notification": "Asistencia registrada para {name}"
 }
