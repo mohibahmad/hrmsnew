@@ -146,12 +146,13 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 index: 1,
                                 title: 'six_month'.tr(),
                                 price: '\$46.99',
-                                isPopular: true,
                               ),
                               _buildPlanCard(
                                 index: 2,
                                 title: 'yearly'.tr(),
                                 price: '\$64.99',
+                                isPopular: true,
+                                badgeText: 'hottest',
                               ),
                               const SizedBox(height: 6),
 
@@ -340,6 +341,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     required String title,
     required String price,
     bool isPopular = false,
+    String badgeText = 'popular',
   }) {
     bool isSelected = _selectedPlanIndex == index;
     return GestureDetector(
@@ -425,7 +427,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     ),
                   ),
                   child: Text(
-                    'popular'.tr(),
+                    badgeText.tr(),
                     style: TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontSize: 9,

@@ -9,6 +9,7 @@ import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/logout_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/notification_bell.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   late DateTime _calendarMonth;
   bool _hasSelection = false;
   final TextEditingController _notesController = TextEditingController();
+  String? _editingId;
 
   List<Map<String, dynamic>> _workers = [];
   Map<String, dynamic>? _selectedWorker;
@@ -61,13 +63,34 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
   }
 
+  DateTime _parseDate(dynamic date) {
+    if (date == null || date.toString().isEmpty) return DateTime.now();
+    if (date is DateTime) return date;
+    if (date is Timestamp) return date.toDate();
+    final parts = date.toString().split('-');
+    if (parts.length == 3) {
+      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    }
+    return DateTime.now();
+  }
+
   void _resetFormFields() {
-    _startDate = DateTime.now();
-    _endDate = DateTime.now();
-    _hasSelection = false;
+    if (_selectedWorker != null && _selectedWorker!['action'] != null && _selectedWorker!['action'].toString().isNotEmpty) {
+      _editingId = _selectedWorker!['id']?.toString();
+      _timeOffType = _selectedWorker!['action'].toString();
+      _startDate = _parseDate(_selectedWorker!['startDate']);
+      _endDate = _parseDate(_selectedWorker!['endDate']);
+      _hasSelection = true;
+      _notesController.text = _selectedWorker!['notes']?.toString() ?? '';
+    } else {
+      _editingId = null;
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
+      _hasSelection = false;
+      _timeOffType = 'Annual Leave';
+      _notesController.clear();
+    }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-    _timeOffType = 'Annual Leave';
-    _notesController.clear();
   }
 
   void _loadWorkers() {
@@ -266,6 +289,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
     int used = 0;
     for (final record in _timeoffRecords) {
+      if (_editingId != null && record['id']?.toString() == _editingId) continue;
       final recordEmail = (record['email'] ?? '').toString().toLowerCase();
       if (recordEmail != workerEmail) continue;
       final action = (record['action'] ?? record['type'] ?? '').toString();
@@ -1136,13 +1160,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       };
 
       if (isGuest) {
-        DummyData.timeoff.insert(0, {
-          ...recordMap,
-          'id': 'guest_to_${DateTime.now().millisecondsSinceEpoch}',
-        });
+        if (_editingId != null) {
+          final idx = DummyData.timeoff.indexWhere((t) => t['id'] == _editingId);
+          if (idx != -1) {
+            DummyData.timeoff[idx] = {...DummyData.timeoff[idx], ...recordMap};
+          }
+        } else {
+          DummyData.timeoff.insert(0, {
+            ...recordMap,
+            'id': 'guest_to_${DateTime.now().millisecondsSinceEpoch}',
+          });
+        }
         await DummyData.saveToPrefs();
       } else {
-        await FirestoreService().addTimeOffRecord(recordMap);
+        if (_editingId != null) {
+          await FirestoreService().updateTimeOffRecord(_editingId!, recordMap);
+        } else {
+          await FirestoreService().addTimeOffRecord(recordMap);
+        }
       }
 
       if (mounted) {
