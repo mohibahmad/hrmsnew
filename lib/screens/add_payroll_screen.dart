@@ -217,7 +217,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
     final now = DateTime.now();
     final payPeriod = '${now.month.toString().padLeft(2, '0')}/${now.year}';
-    final fileName = 'payroll_${_name.replaceAll(' ', '_')}_$payPeriod.pdf';
+    final fileName = 'payroll_${_name.replaceAll(' ', '_')}_${payPeriod.replaceAll('/', '-')}.pdf';
 
     final bytes = await InvoiceService.generatePayrollInvoice(
       employeeName: _name,
@@ -255,9 +255,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
-          width: 600,
-          height: 700,
+          width: 700,
+          height: 800,
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F3F6),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Column(
             children: [
               Row(
@@ -275,13 +279,21 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                     children: [
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF27AE60),
+                          backgroundColor: const Color(0xFF0247C4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         onPressed: () async {
-                          await InvoiceService.shareInvoice(pdfBytes, fileName);
+                          try {
+                            await InvoiceService.shareInvoice(pdfBytes, fileName);
+                          } catch (e) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          }
                         },
                         icon: const Icon(Icons.share, color: Colors.white, size: 18),
                         label: Text(

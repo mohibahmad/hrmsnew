@@ -944,7 +944,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'Salary After Deduction'.tr(),
+                                  title: 'salary_after_deduction'.tr(),
                                   value: salaryAfterDeductionStr,
                                 ),
                               ),

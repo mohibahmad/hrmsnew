@@ -26,9 +26,17 @@ class DummyData {
         if (expensesJson != null && expensesJson.isNotEmpty) {
           final list = (jsonDecode(expensesJson) as List)
               .cast<Map<String, dynamic>>();
-          expenses
-            ..clear()
-            ..addAll(list);
+          final hasOldWorkerNames = list.any((e) =>
+              e['name'] == 'Michael Johnson' ||
+              e['name'] == 'Sarah Connor' ||
+              e['name'] == 'Mike Peters');
+          if (hasOldWorkerNames) {
+            await prefs.remove('dummy_expenses');
+          } else {
+            expenses
+              ..clear()
+              ..addAll(list);
+          }
         }
       } catch (e) {
         debugPrint('Failed to load dummy_expenses: $e');
@@ -319,178 +327,178 @@ class DummyData {
 
   static final List<Map<String, dynamic>> expenses = [
     {
+      'id': 'dummy_e1',
+      'name': 'Client Dinner with Acme Corp',
+      'date': '05/06/2026',
+      'category': 'Meals',
+      'amount': 124.50,
+    },
+    {
       'id': 'dummy_e2',
-      'name': 'Michael Johnson',
+      'name': 'Figma Team Subscription',
       'date': '04/06/2026',
-      'category': 'Figma Subscription',
+      'category': 'Software',
       'amount': 45.00,
     },
     {
       'id': 'dummy_e3',
-      'name': 'Emily Davis',
+      'name': 'Wireless Mechanical Keyboard',
       'date': '02/06/2026',
-      'category': 'Office Keyboard',
+      'category': 'Equipment',
       'amount': 89.99,
     },
     {
       'id': 'dummy_e4',
-      'name': 'Robert Wilson',
+      'name': 'AWS Cloud Hosting - June',
       'date': '01/06/2026',
-      'category': 'AWS Cloud Hosting',
+      'category': 'Infrastructure',
       'amount': 250.00,
     },
     {
       'id': 'dummy_e5',
-      'name': 'David Brown',
+      'name': 'Google Ads - Product Launch',
       'date': '28/05/2026',
-      'category': 'Google Ads Campaign',
+      'category': 'Marketing',
       'amount': 500.00,
     },
     {
       'id': 'dummy_e6',
-      'name': 'James Miller',
+      'name': 'GitHub Enterprise License',
       'date': '25/05/2026',
-      'category': 'GitHub Enterprise',
+      'category': 'Software',
       'amount': 150.00,
     },
     {
       'id': 'dummy_e7',
-      'name': 'Sophia Martinez',
+      'name': 'Recruiting Software - Quarterly',
       'date': '22/05/2026',
-      'category': 'Recruiting Software',
+      'category': 'Software',
       'amount': 320.00,
     },
     {
       'id': 'dummy_e8',
-      'name': 'Daniel Anderson',
+      'name': 'Remote Work Internet Allowance',
       'date': '19/05/2026',
-      'category': 'Internet Allowance',
+      'category': 'Utilities',
       'amount': 60.00,
     },
     {
       'id': 'dummy_e9',
-      'name': 'Olivia Thomas',
+      'name': 'QA Testing Device - Pixel Tablet',
       'date': '15/05/2026',
-      'category': 'Testing Device',
+      'category': 'Equipment',
       'amount': 299.00,
     },
     {
       'id': 'dummy_e10',
-      'name': 'Lucas Taylor',
+      'name': 'Ergonomic Office Chair',
       'date': '10/05/2026',
-      'category': 'Office Chair',
+      'category': 'Furniture',
       'amount': 180.00,
     },
     {
       'id': 'dummy_e11',
-      'name': 'Amelia White',
+      'name': 'Adobe Creative Cloud - Annual',
       'date': '08/05/2026',
-      'category': 'Adobe CC Suite',
+      'category': 'Software',
       'amount': 79.99,
     },
     {
       'id': 'dummy_e12',
-      'name': 'John Smith',
+      'name': 'Tech Conference 2026 Tickets',
       'date': '05/05/2026',
-      'category': 'Conference Tickets',
+      'category': 'Events',
       'amount': 400.00,
     },
     {
       'id': 'dummy_e13',
-      'name': 'Benjamin Harris',
+      'name': 'Apple Developer Program Renewal',
       'date': '06/06/2026',
-      'category': 'Apple Developer Account',
+      'category': 'Software',
       'amount': 99.00,
     },
     {
       'id': 'dummy_e14',
-      'name': 'Charlotte Martin',
+      'name': 'YubiKey Security Keys - Team',
       'date': '05/06/2026',
-      'category': 'YubiKey Security Key',
+      'category': 'Security',
       'amount': 55.00,
     },
     {
       'id': 'dummy_e15',
-      'name': 'Henry Thompson',
+      'name': 'DataCamp Team Subscription',
       'date': '03/06/2026',
-      'category': 'Data Camp Subscription',
+      'category': 'Training',
       'amount': 150.00,
     },
     {
-      'id': 'dummy_e1',
-      'name': 'John Smith',
-      'date': '05/06/2026',
-      'category': 'Client Dinner',
-      'amount': 124.50,
-    },
-    {
       'id': 'dummy_e16',
-      'name': 'Sarah Connor',
+      'name': 'Team Lunch - Q2 Review',
       'date': '07/06/2026',
-      'category': 'Team Lunch',
+      'category': 'Meals',
       'amount': 210.00,
     },
     {
       'id': 'dummy_e17',
-      'name': 'Mike Peters',
+      'name': 'JetBrains All Products Pack',
       'date': '08/06/2026',
-      'category': 'Software License',
+      'category': 'Software',
       'amount': 350.00,
     },
     {
       'id': 'dummy_e18',
-      'name': 'Laura Palmer',
+      'name': 'Client Visit - Flight & Hotel',
       'date': '09/06/2026',
-      'category': 'Travel Expense',
+      'category': 'Travel',
       'amount': 475.00,
     },
     {
       'id': 'dummy_e19',
-      'name': 'Tom Hardy',
+      'name': 'Office Supplies - Printer Ink',
       'date': '10/06/2026',
-      'category': 'Office Supplies',
+      'category': 'Supplies',
       'amount': 65.00,
     },
     {
       'id': 'dummy_e20',
-      'name': 'Nina Dobrev',
+      'name': 'Client Meeting - Downtown',
       'date': '11/06/2026',
-      'category': 'Client Meeting',
+      'category': 'Travel',
       'amount': 180.00,
     },
     {
       'id': 'dummy_e21',
-      'name': 'Ryan Gosling',
+      'name': 'Hotel Booking - Partner Summit',
       'date': '12/06/2026',
-      'category': 'Hotel Booking',
+      'category': 'Travel',
       'amount': 520.00,
     },
     {
       'id': 'dummy_e22',
-      'name': 'Emma Watson',
+      'name': 'Office Internet Bill - June',
       'date': '13/06/2026',
-      'category': 'Internet Bill',
+      'category': 'Utilities',
       'amount': 45.00,
     },
     {
       'id': 'dummy_e23',
-      'name': 'Chris Evans',
+      'name': 'Client Dinner - Product Demo',
       'date': '14/06/2026',
-      'category': 'Client Dinner',
+      'category': 'Meals',
       'amount': 290.00,
     },
     {
       'id': 'dummy_e24',
-      'name': 'Scarlett Johansson',
+      'name': 'Social Media Marketing Campaign',
       'date': '15/06/2026',
-      'category': 'Marketing Campaign',
+      'category': 'Marketing',
       'amount': 750.00,
     },
     {
       'id': 'dummy_e25',
-      'name': 'Robert Downey',
+      'name': 'Flight Tickets - Tech Conference',
       'date': '16/06/2026',
-      'category': 'Flight Tickets',
+      'category': 'Travel',
       'amount': 890.00,
     },
   ];
