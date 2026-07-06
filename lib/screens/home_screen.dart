@@ -525,7 +525,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openProfile() {
-    setState(() => _showProfile = true);
+    setState(() {
+      _showProfile = true;
+      _showNotifications = false;
+    });
   }
 
   void _navigateToAttendance() {
@@ -575,6 +578,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                       _showProfile = false;
                       _showAssignTimeOff = false;
+                      _showNotifications = false;
                       _selectedTimeOffWorker = null;
                     }),
                     onBackToLogin: _handleBackToLogin,

@@ -160,34 +160,14 @@ class _NotificationSidebarState extends State<NotificationSidebar>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Builder(
-            builder: (context) {
-              final notifText = 'notifications'.tr();
-              return RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: notifText.isNotEmpty ? notifText[0] : 'N',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    TextSpan(
-                      text: notifText.length > 1 ? notifText.substring(1) : '',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF000000),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          Text(
+            'notifications'.tr(),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF000000),
+              fontFamily: 'SF Pro Display',
+            ),
           ),
           GestureDetector(
             onTap: _close,
@@ -303,7 +283,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
                       color: const Color(0xFF000000),
                       fontFamily: 'SF Pro Display',
@@ -313,7 +293,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   Text(
                     message,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 16,
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF6B7280),
                       fontFamily: 'SF Pro Display',
