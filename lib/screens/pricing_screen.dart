@@ -270,9 +270,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
             ),
 
               Positioned(
-                top: -7,
-                right: -10,
+                top: -12,
+                right: -6,
                 child: Container(
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
                     shape: BoxShape.circle,
@@ -284,13 +286,18 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: Color(0xFF0A44A9),
-                      size: 22,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 18,
+                      icon: const Icon(
+                        Icons.close,
+                        color: Color(0xFF0A44A9),
+                        size: 18,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(false),
                     ),
-                    onPressed: () => Navigator.of(context).pop(false),
                   ),
                 ),
               ),
