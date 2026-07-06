@@ -255,67 +255,77 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
-          width: 700,
+          width: 720,
           height: 800,
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFFF2F3F6),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'invoice_preview'.tr(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: const Icon(Icons.close, size: 24, color: Color(0xFF6B7280)),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0247C4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                    const Spacer(),
+                    Text(
+                      'invoice_preview'.tr(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'SF Pro Display',
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0247C4),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        onPressed: () async {
-                          try {
-                            await InvoiceService.shareInvoice(pdfBytes, fileName);
-                          } catch (e) {
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(content: Text('Error: $e')),
-                              );
-                            }
+                      ),
+                      onPressed: () async {
+                        try {
+                          await InvoiceService.shareInvoice(pdfBytes, fileName);
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
                           }
-                        },
-                        icon: const Icon(Icons.share, color: Colors.white, size: 18),
-                        label: Text(
-                          'share'.tr(),
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                        }
+                      },
+                      icon: const Icon(Icons.share, size: 16),
+                      label: Text(
+                        'share'.tr(),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(ctx),
-                        child: const Icon(Icons.close, size: 24),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 1,
+                color: const Color(0xFFE5E7EB),
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: pdfx.PdfView(
-                    controller: controller,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: pdfx.PdfView(
+                      controller: controller,
+                    ),
                   ),
                 ),
               ),
