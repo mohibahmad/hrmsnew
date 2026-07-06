@@ -2585,7 +2585,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 6),
 
         // Salary Section
         Text(
