@@ -1531,7 +1531,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     required this.onRelationshipStatusChanged,
   });
 
-  final Color formBgGrey = const Color(0x33CBCBCB);
+  final Color formBgGrey = const Color(0xFFF2F3F6);
 
   void _showCupertinoDatePicker({
     required BuildContext context,
@@ -2048,7 +2048,7 @@ class ExperienceFormSection extends StatefulWidget {
 }
 
 class _ExperienceFormSectionState extends State<ExperienceFormSection> {
-  final Color formBgGrey = const Color(0x33CBCBCB);
+  final Color formBgGrey = const Color(0xFFF2F3F6);
   late DateTime _calendarMonth;
   DateTime? _selectedDate;
   DateTime? _initialDate;
@@ -2884,7 +2884,7 @@ class DocumentationSection extends StatelessWidget {
                     height: 615,
                     padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                     decoration: BoxDecoration(
-                      color: const Color(0x33CBCBCB),
+                      color: const Color(0xFFF2F3F6),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Column(
@@ -3526,7 +3526,7 @@ class DocumentationSection extends StatelessWidget {
       height: 615,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0x33CBCBCB),
+        color: const Color(0xFFF2F3F6),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Stack(
