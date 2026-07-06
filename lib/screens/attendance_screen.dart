@@ -1496,28 +1496,27 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
             ),
+            maxLines: 1,
           ),
           const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 110),
+          Expanded(
             child: Text(
               value,
+              textAlign: TextAlign.right,
               style: TextStyle(
                 fontSize: 13,
                 color: valueColor,
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
