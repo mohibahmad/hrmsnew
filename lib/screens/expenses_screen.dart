@@ -17,8 +17,7 @@ import '../utils/delete_dialog.dart';
 import '../utils/premium_gate.dart';
 import '../services/preferences_service.dart';
 import '../widgets/amount_text.dart';
-import '../utils/image_utils.dart';
-
+ 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -1650,8 +1649,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  // ================= EMPTY STATE =================
-
+ 
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.only(top: 80),
