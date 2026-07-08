@@ -835,7 +835,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'sickLeaves': _sickLeavesController.text.trim(),
         'casualLeaves': _casualLeavesController.text.trim(),
         'joiningDate':
-            _joiningDate ?? DateFormat('MMMM d, yyyy').format(DateTime.now()),
+            _joiningDate ?? '',
         'profileImage': profileImageUrl,
 
         // Canonical keys (UI expects these):
@@ -2105,9 +2105,9 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
       }
     }
     setState(() {
-      _selectedDate = DateTime.now();
-      _calendarMonth = DateTime(_selectedDate!.year, _selectedDate!.month, 1);
-      _initialDate = _selectedDate;
+      _selectedDate = null;
+      _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+      _initialDate = null;
     });
   }
 
@@ -3600,6 +3600,8 @@ Widget _buildInputField(
   final isNationalId =
       label.toLowerCase().contains('national id') ||
       label.toLowerCase().contains('national_id');
+  final isEmail = label.toLowerCase().contains('email');
+  final isReligion = label.toLowerCase().contains('religion');
   final isNumeric = isAmount || isLeaves || isContact || isNationalId;
 
   return Column(
@@ -3642,7 +3644,12 @@ Widget _buildInputField(
                   if (isNationalId) LengthLimitingTextInputFormatter(20),
                   if (isLeaves) LengthLimitingTextInputFormatter(3),
                 ]
-              : null,
+              : () {
+                    final list = <TextInputFormatter>[];
+                    if (isEmail) list.add(LengthLimitingTextInputFormatter(100));
+                    if (isReligion) list.add(LengthLimitingTextInputFormatter(30));
+                    return list.isEmpty ? null : list;
+                  }(),
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF000000),

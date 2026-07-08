@@ -1537,13 +1537,16 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.close,
-                              color: Color(0xFFFFFFFF),
-                              size: 28,
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: Color(0xFFFFFFFF),
+                                size: 20,
+                              ),
+                              onPressed: () => Navigator.of(context).pop(),
                             ),
-                            onPressed: () => Navigator.of(context).pop(),
                           ),
                         ],
                       ),

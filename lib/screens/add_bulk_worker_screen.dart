@@ -35,38 +35,42 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   Future<void> _downloadTemplate() async {
     final String headerRow = [
-      'full_name',
-      'contact_number',
-      'email_address',
-      'father_name',
-      'national_id_title',
-      'religion_title',
-      'date_of_birth',
-      'gender_title',
-      'address_title',
-      'relationship_status_title',
-      'job_position',
-      'employee_type',
-      'work_model',
-      'experience_level_title',
-      'education_title',
-      'salary_type',
-      'currency_title',
-      'salary_amount',
-      'leave_policy',
-      'annual_leaves_title',
-      'sick_leaves_title',
-      'casual_leaves_title',
-      'joining_date_title',
-      'profile_image_url',
-      'front_id_image_url',
-      'back_id_image_url',
-      'cv_url',
-    ].map((k) => k.tr()).join(',');
-    const String dataRows =
-        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,January 9, 2026,,,,https://example.com/cv/john.pdf\n'
-        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,January 9, 2026,https://i.pravatar.cc/150?u=jane,,,\n'
-        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,January 9, 2026,,https://example.com/back_id.jpg,https://example.com/cv.pdf';
+      'Full Name',
+      'Contact Number',
+      'Email Address',
+      'Father Name',
+      'National ID',
+      'Religion',
+      'Date of Birth',
+      'Gender',
+      'Address',
+      'Relationship Status',
+      'Job Position',
+      'Employee Type',
+      'Work Model',
+      'Experience Level',
+      'Education',
+      'Salary Type',
+      'Currency',
+      'Salary Amount',
+      'Leave Policy',
+      'Annual Leaves',
+      'Sick Leaves',
+      'Casual Leaves',
+      'Joining Date',
+      'Profile Image URL',
+      'Front ID Image URL',
+      'Back ID Image URL',
+      'CV URL',
+    ].join(',');
+    final String dataRows =
+        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,1/15/2025,https://i.pravatar.cc/150?u=john,https://example.com/front_id.jpg,https://example.com/back_id.jpg,https://example.com/cv/john.pdf\n'
+        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,1/15/2025,https://i.pravatar.cc/150?u=jane,https://example.com/front_id2.jpg,https://example.com/back_id2.jpg,https://example.com/cv/jane.pdf\n'
+        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,1/15/2025,https://i.pravatar.cc/150?u=michael,https://example.com/front_id3.jpg,https://example.com/back_id3.jpg,https://example.com/cv/michael.pdf\n'
+        'Emily Brown,5551234567,emily@example.com,Thomas Brown,37405-9988776-5,Christianity,1992-07-08,Female,321 Oak Avenue Chicago,Married,Marketing Manager,Full-Time,On-Site,Senior,Master\'s,Monthly,USD,8500,Standard,20,12,10,1/20/2025,https://i.pravatar.cc/150?u=emily,https://example.com/front_id4.jpg,https://example.com/back_id4.jpg,https://example.com/cv/emily.pdf\n'
+        'Carlos Garcia,5559876543,carlos@example.com,Luis Garcia,37405-4433221-4,Catholic,1985-03-22,Male,654 Pine Road Miami,Single,DevOps Engineer,Full-Time,On-Site,Senior,Bachelor\'s,Monthly,USD,9500,Standard,18,12,10,2/1/2025,https://i.pravatar.cc/150?u=carlos,https://example.com/front_id5.jpg,https://example.com/back_id5.jpg,https://example.com/cv/carlos.pdf\n'
+        'Aisha Khan,5552468135,aisha@example.com,Imran Khan,37405-5566778-7,Islam,1993-11-12,Female,789 Maple Drive Houston,Single,Data Analyst,Full-Time,Hybrid,Mid-Level,Bachelor\'s,Monthly,USD,7000,Standard,15,10,10,2/5/2025,https://i.pravatar.cc/150?u=aisha,https://example.com/front_id6.jpg,https://example.com/back_id6.jpg,https://example.com/cv/aisha.pdf\n'
+        'Robert Wilson,5553691479,robert@example.com,James Wilson,37405-1122334-8,None,1980-09-05,Male,147 Elm Street Seattle,Married,HR Director,Full-Time,On-Site,Senior,Master\'s,Annual,USD,110000,Standard,20,15,12,1/10/2025,https://i.pravatar.cc/150?u=robert,https://example.com/front_id7.jpg,https://example.com/back_id7.jpg,https://example.com/cv/robert.pdf';
     final String templateStr = '$headerRow\n$dataRows';
 
     try {
@@ -172,6 +176,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final Map<String, String> headerMap = {
       'full name': 'name',
       'contact number': 'phone',
+      'company no': 'phone',
       'email address': 'email',
       'father name/husband name': 'fatherName',
       'father name': 'fatherName',
@@ -203,6 +208,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'back id': 'backId',
       'cv url': 'cv',
       'cv': 'cv',
+      'currency': 'currency',
     };
 
     // Check basic required columns
@@ -361,8 +367,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (email.isNotEmpty &&
           (existingEmails.contains(email) || csvEmails.contains(email))) {
         isDuplicate = true;
-      }
-      if (name.isNotEmpty &&
+      } else if (email.isEmpty &&
+          name.isNotEmpty &&
           (existingNames.contains(name) || csvNames.contains(name))) {
         isDuplicate = true;
       }
