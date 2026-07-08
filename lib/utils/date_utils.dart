@@ -107,6 +107,43 @@ class AppDateUtils {
     if (diff < 0) return true; // Future date
 
     switch (period) {
+      case 'Today':
+        return diff == 0;
+      case 'Week':
+        return diff <= 7;
+      case 'Month':
+        return diff <= 30;
+      case '6 Month':
+        return diff <= 180;
+      case 'Yearly':
+        return diff <= 365;
+      default:
+        return true;
+    }
+  }
+
+  static bool isTimestampWithinPeriod(dynamic createdAt, String period) {
+    if (createdAt == null) return true;
+
+    DateTime? date;
+    if (createdAt is DateTime) {
+      date = createdAt;
+    } else {
+      date = parseDateString(createdAt.toString());
+    }
+    if (date == null) return true;
+
+    final now = DateTime.now();
+    final refDate = now.isBefore(DateTime(2026, 6, 10))
+        ? DateTime(2026, 6, 10)
+        : now;
+
+    final diff = refDate.difference(date).inDays;
+    if (diff < 0) return true;
+
+    switch (period) {
+      case 'Today':
+        return diff == 0;
       case 'Week':
         return diff <= 7;
       case 'Month':

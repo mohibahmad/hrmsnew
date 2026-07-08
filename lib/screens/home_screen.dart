@@ -205,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _activatedScreens[0] = true;
     final currentUser = AuthService().currentUser;
     // Try to restore profile pic from local storage first (survives restarts)
     _restoreProfilePic(currentUser);
@@ -519,6 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToAttendance() {
     setState(() {
       _selectedIndex = 2;
+      _activatedScreens[2] = true;
       _selectedSubIndex = 0;
       _showProfile = false;
       _showAssignTimeOff = false;
@@ -536,28 +538,35 @@ class _HomeScreenState extends State<HomeScreen> {
       switch (type) {
         case 'worker_added':
           _selectedIndex = 1;
+          _activatedScreens[1] = true;
           break;
         case 'expense_added':
           _selectedIndex = 3;
+          _activatedScreens[3] = true;
           break;
         case 'attendance_marked':
           _selectedIndex = 2;
+          _activatedScreens[2] = true;
           _selectedSubIndex = 0;
           break;
         case 'payroll_added':
           _selectedIndex = 2;
+          _activatedScreens[2] = true;
           _selectedSubIndex = 1;
           break;
         case 'time_off_added':
           _selectedIndex = 2;
+          _activatedScreens[2] = true;
           _selectedSubIndex = 2;
           break;
         case 'asset_added':
           _selectedIndex = 2;
+          _activatedScreens[2] = true;
           _selectedSubIndex = 3;
           break;
         case 'holiday_added':
           _selectedIndex = 2;
+          _activatedScreens[2] = true;
           _selectedSubIndex = 4;
           break;
         default:
@@ -597,6 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) => setState(() {
                       _selectedIndex = index;
+                      _activatedScreens[index] = true;
                       if (subIndex != null) {
                         _selectedSubIndex = subIndex;
                       }
@@ -613,7 +623,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         Builder(
                           builder: (context) {
                             final int stackIndex = _getStackIndex();
-                            _activatedScreens[stackIndex] = true;
                             return IndexedStack(
                               index: stackIndex,
                               children: [

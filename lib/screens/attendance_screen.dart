@@ -212,9 +212,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   bool _matchesPeriod(Map<String, dynamic> doc) {
     final createdAt = doc['createdAt'];
-    final dateStr = createdAt?.toString() ?? '';
-    if (dateStr.isEmpty) return true;
-    return AppDateUtils.isDateWithinPeriod(dateStr, _selectedTimeframe);
+    if (createdAt == null) return true;
+    return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedTimeframe);
   }
 
   List<Map<String, dynamic>> get _filteredRecords {

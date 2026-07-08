@@ -163,7 +163,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...worker,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (worker['name'] ?? '').toString();
     if (name.isNotEmpty) {
@@ -327,8 +327,8 @@ class FirestoreService {
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
-    final name = (record['workerName'] ?? record['name'] ?? '').toString();
-    final amount = (record['totalAmount'] ?? record['amount'] ?? '').toString();
+    final name = (record['name'] ?? '').toString();
+    final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
     if (name.isNotEmpty) {
       await addNotification({
         'type': 'payroll_added',

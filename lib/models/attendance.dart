@@ -9,7 +9,7 @@ class Attendance {
   final String? type;
   final String? desc;
   final String? profileImage;
-  final String? createdAt;
+  final dynamic createdAt;
 
   const Attendance({
     this.id,
