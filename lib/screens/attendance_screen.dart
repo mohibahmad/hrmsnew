@@ -421,16 +421,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           height: 50,
           child: ElevatedButton(
             onPressed: () {
-              final isGuest =
-                  AuthService().currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const LoginScreen(),
-                  ),
-                );
-                return;
-              }
               Navigator.of(context).push(
                 PageRouteBuilder(
                   pageBuilder: (_, __, ___) => WorkersAttendanceScreen(
