@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
 import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
 
 class SubscriptionDialog extends StatefulWidget {
   final bool isPremium;
@@ -163,12 +164,15 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 child: ElevatedButton(
                                   onPressed: () async {
                                     await PreferencesService.setPremium(true);
-                                    try {
-                                      await FirestoreService()
-                                          .updateUserProfile({
-                                            'isPremium': true,
-                                          });
-                                    } catch (_) {}
+                                    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                                    if (!isGuest) {
+                                      try {
+                                        await FirestoreService()
+                                            .updateUserProfile({
+                                              'isPremium': true,
+                                            });
+                                      } catch (_) {}
+                                    }
                                     if (context.mounted) {
                                       Navigator.of(context).pop(true);
                                     }

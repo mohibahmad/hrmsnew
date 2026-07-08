@@ -3,12 +3,13 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
 
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
-  const NotificationSidebar({super.key, required this.onClose});
+  final ValueChanged<String>? onNotificationTypeTapped;
+  const NotificationSidebar({super.key, required this.onClose, this.onNotificationTypeTapped});
 
   @override
   State<NotificationSidebar> createState() => _NotificationSidebarState();
@@ -39,19 +40,24 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
     _controller.forward();
 
-    _notifSub = FirestoreService().notificationsStream.listen((snap) {
-      if (mounted) {
-        setState(() {
-          _notifications = snap.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .where((n) => n['isRead'] != true)
-              .toList();
-          _isLoading = false;
-        });
-      }
-    }, onError: (_) {
-      if (mounted) setState(() => _isLoading = false);
-    });
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      _isLoading = false;
+    } else {
+      _notifSub = FirestoreService().notificationsStream.listen((snap) {
+        if (mounted) {
+          setState(() {
+            _notifications = snap.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .where((n) => n['isRead'] != true)
+                .toList();
+            _isLoading = false;
+          });
+        }
+      }, onError: (_) {
+        if (mounted) setState(() => _isLoading = false);
+      });
+    }
   }
 
   @override
@@ -90,7 +96,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           icon: Icons.person_add_rounded,
           color: const Color(0xFF4C84E0),
           bgColor: const Color(0xFFEAF0FF),
-          label: 'New Member',
+          label: 'notif_new_member'.tr(),
           isWelcome: true,
         );
       case 'holiday_added':
@@ -98,42 +104,42 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           icon: Icons.celebration_rounded,
           color: const Color(0xFFFF5F65),
           bgColor: const Color(0xFFFFECED),
-          label: 'Holiday',
+          label: 'notif_holiday'.tr(),
         );
       case 'attendance_marked':
         return _NotifStyle(
           icon: Icons.check_circle_rounded,
           color: const Color(0xFF22C55E),
           bgColor: const Color(0xFFE8FAF0),
-          label: 'Attendance',
+          label: 'notif_attendance'.tr(),
         );
       case 'payroll_added':
         return _NotifStyle(
           icon: Icons.account_balance_wallet_rounded,
           color: const Color(0xFF8B5CF6),
           bgColor: const Color(0xFFF3EEFF),
-          label: 'Payroll',
+          label: 'notif_payroll'.tr(),
         );
       case 'time_off_added':
         return _NotifStyle(
           icon: Icons.beach_access_rounded,
           color: const Color(0xFFF59E0B),
           bgColor: const Color(0xFFFFF8E8),
-          label: 'Time Off',
+          label: 'notif_time_off'.tr(),
         );
       case 'asset_added':
         return _NotifStyle(
           icon: Icons.devices_rounded,
           color: const Color(0xFF14B8A6),
           bgColor: const Color(0xFFE6FAF8),
-          label: 'Asset',
+          label: 'notif_asset'.tr(),
         );
       case 'expense_added':
         return _NotifStyle(
           icon: Icons.receipt_rounded,
           color: const Color(0xFFEF4444),
           bgColor: const Color(0xFFFFECEC),
-          label: 'Expense',
+          label: 'notif_expense'.tr(),
           iconAsset: 'assets/expenses.png',
           iconSize: 32,
         );
@@ -142,7 +148,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           icon: Icons.info_rounded,
           color: const Color(0xFF9CA3AF),
           bgColor: const Color(0xFFF3F4F6),
-          label: 'Info',
+          label: 'notif_info'.tr(),
         );
     }
   }
@@ -342,6 +348,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               if (id != null && !isRead) {
                 FirestoreService().markNotificationRead(id);
               }
+              widget.onNotificationTypeTapped?.call(type);
+              _close();
             },
           );
         }
@@ -357,6 +365,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             if (id != null && !isRead) {
               await FirestoreService().markNotificationRead(id);
             }
+            widget.onNotificationTypeTapped?.call(type);
             _close();
           },
         );
@@ -447,8 +456,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                                 color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: const Text(
-                                'New Member',
+                              child: Text(
+                                'notif_new_member'.tr(),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,

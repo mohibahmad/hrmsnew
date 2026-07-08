@@ -253,7 +253,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       }
       _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
     } else {
-      _loadDefaultCompanyCurrency();
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (!isGuest) {
+        _loadDefaultCompanyCurrency();
+      }
     }
     // Do not auto-default joining date - user must explicitly set it.
 
@@ -366,7 +369,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking profile image: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -407,7 +409,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking front ID: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -448,7 +449,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking back ID: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -490,7 +490,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking CV: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -545,8 +544,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       }
     } catch (e) {
-      debugPrint('Failed to load company currency: $e');
-    }
+    } catch (_) {}
   }
 
   bool _hasChanges() {
@@ -903,7 +901,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         FlashySnackBar.show(context, message: e.message, isError: true);
       }
     } catch (e) {
-      debugPrint('Error saving worker: $e');
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -1891,7 +1888,7 @@ class WorkerDetailFormSection extends StatelessWidget {
           right: 0,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: Colors.black.withOpacity(0.54),
+            color: Colors.black.withValues(alpha: 0.54),
             child: Text(
               profileImageName ?? 'Profile Image',
               textAlign: TextAlign.center,
@@ -1933,7 +1930,7 @@ class WorkerDetailFormSection extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.54),
+                  color: Colors.black.withValues(alpha: 0.54),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1953,7 +1950,7 @@ class WorkerDetailFormSection extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.54),
+                  color: Colors.black.withValues(alpha: 0.54),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1988,7 +1985,7 @@ class WorkerDetailFormSection extends StatelessWidget {
           'tap_to_upload_profile_image'.tr(),
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.black.withOpacity(0.54),
+            color: Colors.black.withValues(alpha: 0.54),
             fontSize: 12,
             fontWeight: FontWeight.w500,
             fontFamily: 'SF Pro Display',
@@ -2105,7 +2102,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           }
         }
       } catch (e) {
-        debugPrint('Error parsing joining date: $e');
       }
     }
     setState(() {
@@ -3044,7 +3040,7 @@ class DocumentationSection extends StatelessWidget {
                     right: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      color: Colors.black.withOpacity(0.54),
+                      color: Colors.black.withValues(alpha: 0.54),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -3170,8 +3166,7 @@ class DocumentationSection extends StatelessWidget {
              mode: LaunchMode.externalApplication,
            );
          } catch (e) {
-           debugPrint('Error opening doc: $e');
-         }
+          }
        }
        return;
      }
@@ -3192,7 +3187,6 @@ class DocumentationSection extends StatelessWidget {
             mode: LaunchMode.externalApplication,
           );
         } catch (e) {
-          debugPrint('Error opening CV preview: $e');
         }
       }
       return;
@@ -3843,7 +3837,6 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
         }
       }
     } catch (e) {
-      debugPrint('Error rendering PDF pages: $e');
       if (mounted) {
         setState(() {
           _error = e.toString();

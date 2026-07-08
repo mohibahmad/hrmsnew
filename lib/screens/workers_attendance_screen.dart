@@ -8,11 +8,12 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
-import 'home_screen.dart';
+import '../widgets/sidebar_widget.dart';
 import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
+import 'login_screen.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
@@ -249,6 +250,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               isPremium: _isPremium,
               onItemSelected: (index, {subIndex}) {
                 Navigator.of(context, rootNavigator: true).pop();
+              },
+              onBackToLogin: () {
+                AuthService().signOut();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
               },
             ),
           ),
@@ -953,7 +961,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   decoration: InputDecoration.collapsed(
                                     hintText: 'enter_reason_hint'.tr(),
                                     hintStyle: TextStyle(
-                                      color: Colors.black.withOpacity(0.38),
+                                      color: Colors.black.withValues(alpha: 0.38),
                                       fontSize: 13,
                                       fontFamily: 'SF Pro Display',
                                     ),

@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../utils/validators.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
@@ -16,32 +15,42 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String get _userKey {
-    final email = AuthService().currentUser?.email?.trim().toLowerCase();
+    final user = AuthService().currentUser;
+    if (user == null || user.isAnonymous) return '';
+    final email = user.email?.trim().toLowerCase();
     if (email != null && email.isNotEmpty) return email;
-    final uid = AuthService().currentUser?.uid;
-    if (uid != null && uid.isNotEmpty) return uid;
+    final uid = user.uid;
+    if (uid.isNotEmpty) return uid;
     return '';
   }
 
-  DocumentReference get _userDoc => _db.collection('hrms_user').doc(_userKey);
+  bool get hasValidUserKey => _userKey.isNotEmpty;
 
-  CollectionReference get _workers => _userDoc.collection('hrms_workers');
-  CollectionReference get _expenses => _userDoc.collection('hrms_expenses');
-  CollectionReference get _attendance => _userDoc.collection('hrms_attendance');
-  CollectionReference get _payroll => _userDoc.collection('hrms_payroll');
-  CollectionReference get _timeoff => _userDoc.collection('hrms_timeoff');
-  CollectionReference get _assets => _userDoc.collection('hrms_assets');
-  CollectionReference get _holidays => _userDoc.collection('hrms_holidays');
-  CollectionReference get _notifications =>
-      _userDoc.collection('hrms_notifications');
+  DocumentReference? get _userDoc {
+    final key = _userKey;
+    if (key.isEmpty) return null;
+    return _db.collection('hrms_user').doc(key);
+  }
+
+  CollectionReference? get _workers => _userDoc?.collection('hrms_workers');
+  CollectionReference? get _expenses => _userDoc?.collection('hrms_expenses');
+  CollectionReference? get _attendance => _userDoc?.collection('hrms_attendance');
+  CollectionReference? get _payroll => _userDoc?.collection('hrms_payroll');
+  CollectionReference? get _timeoff => _userDoc?.collection('hrms_timeoff');
+  CollectionReference? get _assets => _userDoc?.collection('hrms_assets');
+  CollectionReference? get _holidays => _userDoc?.collection('hrms_holidays');
+  CollectionReference? get _notifications =>
+      _userDoc?.collection('hrms_notifications');
 
   Future<void> createUserProfile({
     required String username,
     required String email,
     required String phone,
   }) async {
+    final doc = _userDoc;
+    if (doc == null) return;
     final companyId = _generateCompanyId();
-    await _userDoc.set({
+    await doc.set({
       'username': username,
       'email': email,
       'phone': phone,
@@ -63,12 +72,15 @@ class FirestoreService {
   }
 
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
-    await _userDoc.set(data, SetOptions(merge: true));
+    final doc = _userDoc;
+    if (doc == null) return;
+    await doc.set(data, SetOptions(merge: true));
   }
 
   Future<void> deleteUserData() async {
-    if (_userKey.isEmpty) return;
-    await _userDoc.set({
+    final doc = _userDoc;
+    if (doc == null) return;
+    await doc.set({
       'isDeleted': true,
       'deletedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -76,7 +88,8 @@ class FirestoreService {
 
   Future<void> clearDummyDataForCurrentUser() async {
     if (isTesting) return;
-    if (_userKey.isEmpty) return;
+    final doc = _userDoc;
+    if (doc == null) return;
 
     final profile = await getUserProfile();
     if (profile?['hasDummyData'] != true) return;
@@ -90,11 +103,11 @@ class FirestoreService {
       'hrms_assets',
       'hrms_holidays',
     ]) {
-      final snapshot = await _userDoc.collection(collectionName).get();
+      final snapshot = await doc.collection(collectionName).get();
       var batch = _db.batch();
       int count = 0;
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
+      for (final d in snapshot.docs) {
+        batch.delete(d.reference);
         count++;
         if (count % 500 == 0) {
           await batch.commit();
@@ -106,7 +119,7 @@ class FirestoreService {
       }
     }
 
-    await _userDoc.update({'hasDummyData': false});
+    await doc.update({'hasDummyData': false});
   }
 
   Future<bool> isCurrentUserDeleted() async {
@@ -126,23 +139,29 @@ class FirestoreService {
 
   Future<Map<String, dynamic>?> getUserProfile() async {
     if (isTesting) return {'isPremium': false, 'hasDummyData': false};
+    final doc = _userDoc;
+    if (doc == null) return null;
     try {
-      final doc = await _userDoc.get();
-      return doc.data() as Map<String, dynamic>?;
+      final snapshot = await doc.get();
+      return snapshot.data() as Map<String, dynamic>?;
     } catch (e) {
-      debugPrint('getUserProfile failed: $e');
       return null;
     }
   }
 
   /// Real-time stream of the user's profile document.
   /// Use this to react instantly to premium status changes.
-  Stream<Map<String, dynamic>?> get userProfileStream =>
-      _userDoc.snapshots().map((snap) => snap.data() as Map<String, dynamic>?);
+  Stream<Map<String, dynamic>?> get userProfileStream {
+    final doc = _userDoc;
+    if (doc == null) return Stream.value(null);
+    return doc.snapshots().map((snap) => snap.data() as Map<String, dynamic>?);
+  }
 
   Future<String> addWorker(Map<String, dynamic> worker) async {
     Validators.validateWorker(worker);
-    final docRef = await _workers.add({
+    final coll = _workers;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...worker,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -160,6 +179,8 @@ class FirestoreService {
   Future<BulkWorkerResult> addBulkWorkers(
     List<Map<String, dynamic>> workersList,
   ) async {
+    final coll = _workers;
+    if (coll == null) return BulkWorkerResult(imported: 0, skipped: workersList.length);
     var batch = _db.batch();
     int count = 0;
     int skipped = 0;
@@ -167,7 +188,7 @@ class FirestoreService {
     for (var worker in workersList) {
       try {
         Validators.validateWorker(worker);
-        final docRef = _workers.doc();
+        final docRef = coll.doc();
         batch.set(docRef, {
           ...worker,
           'createdAt': DateTime.now().toUtc().toIso8601String(),
@@ -179,7 +200,6 @@ class FirestoreService {
           batch = _db.batch();
         }
       } catch (e) {
-        debugPrint('Skipping invalid worker row: $e');
         skipped++;
         continue;
       }
@@ -194,23 +214,34 @@ class FirestoreService {
 
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {
     Validators.validateWorker(data);
-    await _workers.doc(id).update(data);
+    final coll = _workers;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deleteWorker(String id) async {
-    await _workers.doc(id).delete();
+    final coll = _workers;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get workersStream =>
-      _workers.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get workersStream {
+    final coll = _workers;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   Future<QuerySnapshot> getWorkersOnce() async {
-    return await _workers.get();
+    final coll = _workers;
+    if (coll == null) throw StateError('No authenticated user');
+    return await coll.get();
   }
 
   Future<String> addExpense(Map<String, dynamic> expense) async {
     Validators.validateExpense(expense);
-    final docRef = await _expenses.add({
+    final coll = _expenses;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...expense,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -230,19 +261,28 @@ class FirestoreService {
 
   Future<void> updateExpense(String id, Map<String, dynamic> data) async {
     Validators.validateExpense(data);
-    await _expenses.doc(id).update(data);
+    final coll = _expenses;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deleteExpense(String id) async {
-    await _expenses.doc(id).delete();
+    final coll = _expenses;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get expensesStream =>
-      _expenses.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get expensesStream {
+    final coll = _expenses;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   Future<String> addAttendanceRecord(Map<String, dynamic> record) async {
     Validators.validateAttendance(record);
-    final docRef = await _attendance.add({
+    final coll = _attendance;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -262,19 +302,28 @@ class FirestoreService {
     Map<String, dynamic> data,
   ) async {
     Validators.validateAttendance(data);
-    await _attendance.doc(id).update(data);
+    final coll = _attendance;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deleteAttendanceRecord(String id) async {
-    await _attendance.doc(id).delete();
+    final coll = _attendance;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get attendanceStream =>
-      _attendance.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get attendanceStream {
+    final coll = _attendance;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   Future<String> addPayrollRecord(Map<String, dynamic> record) async {
     Validators.validatePayroll(record);
-    final docRef = await _payroll.add({
+    final coll = _payroll;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -293,19 +342,28 @@ class FirestoreService {
   }
 
   Future<void> updatePayrollRecord(String id, Map<String, dynamic> data) async {
-    await _payroll.doc(id).update(data);
+    final coll = _payroll;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deletePayrollRecord(String id) async {
-    await _payroll.doc(id).delete();
+    final coll = _payroll;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get payrollStream =>
-      _payroll.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get payrollStream {
+    final coll = _payroll;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   Future<String> addTimeOffRecord(Map<String, dynamic> record) async {
     Validators.validateTimeOff(record);
-    final docRef = await _timeoff.add({
+    final coll = _timeoff;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...record,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -322,20 +380,29 @@ class FirestoreService {
   }
 
   Future<void> updateTimeOffRecord(String id, Map<String, dynamic> data) async {
-    await _timeoff.doc(id).update(data);
+    final coll = _timeoff;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deleteTimeOffRecord(String id) async {
-    await _timeoff.doc(id).delete();
+    final coll = _timeoff;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get timeoffStream =>
-      _timeoff.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get timeoffStream {
+    final coll = _timeoff;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   // --- Assets CRUD ---
   Future<String> addAsset(Map<String, dynamic> asset) async {
     Validators.validateAsset(asset);
-    final docRef = await _assets.add({
+    final coll = _assets;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...asset,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -352,20 +419,29 @@ class FirestoreService {
 
   Future<void> updateAsset(String id, Map<String, dynamic> data) async {
     Validators.validateAsset(data);
-    await _assets.doc(id).update(data);
+    final coll = _assets;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deleteAsset(String id) async {
-    await _assets.doc(id).delete();
+    final coll = _assets;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get assetsStream =>
-      _assets.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get assetsStream {
+    final coll = _assets;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   // --- Holidays CRUD ---
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
     Validators.validateHoliday(holiday);
-    final docRef = await _holidays.add({
+    final coll = _holidays;
+    if (coll == null) throw StateError('No authenticated user');
+    final docRef = await coll.add({
       ...holiday,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
@@ -381,18 +457,23 @@ class FirestoreService {
   }
 
   Future<void> updateHoliday(String id, Map<String, dynamic> data) async {
-    // Holiday updates are often partial (e.g. toggling `isEnabled`), so we
-    // only validate the name when the caller actually sets it.
     if (data.containsKey('name')) Validators.validateHoliday(data);
-    await _holidays.doc(id).update(data);
+    final coll = _holidays;
+    if (coll == null) return;
+    await coll.doc(id).update(data);
   }
 
   Future<void> deleteHoliday(String id) async {
-    await _holidays.doc(id).delete();
+    final coll = _holidays;
+    if (coll == null) return;
+    await coll.doc(id).delete();
   }
 
-  Stream<QuerySnapshot> get holidaysStream =>
-      _holidays.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get holidaysStream {
+    final coll = _holidays;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   Future<void> seedDummyDataForUser({
     required String uid,
@@ -543,22 +624,31 @@ class FirestoreService {
   // ==================== NOTIFICATIONS ====================
 
   Future<void> addNotification(Map<String, dynamic> notification) async {
-    await _notifications.add({
+    final coll = _notifications;
+    if (coll == null) return;
+    await coll.add({
       ...notification,
       'isRead': false,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     });
   }
 
-  Stream<QuerySnapshot> get notificationsStream =>
-      _notifications.orderBy('createdAt', descending: true).snapshots();
+  Stream<QuerySnapshot> get notificationsStream {
+    final coll = _notifications;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
 
   Future<void> markNotificationRead(String id) async {
-    await _notifications.doc(id).update({'isRead': true});
+    final coll = _notifications;
+    if (coll == null) return;
+    await coll.doc(id).update({'isRead': true});
   }
 
   Future<void> markAllNotificationsRead() async {
-    final unread = await _notifications.where('isRead', isEqualTo: false).get();
+    final coll = _notifications;
+    if (coll == null) return;
+    final unread = await coll.where('isRead', isEqualTo: false).get();
     final batch = _db.batch();
     for (final doc in unread.docs) {
       batch.update(doc.reference, {'isRead': true});
@@ -569,7 +659,9 @@ class FirestoreService {
   }
 
   Future<int> getUnreadNotificationCount() async {
-    final unread = await _notifications.where('isRead', isEqualTo: false).get();
+    final coll = _notifications;
+    if (coll == null) return 0;
+    final unread = await coll.where('isRead', isEqualTo: false).get();
     return unread.docs.length;
   }
 }

@@ -10,6 +10,8 @@ import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'package:share_plus/share_plus.dart';
+import '../shared/app_constants.dart';
+import '../shared/auth_widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -30,17 +32,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const Map<String, Locale> _languageMap = {
-    'English': Locale('en'),
-    'Español': Locale('es'),
-    'Français': Locale('fr'),
-    'Português': Locale('pt'),
-    'Русский': Locale('ru'),
-  };
-
   String _getCurrentLanguageName() {
     final code = context.locale.languageCode;
-    for (final entry in _languageMap.entries) {
+    for (final entry in languageMap.entries) {
       if (entry.value.languageCode == code) return entry.key;
     }
     return 'English';
@@ -229,7 +223,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm != true) return;
 
     try {
-      await FirestoreService().deleteUserData();
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (!isGuest) {
+        await FirestoreService().deleteUserData();
+      }
       await AuthService().signOut();
 
       if (context.mounted) {
@@ -271,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final allLanguages = _languageMap.keys.toList();
+            final allLanguages = languageMap.keys.toList();
             final currentLang = _getCurrentLanguageName();
             return Align(
               alignment: Alignment.centerRight,
@@ -316,7 +313,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final isSel = currentLang == lang;
                           return InkWell(
                             onTap: () {
-                              final locale = _languageMap[lang]!;
+                              final locale = languageMap[lang]!;
                               context.setLocale(locale);
                               setModalState(() {});
                               Future.delayed(

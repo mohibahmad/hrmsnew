@@ -121,7 +121,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             _isLoading = false;
           });
         }
-      }, onError: (e) => debugPrint('assetsStream error: $e'));
+      });
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
@@ -153,7 +153,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
           .where((n) => n.isNotEmpty)
           .toSet()
           .toList();
-      debugPrint('Guest mode worker names for dropdown: $names');
       return Stream.value(names);
     } else {
       return FirestoreService().workersStream.map((snapshot) {
@@ -165,7 +164,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
             .where((n) => n.isNotEmpty)
             .toSet()
             .toList();
-        debugPrint('Fetched worker names for dropdown: $list');
         return list;
       });
     }
@@ -1279,7 +1277,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: data.isReturned ? Colors.red : Colors.green,
+                  color: data.isReturned ? Colors.green : Colors.red,
                   fontFamily: 'SF Pro Display',
                 ),
               ),

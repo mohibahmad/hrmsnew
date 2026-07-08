@@ -21,7 +21,6 @@ class ErrorReporter {
   }) {
     try {
       final label = context == null ? 'Error' : 'Error [$context]';
-      debugPrint('$label: $error');
       if (stack != null && kDebugMode) {
         debugPrintStack(stackTrace: stack, label: label);
       }

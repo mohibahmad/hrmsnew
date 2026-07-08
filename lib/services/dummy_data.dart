@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
@@ -18,7 +17,7 @@ class DummyData {
             ..addAll(list);
         }
       } catch (e) {
-        debugPrint('Failed to load dummy_workers: $e');
+        // ignore
       }
 
       try {
@@ -62,7 +61,7 @@ class DummyData {
           }
         }
       } catch (e) {
-        debugPrint('Failed to load dummy_expenses: $e');
+        // ignore
       }
 
       try {
@@ -75,7 +74,7 @@ class DummyData {
             ..addAll(list);
         }
       } catch (e) {
-        debugPrint('Failed to load dummy_attendance: $e');
+        // ignore
       }
 
       try {
@@ -88,7 +87,7 @@ class DummyData {
             ..addAll(list);
         }
       } catch (e) {
-        debugPrint('Failed to load dummy_payroll: $e');
+        // ignore
       }
 
       try {
@@ -101,7 +100,7 @@ class DummyData {
             ..addAll(list);
         }
       } catch (e) {
-        debugPrint('Failed to load dummy_timeoff: $e');
+        // ignore
       }
 
       try {
@@ -114,10 +113,10 @@ class DummyData {
             ..addAll(list);
         }
       } catch (e) {
-        debugPrint('Failed to load dummy_assets: $e');
+        // ignore
       }
     } catch (e) {
-      debugPrint('Failed to load dummy data prefs: $e');
+      // ignore
     }
   }
 

@@ -16,11 +16,6 @@ class AuthService {
   static final ValueNotifier<String?> profilePicNotifier =
       ValueNotifier<String?>(null);
 
-  /// Toggle this to `true` to bypass native SDKs and log in instantly in
-  /// demo mode. Set to `false` to use the real Google/Apple sign-in flows.
-  static const bool useDemoAuth = false;
-  // static const bool useDemoAppleAuth = false;
-
   /// Set to `true` when a guest user logged in via fallback (no real Firebase user).
   bool get isGuestUser => _isGuestUser;
   bool _isGuestUser = false;
@@ -58,13 +53,11 @@ class AuthService {
       );
       await PreferencesService.setLoggedIn(true);
       return credential;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Real Firebase error — let the caller (signup_screen) handle it
-      debugPrint('signUp FirebaseAuthException: ${e.code}');
       rethrow;
-    } catch (e) {
+    } catch (_) {
       // Non-Firebase error (e.g. network) — also rethrow so caller can show error
-      debugPrint('signUp unexpected error: $e');
       rethrow;
     }
   }
@@ -74,23 +67,18 @@ class AuthService {
     required String password,
   }) async {
     try {
-      debugPrint('signIn attempt for email: ${email.trim()}');
-      debugPrint('signIn current user before: ${_auth.currentUser?.email}');
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      debugPrint('signIn success, user email: ${credential.user?.email}');
       await PreferencesService.setLoggedIn(true);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return credential;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Let the caller handle specific Firebase errors (wrong password, etc.)
-      debugPrint('signIn FirebaseAuthException: ${e.code} - ${e.message}');
       rethrow;
-    } catch (e) {
-      debugPrint('signIn unexpected error: $e');
+    } catch (_) {
       rethrow;
     }
   }
@@ -186,8 +174,11 @@ class AuthService {
 
   /// Sign out
   Future<void> signOut() async {
-      _isGuestUser = false;
-    await _auth.signOut();
+    final wasGuest = isGuestUser;
+    _isGuestUser = false;
+    if (!wasGuest) {
+      await _auth.signOut();
+    }
     await PreferencesService.clear();
     profilePicNotifier.value = null;
   }
@@ -201,9 +192,7 @@ class AuthService {
       if (profile != null && profile['isPremium'] == true) {
         await PreferencesService.setPremium(true);
       }
-    } catch (e) {
-      debugPrint('Failed to sync premium status: $e');
-    }
+    } catch (_) {}
   }
 
   /// Send password reset email

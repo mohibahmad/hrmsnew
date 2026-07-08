@@ -482,13 +482,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                 ),
                 _buildInputField(
                   'secondary_contact'.tr(),
-                  _isEditing
-                      ? _contact2Controller
-                      : TextEditingController(
-                          text: _contact2Controller.text.isNotEmpty
-                              ? _contact2Controller.text
-                              : '-',
-                        ),
+                  _contact2Controller,
                   readOnly: !_isEditing,
                 ),
               ),

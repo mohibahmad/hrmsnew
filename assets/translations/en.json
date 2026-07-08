@@ -656,5 +656,13 @@
   "holiday_notification": "Holiday \"{name}\" has been added",
   "attendance_notification": "Attendance marked for {name",
   "no_search_results": "No search results",
-  "clear_search": "Clear search"
+  "clear_search": "Clear search",
+  "notif_new_member": "New Member",
+  "notif_holiday": "Holiday",
+  "notif_attendance": "Attendance",
+  "notif_payroll": "Payroll",
+  "notif_time_off": "Time Off",
+  "notif_asset": "Asset",
+  "notif_expense": "Expense",
+  "notif_info": "Info"
 }

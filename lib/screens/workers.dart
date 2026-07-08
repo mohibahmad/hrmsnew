@@ -58,23 +58,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPremiumStatus();
-  }
-
-  Future<void> _loadPremiumStatus() async {
-    bool isPremium = false;
-    final user = AuthService().currentUser;
-    // Always read premium status from Firestore, never trust local cache.
-    if (user != null && !user.isAnonymous) {
-      try {
-        final profile = await FirestoreService().getUserProfile();
-        isPremium = profile?['isPremium'] == true;
-        await PreferencesService.setPremium(isPremium);
-      } catch (_) {
-        isPremium = await PreferencesService.isPremium();
-      }
-    }
-    if (mounted) setState(() => _isPremium = isPremium);
   }
 
   @override
@@ -99,13 +82,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                         builder: (context) => const SubscriptionDialog(),
                       );
                       if (result == true) {
-                        await _loadPremiumStatus();
                       }
                     },
                     child: Container(
                       width: 238,
                       margin: const EdgeInsets.only(
-                        top: 29,
+                        top: 16,
                         left: 16,
                         right: 16,
                       ),
@@ -230,7 +212,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // Navigation Menu
                 _buildNavItem(
@@ -369,7 +351,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   width: 6,
                   decoration: const BoxDecoration(
                     color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.only(
+                     borderRadius: BorderRadius.only(
                       topRight: Radius.circular(4),
                       bottomRight: Radius.circular(4),
                     ),

@@ -90,7 +90,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         );
       }
     } catch (e) {
-      debugPrint('Error generating template: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -153,7 +152,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (!mounted) return;
       await _processCsvData(rows);
     } catch (e) {
-      debugPrint('Error picking CSV: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -265,7 +263,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             .where((n) => n.isNotEmpty)
             .toSet();
       } catch (e) {
-        debugPrint('Error fetching existing workers: $e');
       }
     }
 
@@ -454,7 +451,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
     } catch (e) {
       if (mounted) Navigator.of(context).pop();
-      debugPrint('Error saving bulk workers: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -680,7 +676,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF000000).withOpacity(0.02),
+                            color: const Color(0xFF000000).withValues(alpha: 0.02),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -691,7 +687,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF34D399).withOpacity(0.15),
+                              color: const Color(0xFF34D399).withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -743,7 +739,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF000000).withOpacity(0.03),
+                            color: const Color(0xFF000000).withValues(alpha: 0.03),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),

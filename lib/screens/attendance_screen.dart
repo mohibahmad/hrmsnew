@@ -170,7 +170,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
         onError: (e) {
-          debugPrint('workersStream error: $e');
           if (mounted) {
             setState(() {
               _workersLoaded = true;
@@ -192,7 +191,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
         onError: (e) {
-          debugPrint('attendanceStream error: $e');
           if (mounted) {
             setState(() {
               _attendanceLoaded = true;
@@ -470,7 +468,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
-            title: 'present_workers'.tr(),
+            title: 'Present'.tr(),
             count: "$_presentCount",
             iconAsset: 'assets/present.svg',
             countColor: const Color(0xFF00FF2A),
@@ -479,7 +477,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
-            title: 'absent_workers'.tr(),
+            title: 'Absent'.tr(),
             count: "$_absentCount",
             iconAsset: 'assets/absent.svg',
             countColor: const Color(0xFFFF0004),
@@ -488,7 +486,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
-            title: 'leave_workers'.tr(),
+            title: 'On leave'.tr(),
             count: "$_leaveCount",
             iconAsset: 'assets/leave.svg',
             countColor: const Color(0xFFFF7B00),

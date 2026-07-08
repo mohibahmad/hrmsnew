@@ -6,11 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/upload_service.dart';
 import '../widgets/clickable_gesture_detector.dart';
-import 'home_screen.dart'; // SidebarWidget is assumed to be here
+import '../widgets/sidebar_widget.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../services/dummy_data.dart';
+import 'login_screen.dart';
 import '../widgets/custom_dropdown_field.dart';
 
 class AddNewWorkerScreen extends StatefulWidget {
@@ -86,7 +88,6 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking profile image: $e');
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -174,22 +175,45 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       }
 
       // Pushing data via FirestoreService (user-scoped collection)
-      await FirestoreService().addWorker({
-        'name': nameController.text.trim(),
-        'fatherName': fatherNameController.text.trim(),
-        'email': emailController.text.trim(),
-        'phone': contactController.text.trim(),
-        'nationalId': nationalIdController.text.trim(),
-        'religion': religionController.text.trim(),
-        'dob': dobController.text.trim(),
-        'address': addressController.text.trim(),
-        'relationshipStatus': isMarried ? 'Married' : 'Single',
-        'gender': selectedGender,
-        'position': 'Employee',
-        'type1': 'Full-Time',
-        'type2': 'On-Site',
-        'profileImage': profileImageUrl,
-      });
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        // Guests use local DummyData only — no Firebase
+        final newWorker = {
+          'name': nameController.text.trim(),
+          'fatherName': fatherNameController.text.trim(),
+          'email': emailController.text.trim(),
+          'phone': contactController.text.trim(),
+          'nationalId': nationalIdController.text.trim(),
+          'religion': religionController.text.trim(),
+          'dob': dobController.text.trim(),
+          'address': addressController.text.trim(),
+          'relationshipStatus': isMarried ? 'Married' : 'Single',
+          'gender': selectedGender,
+          'position': 'Employee',
+          'type1': 'Full-Time',
+          'type2': 'On-Site',
+          'profileImage': profileImageUrl,
+          'id': 'dummy_${DateTime.now().millisecondsSinceEpoch}',
+        };
+        DummyData.workers.add(newWorker);
+      } else {
+        await FirestoreService().addWorker({
+          'name': nameController.text.trim(),
+          'fatherName': fatherNameController.text.trim(),
+          'email': emailController.text.trim(),
+          'phone': contactController.text.trim(),
+          'nationalId': nationalIdController.text.trim(),
+          'religion': religionController.text.trim(),
+          'dob': dobController.text.trim(),
+          'address': addressController.text.trim(),
+          'relationshipStatus': isMarried ? 'Married' : 'Single',
+          'gender': selectedGender,
+          'position': 'Employee',
+          'type1': 'Full-Time',
+          'type2': 'On-Site',
+          'profileImage': profileImageUrl,
+        });
+      }
 
       // Show Success Message
       if (mounted) {
@@ -247,8 +271,16 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           SidebarWidget(
             key: ValueKey('sidebar_${context.locale.languageCode}'),
             selectedIndex: 1,
+            isGuest: AuthService().currentUser?.isAnonymous ?? false,
             onItemSelected: (index, {subIndex}) {
               _safePop();
+            },
+            onBackToLogin: () {
+              AuthService().signOut();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
             },
           ),
 
@@ -377,7 +409,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Color(0xFF000000).withOpacity(0.02),
+                                  color: Color(0xFF000000).withValues(alpha: 0.02),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -608,7 +640,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                               BoxShadow(
                                                 color: Color(
                                                   0xFF000000,
-                                                ).withOpacity(0.01),
+                                                ).withValues(alpha: 0.01),
                                                 blurRadius: 10,
                                                 offset: const Offset(0, 5),
                                               ),
@@ -641,8 +673,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                             BoxDecoration(
                                                               color: Colors
                                                                   .black
-                                                                  .withOpacity(
-                                                                    0.6,
+                                                                  .withValues(
+                                                                    alpha: 0.6,
                                                                   ),
                                                               shape: BoxShape
                                                                   .circle,

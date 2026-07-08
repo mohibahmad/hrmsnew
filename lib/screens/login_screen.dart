@@ -9,31 +9,11 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/snackbar_utils.dart';
+import '../shared/app_constants.dart';
+import '../shared/auth_widgets.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'signup_screen.dart';
-
-const String _googleSvg = '''
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
-  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-  <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.55 2.89-2.2 5.33-4.66 7l7.25 5.62C43.59 36.43 46.5 30.73 46.5 24z"/>
-  <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
-  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.25-5.62c-2.03 1.37-4.63 2.19-8.64 2.19-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-</svg>
-''';
-
-const String _appleSvg = '''
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px" fill="#FFFFFF">
-  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.93.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.499c.87-1.066 1.43-2.56 1.261-4.04-1.274.052-2.813.858-3.722 1.91-.78.897-1.467 2.418-1.287 3.873 1.416.104 2.873-.675 3.748-1.743z"/>
-</svg>
-''';
-
-const String _guestSvg = '''
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-  <circle cx="12" cy="7" r="4"/>
-</svg>
-''';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,119 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
 
-  static const Map<String, Locale> _languageMap = {
-    'English': Locale('en'),
-    'Español': Locale('es'),
-    'Français': Locale('fr'),
-    'Português': Locale('pt'),
-    'Русский': Locale('ru'),
-  };
-
-  void _showLanguageModal() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.05),
-      builder: (BuildContext ctx) {
-        final allLanguages = _languageMap.keys.toList();
-        final currentCode = context.locale.languageCode;
-        final currentLang = allLanguages.firstWhere(
-          (l) => _languageMap[l]!.languageCode == currentCode,
-          orElse: () => 'English',
-        );
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 40.0, top: 96.0),
-                child: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    width: 280,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 20,
-                      horizontal: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'select_language'.tr(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ...allLanguages.map((lang) {
-                          final isSel = currentLang == lang;
-                          return InkWell(
-                            onTap: () {
-                              context.setLocale(_languageMap[lang]!);
-                              Navigator.pop(context);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              margin: const EdgeInsets.only(bottom: 4),
-                              decoration: BoxDecoration(
-                                color: isSel
-                                    ? const Color(0xFFF1F3F5)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    lang,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  if (isSel)
-                                    const Icon(
-                                      Icons.check,
-                                      size: 18,
-                                      color: Color(0xFF0247C4),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   bool _isAppleLoading = false;
   bool _isGuestLoading = false;
   bool _obscurePassword = true;
@@ -176,13 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
 
-    // ── Quick test bypass ──────────────────────────────────────────────────
-    // Uncomment the block below to auto-login as guest after 1 second:
-    // Future.delayed(const Duration(seconds: 1), () {
-    //   if (!mounted) return;
-    //   _handleGuestLogin();
-    // });
-    // ────────────────────────────────────────────────────────────────────────
   }
 
   @override
@@ -278,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isGuestLoading = true);
     try {
       await _authService.signInAnonymously();
+      await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -289,8 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
-    } catch (e, st) {
-      debugPrint('Guest login error: $e\n$st');
+    } catch (_) {
       if (mounted) {
         _showErrorSnackBar('guest_login_failed'.tr());
       }
@@ -424,71 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return false;
   }
 
-  Widget _buildSocialButton({
-    required String text,
-    required Widget icon,
-    required VoidCallback? onPressed,
-    required bool isLoading,
-    Color? backgroundColor,
-    Color? textColor,
-    BorderSide? border,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 44,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: backgroundColor ?? Colors.white,
-          foregroundColor: textColor ?? const Color(0xFF000000),
-          disabledForegroundColor: (textColor ?? const Color(0xFF000000))
-              .withValues(alpha: 0.6),
-          disabledBackgroundColor: backgroundColor ?? Colors.white,
-          side: border ?? BorderSide(color: Colors.grey.shade200),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isLoading)
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      textColor ?? const Color(0xFF000000),
-                    ),
-                  ),
-                ),
-              )
-            else
-              icon,
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-                color: isLoading
-                    ? (textColor ?? const Color(0xFF000000)).withValues(
-                        alpha: 0.6,
-                      )
-                    : null,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   List<Widget> _buildFormContent(BuildContext context) {
     return [
       Center(
@@ -531,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _InputLabel(label: 'email_label'.tr()),
+            InputLabel(label: 'email_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _emailController,
@@ -541,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _inputDecoration('email_hint'.tr()),
+              decoration: inputDecoration('email_hint'.tr()),
                validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'email_required'.tr();
@@ -553,7 +348,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
             ),
             const SizedBox(height: 12),
-            _InputLabel(label: 'password_label'.tr()),
+            InputLabel(label: 'password_label'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _passwordController,
@@ -563,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _inputDecoration(
+              decoration: inputDecoration(
                 'password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscurePassword,
@@ -670,9 +465,9 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 16),
 
       // Continue with Google Button
-      _buildSocialButton(
+      buildSocialButton(context: context,
         text: 'continue_with_google'.tr(),
-        icon: SvgPicture.string(_googleSvg, width: 16, height: 16),
+        icon: SvgPicture.string(googleSvg, width: 16, height: 16),
         isLoading: _isGoogleLoading,
         onPressed: _anyLoading ? null : _handleGoogleLogin,
         backgroundColor: Colors.white,
@@ -681,10 +476,10 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 8),
 
       // Continue with Apple Button
-      _buildSocialButton(
+      buildSocialButton(context: context,
         text: 'continue_with_apple'.tr(),
         icon: SvgPicture.string(
-          _appleSvg,
+          appleSvg,
           width: 16,
           height: 16,
           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
@@ -698,10 +493,10 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 8),
 
       // Continue as Guest Button
-      _buildSocialButton(
+      buildSocialButton(context: context,
         text: 'continue_as_guest'.tr(),
         icon: SvgPicture.string(
-          _guestSvg,
+          guestSvg,
           width: 16,
           height: 16,
           colorFilter: const ColorFilter.mode(
@@ -753,62 +548,6 @@ class _LoginScreenState extends State<LoginScreen> {
     ];
   }
 
-  InputDecoration _inputDecoration(
-    String hintText, {
-    bool isPassword = false,
-    bool obscureText = false,
-    VoidCallback? onToggleVisibility,
-  }) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      suffixIcon: isPassword
-          ? Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: IconButton(
-                icon: Icon(
-                  obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: const Color(0xFFCBCBCB),
-                  size: 20,
-                ),
-                onPressed: onToggleVisibility,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            )
-          : null,
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(2),
-        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(2),
-        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(2),
-        borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(2),
-        borderSide: const BorderSide(color: Color(0xFFFF1014), width: 1),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(2),
-        borderSide: const BorderSide(color: Color(0xFFFF1014), width: 1.5),
-      ),
-      errorStyle: const TextStyle(
-        color: Color(0xFFFF1014),
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        fontFamily: 'SF Pro Display',
-        height: 1.3,
-      ),
-      errorMaxLines: 2,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final cardDecoration = BoxDecoration(
@@ -833,7 +572,7 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 50,
             right: 40,
             child: GestureDetector(
-              onTap: _showLanguageModal,
+              onTap: () => showLanguageModal(context),
               child: Container(
                 width: 42,
                 height: 42,
@@ -890,25 +629,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _InputLabel extends StatelessWidget {
-  final String label;
-  const _InputLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF000000),
-        fontFamily: 'SF Pro Display',
-        height: 1.0,
       ),
     );
   }

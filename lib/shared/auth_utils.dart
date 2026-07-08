@@ -1,0 +1,33 @@
+import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/error_reporter.dart';
+import '../utils/snackbar_utils.dart';
+
+Future<bool> handleDeletedAccountIfNeeded(
+  BuildContext context,
+  AuthService authService,
+) async {
+  final email = authService.currentUser?.email;
+  if (email == null) return false;
+
+  try {
+    final isDeleted = await FirestoreService().isCurrentUserDeleted();
+    if (isDeleted) {
+      await authService.signOut();
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'account_deleted_contact'.tr(),
+          isError: true,
+        );
+      }
+      return true;
+    }
+  } catch (e, st) {
+    ErrorReporter.report(e, st, context: 'handleDeletedAccount');
+  }
+
+  return false;
+}

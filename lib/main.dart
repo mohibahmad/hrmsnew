@@ -69,10 +69,7 @@ void main() {
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
 
-        debugPrint('🔥 Firebase initialized successfully');
       } catch (e) {
-        debugPrint('🔥 Firebase initialization FAILED: $e');
-
         rethrow;
       }
 

@@ -39,9 +39,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
   if (confirmed == true) {
     try {
       await AuthService().signOut();
-    } catch (e) {
-      debugPrint('Error during sign out: $e');
-    }
+    } catch (_) {}
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
