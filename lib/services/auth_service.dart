@@ -17,8 +17,8 @@ class AuthService {
       ValueNotifier<String?>(null);
 
   /// Set to `true` when a guest user logged in via fallback (no real Firebase user).
-  bool get isGuestUser => _isGuestUser;
-  bool _isGuestUser = false;
+  static bool get isGuestUser => _isGuestUser;
+  static bool _isGuestUser = false;
 
   Stream<User?> get authStateChanges {
     if (FirestoreService.isTesting || isGuestUser) {

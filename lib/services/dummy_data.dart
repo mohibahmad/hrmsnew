@@ -12,13 +12,14 @@ class DummyData {
         if (workersJson != null && workersJson.isNotEmpty) {
           final list = (jsonDecode(workersJson) as List)
               .cast<Map<String, dynamic>>();
-          workers
-            ..clear()
-            ..addAll(list);
+          if (list.isNotEmpty) {
+            workers
+              ..clear()
+              ..addAll(list);
+          }
         }
       } catch (e) {
-        // ignore
-      }
+       }
 
       try {
         final expensesJson = prefs.getString('dummy_expenses');
@@ -52,9 +53,7 @@ class DummyData {
                 name == 'Scarlett Johansson' ||
                 name == 'Robert Downey';
           });
-          if (hasOldWorkerNames) {
-            await prefs.remove('dummy_expenses');
-          } else {
+          if (list.isNotEmpty && !hasOldWorkerNames) {
             expenses
               ..clear()
               ..addAll(list);
@@ -69,9 +68,11 @@ class DummyData {
         if (attendanceJson != null && attendanceJson.isNotEmpty) {
           final list = (jsonDecode(attendanceJson) as List)
               .cast<Map<String, dynamic>>();
-          attendance
-            ..clear()
-            ..addAll(list);
+          if (list.isNotEmpty) {
+            attendance
+              ..clear()
+              ..addAll(list);
+          }
         }
       } catch (e) {
         // ignore
@@ -82,9 +83,11 @@ class DummyData {
         if (payrollJson != null && payrollJson.isNotEmpty) {
           final list = (jsonDecode(payrollJson) as List)
               .cast<Map<String, dynamic>>();
-          payroll
-            ..clear()
-            ..addAll(list);
+          if (list.isNotEmpty) {
+            payroll
+              ..clear()
+              ..addAll(list);
+          }
         }
       } catch (e) {
         // ignore
@@ -95,9 +98,11 @@ class DummyData {
         if (timeoffJson != null && timeoffJson.isNotEmpty) {
           final list = (jsonDecode(timeoffJson) as List)
               .cast<Map<String, dynamic>>();
-          timeoff
-            ..clear()
-            ..addAll(list);
+          if (list.isNotEmpty) {
+            timeoff
+              ..clear()
+              ..addAll(list);
+          }
         }
       } catch (e) {
         // ignore
@@ -108,9 +113,11 @@ class DummyData {
         if (assetsJson != null && assetsJson.isNotEmpty) {
           final list = (jsonDecode(assetsJson) as List)
               .cast<Map<String, dynamic>>();
-          assets
-            ..clear()
-            ..addAll(list);
+          if (list.isNotEmpty) {
+            assets
+              ..clear()
+              ..addAll(list);
+          }
         }
       } catch (e) {
         // ignore

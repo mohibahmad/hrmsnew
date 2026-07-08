@@ -201,29 +201,29 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 ),
               ),
             ),
-          if (!widget.isGuest)
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    for (int i = 0; i < _menuItems.length; i++)
-                      if (_menuItems[i].$3)
-                        _buildWorkforceItem(i)
-                      else
-                        _buildMenuItem(
-                          _menuItems[i].$1,
-                          _menuItems[i].$2.tr(),
-                          isSelected: widget.selectedIndex == i,
-                          hasDropdown: _menuItems[i].$3,
-                          onTap: () {
-                            widget.onItemSelected(i);
-                          },
-                        ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  for (int i = 0; i < _menuItems.length; i++)
+                    if (_menuItems[i].$3)
+                      _buildWorkforceItem(i)
+                    else
+                      _buildMenuItem(
+                        _menuItems[i].$1,
+                        _menuItems[i].$2.tr(),
+                        isSelected: widget.selectedIndex == i,
+                        hasDropdown: _menuItems[i].$3,
+                        onTap: () {
+                          widget.onItemSelected(i);
+                        },
+                      ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
+          ),
           if (widget.isGuest)
             Container(
               height: 42,

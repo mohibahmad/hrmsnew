@@ -73,7 +73,7 @@ void main() {
         rethrow;
       }
 
-      DummyData.loadFromPrefs();
+      await DummyData.loadFromPrefs();
 
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
         try {
