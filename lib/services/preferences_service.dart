@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesService {
   static const String _loggedInKey = 'is_logged_in';
+  static const String _guestKey = 'is_guest';
   static const String _premiumKey = 'is_premium';
   static const String _profilePicUrlKey = 'profile_pic_url';
 
@@ -24,6 +25,16 @@ class PreferencesService {
   static Future<void> setLoggedIn(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_loggedInKey, value);
+  }
+
+  static Future<void> setGuest(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_guestKey, value);
+  }
+
+  static Future<bool> isGuest() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_guestKey) ?? false;
   }
 
   static Future<void> setPremium(bool value) async {
@@ -57,6 +68,7 @@ class PreferencesService {
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_loggedInKey);
+    await prefs.remove(_guestKey);
     await prefs.remove(_premiumKey);
     await prefs.remove(_profilePicUrlKey);
     _cachedProfilePicUrl = null;

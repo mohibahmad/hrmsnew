@@ -16,6 +16,7 @@ import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/premium_gate.dart';
 import '../services/preferences_service.dart';
+import 'login_screen.dart';
 import '../widgets/amount_text.dart';
  
 class ExpensesScreen extends StatefulWidget {
@@ -1161,9 +1162,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           height: 44,
           child: ElevatedButton.icon(
             onPressed: () async {
+              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                if (!mounted) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(),
+                  ),
+                );
+                return;
+              }
               final isPremium = await PreferencesService.isPremium();
             if (!mounted) return;
-            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (!PremiumGate.canAddEntry(
               currentEntryCount: _expensesDocs.length,
               isPremium: isPremium,

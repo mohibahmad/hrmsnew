@@ -19,6 +19,7 @@ class AuthService {
   /// Set to `true` when a guest user logged in via fallback (no real Firebase user).
   static bool get isGuestUser => _isGuestUser;
   static bool _isGuestUser = false;
+  static set isGuestUser(bool value) => _isGuestUser = value;
 
   Stream<User?> get authStateChanges {
     if (FirestoreService.isTesting || isGuestUser) {
@@ -89,6 +90,7 @@ class AuthService {
   }) async {
     _isGuestUser = true;
     await PreferencesService.setLoggedIn(true);
+    await PreferencesService.setGuest(true);
     return MockUserCredential();
   }
 
@@ -176,6 +178,7 @@ class AuthService {
   Future<void> signOut() async {
     final wasGuest = isGuestUser;
     _isGuestUser = false;
+    await PreferencesService.setGuest(false);
     if (!wasGuest) {
       await _auth.signOut();
     }

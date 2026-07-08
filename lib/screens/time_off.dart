@@ -12,6 +12,7 @@ import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
 
 import 'assign_time_off.dart';
+import 'login_screen.dart';
 
 class Worker {
   final String name;
@@ -758,6 +759,18 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               alignment: Alignment.centerLeft,
                               child: InkWell(
                                 onTap: () {
+                                  final isGuest = AuthService()
+                                          .currentUser
+                                          ?.isAnonymous ??
+                                      false;
+                                  if (isGuest) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const LoginScreen(),
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   if (widget.onAssignTimeOff != null) {
                                     widget.onAssignTimeOff!(doc);
                                   } else {

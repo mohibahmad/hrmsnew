@@ -17,6 +17,7 @@ import '../widgets/notification_bell.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
 import '../utils/image_utils.dart';
+import 'login_screen.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
@@ -420,6 +421,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           height: 50,
           child: ElevatedButton(
             onPressed: () {
+              final isGuest =
+                  AuthService().currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(),
+                  ),
+                );
+                return;
+              }
               Navigator.of(context).push(
                 PageRouteBuilder(
                   pageBuilder: (_, __, ___) => WorkersAttendanceScreen(

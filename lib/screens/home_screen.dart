@@ -49,9 +49,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<bool> _activatedScreens = List.filled(11, false);
 
   Widget _getScreen(int index) {
-    if (!_activatedScreens[index]) {
-      return const SizedBox.shrink();
-    }
     switch (index) {
       case 1:
         return WorkersScreen(
@@ -664,9 +661,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // 9: Assign Time Off
                                 _getScreen(9),
                                 // 10: Profile View
-                                _activatedScreens[10]
-                                    ? _buildProfileView(stackIndex == 10)
-                                    : const SizedBox.shrink(),
+                                _buildProfileView(stackIndex == 10),
                               ],
                             );
                           },

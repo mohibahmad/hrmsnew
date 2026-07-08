@@ -652,5 +652,8 @@
   "holiday_notification": "El día festivo \"{name}\" ha sido añadido",
   "attendance_notification": "Asistencia registrada para {name",
   "no_search_results": "Sin resultados de búsqueda",
-  "clear_search": "Borrar búsqueda"
+  "clear_search": "Borrar búsqueda",
+  "Present": "Presente",
+  "Absent": "Ausente",
+  "On leave": "De permiso"
 }

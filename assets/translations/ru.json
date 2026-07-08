@@ -649,5 +649,8 @@
   "holiday_notification": "Праздник \"{name}\" был добавлен",
   "attendance_notification": "Посещаемость отмечена для {name",
   "no_search_results": "Нет результатов",
-  "clear_search": "Очистить поиск"
+  "clear_search": "Очистить поиск",
+  "Present": "Присутствует",
+  "Absent": "Отсутствует",
+  "On leave": "В отпуске"
 }

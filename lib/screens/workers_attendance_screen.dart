@@ -375,12 +375,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                                         .value,
                                                                     index: entry
                                                                         .key,
-                                                                    onMarkAttendance: () =>
-                                                                        _showMarkAttendanceDialog(
-                                                                          context,
-                                                                          entry
-                                                                              .value,
-                                                                        ),
+                                                                    onMarkAttendance: () {
+                                                                      final isGuest = AuthService()
+                                                                              .currentUser
+                                                                              ?.isAnonymous ??
+                                                                          false;
+                                                                      if (isGuest) {
+                                                                        Navigator.of(context).push(
+                                                                          MaterialPageRoute(
+                                                                            builder: (_) =>
+                                                                                const LoginScreen(),
+                                                                          ),
+                                                                        );
+                                                                        return;
+                                                                      }
+                                                                      _showMarkAttendanceDialog(
+                                                                        context,
+                                                                        entry
+                                                                            .value,
+                                                                      );
+                                                                    },
                                                                   ),
                                                                 )
                                                                 .toList();

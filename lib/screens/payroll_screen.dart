@@ -10,6 +10,7 @@ import '../services/payroll_service.dart';
 import '../utils/image_utils.dart';
 import 'add_payroll_screen.dart';
 import '../widgets/notification_bell.dart';
+import 'login_screen.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -585,6 +586,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       .isNotEmpty;
                   return InkWell(
                     onTap: () {
+                      final isGuest = AuthService()
+                              .currentUser
+                              ?.isAnonymous ??
+                          false;
+                      if (isGuest) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                        return;
+                      }
                       if (isPaid && hasData) {
                         _showPayrollDataDialog(context, doc, index);
                       } else {

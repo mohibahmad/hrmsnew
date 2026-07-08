@@ -12,6 +12,7 @@ import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/premium_gate.dart';
 import '../widgets/notification_bell.dart';
+import 'login_screen.dart';
 
 class HolidaysScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -633,9 +634,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         ),
         ElevatedButton.icon(
           onPressed: () async {
+            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              if (!mounted) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const LoginScreen(),
+                ),
+              );
+              return;
+            }
             final isPremium = await PreferencesService.isPremium();
             if (!mounted) return;
-            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (!PremiumGate.canAddEntry(
               currentEntryCount: _holidaysByMonth.values.fold<int>(
                 0,

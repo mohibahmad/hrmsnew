@@ -15,6 +15,7 @@ import '../utils/premium_gate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
+import 'login_screen.dart';
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -956,8 +957,17 @@ class _AssetsScreenState extends State<AssetsScreen> {
         // Add Asset Button
         ElevatedButton.icon(
           onPressed: () async {
-            final isPremium = await PreferencesService.isPremium();
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              if (!mounted) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const LoginScreen(),
+                ),
+              );
+              return;
+            }
+            final isPremium = await PreferencesService.isPremium();
             if (!PremiumGate.canAddEntry(
               currentEntryCount: _assets.length,
               isPremium: isPremium,

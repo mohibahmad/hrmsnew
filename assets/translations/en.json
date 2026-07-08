@@ -665,5 +665,8 @@
   "notif_time_off": "Time Off",
   "notif_asset": "Asset",
   "notif_expense": "Expense",
-  "notif_info": "Info"
+  "notif_info": "Info",
+  "Present": "Present",
+  "Absent": "Absent",
+  "On leave": "On leave"
 }

@@ -13,6 +13,7 @@ import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
+import 'login_screen.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
 import '../utils/localization_helper.dart';
@@ -815,10 +816,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       svgPath: 'assets/add_worker.svg',
                       label: 'add_worker'.tr(),
                       onTap: () async {
-                        final isPremium = await PreferencesService.isPremium();
-                        if (!mounted) return;
                         final isGuest =
                             AuthService().currentUser?.isAnonymous ?? false;
+                        if (isGuest) {
+                          if (!mounted) return;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          );
+                          return;
+                        }
+                        final isPremium = await PreferencesService.isPremium();
+                        if (!mounted) return;
                         if (!PremiumGate.canAddEntry(
                           currentEntryCount: _allWorkers.length,
                           isPremium: isPremium,
@@ -842,10 +852,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       svgPath: 'assets/add_bulk_worker.svg',
                       label: 'add_bulk_workers'.tr(),
                       onTap: () async {
-                        final isPremium = await PreferencesService.isPremium();
-                        if (!mounted) return;
                         final isGuest =
                             AuthService().currentUser?.isAnonymous ?? false;
+                        if (isGuest) {
+                          if (!mounted) return;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          );
+                          return;
+                        }
+                        final isPremium = await PreferencesService.isPremium();
+                        if (!mounted) return;
                         if (!PremiumGate.canAddEntry(
                           currentEntryCount: _allWorkers.length,
                           isPremium: isPremium,

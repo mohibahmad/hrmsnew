@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
+import '../services/preferences_service.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
@@ -40,6 +41,11 @@ class _SplashScreenState extends State<SplashScreen>
     // restores the persisted session asynchronously, so reading `currentUser`
     // too early would wrongly send a logged-in user to the login screen.
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
+
+    // Check if previous session was a guest (survives app restart)
+    if (await PreferencesService.isGuest()) {
+      AuthService.isGuestUser = true;
+    }
 
     // Firebase may be unavailable here: main() tolerates a failed
     // Firebase.initializeApp(), and in tests Firebase is never initialized.

@@ -649,5 +649,8 @@
   "holiday_notification": "O feriado \"{name}\" foi adicionado",
   "attendance_notification": "Presença registada para {name",
   "no_search_results": "Nenhum resultado",
-  "clear_search": "Limpar pesquisa"
+  "clear_search": "Limpar pesquisa",
+  "Present": "Presente",
+  "Absent": "Ausente",
+  "On leave": "De licença"
 }
