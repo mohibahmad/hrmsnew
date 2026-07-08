@@ -87,7 +87,7 @@ class InvoiceService {
             pw.SizedBox(height: 10),
             pw.Text(
               'Pay Period: $payPeriod',
-              style: pw.TextStyle(fontSize: 10, color: greyColor, letterSpacing: 0.5),
+              style: pw.TextStyle(fontSize: 12, color: greyColor, letterSpacing: 0.5),
             ),
           ],
         ),
@@ -100,10 +100,10 @@ class InvoiceService {
           child: pw.Text(
             'PAID',
             style: pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 12,
-              fontWeight: pw.FontWeight.bold,
-              letterSpacing: 2,
+                  color: PdfColors.white,
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 2,
             ),
           ),
         ),
@@ -127,7 +127,7 @@ class InvoiceService {
             child: pw.Text(
               'Employee Information',
               style: pw.TextStyle(
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: pw.FontWeight.bold,
                 color: primaryColor,
                 letterSpacing: 1,
@@ -176,14 +176,14 @@ class InvoiceService {
             width: 100,
             child: pw.Text(
               label,
-              style: pw.TextStyle(fontSize: 10, color: PdfColor.fromHex('#6B7280')),
+              style: pw.TextStyle(fontSize: 12, color: PdfColor.fromHex('#6B7280')),
             ),
           ),
           pw.SizedBox(width: 6),
           pw.Expanded(
             child: pw.Text(
               value.isNotEmpty ? value : '-',
-              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1F2937')),
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1F2937')),
             ),
           ),
         ],
@@ -206,7 +206,7 @@ class InvoiceService {
             child: pw.Text(
               'Salary Breakdown',
               style: pw.TextStyle(
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: pw.FontWeight.bold,
                 color: primaryColor,
                 letterSpacing: 1,
@@ -244,14 +244,14 @@ class InvoiceService {
           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: pw.Text(
             col1,
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#0247C4')),
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#0247C4')),
           ),
         ),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: pw.Text(
             col2,
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#0247C4')),
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#0247C4')),
             textAlign: pw.TextAlign.right,
           ),
         ),
@@ -264,13 +264,13 @@ class InvoiceService {
       children: [
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: pw.Text(label, style: pw.TextStyle(fontSize: 10, color: PdfColor.fromHex('#374151'))),
+          child: pw.Text(label, style: pw.TextStyle(fontSize: 13, color: PdfColor.fromHex('#374151'))),
         ),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           child: pw.Text(
             value.isNotEmpty ? value : r'$0',
-            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1F2937')),
+            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1F2937')),
             textAlign: pw.TextAlign.right,
           ),
         ),
@@ -294,7 +294,7 @@ class InvoiceService {
               pw.Text(
                 'NET SALARY',
                 style: pw.TextStyle(
-                  fontSize: 11,
+                  fontSize: 14,
                   fontWeight: pw.FontWeight.bold,
                   color: PdfColors.white,
                   letterSpacing: 2,
@@ -303,7 +303,7 @@ class InvoiceService {
               pw.SizedBox(height: 2),
               pw.Text(
                 'Total amount payable',
-                style: pw.TextStyle(fontSize: 9, color: PdfColor.fromHex('#BBDEFB')),
+                style: pw.TextStyle(fontSize: 12, color: PdfColor.fromHex('#BBDEFB')),
               ),
             ],
           ),
@@ -330,11 +330,11 @@ class InvoiceService {
           children: [
             pw.Text(
               'Thank you for your business',
-              style: pw.TextStyle(fontSize: 9, color: greyColor, fontStyle: pw.FontStyle.italic),
+              style: pw.TextStyle(fontSize: 11, color: greyColor, fontStyle: pw.FontStyle.italic),
             ),
             pw.Text(
               'Generated on ${DateTime.now().toString().substring(0, 10)}',
-              style: pw.TextStyle(fontSize: 9, color: greyColor),
+              style: pw.TextStyle(fontSize: 11, color: greyColor),
             ),
           ],
         ),

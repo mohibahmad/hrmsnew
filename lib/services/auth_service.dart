@@ -95,31 +95,13 @@ class AuthService {
     }
   }
 
-  /// Sign in Anonymously (Continue as Guest)
+  /// Sign in Anonymously (Continue as Guest) - Uses MockUser only, no Firebase anonymous auth
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
-    if (FirestoreService.isTesting) {
-      await PreferencesService.setLoggedIn(true);
-      return MockUserCredential();
-    }
-
-    try {
-      final credential = await _auth.signInAnonymously();
-      if (credential.user != null) {
-        await credential.user!
-            .updateDisplayName(displayName)
-            .catchError((_) {});
-      }
-      await PreferencesService.setLoggedIn(true);
-      await _syncPremiumStatusFromFirestore();
-      await _clearSeededDummyDataIfNeeded();
-      return credential;
-    } catch (_) {
-      _isGuestUser = true;
-      await PreferencesService.setLoggedIn(true);
-      return MockUserCredential();
-    }
+    _isGuestUser = true;
+    await PreferencesService.setLoggedIn(true);
+    return MockUserCredential();
   }
 
   /// Sign in with Google

@@ -156,7 +156,6 @@ flutter:
     - assets/terms&condition.svg
     - assets/privacy_policy.svg
     - assets/signout.svg
-    - assets/app_icon.svg
     - assets/boy.png
     - assets/placeholdemptystate.png
     - assets/sucess.png

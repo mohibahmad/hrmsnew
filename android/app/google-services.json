@@ -8,150 +8,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:343295414565:android:bc1f82d7f666d86de70acc",
-        "android_client_info": {
-          "package_name": "com.autech.property"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.cryptoApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:343295414565:android:54632be686f3ee34e70acc",
-        "android_client_info": {
-          "package_name": "com.autech.terra"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.cryptoApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:343295414565:android:81c0ee03db280244e70acc",
-        "android_client_info": {
-          "package_name": "com.ebroker.ebroker"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.cryptoApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:343295414565:android:8c08abd2f979d1d0e70acc",
-        "android_client_info": {
-          "package_name": "com.ebroker.wrteam"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.cryptoApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:343295414565:android:c86c6faf16f650a6e70acc",
         "android_client_info": {
           "package_name": "com.example.hrms"
@@ -191,6 +47,78 @@
         "mobilesdk_app_id": "1:343295414565:android:3ada7b6994d8c70ee70acc",
         "android_client_info": {
           "package_name": "com.example.qshopify"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:04de3dce6a044cc2e70acc",
+        "android_client_info": {
+          "package_name": "com.expensemate.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "343295414565-qh9252qbrt72csnlmta0sb5bqplotcun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS8UxX-Ctr8eqMjfeeNRK1iDQDdFr3PtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "343295414565-brpltmdqk0nrhphvinfs1344rggisooo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "343295414565-21aduuu7igskr2sc7dc18qfpshpqouq1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.cryptoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343295414565:android:a08c1e8f7fae28c0e70acc",
+        "android_client_info": {
+          "package_name": "com.iosapp.accounting"
         }
       },
       "oauth_client": [
