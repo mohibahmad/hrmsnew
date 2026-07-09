@@ -308,6 +308,7 @@
   "marked_as_paid_success": "La paie de {name} a été marquée comme payée avec succès",
   "confirm": "Confirmer",
   "mark_all_read": "Tout marquer lu",
+  "clear_all": "Tout effacer",
   "invoice_preview": "Aperçu de la Facture",
   "share": "Partager",
   "no_payroll_records": "Aucun enregistrement de paie",

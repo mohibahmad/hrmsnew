@@ -312,6 +312,7 @@
   "marked_as_paid_success": "{name}'s payroll marked as paid successfully",
   "confirm": "Confirm",
   "mark_all_read": "Mark all read",
+  "clear_all": "Clear All",
   "invoice_preview": "Invoice Preview",
   "share": "Share",
   "no_payroll_records": "No Payroll Records",

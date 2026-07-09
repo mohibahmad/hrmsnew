@@ -308,6 +308,7 @@
   "marked_as_paid_success": "A folha de pagamento de {name} foi marcada como paga com sucesso",
   "confirm": "Confirmar",
   "mark_all_read": "Marcar tudo como lido",
+  "clear_all": "Limpar tudo",
   "invoice_preview": "Pré-visualização da Fatura",
   "share": "Compartilhar",
   "no_payroll_records": "Sem registros de folha",

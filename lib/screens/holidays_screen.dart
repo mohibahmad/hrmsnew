@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart' hide GestureDetector;
@@ -322,7 +323,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextField(
                         controller: holidayNameController,
-                        maxLength: 50,
+                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
                         decoration: InputDecoration.collapsed(
                           hintText: 'Enter holiday name',
                           hintStyle: TextStyle(
@@ -394,10 +395,29 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   DateTime(calendarDate.year, calendarDate.month - 1, 1),
                 );
               },
-             child: const Icon(
-                Icons.chevron_right,
-                size: 16,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              ),
+            ),
+            Text(
+              monthYearStr,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
                 color: Colors.black,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
               ),
             ),
           ],

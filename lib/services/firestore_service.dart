@@ -713,4 +713,17 @@ class FirestoreService {
     final unread = await coll.where('isRead', isEqualTo: false).get();
     return unread.docs.length;
   }
+
+  Future<void> clearAllNotifications() async {
+    final coll = _notifications;
+    if (coll == null) return;
+    final snap = await coll.get();
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    if (snap.docs.isNotEmpty) {
+      await batch.commit();
+    }
+  }
 }

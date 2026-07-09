@@ -308,6 +308,7 @@
   "marked_as_paid_success": "La nómina de {name} se marcó como pagada exitosamente",
   "confirm": "Confirmar",
   "mark_all_read": "Marcar todo leído",
+  "clear_all": "Limpiar todo",
   "invoice_preview": "Vista Previa de Factura",
   "share": "Compartir",
   "no_payroll_records": "Sin registros de nómina",

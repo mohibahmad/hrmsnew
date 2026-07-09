@@ -87,16 +87,18 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   void initState() {
     super.initState();
     _salaryCtrl.text = _salaryStr;
+    _absentsCtrl.text = (widget.workerData['absents'] ?? '').toString();
+    _leavesCtrl.text = (widget.workerData['leaves'] ?? '').toString();
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
-      _absentsCtrl.text = (widget.workerData['absents'] ?? '').toString();
-      _leavesCtrl.text = (widget.workerData['leaves'] ?? '').toString();
       _overtimeCtrl.text = (widget.workerData['overtimeDays'] ?? '').toString();
       _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '').toString();
       _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '').toString();
       _recalc();
     }
+    if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
+    if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchMonthlyAttendance());
   }
 
