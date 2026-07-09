@@ -1041,10 +1041,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   false;
                                               final type =
                                                   selectedStatus == 'Absent'
-                                                  ? (data['type'] ?? 'Absent')
+                                                  ? 'Absent'
                                                   : (selectedStatus == 'Leave'
-                                                        ? (data['type'] ??
-                                                              'Sick Leave')
+                                                        ? 'Sick Leave'
                                                         : null);
                                               final desc =
                                                   selectedStatus == 'Present'
