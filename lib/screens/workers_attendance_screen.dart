@@ -59,6 +59,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   bool _isLoading = true;
+  bool _workersLoaded = false;
+  bool _attendanceLoaded = false;
   bool _isDialogOpen = false;
   bool _isSaving = false;
   String? _errorMessage;
@@ -134,7 +136,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             _workers = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
-            _isLoading = false;
+            _workersLoaded = true;
+            if (_workersLoaded && _attendanceLoaded) _isLoading = false;
           });
         }
       },
@@ -151,6 +154,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       (snapshot) {
         if (mounted) {
           setState(() {
+            final now = DateTime.now();
             final sortedList = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
@@ -165,8 +169,21 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               }
               return 0;
             });
-            _todayAttendance = sortedList;
-            _isLoading = false;
+            _todayAttendance = sortedList.where((att) {
+              final createdAt = att['createdAt'];
+              DateTime? dt;
+              if (createdAt is Timestamp) {
+                dt = createdAt.toDate();
+              } else if (createdAt is String) {
+                dt = DateTime.tryParse(createdAt);
+              }
+              return dt != null &&
+                  dt.year == now.year &&
+                  dt.month == now.month &&
+                  dt.day == now.day;
+            }).toList();
+            _attendanceLoaded = true;
+            if (_workersLoaded && _attendanceLoaded) _isLoading = false;
           });
         }
       },
@@ -256,16 +273,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         children: [
           // Left Sidebar (Standard SidebarWidget) - hide when embedded in HomeScreen
           if (!widget.hideSidebar)
-            IgnorePointer(
-              ignoring: _isDialogOpen,
-              child: SidebarWidget(
-                key: ValueKey('sidebar_${context.locale.languageCode}'),
-                selectedIndex: 2,
-                selectedSubIndex: 0,
-                isGuest: AuthService().currentUser?.isAnonymous ?? false,
-                isPremium: _isPremium,
-                onItemSelected: (index, {subIndex}) {
-                  final void Function() onLogout = () {
+            SidebarWidget(
+              key: ValueKey('sidebar_${context.locale.languageCode}'),
+              selectedIndex: 2,
+              selectedSubIndex: 0,
+              isGuest: AuthService().currentUser?.isAnonymous ?? false,
+              isPremium: _isPremium,
+              onItemSelected: (index, {subIndex}) {
+                _isDialogOpen = false;
+                final void Function() onLogout = () {
                     AuthService().signOut();
                     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -351,7 +367,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                   );
                 },
               ),
-            ),
           // Right Main Content
           Expanded(
             child: IgnorePointer(
@@ -727,8 +742,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       orElse: () => <String, dynamic>{},
     );
 
-    // Initial values
-    final initialStatus = todayRecord['status'] ?? data['status'] ?? 'Present';
+    // Initial values - only from today's attendance record, NOT from worker doc
+    final initialStatus = todayRecord['status'] ?? 'Present';
     final initialReason = todayRecord['desc'] ?? '';
 
     setState(() => _isDialogOpen = true);
@@ -856,11 +871,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                       const SizedBox(height: 20),
                                       Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          const Icon(
-                                            Icons.email,
-                                            color: Color(0xFFFFFFFF),
-                                            size: 16,
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: SvgPicture.asset(
+                                              'assets/email.svg',
+                                              height: 14,
+                                              width: 14,
+                                            ),
                                           ),
                                           const SizedBox(width: 10),
                                           Expanded(
@@ -880,12 +900,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          const Padding(
-                                            padding: EdgeInsets.only(top: 2),
-                                            child: Icon(
-                                              Icons.phone,
-                                              color: Color(0xFFFFFFFF),
-                                              size: 16,
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Image.asset(
+                                              'assets/call.png',
+                                              height: 14,
+                                              width: 14,
                                             ),
                                           ),
                                           const SizedBox(width: 10),
@@ -1181,22 +1201,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   });
                                                 }
                                               } else {
-                                                final workerId = data['id'];
-                                                if (workerId != null) {
-                                                  final Map<String, dynamic>
-                                                  updatedWorker =
-                                                      Map<String, dynamic>.from(
-                                                        data,
-                                                      );
-                                                  updatedWorker['status'] =
-                                                      selectedStatus;
-                                                  updatedWorker.remove('id');
-                                                  await _firestore.updateWorker(
-                                                    workerId,
-                                                    updatedWorker,
-                                                  );
-                                                }
-
                                                 if (todayRecord.isNotEmpty &&
                                                     todayRecord['id'] != null) {
                                                   await _firestore

@@ -70,18 +70,6 @@ class AttendanceService {
       }
     }
 
-    for (var att in rawAttendanceDocs) {
-      final attId = (att['id'] ?? att['workerId'] ?? '').toString().trim().toLowerCase();
-      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-      final idMatch = attId.isNotEmpty && idMap.containsKey(attId);
-      final emailMatch = attEmail.isNotEmpty && emailMap.containsKey(attEmail);
-      final nameMatch = attName.isNotEmpty && nameMap.containsKey(attName);
-      if (!idMatch && !emailMatch && !nameMatch) {
-        combined.add(att);
-      }
-    }
-
     combined.sort((a, b) {
       final aTime = a['createdAt'];
       final bTime = b['createdAt'];
