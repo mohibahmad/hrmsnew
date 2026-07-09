@@ -13,6 +13,7 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
 import '../widgets/custom_dropdown_field.dart';
 
 class AddNewWorkerScreen extends StatefulWidget {
@@ -273,7 +274,15 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             selectedIndex: 1,
             isGuest: AuthService().currentUser?.isAnonymous ?? false,
             onItemSelected: (index, {subIndex}) {
-              _safePop();
+              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => HomeScreen(
+                    initialIndex: index,
+                    initialSubIndex: subIndex ?? 0,
+                  ),
+                ),
+                (route) => false,
+              );
             },
             onBackToLogin: () {
               AuthService().signOut();

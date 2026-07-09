@@ -112,7 +112,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _isLoading = true;
   bool _workersLoaded = false;
   bool _attendanceLoaded = false;
-  int _totalCount = 0;
+
   int _presentCount = 0;
   int _absentCount = 0;
   int _leaveCount = 0;
@@ -137,7 +137,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (_workersLoaded && _attendanceLoaded) {
       _isLoading = false;
     }
-    _totalCount = _attendanceDocs.where((d) => _matchesPeriod(d)).length;
     _presentCount = _attendanceDocs
         .where((d) => d['status'] == 'Present' && _matchesPeriod(d))
         .length;
@@ -466,7 +465,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         Expanded(
           child: _buildSummaryCard(
             title: 'total_workers'.tr(),
-            count: "$_totalCount",
+            count: "${_workersList.length}",
             iconAsset: 'assets/total_workers.svg',
             countColor: const Color(0xFF0247C4),
           ),

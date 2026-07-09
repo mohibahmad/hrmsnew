@@ -34,15 +34,22 @@ import '../widgets/dashboard/leave_types_pie_chart.dart';
 import '../widgets/dashboard/holiday_card.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;
+  final int initialSubIndex;
+
+  const HomeScreen({
+    super.key,
+    this.initialIndex = 0,
+    this.initialSubIndex = 0,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  int _selectedSubIndex = 0;
+  late int _selectedIndex;
+  late int _selectedSubIndex;
   String _selectedPeriod = 'Yearly';
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
@@ -210,11 +217,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
+    _selectedSubIndex = widget.initialSubIndex;
+    final stackIdx = _getStackIndex();
+    _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
     final currentUser = AuthService().currentUser;
     // Try to restore profile pic from local storage first (survives restarts)
     _restoreProfilePic(currentUser);
-    _selectedIndex = 0;
     _loadDashboardData();
     // Real-time listener for premium status changes from Firestore
     _startPremiumListener();
