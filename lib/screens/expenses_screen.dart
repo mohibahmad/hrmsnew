@@ -40,7 +40,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
-  String _selectedPeriod = 'Week';
+  String _selectedPeriod = 'Yearly';
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
   StreamSubscription? _expensesSub;

@@ -105,7 +105,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
-  String _selectedTimeframe = 'Week';
+  String _selectedTimeframe = 'Today';
   List<Map<String, dynamic>> _attendanceDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   List<Map<String, dynamic>> _rawAttendanceDocs = [];

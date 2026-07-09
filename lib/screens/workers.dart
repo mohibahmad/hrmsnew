@@ -889,7 +889,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 
                 // Filter Tabs
                 Container(
-                  width: 480,
+                  width: 560,
                   height: 50,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(

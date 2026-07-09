@@ -381,6 +381,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'asset_type'.tr(),
                       typeController,
                       'asset_type_hint'.tr(),
+                      maxLength: 50,
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
@@ -626,6 +627,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     TextEditingController controller,
     String hintText, {
     bool readOnly = false,
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,6 +654,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
           child: TextField(
             controller: controller,
             readOnly: readOnly,
+            maxLength: maxLength,
+            buildCounter: (
+              context, {
+              required currentLength,
+              required isFocused,
+              maxLength,
+            }) =>
+                null,
             decoration: InputDecoration.collapsed(
               hintText: hintText,
               hintStyle: TextStyle(
@@ -694,17 +704,19 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 44,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: isEmpty ? null : (items.contains(value) ? value : null),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+          Container(
+            height: 44,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                elevation: 0,
+                value: isEmpty ? null : (items.contains(value) ? value : null),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(
                 isEmpty ? 'no_workers_found'.tr() : hintText,
                 style: TextStyle(
@@ -986,7 +998,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0247C4),
-            minimumSize: const Size(170, 44),
+            minimumSize: const Size(140, 44),
             fixedSize: const Size.fromHeight(44),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             shape: RoundedRectangleBorder(
@@ -1603,6 +1615,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       'asset_type'.tr(),
                       typeController,
                       'asset_type_hint'.tr(),
+                      maxLength: 50,
                     ),
                     const SizedBox(height: 16),
                     _buildModalTextField(
