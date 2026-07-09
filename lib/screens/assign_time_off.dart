@@ -32,7 +32,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   String _timeOffType = 'Annual Leave';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
-  late DateTime _calendarMonth;
+  DateTime _calendarMonth = DateTime.now();
+  DateTime _calendarMonth2 = DateTime.now();
   bool _hasSelection = false;
   final TextEditingController _notesController = TextEditingController();
   String? _editingId;
@@ -69,13 +70,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (date is Timestamp) return date.toDate();
     final parts = date.toString().split('-');
     if (parts.length == 3) {
-      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      return DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
     }
     return DateTime.now();
   }
 
   void _resetFormFields() {
-    if (_selectedWorker != null && _selectedWorker!['action'] != null && _selectedWorker!['action'].toString().isNotEmpty) {
+    if (_selectedWorker != null &&
+        _selectedWorker!['action'] != null &&
+        _selectedWorker!['action'].toString().isNotEmpty) {
       _editingId = _selectedWorker!['id']?.toString();
       _timeOffType = _selectedWorker!['action'].toString();
       _startDate = _parseDate(_selectedWorker!['startDate']);
@@ -91,6 +98,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _notesController.clear();
     }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+    _calendarMonth2 = DateTime(_endDate.year, _endDate.month, 1);
   }
 
   void _loadWorkers() {
@@ -273,7 +281,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   int get _alreadyUsedDays {
     if (_selectedWorker == null) return 0;
-    final workerEmail = (_selectedWorker!['email'] ?? '').toString().toLowerCase();
+    final workerEmail = (_selectedWorker!['email'] ?? '')
+        .toString()
+        .toLowerCase();
     String typeKey;
     switch (_timeOffType) {
       case 'Annual Leave':
@@ -289,7 +299,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
     int used = 0;
     for (final record in _timeoffRecords) {
-      if (_editingId != null && record['id']?.toString() == _editingId) continue;
+      if (_editingId != null && record['id']?.toString() == _editingId)
+        continue;
       final recordEmail = (record['email'] ?? '').toString().toLowerCase();
       if (recordEmail != workerEmail) continue;
       final action = (record['action'] ?? record['type'] ?? '').toString();
@@ -487,10 +498,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             spacing: 24,
             runSpacing: 24,
             children: [
-              _buildCalendar(_calendarMonth),
-              _buildCalendar(
-                DateTime(_calendarMonth.year, _calendarMonth.month + 1, 1),
-              ),
+              _buildCalendar(_calendarMonth, isStartCalendar: true),
+              _buildCalendar(_calendarMonth2, isStartCalendar: false),
             ],
           ),
           const SizedBox(height: 12),
@@ -582,68 +591,68 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             borderRadius: BorderRadius.circular(6),
           ),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: value,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
-              style: const TextStyle(
-                fontFamily: 'SF Pro Display',
-                fontSize: 14,
-                color: Colors.black,
+            child: Theme(
+              data: ThemeData(
+                canvasColor: Colors.white,
+                dropdownMenuTheme: const DropdownMenuThemeData(
+                  inputDecorationTheme: InputDecorationTheme(
+                    labelStyle: TextStyle(color: Colors.black),
+                  ),
+                ),
               ),
-              items: [
-                DropdownMenuItem(
-                  value: 'Annual Leave',
-                  child: Text(
-                    'annual_leave'.tr(),
-                    style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 14,
-                      color: Colors.black,
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: value,
+                dropdownColor: Colors.white,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
+                style: const TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'Annual Leave',
+                    child: Text(
+                      'annual_leave'.tr(),
+                      style: const TextStyle(
+                        fontFamily: 'SF Pro Display',
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                ),
-                DropdownMenuItem(
-                  value: 'Sick Leave',
-                  child: Text(
-                    'sick_leave_type'.tr(),
-                    style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 14,
-                      color: Colors.black,
+                  DropdownMenuItem(
+                    value: 'Sick Leave',
+                    child: Text(
+                      'sick_leave_type'.tr(),
+                      style: const TextStyle(
+                        fontFamily: 'SF Pro Display',
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                ),
-                DropdownMenuItem(
-                  value: 'Casual Leave',
-                  child: Text(
-                    'casual_leave_type'.tr(),
-                    style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 14,
-                      color: Colors.black,
+                  DropdownMenuItem(
+                    value: 'Casual Leave',
+                    child: Text(
+                      'casual_leave_type'.tr(),
+                      style: const TextStyle(
+                        fontFamily: 'SF Pro Display',
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                ),
-                DropdownMenuItem(
-                  value: 'Maternity Leave',
-                  child: Text(
-                    'maternity_leave'.tr(),
-                    style: const TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  setState(() {
-                    _timeOffType = v;
-                  });
-                }
-              },
+                ],
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      _timeOffType = v;
+                    });
+                  }
+                },
+              ),
             ),
           ),
         ),
@@ -669,33 +678,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () => _selectDate(context, isStart),
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.centerLeft,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
-              ],
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+              fontFamily: 'SF Pro Display',
             ),
           ),
         ),
@@ -705,7 +702,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   // ==== CALENDARS ====
 
-  Widget _buildCalendar(DateTime monthDate) {
+  Widget _buildCalendar(DateTime monthDate, {required bool isStartCalendar}) {
     String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'
         .toUpperCase();
     return Container(
@@ -721,21 +718,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _calendarMonth = DateTime(
-                        _calendarMonth.year,
-                        _calendarMonth.month - 1,
-                        1,
-                      );
-                    });
-                  },
-                  child: const Icon(
-                    Icons.chevron_left,
-                    size: 20,
-                    color: Colors.black,
-                  ),
+                const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.chevron_left, size: 20, color: Colors.grey),
                 ),
                 const SizedBox(width: 16),
                 Text(
@@ -747,7 +732,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                GestureDetector(
+                InkWell(
                   onTap: () {
                     setState(() {
                       _calendarMonth = DateTime(
@@ -755,12 +740,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                         _calendarMonth.month + 1,
                         1,
                       );
+                      _calendarMonth2 = DateTime(
+                        _calendarMonth2.year,
+                        _calendarMonth2.month + 1,
+                        1,
+                      );
                     });
                   },
-                  child: const Icon(
-                    Icons.chevron_right,
-                    size: 20,
-                    color: Colors.black,
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
               ],
@@ -768,7 +762,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             const SizedBox(height: 16),
             _buildWeekdayRow(),
             const SizedBox(height: 8),
-            _buildDaysGrid(monthDate),
+            _buildDaysGrid(monthDate, isStartCalendar: isStartCalendar),
           ],
         ),
       ),
@@ -823,7 +817,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildDaysGrid(DateTime monthDate) {
+  Widget _buildDaysGrid(DateTime monthDate, {required bool isStartCalendar}) {
     List<Widget> rows = [];
     int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     int firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
@@ -854,11 +848,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             _endDate.day,
           );
 
-          bool isSelected = _hasSelection &&
+          bool isSelected =
+              _hasSelection &&
               (cellDate.isAtSameMomentAs(startStart) ||
-               cellDate.isAtSameMomentAs(endStart));
-          bool inRange = _hasSelection &&
-              cellDate.isAfter(startStart) && cellDate.isBefore(endStart);
+                  cellDate.isAtSameMomentAs(endStart));
+          bool inRange =
+              _hasSelection &&
+              cellDate.isAfter(startStart) &&
+              cellDate.isBefore(endStart);
 
           rowChildren.add(
             _buildDayCell(
@@ -866,6 +863,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               isSelected: isSelected,
               inRange: inRange,
               date: cellDate,
+              isStartCalendar: isStartCalendar,
             ),
           );
           currentDay++;
@@ -892,6 +890,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     bool isSelected = false,
     bool inRange = false,
     DateTime? date,
+    bool isStartCalendar = true,
   }) {
     if (day.isEmpty) {
       return const SizedBox(width: 50, height: 50);
@@ -901,9 +900,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final dayColor = isSunday
         ? const Color(0xFFFF0004)
         : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-    final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
-    final selectedBorder = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
-    final rangeColor = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
+    final selectedBg = isFriday
+        ? const Color(0xFF4AC000)
+        : const Color(0xFFFF0004);
+    final selectedBorder = isFriday
+        ? const Color(0xFF4AC000)
+        : const Color(0xFFFF0004);
+    final rangeColor = isFriday
+        ? const Color(0xFF4AC000)
+        : const Color(0xFFFF0004);
     return Center(
       child: SizedBox(
         width: 50,
@@ -912,21 +917,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           onTap: () {
             if (date != null) {
               setState(() {
-                if (!_hasSelection) {
+                if (isStartCalendar) {
                   _startDate = date;
-                  _endDate = date;
-                  _hasSelection = true;
-                } else if (date.isBefore(_startDate)) {
-                  _startDate = date;
-                  if (_endDate.isBefore(_startDate)) {
-                    _endDate = _startDate.add(const Duration(days: 1));
-                  }
                 } else {
                   _endDate = date;
-                  if (_endDate.isBefore(_startDate)) {
-                    _endDate = _startDate;
-                  }
                 }
+                _hasSelection = true;
               });
             }
           },
@@ -944,10 +940,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     : (inRange
                           ? rangeColor.withValues(alpha: 0.3)
                           : isSunday
-                              ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                              : (isFriday
-                                  ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                                  : Colors.grey.shade300)),
+                          ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                          : (isFriday
+                                ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                                : Colors.grey.shade300)),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -995,10 +991,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(6),
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: TextField(
                 controller: _notesController,
                 maxLines: null,
@@ -1026,8 +1019,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               _timeOffType == 'Sick Leave'
                   ? 'available_sick_leave'.tr()
                   : _timeOffType == 'Casual Leave'
-                      ? 'available_casual_leave'.tr()
-                      : 'available_annual_leave'.tr(),
+                  ? 'available_casual_leave'.tr()
+                  : 'available_annual_leave'.tr(),
               '$_availableDays',
               _availableDays > 0 ? Colors.black : Colors.red,
             ),
@@ -1039,9 +1032,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             _buildSummaryRow(
               'remaining_days'.tr(),
               '${_availableDays - _requestedDays}',
-              _availableDays - _requestedDays >= 0
-                  ? Colors.black
-                  : Colors.red,
+              _availableDays - _requestedDays >= 0 ? Colors.black : Colors.red,
             ),
           ],
         );
@@ -1049,21 +1040,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         if (isNarrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              notesWidget,
-              const SizedBox(height: 24),
-              summaryWidget,
-            ],
+            children: [notesWidget, const SizedBox(height: 24), summaryWidget],
           );
         }
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 70,
-              child: notesWidget,
-            ),
+            Expanded(flex: 70, child: notesWidget),
             const SizedBox(width: 24),
             Expanded(
               flex: 30,
@@ -1121,18 +1105,30 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Future<void> _handleSave() async {
     if (_isLoading) return;
     if (_selectedWorker == null) {
-      FlashySnackBar.show(context, message: 'please_select_worker_first'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_worker_first'.tr(),
+        isError: true,
+      );
       return;
     }
 
     // Notes are required
     if (_notesController.text.trim().isEmpty) {
-      FlashySnackBar.show(context, message: 'please_enter_notes'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_notes'.tr(),
+        isError: true,
+      );
       return;
     }
 
     if (!_hasSelection) {
-      FlashySnackBar.show(context, message: 'please_select_dates'.tr(), isError: true);
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_dates'.tr(),
+        isError: true,
+      );
       return;
     }
 
@@ -1161,7 +1157,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
       if (isGuest) {
         if (_editingId != null) {
-          final idx = DummyData.timeoff.indexWhere((t) => t['id'] == _editingId);
+          final idx = DummyData.timeoff.indexWhere(
+            (t) => t['id'] == _editingId,
+          );
           if (idx != -1) {
             DummyData.timeoff[idx] = {...DummyData.timeoff[idx], ...recordMap};
           }

@@ -823,6 +823,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         label.toLowerCase().contains('contact') ||
         label.toLowerCase().contains('phone') ||
         label.toLowerCase().contains('national');
+    final isEmail = label.toLowerCase().contains('email');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -858,7 +859,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                     if (label.toLowerCase().contains('national'))
                       LengthLimitingTextInputFormatter(15),
                   ]
-                : null,
+                : isEmail
+                    ? [LengthLimitingTextInputFormatter(50)]
+                    : null,
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF000000),

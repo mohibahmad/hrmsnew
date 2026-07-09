@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import 'workers.dart';
 import 'attendance_screen.dart';
+import 'workers_attendance_screen.dart';
 import 'payroll_screen.dart';
 import 'time_off.dart';
 import 'assign_time_off.dart';
@@ -46,7 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showProfile = false;
   bool _showAssignTimeOff = false;
   bool _showNotifications = false;
-  final List<bool> _activatedScreens = List.filled(11, false);
+  bool _showWorkersAttendance = false;
+  final List<bool> _activatedScreens = List.filled(12, false);
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -61,6 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
+          onWorkersAttendanceTap: () {
+            setState(() {
+              _showWorkersAttendance = true;
+            });
+          },
         );
       case 3:
         return PayrollScreen(
@@ -126,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int _getStackIndex() {
+    if (_showWorkersAttendance) return 11;
     if (_showProfile) return 10;
     if (_showAssignTimeOff) return 9;
     if (_selectedIndex == 0) return 0;
@@ -232,7 +240,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final cachedUrl = PreferencesService.cachedProfilePicUrl;
-    if (cachedUrl != null && cachedUrl.isNotEmpty && cachedUrl.startsWith('http')) {
+    if (cachedUrl != null &&
+        cachedUrl.isNotEmpty &&
+        cachedUrl.startsWith('http')) {
       AuthService.profilePicNotifier.value = cachedUrl;
     } else {
       AuthService.profilePicNotifier.value = null;
@@ -628,13 +638,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ? TweenAnimationBuilder<double>(
                                         key: ValueKey(stackIndex == 0),
                                         tween: Tween<double>(begin: 0, end: 1),
-                                        duration: const Duration(milliseconds: 650),
+                                        duration: const Duration(
+                                          milliseconds: 650,
+                                        ),
                                         curve: Curves.easeOutQuart,
                                         builder: (context, value, child) {
                                           return Opacity(
                                             opacity: value,
                                             child: Transform.translate(
-                                              offset: Offset(0, 15 * (1 - value)),
+                                              offset: Offset(
+                                                0,
+                                                15 * (1 - value),
+                                              ),
                                               child: child,
                                             ),
                                           );
@@ -662,6 +677,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _getScreen(9),
                                 // 10: Profile View
                                 _buildProfileView(stackIndex == 10),
+                                // 11: Workers Attendance Screen
+                                WorkersAttendanceScreen(
+                                  hideSidebar: true,
+                                  onBack: () {
+                                    setState(() {
+                                      _showWorkersAttendance = false;
+                                    });
+                                  },
+                                  onNotificationTap: _toggleNotifications,
+                                ),
                               ],
                             );
                           },
@@ -716,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child:TotalWorkersCard(
+                        child: TotalWorkersCard(
                           count: _totalWorkersCount,
                           maleCount: _maleWorkersCount,
                           femaleCount: _femaleWorkersCount,
@@ -944,8 +969,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               : (h['remainingDays']?.toString() ?? '0');
                         }
                         activeHolidays.sort((a, b) {
-                          final aDays = int.tryParse(a['remainingDays']?.toString() ?? '') ?? 9999;
-                          final bDays = int.tryParse(b['remainingDays']?.toString() ?? '') ?? 9999;
+                          final aDays =
+                              int.tryParse(
+                                a['remainingDays']?.toString() ?? '',
+                              ) ??
+                              9999;
+                          final bDays =
+                              int.tryParse(
+                                b['remainingDays']?.toString() ?? '',
+                              ) ??
+                              9999;
                           return aDays.compareTo(bDays);
                         });
                         if (activeHolidays.isEmpty) {

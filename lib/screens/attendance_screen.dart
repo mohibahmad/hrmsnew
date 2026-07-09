@@ -87,12 +87,14 @@ class AttendanceScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
   final VoidCallback? onNotificationTap;
+  final VoidCallback? onWorkersAttendanceTap;
 
   const AttendanceScreen({
     super.key,
     required this.onLogout,
     required this.onProfileTap,
     this.onNotificationTap,
+    this.onWorkersAttendanceTap,
   });
 
   @override
@@ -421,15 +423,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           height: 50,
           child: ElevatedButton(
             onPressed: () {
-              Navigator.of(context).push(
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => WorkersAttendanceScreen(
-                    onNotificationTap: widget.onNotificationTap,
+              if (widget.onWorkersAttendanceTap != null) {
+                widget.onWorkersAttendanceTap!();
+              } else {
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (_, __, ___) => WorkersAttendanceScreen(
+                      onNotificationTap: widget.onNotificationTap,
+                    ),
+                    transitionsBuilder: (_, __, ___, child) => child,
+                    transitionDuration: Duration.zero,
                   ),
-                  transitionsBuilder: (_, __, ___, child) => child,
-                  transitionDuration: Duration.zero,
-                ),
-              );
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryBlue,

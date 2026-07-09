@@ -431,6 +431,7 @@
   "total_work_days": "Всего Рабочих Дней",
   "absents_label": "Отсутствия",
   "leaves_label": "Отпуска",
+  "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Сверхурочные Дни",
   "payroll_data_preview": "Предпросмотр Данных Зарплаты",
   "holiday_list": "Список Праздников",

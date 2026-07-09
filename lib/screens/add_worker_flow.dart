@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:image/image.dart' as img;
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
 import 'package:url_launcher/url_launcher.dart';
@@ -626,6 +627,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     return false;
   }
 
+  Uint8List _compressImage(Uint8List bytes, {int maxWidth = 1200, int quality = 80}) {
+    img.Image? image = img.decodeImage(bytes);
+    if (image == null) return bytes;
+    if (image.width > maxWidth) {
+      image = img.copyResize(image, width: maxWidth);
+    }
+    return Uint8List.fromList(img.encodeJpg(image, quality: quality));
+  }
+
   Future<void> _saveWorker() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
@@ -738,7 +748,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             UploadFile(
               folder: 'profile_images',
               fileName: _profileImageName ?? 'profile.jpg',
-              bytes: _profileImageBytes!,
+              bytes: _compressImage(_profileImageBytes!),
               mimeType: 'image/jpeg',
             ),
           );
@@ -748,7 +758,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             UploadFile(
               folder: 'id_cards/front',
               fileName: _frontIdName ?? 'front.jpg',
-              bytes: _frontIdBytes!,
+              bytes: _compressImage(_frontIdBytes!),
               mimeType: 'image/jpeg',
             ),
           );
@@ -758,7 +768,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             UploadFile(
               folder: 'id_cards/back',
               fileName: _backIdName ?? 'back.jpg',
-              bytes: _backIdBytes!,
+              bytes: _compressImage(_backIdBytes!),
               mimeType: 'image/jpeg',
             ),
           );
@@ -3646,7 +3656,7 @@ Widget _buildInputField(
                 ]
               : () {
                     final list = <TextInputFormatter>[];
-                    if (isEmail) list.add(LengthLimitingTextInputFormatter(100));
+                    if (isEmail) list.add(LengthLimitingTextInputFormatter(50));
                     if (isReligion) list.add(LengthLimitingTextInputFormatter(30));
                     return list.isEmpty ? null : list;
                   }(),

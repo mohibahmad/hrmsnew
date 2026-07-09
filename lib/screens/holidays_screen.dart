@@ -322,6 +322,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextField(
                         controller: holidayNameController,
+                        maxLength: 50,
                         decoration: InputDecoration.collapsed(
                           hintText: 'Enter holiday name',
                           hintStyle: TextStyle(

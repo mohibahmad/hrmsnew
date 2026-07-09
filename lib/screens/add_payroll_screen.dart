@@ -97,6 +97,19 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '').toString();
       _recalc();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchMonthlyAttendance());
+  }
+
+  Future<void> _fetchMonthlyAttendance() async {
+    if (_email.trim().isEmpty) return;
+    try {
+      final attendance = await FirestoreService().getWorkerMonthlyAttendance(_email);
+      setState(() {
+        _absentsCtrl.text = (attendance['absents'] ?? 0).toString();
+        _leavesCtrl.text = (attendance['leaves'] ?? 0).toString();
+        _recalc();
+      });
+    } catch (_) {}
   }
 
   @override
@@ -624,11 +637,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ),
               const SizedBox(width: 24),
               Expanded(
-                child: _buildInput('absents_label'.tr(), '0', _absentsCtrl),
+                child: _buildInput('absents_label'.tr(), '0', _absentsCtrl, readOnly: true, focusedBorderColor: _borderLight),
               ),
               const SizedBox(width: 24),
               Expanded(
-                child: _buildInput('leaves_label'.tr(), '0', _leavesCtrl),
+                child: _buildInput('leaves_label'.tr(), '0', _leavesCtrl, readOnly: true, focusedBorderColor: _borderLight),
               ),
             ],
           ),
@@ -728,6 +741,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     TextEditingController? controller, {
     bool readOnly = false,
     bool isCurrency = false,
+    Color? focusedBorderColor,
   }) {
     final isDaysInput = !readOnly && !isCurrency && label != 'salary'.tr();
     return Column(
@@ -775,7 +789,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: _primaryBlue),
+              borderSide: BorderSide(color: focusedBorderColor ?? _primaryBlue),
             ),
             filled: readOnly,
             fillColor: readOnly ? const Color(0xFFF9FAFB) : null,

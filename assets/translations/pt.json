@@ -431,6 +431,7 @@
   "total_work_days": "Total Dias Úteis",
   "absents_label": "Ausências",
   "leaves_label": "Licenças",
+  "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Horas Extras",
   "payroll_data_preview": "Pré-visualização de Folha de Pagamento",
   "holiday_list": "Lista de Feriados",

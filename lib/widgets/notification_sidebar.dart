@@ -9,7 +9,11 @@ import '../services/auth_service.dart';
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
   final ValueChanged<String>? onNotificationTypeTapped;
-  const NotificationSidebar({super.key, required this.onClose, this.onNotificationTypeTapped});
+  const NotificationSidebar({
+    super.key,
+    required this.onClose,
+    this.onNotificationTypeTapped,
+  });
 
   @override
   State<NotificationSidebar> createState() => _NotificationSidebarState();
@@ -35,28 +39,32 @@ class _NotificationSidebarState extends State<NotificationSidebar>
       begin: const Offset(1, 0),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
 
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _isLoading = false;
     } else {
-      _notifSub = FirestoreService().notificationsStream.listen((snap) {
-        if (mounted) {
-          setState(() {
-            _notifications = snap.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .where((n) => n['isRead'] != true)
-                .toList();
-            _isLoading = false;
-          });
-        }
-      }, onError: (_) {
-        if (mounted) setState(() => _isLoading = false);
-      });
+      _notifSub = FirestoreService().notificationsStream.listen(
+        (snap) {
+          if (mounted) {
+            setState(() {
+              _notifications = snap.docs
+                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                  .where((n) => n['isRead'] != true)
+                  .toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (_) {
+          if (mounted) setState(() => _isLoading = false);
+        },
+      );
     }
   }
 
@@ -91,6 +99,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
 
   _NotifStyle _getStyle(String type) {
     switch (type) {
+      case 'new_member':
       case 'worker_added':
         return _NotifStyle(
           icon: Icons.person_add_rounded,
@@ -169,9 +178,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               child: Container(
                 width: 400,
                 height: MediaQuery.of(context).size.height - headerHeight,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFFFFF),
-                ),
+                decoration: const BoxDecoration(color: Color(0xFFFFFFFF)),
                 child: Column(
                   children: [
                     _buildHeader(),
@@ -179,8 +186,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : _notifications.isEmpty
-                              ? _buildEmptyState()
-                              : _buildNotificationList(),
+                          ? _buildEmptyState()
+                          : _buildNotificationList(),
                     ),
                   ],
                 ),
@@ -218,7 +225,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               if (unreadCount > 0) ...[
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF4C84E0),
                     borderRadius: BorderRadius.circular(20),
@@ -249,7 +259,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(6),
@@ -451,7 +464,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
@@ -558,7 +574,11 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           ),
                         ),
                       )
-                    : Icon(style.icon, size: style.iconSize, color: style.color),
+                    : Icon(
+                        style.icon,
+                        size: style.iconSize,
+                        color: style.color,
+                      ),
               ),
             ),
             const SizedBox(width: 14),
@@ -569,7 +589,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: style.bgColor,
                           borderRadius: BorderRadius.circular(6),

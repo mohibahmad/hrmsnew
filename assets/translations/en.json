@@ -436,6 +436,7 @@
   "total_work_days": "Total Work Days",
   "absents_label": "Absents",
   "leaves_label": "Leaves",
+  "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Overtime Days",
   "payroll_data_preview": "PayRoll Data Preview",
   "holiday_list": "Holiday List",

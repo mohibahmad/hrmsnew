@@ -28,7 +28,14 @@ const Color pillGray = Color(0xFFE2E5EA);
 
 class WorkersAttendanceScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
-  const WorkersAttendanceScreen({super.key, this.onNotificationTap});
+  final bool hideSidebar;
+  final VoidCallback? onBack;
+  const WorkersAttendanceScreen({
+    super.key,
+    this.onNotificationTap,
+    this.hideSidebar = false,
+    this.onBack,
+  });
 
   @override
   State<WorkersAttendanceScreen> createState() =>
@@ -239,27 +246,32 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left Sidebar (Standard SidebarWidget)
-          IgnorePointer(
-            ignoring: _isDialogOpen,
-            child: SidebarWidget(
-              key: ValueKey('sidebar_${context.locale.languageCode}'),
-              selectedIndex: 2,
-              selectedSubIndex: 0,
-              isGuest: AuthService().currentUser?.isAnonymous ?? false,
-              isPremium: _isPremium,
-              onItemSelected: (index, {subIndex}) {
-                Navigator.of(context, rootNavigator: true).pop();
-              },
-              onBackToLogin: () {
-                AuthService().signOut();
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              },
+          // Left Sidebar (Standard SidebarWidget) - hide when embedded in HomeScreen
+          if (!widget.hideSidebar)
+            IgnorePointer(
+              ignoring: _isDialogOpen,
+              child: SidebarWidget(
+                key: ValueKey('sidebar_${context.locale.languageCode}'),
+                selectedIndex: 2,
+                selectedSubIndex: 0,
+                isGuest: AuthService().currentUser?.isAnonymous ?? false,
+                isPremium: _isPremium,
+                onItemSelected: (index, {subIndex}) {
+                  if (widget.onBack != null) {
+                    widget.onBack!();
+                  } else {
+                    Navigator.of(context, rootNavigator: true).pop();
+                  }
+                },
+                onBackToLogin: () {
+                  AuthService().signOut();
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
             ),
-          ),
           // Right Main Content
           Expanded(
             child: IgnorePointer(
@@ -376,12 +388,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                                     index: entry
                                                                         .key,
                                                                     onMarkAttendance: () {
-                                                                      final isGuest = AuthService()
+                                                                      final isGuest =
+                                                                          AuthService()
                                                                               .currentUser
                                                                               ?.isAnonymous ??
                                                                           false;
                                                                       if (isGuest) {
-                                                                        Navigator.of(context).push(
+                                                                        Navigator.of(
+                                                                          context,
+                                                                        ).push(
                                                                           MaterialPageRoute(
                                                                             builder: (_) =>
                                                                                 const LoginScreen(),
@@ -528,7 +543,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () {
+              if (widget.onBack != null) {
+                widget.onBack!();
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
             child: const Padding(
               padding: EdgeInsets.only(top: 2.0),
               child: Icon(
@@ -975,7 +996,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   decoration: InputDecoration.collapsed(
                                     hintText: 'enter_reason_hint'.tr(),
                                     hintStyle: TextStyle(
-                                      color: Colors.black.withValues(alpha: 0.38),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.38,
+                                      ),
                                       fontSize: 13,
                                       fontFamily: 'SF Pro Display',
                                     ),

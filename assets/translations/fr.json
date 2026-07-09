@@ -431,6 +431,7 @@
   "total_work_days": "Total Jours Travaillés",
   "absents_label": "Absences",
   "leaves_label": "Congés",
+  "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Heures Supplémentaires",
   "payroll_data_preview": "Aperçu des Données de Paie",
   "holiday_list": "Liste des Jours Fériés",

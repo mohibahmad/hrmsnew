@@ -217,16 +217,18 @@ class _SignupScreenState extends State<SignupScreen> {
       // Welcome notification for new signup
       final userName = _usernameController.text.trim();
       await FirestoreService().addNotification({
-        'type': 'worker_added',
-        'title': 'Welcome $userName, to the Team!',
-        'message': 'Your HRMS account has been successfully created. Let\'s get started!',
+        'type': 'new_member',
+        'title': 'Welcome $userName!',
+        'message':
+            'Your HRMS account has been created successfully. Welcome aboard!',
       });
 
       if (mounted) {
         FlashySnackBar.show(
           context,
-          title: 'success'.tr(),
-          message: 'account_created_successfully'.tr(),
+          title: 'Welcome $userName! 🎉',
+          message:
+              'Your HRMS account has been created successfully. Welcome aboard!',
         );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -354,15 +356,17 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: inputDecoration('email_hint'.tr()),
-               validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'email_required'.tr();
-                  }
-                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
-                    return 'email_invalid'.tr();
-                  }
-                  return null;
-                },
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'email_required'.tr();
+                }
+                if (!RegExp(
+                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                ).hasMatch(value.trim())) {
+                  return 'email_invalid'.tr();
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 10),
             InputLabel(label: 'password_label'.tr()),
@@ -457,7 +461,8 @@ class _SignupScreenState extends State<SignupScreen> {
       const SizedBox(height: 12),
 
       // Continue with Google Button
-      buildSocialButton(context: context,
+      buildSocialButton(
+        context: context,
         text: 'continue_with_google'.tr(),
         icon: SvgPicture.string(googleSvg, width: 16, height: 16),
         isLoading: _isGoogleLoading,
@@ -468,7 +473,8 @@ class _SignupScreenState extends State<SignupScreen> {
       const SizedBox(height: 8),
 
       // Continue with Apple Button
-      buildSocialButton(context: context,
+      buildSocialButton(
+        context: context,
         text: 'continue_with_apple'.tr(),
         icon: SvgPicture.string(
           appleSvg,
@@ -485,7 +491,8 @@ class _SignupScreenState extends State<SignupScreen> {
       const SizedBox(height: 8),
 
       // Continue as Guest Button
-      buildSocialButton(context: context,
+      buildSocialButton(
+        context: context,
         text: 'continue_as_guest'.tr(),
         icon: SvgPicture.string(
           guestSvg,

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/date_utils.dart';
 import '../utils/validators.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
@@ -311,6 +312,54 @@ class FirestoreService {
     final coll = _attendance;
     if (coll == null) return;
     await coll.doc(id).delete();
+  }
+
+  DateTime? _dateFromCreatedAt(dynamic createdAt) {
+    if (createdAt == null) return null;
+    if (createdAt is Timestamp) return createdAt.toDate();
+    if (createdAt is DateTime) return createdAt;
+    return AppDateUtils.parseDateString(createdAt.toString());
+  }
+
+  /// Returns the total [absents] and [leaves] for a worker in the current
+  /// calendar month, derived from the attendance records. Re-marks on the same
+  /// day are de-duplicated so each day is only counted once.
+  Future<Map<String, int>> getWorkerMonthlyAttendance(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    List<Map<String, dynamic>> records;
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      records = List<Map<String, dynamic>>.from(DummyData.attendance);
+    } else {
+      final coll = _attendance;
+      if (coll == null) return {'absents': 0, 'leaves': 0};
+      final snap = await coll.get();
+      records = snap.docs
+          .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+          .toList();
+    }
+
+    final now = DateTime.now();
+    int absents = 0;
+    int leaves = 0;
+    final seenDays = <String>{};
+    for (final att in records) {
+      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+      if (normalizedEmail.isNotEmpty && attEmail != normalizedEmail) continue;
+      final date = _dateFromCreatedAt(att['createdAt']);
+      if (date == null) continue;
+      if (date.year != now.year || date.month != now.month) continue;
+      final dayKey = '$attEmail-${date.year}-${date.month}-${date.day}';
+      if (seenDays.contains(dayKey)) continue;
+      seenDays.add(dayKey);
+      final status = (att['status'] ?? '').toString();
+      if (status == 'Absent') {
+        absents++;
+      } else if (status == 'Leave') {
+        leaves++;
+      }
+    }
+    return {'absents': absents, 'leaves': leaves};
   }
 
   Stream<QuerySnapshot> get attendanceStream {
