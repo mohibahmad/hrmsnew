@@ -528,6 +528,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                               'worker_email'.tr(),
                                               'enter_email'.tr(),
                                               controller: emailController,
+                                              isEmail: true,
                                             ),
                                           ),
                                           const SizedBox(width: 24),
@@ -817,13 +818,14 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     String hint, {
     IconData? suffixIcon,
     bool isTextArea = false,
+    bool isEmail = false,
     TextEditingController? controller,
   }) {
     final isNumeric =
         label.toLowerCase().contains('contact') ||
         label.toLowerCase().contains('phone') ||
         label.toLowerCase().contains('national');
-    final isEmail = label.toLowerCase().contains('email');
+    final isEmailField = isEmail || label.toLowerCase().contains('mail');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -859,8 +861,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                     if (label.toLowerCase().contains('national'))
                       LengthLimitingTextInputFormatter(15),
                   ]
-                : isEmail
-                    ? [LengthLimitingTextInputFormatter(50)]
+                : isEmailField
+                    ? [LengthLimitingTextInputFormatter(100)]
                     : null,
             style: const TextStyle(
               fontSize: 14,

@@ -1629,17 +1629,12 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
 
                                 // Email Row
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(
-                                      Icons.mail_outline,
-                                      color: Color(0xFFFFFFFF),
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
                                         email,
-                                        maxLines: 1,
+                                        softWrap: true,
                                         style: const TextStyle(
                                           color: Color(0xFFFFFFFF),
                                           fontSize: 15,
@@ -1647,6 +1642,13 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                           fontFamily: 'SF Pro Display',
                                         ),
                                       ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Image.asset(
+                                      'assets/email.png',
+                                      width: 20,
+                                      height: 20,
+                                      fit: BoxFit.contain,
                                     ),
                                   ],
                                 ),
@@ -1656,12 +1658,13 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 3),
-                                      child: Icon(
-                                        Icons.phone,
-                                        color: Color(0xFFFFFFFF),
-                                        size: 20,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 3),
+                                      child: Image.asset(
+                                        'assets/call.png',
+                                        width: 20,
+                                        height: 20,
+                                        fit: BoxFit.contain,
                                       ),
                                     ),
                                     const SizedBox(width: 10),

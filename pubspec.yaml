@@ -146,6 +146,8 @@ flutter:
     - assets/absent.svg
     - assets/total_workers.svg
     - assets/email.svg
+    - assets/email.png
+    - assets/call.png
     - assets/present.svg
     - assets/present_grey.svg
     - assets/right_back_arrow.png

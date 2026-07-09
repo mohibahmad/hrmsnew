@@ -1697,6 +1697,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             'worker_email'.tr(),
                             'enter_your_email'.tr(),
                             controller: emailController,
+                            isEmail: true,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -3599,6 +3600,7 @@ Widget _buildInputField(
   IconData? suffixIcon,
   bool isDropdown = false,
   bool isTextArea = false,
+  bool isEmail = false,
   TextEditingController? controller,
   TextAlign textAlign = TextAlign.start,
 }) {
@@ -3610,7 +3612,7 @@ Widget _buildInputField(
   final isNationalId =
       label.toLowerCase().contains('national id') ||
       label.toLowerCase().contains('national_id');
-  final isEmail = label.toLowerCase().contains('email');
+  final isEmailField = isEmail || label.toLowerCase().contains('mail');
   final isReligion = label.toLowerCase().contains('religion');
   final isNumeric = isAmount || isLeaves || isContact || isNationalId;
 
@@ -3656,7 +3658,7 @@ Widget _buildInputField(
                 ]
               : () {
                     final list = <TextInputFormatter>[];
-                    if (isEmail) list.add(LengthLimitingTextInputFormatter(50));
+                    if (isEmailField) list.add(LengthLimitingTextInputFormatter(100));
                     if (isReligion) list.add(LengthLimitingTextInputFormatter(30));
                     return list.isEmpty ? null : list;
                   }(),
