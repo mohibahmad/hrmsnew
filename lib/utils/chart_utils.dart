@@ -98,6 +98,14 @@ ChartData getChartData(
 
   if (isGuest || docs.isEmpty) {
     switch (period) {
+    case 'Today':
+      final labels = <String>[];
+      for (int i = 6; i >= 0; i--) {
+        final date = now.subtract(Duration(days: i));
+        labels.add(DateFormat('E', locale).format(date).toUpperCase());
+      }
+      return ChartData(labels, [0, 0, 0, 0, 0, 0, 0]);
+
       case 'Week':
         final labels = <String>[];
         final values = [12.0, 14.0, 8.0, 15.0, 13.0, 11.0, 14.0];
@@ -168,6 +176,22 @@ ChartData getChartData(
   }
 
   switch (period) {
+    case 'Today':
+      final labels = <String>[];
+      final values = List.filled(7, 0.0);
+      for (int i = 6; i >= 0; i--) {
+        final date = now.subtract(Duration(days: i));
+        labels.add(DateFormat('E', locale).format(date).toUpperCase());
+      }
+      for (final dt in parsedRecords) {
+        if (dt.year == now.year &&
+            dt.month == now.month &&
+            dt.day == now.day) {
+          values[6] += 1.0;
+        }
+      }
+      return ChartData(labels, values);
+
     case 'Week':
       final labels = <String>[];
       final values = List.filled(7, 0.0);
