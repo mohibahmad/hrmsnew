@@ -250,60 +250,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _buildHeader(context),
           // Main Body Content
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 40.0,
-                vertical: 24.0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSearchAndActionRow(),
-                  const SizedBox(height: 24),
-                  _buildSummaryCardsRow(),
-                  const SizedBox(height: 24),
-                  _buildFilterAndDropdownRow(),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left side: Attendance Table/Empty State
-                      Expanded(
-                        child: Column(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40.0,
+                      vertical: 24.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSearchAndActionRow(),
+                        const SizedBox(height: 24),
+                        _buildSummaryCardsRow(),
+                        const SizedBox(height: 24),
+                        _buildFilterAndDropdownRow(),
+                        const SizedBox(height: 16),
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'today_attendance'.tr(),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                                fontFamily: 'SF Pro Display',
+                            // Left side: Attendance Table/Empty State
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'today_attendance'.tr(),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textDark,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  if (filtered.isEmpty)
+                                    _buildEmptyState()
+                                  else
+                                    _buildAttendanceTable(filtered),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            if (_isLoading)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 80),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              )
-                            else if (filtered.isEmpty)
-                              _buildEmptyState()
-                            else
-                              _buildAttendanceTable(filtered),
+
+                            // Right side timeframe dropdown popup (anchored or expanded)
                           ],
                         ),
-                      ),
-
-                      // Right side timeframe dropdown popup (anchored or expanded)
-                    ],
+                        const SizedBox(height: 40),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
           ),
         ],
       ),

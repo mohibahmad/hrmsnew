@@ -50,20 +50,6 @@ class PayrollService {
       }
     }
 
-    for (var p in rawPayrollDocs) {
-      final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-      final pName = (p['name'] ?? '').toString().trim().toLowerCase();
-      final existsInCombined = combined.any((c) {
-        final cEmail = (c['email'] ?? '').toString().trim().toLowerCase();
-        final cName = (c['name'] ?? '').toString().trim().toLowerCase();
-        return (pEmail.isNotEmpty && cEmail == pEmail) ||
-            (pName.isNotEmpty && cName == pName);
-      });
-      if (!existsInCombined) {
-        combined.add(p);
-      }
-    }
-
     return combined;
   }
 
