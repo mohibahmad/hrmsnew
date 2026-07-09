@@ -1659,7 +1659,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 3),
+                                      padding: const EdgeInsets.only(top: 6),
                                       child: Image.asset(
                                         'assets/call.png',
                                         width: 20,
