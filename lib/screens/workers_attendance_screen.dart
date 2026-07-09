@@ -880,6 +880,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               'assets/email.svg',
                                               height: 14,
                                               width: 14,
+                                              colorFilter: const ColorFilter.mode(
+                                                Color(0xFFFFFFFF),
+                                                BlendMode.srcIn,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 10),

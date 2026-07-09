@@ -1154,11 +1154,19 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.email_outlined,
-                          color: Color(0xFFFFFFFF),
-                          size: 16,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: SvgPicture.asset(
+                            'assets/email.svg',
+                            height: 14,
+                            width: 14,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFFFFFFF),
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -1178,12 +1186,12 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 2),
-                          child: Icon(
-                            Icons.phone,
-                            color: Color(0xFFFFFFFF),
-                            size: 16,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Image.asset(
+                            'assets/call.png',
+                            height: 14,
+                            width: 14,
                           ),
                         ),
                         const SizedBox(width: 8),
