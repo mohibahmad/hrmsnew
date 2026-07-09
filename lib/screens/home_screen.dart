@@ -628,6 +628,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _selectedSubIndex = subIndex;
                       }
                       _showProfile = false;
+                      _showWorkersAttendance = false;
                       _showAssignTimeOff = false;
                       _showNotifications = false;
                       _selectedTimeOffWorker = null;

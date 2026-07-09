@@ -281,90 +281,24 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               isPremium: _isPremium,
               onItemSelected: (index, {subIndex}) {
                 _isDialogOpen = false;
-                final void Function() onLogout = () {
-                    AuthService().signOut();
-                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => HomeScreen(
+                      initialIndex: index == 2 ? 2 : index,
+                      initialSubIndex: index == 2 ? (subIndex ?? 0) : 0,
+                    ),
+                  ),
+                  (route) => false,
+                );
+              },
+                onBackToLogin: () {
+                  AuthService().signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                       (route) => false,
                     );
-                  };
-                  final void Function() onProfileTap = () {
-                    Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                    );
-                  };
-
-                  Widget screen;
-                  switch (index) {
-                    case 0:
-                      screen = const HomeScreen();
-                      break;
-                    case 1:
-                      screen = const WorkersScreen();
-                      break;
-                    case 2:
-                      final sub = subIndex ?? 0;
-                      switch (sub) {
-                        case 0:
-                          screen = AttendanceScreen(
-                            onLogout: onLogout,
-                            onProfileTap: onProfileTap,
-                          );
-                          break;
-                        case 1:
-                          screen = PayrollScreen(
-                            onLogout: onLogout,
-                            onProfileTap: onProfileTap,
-                          );
-                          break;
-                        case 2:
-                          screen = TimeOffScreen(
-                            onLogout: onLogout,
-                            onProfileTap: onProfileTap,
-                          );
-                          break;
-                        case 3:
-                          screen = AssetsScreen(
-                            onLogout: onLogout,
-                            onProfileTap: onProfileTap,
-                          );
-                          break;
-                        case 4:
-                          screen = HolidaysScreen(
-                            onLogout: onLogout,
-                            onProfileTap: onProfileTap,
-                          );
-                          break;
-                        default:
-                          return;
-                      }
-                      break;
-                    case 3:
-                      screen = ExpensesScreen(
-                        onLogout: onLogout,
-                        onProfileTap: onProfileTap,
-                      );
-                      break;
-                    case 4:
-                      screen = SettingsScreen(
-                        onLogout: onLogout,
-                        onProfileTap: onProfileTap,
-                      );
-                      break;
-                    default:
-                      return;
                   }
-                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => screen),
-                    (route) => false,
-                  );
-                },
-                onBackToLogin: () {
-                  AuthService().signOut();
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
-                  );
                 },
               ),
           // Right Main Content
