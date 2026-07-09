@@ -9,11 +9,19 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
 import '../widgets/sidebar_widget.dart';
-import '../utils/logout_dialog.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
+import 'workers.dart';
+import 'attendance_screen.dart';
+import 'payroll_screen.dart';
+import 'time_off.dart';
+import 'assets_screen.dart';
+import 'holidays_screen.dart';
+import 'expenses_screen.dart';
+import 'settings_screen.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
@@ -257,11 +265,83 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 isGuest: AuthService().currentUser?.isAnonymous ?? false,
                 isPremium: _isPremium,
                 onItemSelected: (index, {subIndex}) {
-                  if (widget.onBack != null) {
-                    widget.onBack!();
-                  } else {
-                    Navigator.of(context, rootNavigator: true).pop();
+                  final void Function() onLogout = () {
+                    AuthService().signOut();
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  };
+                  final void Function() onProfileTap = () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    );
+                  };
+
+                  Widget screen;
+                  switch (index) {
+                    case 0:
+                      screen = const HomeScreen();
+                      break;
+                    case 1:
+                      screen = const WorkersScreen();
+                      break;
+                    case 2:
+                      final sub = subIndex ?? 0;
+                      switch (sub) {
+                        case 0:
+                          screen = AttendanceScreen(
+                            onLogout: onLogout,
+                            onProfileTap: onProfileTap,
+                          );
+                          break;
+                        case 1:
+                          screen = PayrollScreen(
+                            onLogout: onLogout,
+                            onProfileTap: onProfileTap,
+                          );
+                          break;
+                        case 2:
+                          screen = TimeOffScreen(
+                            onLogout: onLogout,
+                            onProfileTap: onProfileTap,
+                          );
+                          break;
+                        case 3:
+                          screen = AssetsScreen(
+                            onLogout: onLogout,
+                            onProfileTap: onProfileTap,
+                          );
+                          break;
+                        case 4:
+                          screen = HolidaysScreen(
+                            onLogout: onLogout,
+                            onProfileTap: onProfileTap,
+                          );
+                          break;
+                        default:
+                          return;
+                      }
+                      break;
+                    case 3:
+                      screen = ExpensesScreen(
+                        onLogout: onLogout,
+                        onProfileTap: onProfileTap,
+                      );
+                      break;
+                    case 4:
+                      screen = SettingsScreen(
+                        onLogout: onLogout,
+                        onProfileTap: onProfileTap,
+                      );
+                      break;
+                    default:
+                      return;
                   }
+                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => screen),
+                    (route) => false,
+                  );
                 },
                 onBackToLogin: () {
                   AuthService().signOut();
@@ -530,9 +610,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final user = AuthService().currentUser;
-    final name = user?.displayName ?? 'User';
-
     return Container(
       height: 94,
       padding: const EdgeInsets.only(left: 40, right: 40, top: 24, bottom: 24),
@@ -572,73 +649,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                showLogoutDialog(context);
-              }
-            },
-            offset: const Offset(0, 52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            color: Color(0xFFFFFFFF),
-            elevation: 8,
-            tooltip: '',
-            child: const UserAvatar(),
-            itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                enabled: false,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: textDark,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                enabled: false,
-                padding: EdgeInsets.zero,
-                height: 0,
-                child: SizedBox.shrink(),
-              ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.logout_rounded,
-                      size: 18,
-                      color: Colors.red.shade400,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'logout'.tr(),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFFEF4444),
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          const UserAvatar(),
         ],
       ),
     );

@@ -479,8 +479,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  // ================= MAIN CONTENT =================
-
   Widget _buildMainCard() {
     return Container(
       padding: const EdgeInsets.all(24),
