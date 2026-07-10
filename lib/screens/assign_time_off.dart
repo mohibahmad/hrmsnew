@@ -886,16 +886,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ((isStartCalendar && isStartDateCell) ||
                   (!isStartCalendar && isEndDateCell));
 
-          // inRange: start..end inclusive highlight range (directional).
-          // Requirement: end date se start date select hona (reverse) range fill na ho.
+          // inRange: start..end inclusive highlight range.
+          // Reverse selection (end < start) me highlight na ho.
           bool inRange = false;
-          if (_hasSelection) {
-            // Only highlight if end >= start
-            if (!endStart.isBefore(startStart)) {
-              inRange = (cellDate.isAfter(startStart) || cellDate.isAtSameMomentAs(startStart)) &&
-                  (cellDate.isBefore(endStart) || cellDate.isAtSameMomentAs(endStart));
-            }
+          if (_hasSelection && !endStart.isBefore(startStart)) {
+            inRange = (cellDate.isAfter(startStart) || cellDate.isAtSameMomentAs(startStart)) &&
+                (cellDate.isBefore(endStart) || cellDate.isAtSameMomentAs(endStart));
           }
+
 
 
 
