@@ -12,7 +12,6 @@ import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
 
 import 'assign_time_off.dart';
-import 'login_screen.dart';
 
 class Worker {
   final String name;

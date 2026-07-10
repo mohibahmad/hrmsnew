@@ -30,8 +30,6 @@ class ProfileInlineHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthService().currentUser;
-    final name = user?.displayName ?? 'user'.tr();
 
     return Container(
       height: 94,
