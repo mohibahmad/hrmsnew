@@ -886,28 +886,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ((isStartCalendar && isStartDateCell) ||
                   (!isStartCalendar && isEndDateCell));
 
-          // inRange: start..end inclusive highlight range.
-          // We'll clamp it per calendar:
-          // - Start calendar: highlight start..end (inclusive)
-          // - End calendar: highlight end..start (inclusive)
-          // This avoids showing the “other endpoint” only.
+          // inRange: start..end inclusive highlight range (directional).
+          // Requirement: end date se start date select hona (reverse) range fill na ho.
           bool inRange = false;
           if (_hasSelection) {
-            // inclusive range fill for whichever endpoint is relevant for this calendar.
-            // Right calendar should fill start..end too, but only show start endpoint as a normal day (not selected).
-            // Selected endpoints are handled by `isSelected` above.
-            final DateTime a = startStart;
-            final DateTime b = endStart;
-            final DateTime left = a.isBefore(b) ? a : b;
-            final DateTime right = a.isBefore(b) ? b : a;
-
-            // Always fill inclusive start..end on both calendars
-            inRange = (cellDate.isAfter(left) || cellDate.isAtSameMomentAs(left)) &&
-                (cellDate.isBefore(right) || cellDate.isAtSameMomentAs(right));
-
-            // But clamp by removing the “other endpoint selection” day appearance if needed.
-            // This keeps visual behavior aligned with requirement.
+            // Only highlight if end >= start
+            if (!endStart.isBefore(startStart)) {
+              inRange = (cellDate.isAfter(startStart) || cellDate.isAtSameMomentAs(startStart)) &&
+                  (cellDate.isBefore(endStart) || cellDate.isAtSameMomentAs(endStart));
+            }
           }
+
 
 
 
