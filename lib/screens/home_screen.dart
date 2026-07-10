@@ -214,6 +214,25 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _isPremium = isPremium);
   }
 
+  Future<void> _checkProfileExistsOrLogout() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.isAnonymous) return;
+
+    try {
+      final profile = await FirestoreService().getUserProfile();
+      if (profile == null) {
+        await AuthService().signOut();
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        }
+      }
+    } catch (_) {
+      // Firestore error — don't logout, let the app retry
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -230,6 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _startPremiumListener();
     // Load premium status first, then show dialog if needed
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkProfileExistsOrLogout();
       await _loadPremiumStatus();
     });
   }

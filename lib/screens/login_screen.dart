@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         final loggedInEmail =
             _authService.currentUser?.email?.trim().toLowerCase();
-        if (loggedInEmail != enteredEmail) {
+        if (loggedInEmail == null || loggedInEmail != enteredEmail) {
           await _authService.signOut();
           if (mounted) {
             _showErrorSnackBar('login_failed'.tr(namedArgs: {'code': 'email-mismatch'}));
@@ -261,8 +261,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<bool> _handleDeletedAccountIfNeeded() async {
-    final email = _authService.currentUser?.email;
-    if (email == null) return false;
+    final user = _authService.currentUser;
+    if (user == null) return false;
+
+    if (user.isAnonymous || user.uid.startsWith('guest_')) return false;
+
+    final email = user.email;
+    if (email == null || email.isEmpty) return false;
 
     try {
       final isDeleted = await FirestoreService().isCurrentUserDeleted();

@@ -9,8 +9,13 @@ Future<bool> handleDeletedAccountIfNeeded(
   BuildContext context,
   AuthService authService,
 ) async {
-  final email = authService.currentUser?.email;
-  if (email == null) return false;
+  final user = authService.currentUser;
+  if (user == null) return false;
+
+  if (user.isAnonymous || user.uid.startsWith('guest_')) return false;
+
+  final email = user.email;
+  if (email == null || email.isEmpty) return false;
 
   try {
     final isDeleted = await FirestoreService().isCurrentUserDeleted();

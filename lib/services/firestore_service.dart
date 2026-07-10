@@ -17,11 +17,18 @@ class FirestoreService {
 
   String get _userKey {
     final user = AuthService().currentUser;
-    if (user == null || user.isAnonymous) return '';
+    if (user == null) return '';
+
     final email = user.email?.trim().toLowerCase();
-    if (email != null && email.isNotEmpty) return email;
+    if (email != null && email.isNotEmpty) {
+      return email.replaceAll('.', '_');
+    }
+
     final uid = user.uid;
-    if (uid.isNotEmpty) return uid;
+    if (uid.isNotEmpty && uid != 'guest_uid' && !uid.startsWith('guest_')) {
+      return uid;
+    }
+
     return '';
   }
 
@@ -48,14 +55,18 @@ class FirestoreService {
     required String email,
     required String phone,
   }) async {
-    final doc = _userDoc;
-    if (doc == null) return;
-    final companyId = _generateCompanyId();
+    final user = AuthService().currentUser;
+    if (user == null) return;
+
+    final emailKey = email.trim().toLowerCase().replaceAll('.', '_');
+    final doc = _db.collection('hrms_user').doc(emailKey);
+
     await doc.set({
       'username': username,
       'email': email,
       'phone': phone,
-      'companyId': companyId,
+      'uid': user.uid,
+      'companyId': _generateCompanyId(),
       'hasDummyData': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -530,8 +541,7 @@ class FirestoreService {
     required String email,
     bool force = false,
   }) async {
-    // Use email as the document key (same as _userKey in FirestoreService)
-    final docRef = _db.collection('hrms_user').doc(email.trim().toLowerCase());
+    final docRef = _db.collection('hrms_user').doc(uid);
     final userSnap = await docRef.get();
 
     if (!force && userSnap.exists) {

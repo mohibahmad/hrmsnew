@@ -22,15 +22,21 @@ class AuthService {
   static set isGuestUser(bool value) => _isGuestUser = value;
 
   Stream<User?> get authStateChanges {
-    if (FirestoreService.isTesting || isGuestUser) {
+    if (FirestoreService.isTesting) {
       return Stream.value(MockUser());
+    }
+    if (isGuestUser) {
+      return Stream.value(GuestUser());
     }
     return _auth.authStateChanges();
   }
 
   User? get currentUser {
-    if (FirestoreService.isTesting || isGuestUser) {
+    if (FirestoreService.isTesting) {
       return MockUser();
+    }
+    if (isGuestUser) {
+      return GuestUser();
     }
     return _auth.currentUser;
   }
@@ -84,14 +90,14 @@ class AuthService {
     }
   }
 
-  /// Sign in Anonymously (Continue as Guest) - Uses MockUser only, no Firebase anonymous auth
+  /// Sign in Anonymously (Continue as Guest) - Local only, no Firebase
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
     _isGuestUser = true;
     await PreferencesService.setLoggedIn(true);
     await PreferencesService.setGuest(true);
-    return MockUserCredential();
+    return GuestUserCredential();
   }
 
   /// Sign in with Google
@@ -313,6 +319,81 @@ class MockUser implements User {
 class MockUserCredential implements UserCredential {
   @override
   final User user = MockUser();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class GuestUser implements User {
+  final String _uid = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+
+  @override
+  String get uid => _uid;
+
+  @override
+  String? get email => null;
+
+  @override
+  String? get displayName => 'Guest User';
+
+  @override
+  bool get isAnonymous => true;
+
+  @override
+  String? get photoURL => null;
+
+  @override
+  Future<void> updateDisplayName(String? displayName) async {}
+
+  @override
+  Future<void> updatePhotoURL(String? photoURL) async {}
+
+  @override
+  Future<void> updatePassword(String? password) async {}
+
+  @override
+  Future<void> reload() async {}
+
+  @override
+  Future<void> delete() async {}
+
+  @override
+  Future<void> sendEmailVerification([ActionCodeSettings? app]) async {}
+
+  @override
+  Future<IdTokenResult> getIdTokenResult([bool forceRefresh = false]) async {
+    return MockIdTokenResult();
+  }
+
+  @override
+  Future<String?> getIdToken([bool forceRefresh = false]) async {
+    return 'guest_token_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class GuestUserCredential implements UserCredential {
+  @override
+  final User user = GuestUser();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class MockIdTokenResult implements IdTokenResult {
+  @override
+  String get token => 'mock_token';
+
+  @override
+  DateTime get expirationTime => DateTime.now().add(const Duration(hours: 1));
+
+  @override
+  String get signInProvider => 'anonymous';
+
+  @override
+  Map<String, dynamic> get claims => {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
