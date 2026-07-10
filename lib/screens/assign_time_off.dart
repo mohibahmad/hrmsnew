@@ -312,6 +312,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (_selectedWorker == null) return 0;
     if (_timeOffType == 'Custom Leave') return 999;
     String key;
+    // Worker totals should come from these keys, but some datasets use different field names.
+    // We'll try a few common alternatives before defaulting to 0.
     switch (_timeOffType) {
       case 'Annual Leave':
         key = 'annualLeaves';
@@ -322,9 +324,30 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       default:
         return 0;
     }
-    final raw = (_selectedWorker![key] ?? '').toString();
+
+    String raw = (_selectedWorker![key] ?? '').toString();
+
+    if (raw.isEmpty) {
+      // common aliases
+      final aliases = switch (_timeOffType) {
+        'Annual Leave' => const ['annual_leave', 'annualLeave', 'annual_leave_days', 'annualLeaves'],
+        'Sick Leave' => const ['sick_leave', 'sickLeave', 'sick_leave_days', 'sickLeaves'],
+        'Casual Leave' => const ['casual_leave', 'casualLeave', 'casual_leave_days', 'casualLeaves'],
+        _ => const [],
+      };
+
+      for (final a in aliases) {
+        final v = _selectedWorker![a];
+        if (v != null && v.toString().trim().isNotEmpty) {
+          raw = v.toString();
+          break;
+        }
+      }
+    }
+
     final total = int.tryParse(raw);
     if (total == null) return 0;
+
     final used = _alreadyUsedDays;
     final remaining = total - used;
     return remaining < 0 ? 0 : remaining;
