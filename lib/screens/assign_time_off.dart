@@ -715,9 +715,42 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(Icons.chevron_left, size: 20, color: Colors.grey),
+                InkWell(
+                  onTap: () {
+                    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+                    if (isStartCalendar) {
+                      final newMonth = DateTime(
+                        _calendarMonth.year,
+                        _calendarMonth.month - 1,
+                        1,
+                      );
+                      if (!newMonth.isBefore(currentMonth)) {
+                        setState(() {
+                          _calendarMonth = newMonth;
+                        });
+                      }
+                    } else {
+                      final newMonth = DateTime(
+                        _calendarMonth2.year,
+                        _calendarMonth2.month - 1,
+                        1,
+                      );
+                      if (!newMonth.isBefore(currentMonth)) {
+                        setState(() {
+                          _calendarMonth2 = newMonth;
+                        });
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.chevron_left,
+                      size: 20,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Text(
@@ -731,18 +764,23 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 const SizedBox(width: 16),
                 InkWell(
                   onTap: () {
-                    setState(() {
-                      _calendarMonth = DateTime(
-                        _calendarMonth.year,
-                        _calendarMonth.month + 1,
-                        1,
-                      );
-                      _calendarMonth2 = DateTime(
-                        _calendarMonth2.year,
-                        _calendarMonth2.month + 1,
-                        1,
-                      );
-                    });
+                    if (isStartCalendar) {
+                      setState(() {
+                        _calendarMonth = DateTime(
+                          _calendarMonth.year,
+                          _calendarMonth.month + 1,
+                          1,
+                        );
+                      });
+                    } else {
+                      setState(() {
+                        _calendarMonth2 = DateTime(
+                          _calendarMonth2.year,
+                          _calendarMonth2.month + 1,
+                          1,
+                        );
+                      });
+                    }
                   },
                   borderRadius: BorderRadius.circular(4),
                   child: const Padding(

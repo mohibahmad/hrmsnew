@@ -714,7 +714,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                elevation: 0,
+                elevation: 8,
+                dropdownColor: Colors.white,
                 value: isEmpty ? null : (items.contains(value) ? value : null),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(

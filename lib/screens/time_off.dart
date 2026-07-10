@@ -764,11 +764,19 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                           ?.isAnonymous ??
                                       false;
                                   if (isGuest) {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const LoginScreen(),
-                                      ),
-                                    );
+                                    Navigator.of(context)
+                                        .push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AssignTimeOffScreen(
+                                                  onBack: () => Navigator.of(
+                                                    context,
+                                                  ).pop(),
+                                                  initialWorker: doc,
+                                                ),
+                                          ),
+                                        )
+                                        .then((_) => _refreshGuestData());
                                     return;
                                   }
                                   if (widget.onAssignTimeOff != null) {

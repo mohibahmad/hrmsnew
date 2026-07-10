@@ -909,7 +909,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       },
                                       child: _buildToggleChip(
                                         'absent'.tr(),
-                                        'assets/absent.svg',
+                                        'assets/absent.png',
                                         const Color(0xFFF44336),
                                         isSelected: selectedStatus == 'Absent',
                                       ),
