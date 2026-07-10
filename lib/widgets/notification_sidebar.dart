@@ -360,8 +360,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  // ==================== NOTIFICATION LIST ====================
-  Widget _buildNotificationList() {
+   Widget _buildNotificationList() {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 12),
       itemCount: _notifications.length,
@@ -401,8 +400,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  // ==================== WELCOME CARD ====================
-  Widget _buildWelcomeCard({
+   Widget _buildWelcomeCard({
     required String title,
     required String message,
     required String timeAgo,
@@ -545,8 +543,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  // ==================== NOTIFICATION ITEM WITH HOVER ====================
-  Widget _buildNotificationItem({
+   Widget _buildNotificationItem({
     required _NotifStyle style,
     required String title,
     required String message,
