@@ -37,8 +37,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   final TextEditingController dobController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
 
-  // States
-  bool isMarried = true;
+   bool isMarried = true;
   bool isLoading = false; // Loading state for Firebase operation
 
   // Profile image state
@@ -59,8 +58,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     super.dispose();
   }
 
-  // Profile image picking
-  Future<void> _pickProfileImage() async {
+   Future<void> _pickProfileImage() async {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.image,
@@ -99,10 +97,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     }
   }
 
-  // FIREBASE SAVE LOGIC
-  Future<void> _handleSave() async {
-    // Basic validation
-    if (nameController.text.isEmpty || contactController.text.isEmpty) {
+   Future<void> _handleSave() async {
+     if (nameController.text.isEmpty || contactController.text.isEmpty) {
       FlashySnackBar.show(
         context,
         message: 'please_fill_name_contact'.tr(),
@@ -138,8 +134,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     });
 
     try {
-      // Upload profile image if selected
-      String? profileImageUrl;
+       String? profileImageUrl;
       if (_profileImageBytes != null) {
         final isGuest = AuthService().currentUser?.isAnonymous ?? false;
         if (isGuest) {
@@ -169,8 +164,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               );
             }
           }
-          // Fallback to base64 if upload fails
-          profileImageUrl ??=
+           profileImageUrl ??=
               'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
         }
       }
@@ -222,8 +216,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         _clearForm(); // Clear the form after saving
       }
     } catch (e) {
-      // Show Error Message
-      if (mounted) {
+       if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'error_saving_data'.tr(namedArgs: {'error': e.toString()}),
@@ -268,8 +261,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       backgroundColor: const Color(0xFFF7F8FA),
       body: Row(
         children: [
-          // ================= LEFT SIDEBAR =================
-          SidebarWidget(
+           SidebarWidget(
             key: ValueKey('sidebar_${context.locale.languageCode}'),
             selectedIndex: 1,
             isGuest: AuthService().currentUser?.isAnonymous ?? false,
@@ -293,13 +285,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             },
           ),
 
-          // ================= MAIN CONTENT AREA =================
-          Expanded(
+           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- Top Header Area ---
-                Container(
+                 Container(
                   height: 94,
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   decoration: const BoxDecoration(
@@ -358,8 +348,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           ),
                         ],
                       ),
-                      // SAVE BUTTON with Loading Indicator
-                      InkWell(
+                       InkWell(
                         onTap: isLoading ? null : _handleSave,
                         borderRadius: BorderRadius.circular(6),
                         child: Container(
@@ -398,8 +387,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                   ),
                 ),
 
-                // --- Main Form Content ---
-                Expanded(
+                 Expanded(
                   child: Scrollbar(
                     thumbVisibility: true,
                     child: SingleChildScrollView(
@@ -443,8 +431,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           ),
                           const SizedBox(height: 32),
 
-                          // --- Sub-header ("Personal Information") ---
-                          Row(
+                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(

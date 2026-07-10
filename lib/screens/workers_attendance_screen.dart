@@ -893,7 +893,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       },
                                       child: _buildToggleChip(
                                         'present'.tr(),
-                                        'assets/present.svg',
+                                        'assets/Present.png',
                                         const Color(0xFF00C853),
                                         isSelected: selectedStatus == 'Present',
                                       ),
@@ -1330,11 +1330,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   Widget _buildToggleChip(
     String label,
-    String svgAsset,
+    String asset,
     Color iconColor, {
     bool isSelected = false,
   }) {
     return Container(
+
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
@@ -1346,7 +1347,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SvgPicture.asset(svgAsset, height: 18, width: 18),
+          asset.endsWith('.svg')
+              ? SvgPicture.asset(asset, height: 18, width: 18)
+              : Image.asset(asset, height: 18, width: 18),
           const SizedBox(width: 6),
           Text(
             label,

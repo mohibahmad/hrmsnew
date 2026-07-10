@@ -9,15 +9,18 @@ import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../widgets/notification_bell.dart';
 
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
   final VoidCallback? onNotificationTap;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onBack;
   const AddPayrollScreen({
     super.key,
     required this.workerData,
     this.onNotificationTap,
+    this.onProfileTap,
     this.onBack,
   });
 
@@ -356,56 +359,47 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-                  _buildEmployeeBanner(),
-                  const SizedBox(height: 24),
-                  _buildDetailsCard(),
-                  const SizedBox(height: 40),
-                ],
+        child: Column(
+          children: [
+            _buildAppBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPayrollDataHeader(),
+                        const SizedBox(height: 24),
+                        _buildEmployeeBanner(),
+                        const SizedBox(height: 24),
+                        _buildDetailsCard(),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildPayrollDataHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 12),
-                    child: Icon(Icons.arrow_back, color: _textDark, size: 24),
-                  ),
-                ),
-                Text(
-                  'payroll_data'.tr(),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: _textDark,
-                  ),
-                ),
-              ],
-            ),
-          ],
+        Text(
+          'payroll_data'.tr(),
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+          ),
         ),
         Row(
           children: [
@@ -461,6 +455,44 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       ],
     );
   }
+
+  Widget _buildAppBar() {
+    return Container(
+      height: 94,
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+            child: const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.arrow_back, color: _textDark, size: 24),
+            ),
+          ),
+          Text(
+            'Workforce',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: _textDark,
+            ),
+          ),
+          const Spacer(),
+          NotificationBell(onTap: widget.onNotificationTap),
+          const SizedBox(width: 20),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildEmployeeBanner() {
     return Container(

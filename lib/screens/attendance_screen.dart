@@ -475,7 +475,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: _buildSummaryCard(
             title: 'Present'.tr(),
             count: "$_presentCount",
-            iconAsset: 'assets/present.svg',
+            iconAsset: 'assets/Present.png',
             countColor: const Color(0xFF00FF2A),
           ),
         ),
@@ -550,7 +550,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
           ),
-          SvgPicture.asset(iconAsset, height: 28, width: 28),
+          iconAsset.endsWith('.svg')
+              ? SvgPicture.asset(iconAsset, height: 28, width: 28)
+              : Image.asset(iconAsset, height: 28, width: 28),
         ],
       ),
     );

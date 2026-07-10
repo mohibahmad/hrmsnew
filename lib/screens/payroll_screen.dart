@@ -110,6 +110,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       return AddPayrollScreen(
         workerData: _workerForPayroll!,
         onNotificationTap: widget.onNotificationTap,
+        onProfileTap: widget.onProfileTap,
         onBack: () {
           setState(() {
             _isAddingPayroll = false;
