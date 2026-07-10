@@ -1631,6 +1631,16 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Image.asset(
+                                        'assets/email.png',
+                                        width: 20,
+                                        height: 20,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
                                         email,
@@ -1643,23 +1653,16 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Image.asset(
-                                      'assets/email.png',
-                                      width: 20,
-                                      height: 20,
-                                      fit: BoxFit.contain,
-                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 10),
 
                                 // Phone Row
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 6),
+                                      padding: const EdgeInsets.only(top: 2),
                                       child: Image.asset(
                                         'assets/call.png',
                                         width: 20,

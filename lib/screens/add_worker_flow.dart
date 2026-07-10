@@ -99,7 +99,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   // Upgr``aded form controllers & state
   final _experienceLevelController = TextEditingController(text: 'Mid-Level');
-  final _educationController = TextEditingController(text: 'Bachelor\'s');
+  final _educationController = TextEditingController(text: 'Bachelor');
   final _salaryTypeController = TextEditingController(text: 'Monthly');
   final _currencyController = TextEditingController(text: 'USD');
   final _salaryAmountController = TextEditingController();
@@ -169,9 +169,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _experienceLevelController.text = 'Mid-Level';
 
       _educationController.text =
-          (widget.workerToEdit!['education'] ?? 'Bachelor\'s').toString();
+          (widget.workerToEdit!['education'] ?? 'Bachelor').toString();
       if (_educationController.text.isEmpty)
-        _educationController.text = 'Bachelor\'s';
+        _educationController.text = 'Bachelor';
 
       _salaryTypeController.text =
           (widget.workerToEdit!['salaryType'] ?? 'Monthly').toString();
