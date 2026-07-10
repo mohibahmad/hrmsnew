@@ -3758,7 +3758,9 @@ Widget _buildInputField(
           inputFormatters: isNumeric
               ? [
                   FilteringTextInputFormatter.allow(
-                    isAmount ? RegExp(r'^\d*\.?\d*') : RegExp(r'^\d*'),
+                    isAmount
+                        ? RegExp(r'^\d*\.?\d*')
+                        : (isNationalId ? RegExp(r'^[\d_]*') : RegExp(r'^\d*')),
                   ),
                   if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),

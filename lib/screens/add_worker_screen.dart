@@ -863,7 +863,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             keyboardType: isNumeric ? TextInputType.number : null,
             inputFormatters: isNumeric
                 ? [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*')),
+                    FilteringTextInputFormatter.allow(
+                      label.toLowerCase().contains('national')
+                          ? RegExp(r'^[\d_]*')
+                          : RegExp(r'^\d*'),
+                    ),
                     if (label.toLowerCase().contains('phone') ||
                         label.toLowerCase().contains('contact'))
                       LengthLimitingTextInputFormatter(20),
