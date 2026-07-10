@@ -78,6 +78,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return DateTime.now();
   }
 
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+
   void _resetFormFields() {
     if (_selectedWorker != null &&
         _selectedWorker!['action'] != null &&
@@ -226,26 +229,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                         setState(() {
                           _hasSelection = true;
                           if (isStartDate) {
-                            _startDate = tempPickedDate;
+                            _startDate = _dateOnly(tempPickedDate);
                             _calendarMonth = DateTime(
                               _startDate.year,
                               _startDate.month,
                               1,
                             );
-                            if (_endDate.isBefore(_startDate)) {
-                              _endDate = _startDate.add(
-                                const Duration(days: 9),
-                              );
-                            }
                           } else {
-                            _endDate = tempPickedDate;
+                            _endDate = _dateOnly(tempPickedDate);
                             if (_endDate.isBefore(_startDate)) {
-                              _startDate = _endDate.subtract(
-                                const Duration(days: 9),
-                              );
-                              if (_startDate.isBefore(DateTime(2020))) {
-                                _startDate = DateTime(2020);
-                              }
+                              final tmp = _startDate;
+                              _startDate = _endDate;
+                              _endDate = tmp;
                             }
                           }
                         });
@@ -272,6 +267,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       },
     );
   }
+
 
   int get _requestedDays {
     if (!_hasSelection) return 0;
@@ -872,25 +868,49 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             currentDay,
           );
 
-          DateTime startStart = DateTime(
-            _startDate.year,
-            _startDate.month,
-            _startDate.day,
-          );
-          DateTime endStart = DateTime(
-            _endDate.year,
-            _endDate.month,
-            _endDate.day,
-          );
+          final startStart = _dateOnly(_startDate);
+          final endStart = _dateOnly(_endDate);
 
+
+          final bool isStartDateCell =
+              cellDate.isAtSameMomentAs(startStart);
+          final bool isEndDateCell =
+              cellDate.isAtSameMomentAs(endStart);
+
+          // Per calendar clamping:
+          // - Start calendar: show start..end (inclusive)
+          // - End calendar: show end..start (inclusive)
+          // This ensures one side doesn't show the other endpoint.
           bool isSelected =
               _hasSelection &&
-              (cellDate.isAtSameMomentAs(startStart) ||
-                  cellDate.isAtSameMomentAs(endStart));
-          bool inRange =
-              _hasSelection &&
-              cellDate.isAfter(startStart) &&
-              cellDate.isBefore(endStart);
+              ((isStartCalendar && isStartDateCell) ||
+                  (!isStartCalendar && isEndDateCell));
+
+          // inRange: start..end inclusive highlight range.
+          // We'll clamp it per calendar:
+          // - Start calendar: highlight start..end (inclusive)
+          // - End calendar: highlight end..start (inclusive)
+          // This avoids showing the “other endpoint” only.
+          bool inRange = false;
+          if (_hasSelection) {
+            // inclusive range fill for whichever endpoint is relevant for this calendar.
+            // Right calendar should fill start..end too, but only show start endpoint as a normal day (not selected).
+            // Selected endpoints are handled by `isSelected` above.
+            final DateTime a = startStart;
+            final DateTime b = endStart;
+            final DateTime left = a.isBefore(b) ? a : b;
+            final DateTime right = a.isBefore(b) ? b : a;
+
+            // Always fill inclusive start..end on both calendars
+            inRange = (cellDate.isAfter(left) || cellDate.isAtSameMomentAs(left)) &&
+                (cellDate.isBefore(right) || cellDate.isAtSameMomentAs(right));
+
+            // But clamp by removing the “other endpoint selection” day appearance if needed.
+            // This keeps visual behavior aligned with requirement.
+          }
+
+
+
 
           rowChildren.add(
             _buildDayCell(
@@ -953,9 +973,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             if (date != null) {
               setState(() {
                 if (isStartCalendar) {
-                  _startDate = date;
+                  _startDate = _dateOnly(date);
                 } else {
-                  _endDate = date;
+                  _endDate = _dateOnly(date);
+                  if (_endDate.isBefore(_startDate)) {
+                    // End < Start ho to range highlight empty na rahe.
+                    // Start calendar me start highlight, end calendar me end highlight rahega.
+                    final tmp = _startDate;
+                    _startDate = _endDate;
+                    _endDate = tmp;
+                  }
                 }
                 _hasSelection = true;
               });
