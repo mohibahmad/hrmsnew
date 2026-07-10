@@ -11,7 +11,6 @@ import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
-import '../shared/auth_widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;

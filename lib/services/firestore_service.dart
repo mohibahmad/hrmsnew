@@ -724,6 +724,12 @@ class FirestoreService {
     return unread.docs.length;
   }
 
+  Future<void> deleteNotification(String id) async {
+    final coll = _notifications;
+    if (coll == null) return;
+    await coll.doc(id).delete();
+  }
+
   Future<void> clearAllNotifications() async {
     final coll = _notifications;
     if (coll == null) return;

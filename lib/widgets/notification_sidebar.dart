@@ -8,11 +8,9 @@ import '../services/auth_service.dart';
 
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
-  final ValueChanged<String>? onNotificationTypeTapped;
   const NotificationSidebar({
     super.key,
     required this.onClose,
-    this.onNotificationTypeTapped,
   });
 
   @override
@@ -178,7 +176,11 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               child: Container(
                 width: 400,
                 height: MediaQuery.of(context).size.height - headerHeight,
-                decoration: const BoxDecoration(color: Color(0xFFFFFFFF)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1A1A1A)
+                      : const Color(0xFFFFFFFF),
+                ),
                 child: Column(
                   children: [
                     _buildHeader(),
@@ -199,14 +201,21 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
+  // ==================== HEADER ====================
   Widget _buildHeader() {
-    final unreadCount = _notifications.where((n) => n['isRead'] != true).length;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFFFFFFF),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.grey[800]! : const Color(0xFFEEEEEE),
+          ),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -215,14 +224,14 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             children: [
               Text(
                 'notifications'.tr(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF000000),
+                  color: isDark ? Colors.white : const Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
               ),
-              if (unreadCount > 0) ...[
+              if (_notifications.isNotEmpty) ...[
                 const SizedBox(width: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -230,11 +239,11 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4C84E0),
+                    color: theme.primaryColor,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '$unreadCount',
+                    '${_notifications.length}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -248,44 +257,68 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           ),
           Row(
             children: [
-              if (unreadCount >= 1)
-                GestureDetector(
-                  onTap: () async {
-                    await FirestoreService().clearAllNotifications();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'clear_all'.tr(),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFEF4444),
-                        fontFamily: 'SF Pro Display',
+              // ✅ CLEAR ALL BUTTON - THEME COLOR (BLUE)
+              if (_notifications.isNotEmpty)
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () async {
+                      await FirestoreService().clearAllNotifications();
+                      setState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.primaryColor.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.clear_all,
+                            size: 16,
+                            color: theme.primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'clear_all'.tr(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.primaryColor,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _close,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    size: 20,
-                    color: Color(0xFF000000),
+              // Close Button
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _close,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      size: 20,
+                      color: isDark ? Colors.white : const Color(0xFF000000),
+                    ),
                   ),
                 ),
               ),
@@ -296,7 +329,9 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
+  // ==================== EMPTY STATE ====================
   Widget _buildEmptyState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -305,18 +340,18 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             'assets/notification_icon.svg',
             width: 50,
             height: 50,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF9CA3AF),
+            colorFilter: ColorFilter.mode(
+              isDark ? Colors.grey[600]! : const Color(0xFF9CA3AF),
               BlendMode.srcIn,
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'no_notifications_yet'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF9CA3AF),
+              color: isDark ? Colors.grey[600] : const Color(0xFF9CA3AF),
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -325,14 +360,17 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
+  // ==================== NOTIFICATION LIST ====================
   Widget _buildNotificationList() {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 12),
       itemCount: _notifications.length,
-      separatorBuilder: (_, __) => const Divider(
+      separatorBuilder: (_, _) => Divider(
         height: 1,
         thickness: 1,
-        color: Color(0xFFF3F4F6),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]
+            : const Color(0xFFF3F4F6),
         indent: 24,
         endIndent: 24,
       ),
@@ -342,7 +380,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         final title = (notif['title'] ?? '').toString();
         final message = (notif['message'] ?? '').toString();
         final createdAt = (notif['createdAt'] ?? '').toString();
-        final isRead = notif['isRead'] == true;
         final style = _getStyle(type);
 
         if (style.isWelcome) {
@@ -350,11 +387,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             title: title,
             message: message,
             timeAgo: _getTimeAgo(createdAt),
-            isRead: isRead,
-            onTap: () {
-              widget.onNotificationTypeTapped?.call(type);
-              _close();
-            },
           );
         }
 
@@ -363,26 +395,19 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           title: title,
           message: message,
           timeAgo: _getTimeAgo(createdAt),
-          isRead: isRead,
-          onTap: () {
-            widget.onNotificationTypeTapped?.call(type);
-            _close();
-          },
+          notificationId: notif['id'] ?? '',
         );
       },
     );
   }
 
+  // ==================== WELCOME CARD ====================
   Widget _buildWelcomeCard({
     required String title,
     required String message,
     required String timeAgo,
-    required bool isRead,
-    VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -472,15 +497,15 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           ],
                         ),
                       ),
-                      if (!isRead)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFFFFF),
-                            shape: BoxShape.circle,
-                          ),
+                      const Spacer(),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor,
+                          shape: BoxShape.circle,
                         ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -517,135 +542,201 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             ),
           ],
         ),
-      ),
     );
   }
 
+  // ==================== NOTIFICATION ITEM WITH HOVER ====================
   Widget _buildNotificationItem({
     required _NotifStyle style,
     required String title,
     required String message,
     required String timeAgo,
-    required bool isRead,
-    VoidCallback? onTap,
+    required String notificationId,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        color: isRead ? Colors.transparent : const Color(0xFFF8FAFF),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: style.bgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: style.iconAsset != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.mode(
-                            Color(0xFFEF4444),
-                            BlendMode.srcIn,
-                          ),
-                          child: Image.asset(
-                            style.iconAsset!,
-                            width: style.iconSize,
-                            height: style.iconSize,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      )
-                    : Icon(
-                        style.icon,
-                        size: style.iconSize,
-                        color: style.color,
-                      ),
-              ),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return MouseRegion(
+          onEnter: (_) => setState(() as VoidCallback),
+          onExit: (_) => setState(() as VoidCallback),
+          child: Container(
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.grey[850] : const Color(0xFFF8FAFF)),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: style.bgColor,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          style.label,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: style.color,
-                            fontFamily: 'SF Pro Display',
+            child: Stack(
+              children: [
+                // Main Content
+                Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Icon Container
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: style.bgColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: style.iconAsset != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: ColorFiltered(
+                                      colorFilter: ColorFilter.mode(
+                                        style.color,
+                                        BlendMode.srcIn,
+                                      ),
+                                      child: Image.asset(
+                                        style.iconAsset!,
+                                        width: style.iconSize,
+                                        height: style.iconSize,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    style.icon,
+                                    size: style.iconSize,
+                                    color: style.color,
+                                  ),
                           ),
                         ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        timeAgo,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF9CA3AF),
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      if (!isRead) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: style.color,
-                            shape: BoxShape.circle,
+                        const SizedBox(width: 14),
+                        // Text Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: style.bgColor,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      style.label,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: style.color,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    timeAgo,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark
+                                          ? Colors.grey[600]
+                                          : const Color(0xFF9CA3AF),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                   ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      color: theme.primaryColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF111827),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                message,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : const Color(0xFF6B7280),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
-                      color: const Color(0xFF111827),
-                      fontFamily: 'SF Pro Display',
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    message,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF6B7280),
-                      fontFamily: 'SF Pro Display',
+                // ✅ HOVER CROSS ICON (Right Side)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: AnimatedOpacity(
+                    opacity: 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () async {
+                          // Mark as read and remove
+                          try {
+                            await FirestoreService()
+                                .markNotificationRead(notificationId);
+                            setState(() {
+                              _notifications.removeWhere(
+                                  (n) => n['id'] == notificationId);
+                            });
+                          } catch (_) {}
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            size: 18,
+                            color: (isDark ? Colors.grey[600] : Colors.grey[400]),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
+// ==================== STYLE CLASS ====================
 class _NotifStyle {
   final IconData icon;
   final Color color;

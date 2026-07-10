@@ -554,63 +554,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _navigateToAttendance() {
-    setState(() {
-      _selectedIndex = 2;
-      _activatedScreens[2] = true;
-      _selectedSubIndex = 0;
-      _showProfile = false;
-      _showAssignTimeOff = false;
-      _showNotifications = false;
-      _selectedTimeOffWorker = null;
-    });
-  }
-
-  void _handleNotificationTap(String type) {
-    setState(() {
-      _showNotifications = false;
-      _showProfile = false;
-      _showAssignTimeOff = false;
-      _selectedTimeOffWorker = null;
-      switch (type) {
-        case 'worker_added':
-          _selectedIndex = 1;
-          _activatedScreens[1] = true;
-          break;
-        case 'expense_added':
-          _selectedIndex = 3;
-          _activatedScreens[3] = true;
-          break;
-        case 'attendance_marked':
-          _selectedIndex = 2;
-          _activatedScreens[2] = true;
-          _selectedSubIndex = 0;
-          break;
-        case 'payroll_added':
-          _selectedIndex = 2;
-          _activatedScreens[2] = true;
-          _selectedSubIndex = 1;
-          break;
-        case 'time_off_added':
-          _selectedIndex = 2;
-          _activatedScreens[2] = true;
-          _selectedSubIndex = 2;
-          break;
-        case 'asset_added':
-          _selectedIndex = 2;
-          _activatedScreens[2] = true;
-          _selectedSubIndex = 3;
-          break;
-        case 'holiday_added':
-          _selectedIndex = 2;
-          _activatedScreens[2] = true;
-          _selectedSubIndex = 4;
-          break;
-        default:
-          break;
-      }
-    });
-  }
 
   void _toggleNotifications() {
     setState(() {
@@ -725,7 +668,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (_showNotifications)
                           NotificationSidebar(
                             onClose: _toggleNotifications,
-                            onNotificationTypeTapped: _handleNotificationTap,
                           ),
                       ],
                     ),
@@ -962,7 +904,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           // Build holiday date (use next year if already passed this year)
                           var holidayDate = DateTime(
                             now.year,
-                            monthNum as int,
+                            monthNum,
                             dayNum,
                           );
                           if (holidayDate.isBefore(
@@ -970,7 +912,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           )) {
                             holidayDate = DateTime(
                               now.year + 1,
-                              monthNum as int,
+                              monthNum,
                               dayNum,
                             );
                           }

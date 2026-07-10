@@ -545,7 +545,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       }
     } catch (e) {
-    } catch (_) {}
+    }
   }
 
   bool _hasChanges() {
@@ -2168,7 +2168,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   final Color formBgGrey = const Color(0xFFF2F3F6);
   late DateTime _calendarMonth;
   DateTime? _selectedDate;
-  DateTime? _initialDate;
 
   @override
   void initState() {
@@ -2216,7 +2215,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             setState(() {
               _selectedDate = DateTime(year, monthIndex + 1, day);
               _calendarMonth = DateTime(year, monthIndex + 1, 1);
-              _initialDate = _selectedDate;
             });
             return;
           }
@@ -2227,7 +2225,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     setState(() {
       _selectedDate = null;
       _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-      _initialDate = null;
     });
   }
 
@@ -2609,7 +2606,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                       );
                                       setState(() {
                                         _selectedDate = selected;
-                                        _initialDate = selected;
                                       });
                                       FlashySnackBar.show(
                                         context,

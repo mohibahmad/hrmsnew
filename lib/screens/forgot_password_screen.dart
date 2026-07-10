@@ -5,7 +5,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../utils/snackbar_utils.dart';
-import '../shared/app_constants.dart';
 import '../shared/auth_widgets.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {

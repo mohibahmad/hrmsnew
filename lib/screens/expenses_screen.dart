@@ -45,7 +45,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   static const int _itemsPerPage = 8;
   StreamSubscription? _expensesSub;
   StreamSubscription? _workersSub;
-  Map<String, Map<String, dynamic>> _workersMap = {};
 
   @override
   void dispose() {
@@ -65,11 +64,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
-            _workersMap = {
-              for (var doc in snapshot.docs)
-                (doc.data() as Map<String, dynamic>)['name'] as String? ?? '':
-                    doc.data() as Map<String, dynamic>,
-            };
           });
         }
       });
@@ -105,10 +99,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         },
       );
     } else {
-      _workersMap = {
-        for (var w in DummyData.workers)
-          (w['name'] ?? '').toString(): Map<String, dynamic>.from(w),
-      };
       _expensesDocs = DummyData.expenses
           .map((e) => Map<String, dynamic>.from(e))
           .toList();

@@ -14,14 +14,7 @@ import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
-import 'workers.dart';
-import 'attendance_screen.dart';
-import 'payroll_screen.dart';
-import 'time_off.dart';
-import 'assets_screen.dart';
-import 'holidays_screen.dart';
-import 'expenses_screen.dart';
-import 'settings_screen.dart';
+
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);

@@ -31,7 +31,6 @@ class InvoiceService {
     final greyColor = PdfColor.fromHex('#6B7280');
     final lightBg = PdfColor.fromHex('#F8F9FA');
     final borderColor = PdfColor.fromHex('#DEE2E6');
-    final darkColor = PdfColor.fromHex('#1F2937');
 
     pdf.addPage(
       pw.MultiPage(
