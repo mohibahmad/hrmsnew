@@ -205,7 +205,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 4),
                   for (int i = 0; i < _menuItems.length; i++)
                     if (_menuItems[i].$3)
                       _buildWorkforceItem(i)

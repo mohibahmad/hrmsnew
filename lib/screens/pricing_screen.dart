@@ -29,7 +29,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       child: Center(
         child: SizedBox(
           width: 960,
-          height: 670,
+          height: 630,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -37,7 +37,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 alignment: Alignment.center,
                 child: Container(
                   width: 920,
-                  height: 620,
+                  height: 580,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
@@ -147,6 +147,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 index: 1,
                                 title: 'six_month'.tr(),
                                 price: '\$46.99',
+                                isPopular: true,
+                                badgeText: 'popular',
                               ),
                               _buildPlanCard(
                                 index: 2,

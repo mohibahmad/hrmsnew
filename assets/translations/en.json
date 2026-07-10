@@ -670,5 +670,8 @@
   "notif_info": "Info",
   "Present": "Present",
   "Absent": "Absent",
-  "On leave": "On leave"
+  "On leave": "On leave",
+  "remove_profile_image": "Remove Profile Image",
+  "remove_profile_image_desc": "Are you sure you want to remove this profile image? This action cannot be undone.",
+  "remove": "Remove"
 }

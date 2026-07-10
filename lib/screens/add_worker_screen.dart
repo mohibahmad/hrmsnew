@@ -1,7 +1,9 @@
 import 'dart:io' as io;
+import 'dart:ui';
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/upload_service.dart';
@@ -15,6 +17,7 @@ import '../services/dummy_data.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import '../widgets/custom_dropdown_field.dart';
+import '../utils/delete_dialog.dart';
 
 class AddNewWorkerScreen extends StatefulWidget {
   const AddNewWorkerScreen({super.key});
@@ -94,6 +97,21 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           isError: true,
         );
       }
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    final confirm = await DeleteDialog.show(
+      context: context,
+      title: 'remove_profile_image'.tr(),
+      content: 'remove_profile_image_desc'.tr(),
+      confirmButtonText: 'remove',
+    );
+    if (confirm && mounted) {
+      setState(() {
+        _profileImageBytes = null;
+        _profileImageName = null;
+      });
     }
   }
 
@@ -658,28 +676,23 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                         fit: BoxFit.cover,
                                                       ),
                                                     ),
+                                                    // Cross/close icon (top-right)
                                                     Positioned(
-                                                      bottom: 8,
+                                                      top: 8,
                                                       right: 8,
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets.all(
-                                                              6,
-                                                            ),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                              color: Colors
-                                                                  .black
-                                                                  .withValues(
-                                                                    alpha: 0.6,
-                                                                  ),
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
-                                                        child: const Icon(
-                                                          Icons.edit,
-                                                          color: Colors.white,
-                                                          size: 18,
+                                                      child: GestureDetector(
+                                                        onTap: () => _removeProfileImage(),
+                                                        child: Container(
+                                                          padding: const EdgeInsets.all(6),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.black.withValues(alpha: 0.6),
+                                                            shape: BoxShape.circle,
+                                                          ),
+                                                          child: const Icon(
+                                                            Icons.close,
+                                                            color: Colors.white,
+                                                            size: 18,
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
