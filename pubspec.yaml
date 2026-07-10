@@ -102,6 +102,8 @@ flutter:
     - assets/premium_bg.png
     - assets/HR.svg
     - assets/HR_dark.svg
+    # - assets/HR.svg
+
     - assets/langauge_icon.png
     - assets/dashbaord_icon_slidebar.svg
     - assets/workers_icon_slidebar.svg
