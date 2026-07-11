@@ -996,7 +996,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                     child: Text(
                                       'cancel'.tr(),
                                       style: TextStyle(
-                                        color: Colors.black,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 13,
                                         fontFamily: 'SF Pro Display',
