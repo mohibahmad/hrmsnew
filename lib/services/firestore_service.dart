@@ -42,7 +42,8 @@ class FirestoreService {
 
   CollectionReference? get _workers => _userDoc?.collection('hrms_workers');
   CollectionReference? get _expenses => _userDoc?.collection('hrms_expenses');
-  CollectionReference? get _attendance => _userDoc?.collection('hrms_attendance');
+  CollectionReference? get _attendance =>
+      _userDoc?.collection('hrms_attendance');
   CollectionReference? get _payroll => _userDoc?.collection('hrms_payroll');
   CollectionReference? get _timeoff => _userDoc?.collection('hrms_timeoff');
   CollectionReference? get _assets => _userDoc?.collection('hrms_assets');
@@ -192,7 +193,8 @@ class FirestoreService {
     List<Map<String, dynamic>> workersList,
   ) async {
     final coll = _workers;
-    if (coll == null) return BulkWorkerResult(imported: 0, skipped: workersList.length);
+    if (coll == null)
+      return BulkWorkerResult(imported: 0, skipped: workersList.length);
     var batch = _db.batch();
     int count = 0;
     int skipped = 0;
@@ -203,7 +205,7 @@ class FirestoreService {
         final docRef = coll.doc();
         batch.set(docRef, {
           ...worker,
-          'createdAt': DateTime.now().toUtc().toIso8601String(),
+          'createdAt': FieldValue.serverTimestamp(),
         });
         count++;
 
@@ -255,7 +257,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...expense,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final category = (expense['category'] ?? expense['type'] ?? '').toString();
     final amount = (expense['amount'] ?? '').toString();
@@ -296,7 +298,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...record,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
     if (name.isNotEmpty) {
@@ -385,7 +387,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...record,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['name'] ?? '').toString();
     final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
@@ -425,7 +427,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...record,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['workerName'] ?? record['name'] ?? '').toString();
     final type = (record['type'] ?? record['leaveType'] ?? 'Leave').toString();
@@ -464,7 +466,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...asset,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final assetName = (asset['name'] ?? asset['assetName'] ?? '').toString();
     if (assetName.isNotEmpty) {
@@ -503,7 +505,7 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final docRef = await coll.add({
       ...holiday,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (holiday['name'] ?? '').toString();
     if (name.isNotEmpty) {
@@ -688,7 +690,7 @@ class FirestoreService {
     await coll.add({
       ...notification,
       'isRead': false,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 

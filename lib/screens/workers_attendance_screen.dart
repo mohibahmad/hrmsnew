@@ -15,7 +15,6 @@ import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
-
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
 const Color cardLightGray = Color(0xFFF3F5F8);
@@ -284,16 +283,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                   (route) => false,
                 );
               },
-                onBackToLogin: () {
-                  AuthService().signOut();
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
-                    );
-                  }
-                },
-              ),
+              onBackToLogin: () {
+                AuthService().signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
           // Right Main Content
           Expanded(
             child: IgnorePointer(
@@ -802,15 +801,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Padding(
-                                            padding: const EdgeInsets.only(top: 2),
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
                                             child: SvgPicture.asset(
                                               'assets/email.svg',
                                               height: 14,
                                               width: 14,
-                                              colorFilter: const ColorFilter.mode(
-                                                Color(0xFFFFFFFF),
-                                                BlendMode.srcIn,
-                                              ),
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Color(0xFFFFFFFF),
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(width: 10),
@@ -832,7 +834,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Padding(
-                                            padding: const EdgeInsets.only(top: 2),
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
                                             child: Image.asset(
                                               'assets/call.png',
                                               height: 14,
@@ -902,7 +906,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       },
                                       child: _buildToggleChip(
                                         'absent'.tr(),
-                                        'assets/absent.png',
+                                        'assets/absent.svg',
                                         const Color(0xFFF44336),
                                         isSelected: selectedStatus == 'Absent',
                                       ),
@@ -974,8 +978,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   OutlinedButton(
                                     onPressed: () => Navigator.pop(context),
                                     style: OutlinedButton.styleFrom(
-                                      side: BorderSide(
-                                        color: Colors.grey.shade300,
+                                      backgroundColor: const Color(0xFF0247C4),
+                                      side: const BorderSide(
+                                        color: Color(0xFF0247C4),
                                       ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(6),
@@ -985,7 +990,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         vertical: 14,
                                       ),
                                       minimumSize: const Size(0, 40),
+                                      elevation: 0,
                                     ),
+
                                     child: Text(
                                       'cancel'.tr(),
                                       style: TextStyle(
@@ -1328,7 +1335,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     bool isSelected = false,
   }) {
     return Container(
-
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0F52BA) : Color(0xFFFFFFFF),
@@ -1588,6 +1594,7 @@ class StatusPill extends StatelessWidget {
     return Container(
       width: 80,
       alignment: Alignment.center,
+
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,

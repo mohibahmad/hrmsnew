@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,10 +9,7 @@ import '../services/auth_service.dart';
 
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
-  const NotificationSidebar({
-    super.key,
-    required this.onClose,
-  });
+  const NotificationSidebar({super.key, required this.onClose});
 
   @override
   State<NotificationSidebar> createState() => _NotificationSidebarState();
@@ -80,9 +78,16 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     });
   }
 
-  String _getTimeAgo(String createdAtStr) {
+  String _getTimeAgo(dynamic createdAt) {
     try {
-      final created = DateTime.parse(createdAtStr);
+      DateTime created;
+      if (createdAt is Timestamp) {
+        created = createdAt.toDate();
+      } else if (createdAt is String) {
+        created = DateTime.parse(createdAt);
+      } else {
+        return '';
+      }
       final now = DateTime.now();
       final diff = now.difference(created);
       if (diff.inMinutes < 1) return 'just_now'.tr();
@@ -239,7 +244,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.primaryColor,
+                    color: const Color(0xFF0247C4),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -272,10 +277,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.primaryColor.withValues(alpha: 0.1),
+                        color: const Color(0xFF0247C4).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: theme.primaryColor.withValues(alpha: 0.3),
+                          color: const Color(0xFF0247C4).withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -285,7 +290,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           Icon(
                             Icons.clear_all,
                             size: 16,
-                            color: theme.primaryColor,
+                            color: const Color(0xFF0247C4),
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -293,7 +298,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: theme.primaryColor,
+                              color: const Color(0xFF0247C4),
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -311,7 +316,9 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : const Color(0xFFF3F4F6),
+                      color: isDark
+                          ? Colors.grey[800]
+                          : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -360,7 +367,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-   Widget _buildNotificationList() {
+  Widget _buildNotificationList() {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 12),
       itemCount: _notifications.length,
@@ -378,7 +385,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         final type = (notif['type'] ?? '').toString();
         final title = (notif['title'] ?? '').toString();
         final message = (notif['message'] ?? '').toString();
-        final createdAt = (notif['createdAt'] ?? '').toString();
+        final createdAt = notif['createdAt'];
         final style = _getStyle(type);
 
         if (style.isWelcome) {
@@ -400,150 +407,150 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-   Widget _buildWelcomeCard({
+  Widget _buildWelcomeCard({
     required String title,
     required String message,
     required String timeAgo,
   }) {
     return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF4C84E0), Color(0xFF0247C4)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF4C84E0).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4C84E0), Color(0xFF0247C4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Stack(
-          children: [
-            // Decorative circles
-            Positioned(
-              top: -20,
-              right: -20,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4C84E0).withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Decorative circles
+          Positioned(
+            top: -20,
+            right: -20,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
               ),
             ),
-            Positioned(
-              bottom: -15,
-              left: 60,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  shape: BoxShape.circle,
-                ),
+          ),
+          Positioned(
+            bottom: -15,
+            left: 60,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                shape: BoxShape.circle,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.waving_hand_rounded,
-                          color: Color(0xFFFFFFFF),
-                          size: 20,
-                        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                'notif_new_member'.tr(),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFFFFFFF),
-                                  fontFamily: 'SF Pro Display',
-                                ),
+                      child: const Icon(
+                        Icons.waving_hand_rounded,
+                        color: Color(0xFFFFFFFF),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'notif_new_member'.tr(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFFFFFFF),
+                                fontFamily: 'SF Pro Display',
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
-                          shape: BoxShape.circle,
-                        ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor,
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFFFFFFF),
-                      fontFamily: 'SF Pro Display',
                     ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFFFFFFF),
+                    fontFamily: 'SF Pro Display',
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    message,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontFamily: 'SF Pro Display',
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontFamily: 'SF Pro Display',
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    timeAgo,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontFamily: 'SF Pro Display',
-                    ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  timeAgo,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontFamily: 'SF Pro Display',
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 
-   Widget _buildNotificationItem({
+  Widget _buildNotificationItem({
     required _NotifStyle style,
     required String title,
     required String message,
@@ -556,8 +563,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     return StatefulBuilder(
       builder: (context, setState) {
         return MouseRegion(
-          onEnter: (_) => setState(() as VoidCallback),
-          onExit: (_) => setState(() as VoidCallback),
+          onEnter: (_) => setState(() {}),
+          onExit: (_) => setState(() {}),
           child: Container(
             decoration: BoxDecoration(
               color: (isDark ? Colors.grey[850] : const Color(0xFFF8FAFF)),
@@ -567,126 +574,126 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               children: [
                 // Main Content
                 Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Icon Container
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: style.bgColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: style.iconAsset != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: ColorFiltered(
-                                      colorFilter: ColorFilter.mode(
-                                        style.color,
-                                        BlendMode.srcIn,
-                                      ),
-                                      child: Image.asset(
-                                        style.iconAsset!,
-                                        width: style.iconSize,
-                                        height: style.iconSize,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  )
-                                : Icon(
-                                    style.icon,
-                                    size: style.iconSize,
-                                    color: style.color,
-                                  ),
-                          ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Icon Container
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: style.bgColor,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 14),
-                        // Text Content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 2,
+                        child: Center(
+                          child: style.iconAsset != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: ColorFiltered(
+                                    colorFilter: ColorFilter.mode(
+                                      style.color,
+                                      BlendMode.srcIn,
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: style.bgColor,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      style.label,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: style.color,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
+                                    child: Image.asset(
+                                      style.iconAsset!,
+                                      width: style.iconSize,
+                                      height: style.iconSize,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
-                                  const Spacer(),
-                                  Text(
-                                    timeAgo,
+                                )
+                              : Icon(
+                                  style.icon,
+                                  size: style.iconSize,
+                                  color: style.color,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // Text Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: style.bgColor,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    style.label,
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark
-                                          ? Colors.grey[600]
-                                          : const Color(0xFF9CA3AF),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: style.color,
                                       fontFamily: 'SF Pro Display',
                                     ),
-                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      color: theme.primaryColor,
-                                      shape: BoxShape.circle,
-                                    ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                title,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF111827),
-                                  fontFamily: 'SF Pro Display',
                                 ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                message,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : const Color(0xFF6B7280),
-                                  fontFamily: 'SF Pro Display',
+                                const Spacer(),
+                                Text(
+                                  timeAgo,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? Colors.grey[600]
+                                        : const Color(0xFF9CA3AF),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 8),
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: theme.primaryColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF111827),
+                                fontFamily: 'SF Pro Display',
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              message,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : const Color(0xFF6B7280),
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
                 // ✅ HOVER CROSS ICON (Right Side)
                 Positioned(
                   top: 8,
@@ -700,11 +707,13 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                         onTap: () async {
                           // Mark as read and remove
                           try {
-                            await FirestoreService()
-                                .markNotificationRead(notificationId);
+                            await FirestoreService().markNotificationRead(
+                              notificationId,
+                            );
                             setState(() {
                               _notifications.removeWhere(
-                                  (n) => n['id'] == notificationId);
+                                (n) => n['id'] == notificationId,
+                              );
                             });
                           } catch (_) {}
                         },
@@ -717,7 +726,9 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           child: Icon(
                             Icons.close,
                             size: 18,
-                            color: (isDark ? Colors.grey[600] : Colors.grey[400]),
+                            color: (isDark
+                                ? Colors.grey[600]
+                                : Colors.grey[400]),
                           ),
                         ),
                       ),
