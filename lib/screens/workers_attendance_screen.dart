@@ -890,7 +890,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       },
                                       child: _buildToggleChip(
                                         'present'.tr(),
-                                        'assets/Present.png',
+                                        'assets/present_worker.svg',
                                         const Color(0xFF00C853),
                                         isSelected: selectedStatus == 'Present',
                                       ),
@@ -975,34 +975,37 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  OutlinedButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    style: OutlinedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0247C4),
-                                      side: const BorderSide(
-                                        color: Color(0xFF0247C4),
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 14,
-                                      ),
-                                      minimumSize: const Size(0, 40),
-                                      elevation: 0,
-                                    ),
+                                      OutlinedButton(
+                                        onPressed: () {
+                                          setState(() => _isDialogOpen = false);
+                                          Navigator.pop(context);
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF0247C4),
+                                          side: const BorderSide(
+                                            color: Color(0xFF0247C4),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 14,
+                                          ),
+                                          minimumSize: const Size(0, 40),
+                                          elevation: 0,
+                                        ),
 
-                                    child: Text(
-                                      'cancel'.tr(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                        fontFamily: 'SF Pro Display',
+                                        child: Text(
+                                          'cancel'.tr(),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
                                   const SizedBox(width: 12),
                                   ElevatedButton(
                                     onPressed:
@@ -1347,8 +1350,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           asset.endsWith('.svg')
-              ? SvgPicture.asset(asset, height: 18, width: 18)
-              : Image.asset(asset, height: 18, width: 18),
+              ? SvgPicture.asset(
+                  asset,
+                  height: 20,
+                  width: 20,
+                )
+              : Image.asset(
+                  asset,
+                  height: 20,
+                  width: 20,
+                ),
           const SizedBox(width: 6),
           Text(
             label,

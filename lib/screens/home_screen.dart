@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -310,8 +311,23 @@ class _HomeScreenState extends State<HomeScreen> {
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
-        _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
-        _totalAttendanceCount = DummyData.attendance.length;
+
+        // 🔥 FIX: Filter today's attendance
+        final today = DateTime.now();
+        _attendanceDocs = DummyData.attendance.where((att) {
+          final dateStr = att['createdAt']?.toString();
+          if (dateStr == null) return false;
+          try {
+            final date = DateTime.parse(dateStr);
+            return date.year == today.year &&
+                   date.month == today.month &&
+                   date.day == today.day;
+          } catch (_) {
+            return false;
+          }
+        }).toList();
+
+        _totalAttendanceCount = _attendanceDocs.length;
         _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
@@ -367,10 +383,26 @@ class _HomeScreenState extends State<HomeScreen> {
       _attendanceSub = firestore.attendanceStream.listen((snap) {
         if (mounted) {
           setState(() {
+            final today = DateTime.now();
             _attendanceDocs = snap.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
-            _totalAttendanceCount = snap.docs.length;
+                .where((att) {
+              final createdAt = att['createdAt'];
+              if (createdAt == null) return false;
+              DateTime? dt;
+              if (createdAt is DateTime) {
+                dt = createdAt;
+              } else if (createdAt is String) {
+                dt = DateTime.tryParse(createdAt);
+              } else if (createdAt is Timestamp) {
+                dt = createdAt.toDate();
+              }
+              return dt != null &&
+                  dt.year == today.year &&
+                  dt.month == today.month &&
+                  dt.day == today.day;
+            }).toList();
+            _totalAttendanceCount = _attendanceDocs.length;
           });
         }
       });
@@ -453,7 +485,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _recalculateSumsForPeriod(String period) {
     final now = DateTime.now();
     DateTime? dateLimit;
-    if (period == 'Week') {
+    if (period == 'Today') {
+      dateLimit = DateTime(now.year, now.month, now.day);
+    } else if (period == 'Week') {
       dateLimit = now.subtract(const Duration(days: 7));
     } else if (period == 'Month') {
       dateLimit = now.subtract(const Duration(days: 30));
@@ -504,7 +538,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _recalculateDummyTotals(String period) {
     double scale = 1.0;
-    if (period == 'Week')
+    if (period == 'Today')
+      scale = 0.02;
+    else if (period == 'Week')
       scale = 0.05;
     else if (period == 'Month')
       scale = 0.2;

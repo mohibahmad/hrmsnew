@@ -90,8 +90,16 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   void initState() {
     super.initState();
     _salaryCtrl.text = _salaryStr;
+
+    // 🔥 FIX: Worker ke annualLeaves se remaining leaves calculate karo
+    final annualLeaves = widget.workerData['annualLeaves']?.toString() ?? '0';
+    final leavesUsed = widget.workerData['leavesUsed']?.toString() ?? '0';
+    int remaining = (int.tryParse(annualLeaves) ?? 0) - (int.tryParse(leavesUsed) ?? 0);
+    if (remaining < 0) remaining = 0;
+
+    _leavesCtrl.text = remaining.toString(); // Show remaining leaves in payroll
+
     _absentsCtrl.text = (widget.workerData['absents'] ?? '').toString();
-    _leavesCtrl.text = (widget.workerData['leaves'] ?? '').toString();
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;

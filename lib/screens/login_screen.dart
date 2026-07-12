@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/snackbar_utils.dart';
 import '../shared/app_constants.dart';
@@ -62,6 +63,18 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userCredential != null && mounted) {
         if (await _handleDeletedAccountIfNeeded()) return;
         if (!mounted) return;
+
+        final profile = await FirestoreService().getUserProfile();
+        if (profile != null) {
+          final pic = profile['profilePic'];
+          if (pic != null && pic.isNotEmpty) {
+            AuthService.profilePicNotifier.value = pic;
+            await PreferencesService.setProfilePicUrl(pic);
+          }
+          final isPremium = profile['isPremium'] == true;
+          await PreferencesService.setPremium(isPremium);
+        }
+
         FlashySnackBar.show(
           context,
           title: 'success'.tr(),

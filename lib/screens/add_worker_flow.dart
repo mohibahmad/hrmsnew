@@ -863,6 +863,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'id_back': backIdUrl,
 
         'cv': cvUrl,
+        'payroll_initialized': true,
+        'leavesUsed': '0',
       };
 
       if (widget.workerToEdit != null) {

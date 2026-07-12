@@ -346,13 +346,23 @@ class FirestoreService {
     } else {
       final coll = _attendance;
       if (coll == null) return {'absents': 0, 'leaves': 0};
-      final snap = await coll.get();
+
+      // 🔥 FIX: Filter by month properly
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+      final snap = await coll
+          .where('email', isEqualTo: normalizedEmail)
+          .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
+          .where('createdAt', isLessThanOrEqualTo: endOfMonth)
+          .get();
+
       records = snap.docs
           .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
           .toList();
     }
 
-    final now = DateTime.now();
     int absents = 0;
     int leaves = 0;
     final seenDays = <String>{};
@@ -361,7 +371,7 @@ class FirestoreService {
       if (normalizedEmail.isNotEmpty && attEmail != normalizedEmail) continue;
       final date = _dateFromCreatedAt(att['createdAt']);
       if (date == null) continue;
-      if (date.year != now.year || date.month != now.month) continue;
+      if (date.year != DateTime.now().year || date.month != DateTime.now().month) continue;
       final dayKey = '$attEmail-${date.year}-${date.month}-${date.day}';
       if (seenDays.contains(dayKey)) continue;
       seenDays.add(dayKey);

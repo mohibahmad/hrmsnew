@@ -834,6 +834,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     }
                   }
                 }
+                DummyData.saveToPrefs();
               }
             },
             child: AnimatedContainer(

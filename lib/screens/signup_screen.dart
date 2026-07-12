@@ -214,6 +214,16 @@ class _SignupScreenState extends State<SignupScreen> {
         phone: "",
       );
 
+      final user = AuthService().currentUser;
+      if (user != null && !user.isAnonymous) {
+        await FirestoreService().seedDummyDataForUser(
+          uid: user.uid,
+          displayName: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          force: true,
+        );
+      }
+
       // Welcome notification for new signup
       final userName = _usernameController.text.trim();
       await FirestoreService().addNotification({

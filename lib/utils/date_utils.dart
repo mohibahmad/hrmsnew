@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class AppDateUtils {
@@ -98,17 +99,20 @@ class AppDateUtils {
     if (date == null) return true;
 
     final now = DateTime.now();
-    // Cap reference date at June 10, 2026 for dummy data consistency if today is earlier
+
+    // For Today, check exact same day
+    if (period == 'Today') {
+      return date.year == now.year && date.month == now.month && date.day == now.day;
+    }
+
     final refDate = now.isBefore(DateTime(2026, 6, 10))
         ? DateTime(2026, 6, 10)
         : now;
 
     final diff = refDate.difference(date).inDays;
-    if (diff < 0) return true; // Future date
+    if (diff < 0) return true;
 
     switch (period) {
-      case 'Today':
-        return diff == 0;
       case 'Week':
         return diff <= 7;
       case 'Month':
@@ -128,12 +132,20 @@ class AppDateUtils {
     DateTime? date;
     if (createdAt is DateTime) {
       date = createdAt;
+    } else if (createdAt is Timestamp) {
+      date = createdAt.toDate();
     } else {
       date = parseDateString(createdAt.toString());
     }
     if (date == null) return true;
 
     final now = DateTime.now();
+
+    // For Today, check exact same day
+    if (period == 'Today') {
+      return date.year == now.year && date.month == now.month && date.day == now.day;
+    }
+
     final refDate = now.isBefore(DateTime(2026, 6, 10))
         ? DateTime(2026, 6, 10)
         : now;
@@ -142,8 +154,6 @@ class AppDateUtils {
     if (diff < 0) return true;
 
     switch (period) {
-      case 'Today':
-        return diff == 0;
       case 'Week':
         return diff <= 7;
       case 'Month':

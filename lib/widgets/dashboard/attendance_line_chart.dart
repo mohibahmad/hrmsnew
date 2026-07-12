@@ -5,7 +5,7 @@ import '../../services/auth_service.dart';
 import '../../utils/chart_utils.dart';
 import '../custom_timeframe_dropdown.dart';
 
-class AttendanceLineChart extends StatelessWidget {
+class AttendanceLineChart extends StatefulWidget {
   final String period;
   final bool isEmpty;
   final List<Map<String, dynamic>> attendanceDocs;
@@ -18,6 +18,19 @@ class AttendanceLineChart extends StatelessWidget {
   });
 
   @override
+  State<AttendanceLineChart> createState() => _AttendanceLineChartState();
+}
+
+class _AttendanceLineChartState extends State<AttendanceLineChart> {
+  @override
+  void didUpdateWidget(covariant AttendanceLineChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.period != oldWidget.period) {
+      setState(() {});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
@@ -25,12 +38,12 @@ class AttendanceLineChart extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: !isEmpty
+        child: !widget.isEmpty
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    CustomTimeframeDropdown.localizePeriod(period),
+                    CustomTimeframeDropdown.localizePeriod(widget.period),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -41,14 +54,14 @@ class AttendanceLineChart extends StatelessWidget {
                   SizedBox(
                     height: 330,
                     child: TweenAnimationBuilder<double>(
-                      key: ValueKey(period),
+                      key: ValueKey(widget.period),
                       tween: Tween(begin: 0, end: 1),
                       duration: const Duration(milliseconds: 750),
                       curve: Curves.easeOutQuart,
                       builder: (context, animValue, child) {
                         final chartData = getChartData(
-                          period,
-                          attendanceDocs,
+                          widget.period,
+                          widget.attendanceDocs,
                           AuthService().currentUser?.isAnonymous ?? false,
                           context.locale.toString(),
                         );

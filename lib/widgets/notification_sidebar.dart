@@ -393,6 +393,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             title: title,
             message: message,
             timeAgo: _getTimeAgo(createdAt),
+            notificationId: notif['id'] ?? '',
           );
         }
 
@@ -411,6 +412,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     required String title,
     required String message,
     required String timeAgo,
+    required String notificationId,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -534,13 +536,43 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  timeAgo,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontFamily: 'SF Pro Display',
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      timeAgo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () async {
+                        if (notificationId.isNotEmpty) {
+                          await FirestoreService().markNotificationRead(notificationId);
+                          setState(() {
+                            _notifications.removeWhere((n) => n['id'] == notificationId);
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'mark_read'.tr(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

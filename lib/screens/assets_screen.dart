@@ -1293,7 +1293,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0, left: 8.0),
               child: Text(
-                data.dateReturned == 'in_use'
+                (data.dateReturned.trim().toLowerCase() == _inUseKey ||
+                        data.dateReturned.trim().toLowerCase() == 'in_use' ||
+                        data.dateReturned.trim() == '__IN_USE__' ||
+                        data.dateReturned.trim().isEmpty)
                     ? 'in_use'.tr()
                     : data.dateReturned,
                 maxLines: 1,
@@ -1559,11 +1562,33 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                     DummyData.assets[dummyIdx] = assetMap;
                                 });
                               } else {
-                                if (data.id != null)
+                                if (data.id != null) {
                                   await FirestoreService().updateAsset(
                                     data.id!,
                                     assetMap,
                                   );
+                                  setState(() {
+                                    _assets = _assets.map((a) {
+                                      if (a.id == data.id) {
+                                        return AssetData(
+                                          selectedWorkerName!,
+                                          positionController.text,
+                                          typeController.text,
+                                          formatDate(loanedDate),
+                                          isReturned ? formatDate(returnedDate) : _inUseKey,
+                                          isReturned,
+                                          id: data.id,
+                                          profileImage: workerProfileImage,
+                                          email: workerEmail,
+                                          phone: workerPhone,
+                                          cnic: workerCnic,
+                                          dateOfJoining: workerDateOfJoining,
+                                        );
+                                      }
+                                      return a;
+                                    }).toList();
+                                  });
+                                }
                               }
                               if (!context.mounted) return;
                               Navigator.of(context).pop();

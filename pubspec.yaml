@@ -152,6 +152,7 @@ flutter:
     - assets/call.png
 
     - assets/present_grey.svg
+    - assets/present_worker.svg
     - assets/right_back_arrow.png
     - assets/changepassword.svg
     - assets/permenantly_delete.svg
@@ -169,7 +170,6 @@ flutter:
     - assets/guest_icon.svg
     - assets/expense.png
     - assets/expenses.png
-    - assets/Present.png
 
   #   - images/a_dot_ham.jpeg
 

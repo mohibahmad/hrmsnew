@@ -453,6 +453,25 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             namedArgs: {'count': _validWorkers.length.toString()},
           ),
         );
+
+        if (isGuest) {
+          setState(() {
+            _validWorkers = [];
+            _hasParsedFile = false;
+          });
+          DummyData.loadFromPrefs();
+        } else {
+          setState(() {
+            _validWorkers = [];
+            _hasParsedFile = false;
+          });
+          FirestoreService().workersStream.listen((snapshot) {
+            if (mounted) {
+              setState(() {});
+            }
+          });
+        }
+
         widget.onBack?.call();
       }
     } catch (e) {

@@ -55,7 +55,21 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _combinePayroll() {
+    // 🔥 FIX: Ensure every worker has payroll data
     _payrollDocs = PayrollService.combinePayroll(_workersList, _rawPayrollDocs);
+
+    // 🔥 ADD THIS: Fix unpaid workers
+    for (var doc in _payrollDocs) {
+      if (doc['totalWorkDays'] == null || doc['totalWorkDays'].toString().isEmpty) {
+        doc['status'] = 'Unpaid';
+        doc['totalWorkDays'] = '0';
+        doc['absents'] = '0';
+        doc['leaves'] = '0';
+        doc['overtimeDays'] = '0';
+        doc['salary'] = doc['salary'] ?? '\$ 0';
+        doc['netSalary'] = '\$ 0';
+      }
+    }
     _isLoading = false;
   }
 

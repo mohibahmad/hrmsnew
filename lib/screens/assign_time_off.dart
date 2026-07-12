@@ -1175,6 +1175,34 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
       }
 
+      // 🔥 ADD THIS AFTER SAVE: Update payroll with remaining leaves
+      if (mounted) {
+        final remainingLeaves = _availableDays - _requestedDays;
+        final payrollUpdate = {
+          'annualLeaves': remainingLeaves.toString(),
+          'leavesUsed': (_alreadyUsedDays + _requestedDays).toString(),
+        };
+
+        if (isGuest) {
+          // Update dummy data
+          final workerIdx = DummyData.workers.indexWhere(
+            (w) => w['email'] == _selectedWorker!['email']
+          );
+          if (workerIdx != -1) {
+            DummyData.workers[workerIdx]['annualLeaves'] = remainingLeaves.toString();
+            DummyData.workers[workerIdx]['leavesUsed'] =
+              (_alreadyUsedDays + _requestedDays).toString();
+            await DummyData.saveToPrefs();
+          }
+        } else {
+          // Update Firestore
+          await FirestoreService().updateWorker(
+            _selectedWorker!['id'],
+            payrollUpdate
+          );
+        }
+      }
+
       if (mounted) {
         FlashySnackBar.show(context, message: 'assign_time_off_success'.tr());
         widget.onBack();

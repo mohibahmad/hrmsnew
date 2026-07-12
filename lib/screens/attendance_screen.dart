@@ -211,6 +211,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  String _getTimeframeTitle() {
+    switch (_selectedTimeframe) {
+      case 'Today':
+        return 'today_attendance'.tr();
+      case 'Week':
+        return 'weekly_attendance'.tr();
+      case 'Month':
+        return 'monthly_attendance'.tr();
+      case '6 Month':
+        return 'six_month_attendance'.tr();
+      case 'Yearly':
+        return 'yearly_attendance'.tr();
+      default:
+        return 'today_attendance'.tr();
+    }
+  }
+
   bool _matchesPeriod(Map<String, dynamic> doc) {
     final createdAt = doc['createdAt'];
     if (createdAt == null) return true;
@@ -272,7 +289,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'today_attendance'.tr(),
+                              _getTimeframeTitle(),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -474,7 +491,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: _buildSummaryCard(
             title: 'Present'.tr(),
             count: "$_presentCount",
-            iconAsset: 'assets/Present.png',
+            iconAsset: 'assets/present_worker.svg',
             countColor: const Color(0xFF00FF2A),
           ),
         ),

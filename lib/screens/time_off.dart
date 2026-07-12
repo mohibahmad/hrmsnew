@@ -115,6 +115,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       }
     }
 
+    // 🔥 FIX: Calculate remaining leaves for each worker
+    for (var doc in combined) {
+      final annualLeaves = int.tryParse(doc['annualLeaves']?.toString() ?? '0') ?? 0;
+      final usedLeaves = int.tryParse(doc['leavesUsed']?.toString() ?? '0') ?? 0;
+      final remaining = annualLeaves - usedLeaves;
+      doc['remainingLeaves'] = remaining.toString();
+    }
+
     _timeoffDocs = combined;
     _isLoading = false;
   }
@@ -312,6 +320,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 e['name'] == doc['name'] &&
                 e['action'] == doc['action'],
           );
+          // Refresh remaining leaves
+          _combineTimeOff();
         });
       } else {
         final id = doc['id'] as String?;

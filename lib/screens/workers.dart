@@ -481,8 +481,17 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     super.initState();
     _allWorkers = [];
     _isLoading = true;
+    _loadWorkers();
+  }
+
+  void _loadWorkers() {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-    if (!isGuest) {
+    if (isGuest) {
+      setState(() {
+        _allWorkers = DummyData.workers;
+        _isLoading = false;
+      });
+    } else {
       _workersSub = FirestoreService().workersStream.listen(
         (snapshot) {
           if (mounted) {
@@ -514,9 +523,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           }
         },
       );
-    } else {
-      _allWorkers = DummyData.workers;
-      _isLoading = false;
     }
   }
 
@@ -890,6 +896,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 // Filter Tabs
                 Container(
                   width: 560,
+    
                   height: 50,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
@@ -1023,6 +1030,21 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     padding: const EdgeInsets.only(right: 16.0),
                     child: Text(
                       'position'.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        fontFamily: 'SF Pro Display',
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Text(
+                      'annual_leaves'.tr(),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -1206,6 +1228,21 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               child: Text(
                 position,
                 maxLines: 2,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                worker['annualLeaves']?.toString() ?? '0',
+                maxLines: 1,
                 style: const TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 15,
