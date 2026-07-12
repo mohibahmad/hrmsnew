@@ -371,7 +371,9 @@ class FirestoreService {
       if (normalizedEmail.isNotEmpty && attEmail != normalizedEmail) continue;
       final date = _dateFromCreatedAt(att['createdAt']);
       if (date == null) continue;
-      if (date.year != DateTime.now().year || date.month != DateTime.now().month) continue;
+      if (date.year != DateTime.now().year ||
+          date.month != DateTime.now().month)
+        continue;
       final dayKey = '$attEmail-${date.year}-${date.month}-${date.day}';
       if (seenDays.contains(dayKey)) continue;
       seenDays.add(dayKey);
