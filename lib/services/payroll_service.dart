@@ -23,7 +23,9 @@ class PayrollService {
 
       if (payrollRecord.isNotEmpty) {
         combined.add({
+          ...worker,
           ...payrollRecord,
+          'hasPayrollRecord': true,
           'profileImage':
               worker['profileImage'] ?? payrollRecord['profileImage'],
           'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
@@ -33,18 +35,16 @@ class PayrollService {
         final currencySymbol = PayrollService.getCurrencySymbol(currency);
         final salaryAmount = worker['salaryAmount']?.toString() ?? '';
         combined.add({
-          'id': worker['id'] ?? '',
-          'name': worker['name'] ?? '',
-          'email': worker['email'] ?? '',
-          'position': worker['position'] ?? '',
-          'phone': worker['phone'] ?? '',
-          'profileImage': worker['profileImage'] ?? '',
+          ...worker,
+          'hasPayrollRecord': false,
           'status': 'Active',
           'totalWorkDays': '',
           'absents': '',
           'leaves': '',
           'overtimeDays': '',
-          'salary': salaryAmount.isNotEmpty ? '$currencySymbol $salaryAmount' : '',
+          'salary': salaryAmount.isNotEmpty
+              ? '$currencySymbol $salaryAmount'
+              : '',
           'netSalary': '',
         });
       }

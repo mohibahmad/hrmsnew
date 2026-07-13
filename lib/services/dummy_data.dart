@@ -122,6 +122,22 @@ class DummyData {
       } catch (e) {
         // ignore
       }
+
+      // Populate defaults for leave fields in case they are missing
+      for (var w in workers) {
+        if (w['annualLeaves'] == null || w['annualLeaves'].toString().trim().isEmpty) {
+          w['annualLeaves'] = '12';
+        }
+        if (w['sickLeaves'] == null || w['sickLeaves'].toString().trim().isEmpty) {
+          w['sickLeaves'] = '8';
+        }
+        if (w['casualLeaves'] == null || w['casualLeaves'].toString().trim().isEmpty) {
+          w['casualLeaves'] = '10';
+        }
+        if (w['leavesUsed'] == null || w['leavesUsed'].toString().trim().isEmpty) {
+          w['leavesUsed'] = '0';
+        }
+      }
     } catch (e) {
       // ignore
     }

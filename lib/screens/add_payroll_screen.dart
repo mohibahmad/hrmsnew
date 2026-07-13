@@ -8,6 +8,7 @@ import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
+import '../utils/date_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 
@@ -83,7 +84,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String get _salaryStr {
     final s = widget.workerData['salary'] ?? '';
     if (s.toString().isNotEmpty) return s.toString();
-    return r'$ 0';
+    // Fallback: try salaryAmount from worker data
+    final salaryAmount = widget.workerData['salaryAmount']?.toString() ?? '';
+    if (salaryAmount.isNotEmpty) {
+      return '$salaryAmount';
+    }
+    return '';
   }
 
   @override
@@ -94,7 +100,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     // 🔥 FIX: Worker ke annualLeaves se remaining leaves calculate karo
     final annualLeaves = widget.workerData['annualLeaves']?.toString() ?? '0';
     final leavesUsed = widget.workerData['leavesUsed']?.toString() ?? '0';
-    int remaining = (int.tryParse(annualLeaves) ?? 0) - (int.tryParse(leavesUsed) ?? 0);
+    int remaining =
+        (int.tryParse(annualLeaves) ?? 0) - (int.tryParse(leavesUsed) ?? 0);
     if (remaining < 0) remaining = 0;
 
     _leavesCtrl.text = remaining.toString(); // Show remaining leaves in payroll
@@ -104,19 +111,25 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
       _overtimeCtrl.text = (widget.workerData['overtimeDays'] ?? '').toString();
-      _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '').toString();
-      _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '').toString();
+      _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '')
+          .toString();
+      _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '')
+          .toString();
       _recalc();
     }
     if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
     if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchMonthlyAttendance());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _fetchMonthlyAttendance(),
+    );
   }
 
   Future<void> _fetchMonthlyAttendance() async {
     if (_email.trim().isEmpty) return;
     try {
-      final attendance = await FirestoreService().getWorkerMonthlyAttendance(_email);
+      final attendance = await FirestoreService().getWorkerMonthlyAttendance(
+        _email,
+      );
       setState(() {
         _absentsCtrl.text = (attendance['absents'] ?? 0).toString();
         _leavesCtrl.text = (attendance['leaves'] ?? 0).toString();
@@ -139,10 +152,34 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   Future<void> _handleSave() async {
-    if (_workDaysCtrl.text.trim().isEmpty) {
+    final hasAbsents = (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
+    final hasLeaves = (int.tryParse(_leavesCtrl.text.trim()) ?? 0) > 0;
+
+    final validators = [
+      (_workDaysCtrl.text.trim(), 'Please enter Total Work Days'),
+      (_absentsCtrl.text.trim(), 'Please enter Absents'),
+      (_leavesCtrl.text.trim(), 'Please enter Leaves'),
+      (_overtimeCtrl.text.trim(), 'Please enter Overtime Days'),
+      (_salaryStr.trim(), 'Please enter Salary'),
+    ];
+    for (final entry in validators) {
+      if (entry.$1.isEmpty || entry.$1 == r'$ 0') {
+        FlashySnackBar.show(context, message: entry.$2, isError: true);
+        return;
+      }
+    }
+    if (hasAbsents && _absentDeductionCtrl.text.trim().isEmpty) {
       FlashySnackBar.show(
         context,
-        message: 'Please enter Total Work Days',
+        message: 'Please enter Absent Deduction per day',
+        isError: true,
+      );
+      return;
+    }
+    if (hasLeaves && _leaveDeductionCtrl.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Please enter Leave Deduction per day',
         isError: true,
       );
       return;
@@ -163,6 +200,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'leaveDeduction': _leaveDeductionCtrl.text.trim(),
       'salary': _salaryStr,
       'netSalary': _calculatedNet,
+      'lastModified': DateTime.now().toIso8601String(),
     };
     setState(() => _isSaving = true);
     try {
@@ -181,10 +219,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         }
         await DummyData.saveToPrefs();
       } else {
+        final hasExistingRecord = widget.workerData['hasPayrollRecord'] == true;
         final existingId = widget.workerData['id']?.toString() ?? '';
-        final hasExistingRecord = (widget.workerData['totalWorkDays'] ?? '')
-            .toString()
-            .isNotEmpty;
         if (hasExistingRecord && existingId.isNotEmpty) {
           await FirestoreService().updatePayrollRecord(existingId, record);
         } else {
@@ -208,10 +244,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         if (isGuest) {
           final expenseId =
               'dummy_e${DateTime.now().microsecondsSinceEpoch}_${record.hashCode.toString().replaceAll('-', '')}';
-          DummyData.expenses.insert(0, {
-            ...expenseRecord,
-            'id': expenseId,
-          });
+          DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
           await DummyData.saveToPrefs();
         } else {
           await FirestoreService().addExpense(expenseRecord);
@@ -234,6 +267,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           isError: true,
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -243,7 +278,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
     final now = DateTime.now();
     final payPeriod = '${now.month.toString().padLeft(2, '0')}/${now.year}';
-    final fileName = 'payroll_${_name.replaceAll(' ', '_')}_${payPeriod.replaceAll('/', '-')}.pdf';
+    final fileName =
+        'payroll_${_name.replaceAll(' ', '_')}_${payPeriod.replaceAll('/', '-')}.pdf';
 
     final bytes = await InvoiceService.generatePayrollInvoice(
       employeeName: _name,
@@ -295,7 +331,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(ctx),
-                      child: const Icon(Icons.close, size: 24, color: Color(0xFF6B7280)),
+                      child: const Icon(
+                        Icons.close,
+                        size: 24,
+                        color: Color(0xFF6B7280),
+                      ),
                     ),
                     const Spacer(),
                     Text(
@@ -313,7 +353,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                         backgroundColor: const Color(0xFF0247C4),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -332,26 +375,24 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                       icon: const Icon(Icons.share, size: 16),
                       label: Text(
                         'share'.tr(),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              Container(
-                height: 1,
-                color: const Color(0xFFE5E7EB),
-              ),
+              Container(height: 1, color: const Color(0xFFE5E7EB)),
               const SizedBox(height: 12),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: pdfx.PdfView(
-                      controller: controller,
-                    ),
+                    child: pdfx.PdfView(controller: controller),
                   ),
                 ),
               ),
@@ -382,7 +423,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                         _buildPayrollDataHeader(),
                         const SizedBox(height: 24),
                         _buildEmployeeBanner(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+                        _buildLastModifiedNotice(),
+                        const SizedBox(height: 12),
                         _buildDetailsCard(),
                         const SizedBox(height: 40),
                       ],
@@ -501,6 +544,41 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
+  Widget _buildLastModifiedNotice() {
+    final raw = widget.workerData['lastModified'];
+    if (raw == null || raw.toString().isEmpty) return const SizedBox.shrink();
+
+    DateTime? date;
+    if (raw is DateTime) {
+      date = raw;
+    } else {
+      date = DateTime.tryParse(raw.toString());
+    }
+    if (date == null) return const SizedBox.shrink();
+
+    final dateStr = AppDateUtils.formatDate(date);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _borderLight),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history, size: 16, color: Color(0xFF6B7280)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'last_modified_by_admin_on'.tr(args: [dateStr]),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildEmployeeBanner() {
     return Container(
@@ -638,7 +716,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               );
             },
           ),
-
         ],
       ),
     );
@@ -679,11 +756,23 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ),
               const SizedBox(width: 24),
               Expanded(
-                child: _buildInput('absents_label'.tr(), '0', _absentsCtrl, readOnly: true, focusedBorderColor: _borderLight),
+                child: _buildInput(
+                  'absents_label'.tr(),
+                  '0',
+                  _absentsCtrl,
+                  readOnly: true,
+                  focusedBorderColor: _borderLight,
+                ),
               ),
               const SizedBox(width: 24),
               Expanded(
-                child: _buildInput('leaves_label'.tr(), '0', _leavesCtrl, readOnly: true, focusedBorderColor: _borderLight),
+                child: _buildInput(
+                  'leaves_label'.tr(),
+                  '0',
+                  _leavesCtrl,
+                  readOnly: true,
+                  focusedBorderColor: _borderLight,
+                ),
               ),
             ],
           ),
@@ -707,44 +796,76 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               Expanded(child: _buildCalculatedInput(cr)),
             ],
           ),
-          const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInput('absent_deduction_per_day'.tr(), '0', _absentDeductionCtrl, isCurrency: true),
-                    if (cr.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-                      ),
+          Builder(
+            builder: (context) {
+              final hasAbsents =
+                  (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
+              final hasLeaves =
+                  (int.tryParse(_leavesCtrl.text.trim()) ?? 0) > 0;
+              if (!hasAbsents && !hasLeaves) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (hasAbsents)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInput(
+                                'absent_deduction_per_day'.tr(),
+                                '0',
+                                _absentDeductionCtrl,
+                                isCurrency: true,
+                              ),
+                              if (cr.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      if (hasAbsents && hasLeaves) const SizedBox(width: 24),
+                      if (hasLeaves)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInput(
+                                'leave_deduction_per_day'.tr(),
+                                '0',
+                                _leaveDeductionCtrl,
+                                isCurrency: true,
+                              ),
+                              if (cr.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      if (hasAbsents || hasLeaves) const SizedBox(width: 24),
+                      const Expanded(child: SizedBox()),
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInput('leave_deduction_per_day'.tr(), '0', _leaveDeductionCtrl, isCurrency: true),
-                    if (cr.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              const Expanded(child: SizedBox()),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 32),
           if (cr.isNotEmpty) ...[
@@ -782,24 +903,26 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         TextField(
           controller: controller,
           readOnly: readOnly,
-          mouseCursor: readOnly ? SystemMouseCursors.basic : SystemMouseCursors.text,
+          mouseCursor: readOnly
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.text,
           onChanged: readOnly ? null : (_) => _recalc(),
           keyboardType: isCurrency
               ? const TextInputType.numberWithOptions(decimal: true)
               : isDaysInput
-                  ? TextInputType.number
-                  : null,
+              ? TextInputType.number
+              : null,
           inputFormatters: isCurrency
               ? [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                   LengthLimitingTextInputFormatter(10),
                 ]
               : isDaysInput
-                  ? [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(3),
-                    ]
-                  : null,
+              ? [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ]
+              : null,
           decoration: InputDecoration(
             hintText: readOnly ? null : hint,
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
@@ -870,9 +993,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-
-
-
   Widget _buildCalcBreakdown(Map<String, dynamic> cr) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -885,34 +1005,34 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         children: [
           _breakdownRow(
             'daily_rate'.tr(),
-            cr['formattedDailyRate'] as String,
-            '${cr['totalWorkDaysPerYear']} ${'days_per_year'.tr()}',
+            (cr['formattedDailyRate'] ?? '').toString(),
+            '${cr['totalWorkDaysPerYear'] ?? 0} ${'days_per_year'.tr()}',
           ),
           const Divider(height: 16),
           _breakdownRow(
             'gross_pay'.tr(),
-            cr['formattedGross'] as String,
-            '${cr['workedDays']} ${'days'.tr()}',
+            (cr['formattedGross'] ?? '').toString(),
+            '${cr['workedDays'] ?? 0} ${'days'.tr()}',
           ),
           _breakdownRow(
             'overtime_pay'.tr(),
-            cr['formattedOvertime'] as String,
-            '${cr['overtimeDays']} ${'days_overtime_multiplier'.tr()}',
+            (cr['formattedOvertime'] ?? '').toString(),
+            '${cr['overtimeDays'] ?? 0} ${'days_overtime_multiplier'.tr()}',
           ),
           _breakdownRow(
             'absent_deduction'.tr(),
-            cr['formattedAbsentDeduct'] as String,
-            '${cr['absentDays']} ${'days'.tr()}',
+            (cr['formattedAbsentDeduct'] ?? '').toString(),
+            '${cr['absentDays'] ?? 0} ${'days'.tr()}',
           ),
           _breakdownRow(
             'leave_deduction'.tr(),
-            cr['formattedLeaveDeduct'] as String,
-            '${cr['leaveDays']} ${'days'.tr()}',
+            (cr['formattedLeaveDeduct'] ?? '').toString(),
+            '${cr['leaveDays'] ?? 0} ${'days'.tr()}',
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(
             'net_pay'.tr(),
-            cr['formattedNet'] as String,
+            (cr['formattedNet'] ?? '').toString(),
             null,
             isTotal: true,
           ),

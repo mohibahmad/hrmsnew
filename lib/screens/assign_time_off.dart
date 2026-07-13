@@ -115,16 +115,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         _workers = DummyData.workers;
         _timeoffRecords = DummyData.timeoff;
         if (widget.initialWorker != null) {
+          final targetEmail = (widget.initialWorker!['email'] ?? '').toString().trim().toLowerCase();
           _selectedWorker = _workers.firstWhere(
-            (w) => w['email'] == widget.initialWorker!['email'],
+            (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
             orElse: () => widget.initialWorker!,
           );
         } else if (_workers.isNotEmpty) {
           if (_selectedWorker == null) {
             _selectedWorker = _workers.first;
           } else {
+            final targetEmail = (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
             _selectedWorker = _workers.firstWhere(
-              (w) => w['email'] == _selectedWorker!['email'],
+              (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
               orElse: () => _workers.first,
             );
           }
@@ -141,16 +143,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
               if (widget.initialWorker != null) {
+                final targetEmail = (widget.initialWorker!['email'] ?? '').toString().trim().toLowerCase();
                 _selectedWorker = _workers.firstWhere(
-                  (w) => w['email'] == widget.initialWorker!['email'],
+                  (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
                   orElse: () => widget.initialWorker!,
                 );
               } else if (_workers.isNotEmpty) {
                 if (_selectedWorker == null) {
                   _selectedWorker = _workers.first;
                 } else {
+                  final targetEmail = (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
                   _selectedWorker = _workers.firstWhere(
-                    (w) => w['email'] == _selectedWorker!['email'],
+                    (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
                     orElse: () => _workers.first,
                   );
                 }

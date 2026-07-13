@@ -15,6 +15,7 @@ class Payroll {
   final String salary;
   final String netSalary;
   final String? createdAt;
+  final String? lastModified;
 
   const Payroll({
     this.id,
@@ -33,6 +34,7 @@ class Payroll {
     this.salary = '',
     this.netSalary = '',
     this.createdAt,
+    this.lastModified,
   });
 
   factory Payroll.fromMap(Map<String, dynamic> data, {String? id}) {
@@ -53,6 +55,7 @@ class Payroll {
       salary: data['salary'] ?? '',
       netSalary: data['netSalary'] ?? '',
       createdAt: data['createdAt'],
+      lastModified: data['lastModified'],
     );
   }
 
@@ -74,6 +77,7 @@ class Payroll {
       'salary': salary,
       'netSalary': netSalary,
       if (createdAt != null) 'createdAt': createdAt,
+      if (lastModified != null) 'lastModified': lastModified,
     };
   }
 }

@@ -91,6 +91,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
       if (timeoffRecord.isNotEmpty) {
         combined.add({
+          ...worker,
           ...timeoffRecord,
           'profileImage':
               worker['profileImage'] ?? timeoffRecord['profileImage'],
@@ -100,13 +101,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       } else {
         // Include workers without timeoff records with default empty values
         combined.add({
-          'id': worker['id'] ?? '',
-          'name': worker['name'] ?? '',
-          'email': worker['email'] ?? '',
-          'position': worker['position'] ?? '',
-          'phone': worker['phone'] ?? '',
-          'contact': worker['phone'] ?? '',
-          'profileImage': worker['profileImage'] ?? '',
+          ...worker,
           'action': '',
           'startDate': '',
           'endDate': '',
