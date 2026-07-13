@@ -1811,7 +1811,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             label: 'gender_label'.tr(),
                             selectedValue: genderController.text,
                             hint: 'enter_gender'.tr(),
-                            items: const ['Male', 'Female', 'Other'],
+                            items: const ['Male', 'Female'],
                             itemLabelBuilder: (val) => _localizeGender(val),
                             onChanged: (val) {
                               if (val != null) {
@@ -3066,8 +3066,11 @@ class DocumentationSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    height: 615,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final h = (constraints.maxWidth * 1.8).clamp(320.0, 650.0);
+                      return Container(
+                    height: h,
                     padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF2F3F6),
@@ -3111,6 +3114,8 @@ class DocumentationSection extends StatelessWidget {
                         ),
                       ],
                     ),
+                  );
+                    },
                   ),
                 ],
               ),
@@ -3470,11 +3475,16 @@ class DocumentationSection extends StatelessWidget {
         (cvName!.toLowerCase().endsWith('.doc') ||
             cvName!.toLowerCase().endsWith('.docx'));
 
-    return Container(
-      height: 615,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
+        final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
+        return Container(
+      height: containerHeight,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
+        color: const Color(0xFFF2F3F6),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: Colors.grey.shade200,
@@ -3487,8 +3497,8 @@ class DocumentationSection extends StatelessWidget {
           Positioned(
             top: 12,
             bottom: 12,
-            left: 48,
-            right: 48,
+            left: sidePadding,
+            right: sidePadding,
             child: Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
@@ -3705,76 +3715,86 @@ class DocumentationSection extends StatelessWidget {
         ],
       ),
     );
+      },
+    );
   }
 
   Widget _buildCvContainer({required Widget overlay}) {
-    return Container(
-      height: 615,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: 12,
-            bottom: 12,
-            left: 48,
-            right: 48,
-            child: ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        height: 16,
-                        width: 200,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 10,
-                        width: 150,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 40),
-                      ...List.generate(
-                        8,
-                        (index) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Container(
-                            height: 12,
-                            width: double.infinity,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
+        final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
+        return Container(
+          height: containerHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F3F6),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: Colors.grey.shade200,
+              width: 1,
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                top: 12,
+                bottom: 12,
+                left: sidePadding,
+                right: sidePadding,
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+                  child: Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            height: 16,
+                            width: 200,
                             color: Colors.grey.shade300,
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          Container(
+                            height: 10,
+                            width: 150,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(height: 40),
+                          ...List.generate(
+                            8,
+                            (index) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Container(
+                                height: 12,
+                                width: double.infinity,
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+              overlay,
+            ],
           ),
-          overlay,
-        ],
-      ),
+        );
+      },
     );
   }
 }
+
 
 // ==========================================
 // FILE-LEVEL SHARED HELPERS
@@ -4083,13 +4103,18 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       return const SizedBox.shrink();
     }
     if (_pageImages.isNotEmpty) {
-      return ImageFiltered(
-        imageFilter: ui.ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
-        child: Image.memory(
-          _pageImages[0],
-          fit: BoxFit.fitWidth,
-          filterQuality: FilterQuality.high,
-          width: double.infinity,
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        child: ImageFiltered(
+          imageFilter: ui.ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
+          child: SizedBox.expand(
+            child: Image.memory(
+              _pageImages[0],
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+              width: double.infinity,
+            ),
+          ),
         ),
       );
     }

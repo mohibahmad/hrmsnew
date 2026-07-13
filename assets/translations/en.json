@@ -320,6 +320,7 @@
   "mark_as_paid_confirm": "Are you sure you want to mark {name}'s payroll as paid?",
   "marked_as_paid_success": "{name}'s payroll marked as paid successfully",
   "confirm": "Confirm",
+  "mark_read": "Mark read",
   "mark_all_read": "Mark all read",
   "clear_all": "Clear All",
   "invoice_preview": "Invoice Preview",

@@ -316,6 +316,7 @@
   "mark_as_paid_confirm": "¿Está seguro de que desea marcar la nómina de {name} como pagada?",
   "marked_as_paid_success": "La nómina de {name} se marcó como pagada exitosamente",
   "confirm": "Confirmar",
+  "mark_read": "Marcar leído",
   "mark_all_read": "Marcar todo leído",
   "clear_all": "Limpiar todo",
   "invoice_preview": "Vista Previa de Factura",
