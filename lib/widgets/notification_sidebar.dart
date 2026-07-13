@@ -102,14 +102,20 @@ class _NotificationSidebarState extends State<NotificationSidebar>
 
   _NotifStyle _getStyle(String type) {
     switch (type) {
-      case 'new_member':
+      case 'welcome':
+        return _NotifStyle(
+          icon: Icons.waving_hand_rounded,
+          color: const Color(0xFF4C84E0),
+          bgColor: const Color(0xFFEAF0FF),
+          label: 'notif_welcome'.tr(),
+          isWelcome: true,
+        );
       case 'worker_added':
         return _NotifStyle(
           icon: Icons.person_add_rounded,
           color: const Color(0xFF4C84E0),
           bgColor: const Color(0xFFEAF0FF),
           label: 'notif_new_member'.tr(),
-          isWelcome: true,
         );
       case 'holiday_added':
         return _NotifStyle(
