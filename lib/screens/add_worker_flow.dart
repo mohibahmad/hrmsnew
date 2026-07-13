@@ -3495,8 +3495,8 @@ class DocumentationSection extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Positioned(
-            top: 12,
-            bottom: 12,
+            top: 8,
+            bottom: 8,
             left: sidePadding,
             right: sidePadding,
             child: Container(
@@ -4104,7 +4104,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
     }
     if (_pageImages.isNotEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
         child: ImageFiltered(
           imageFilter: ui.ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
           child: SizedBox.expand(
