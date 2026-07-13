@@ -140,7 +140,6 @@ flutter:
     - "assets/search icon.svg"
     - assets/Upload_profile.svg
     - assets/profileimage.png
-    - assets/profile_pic.png
     - assets/profile_placeholder.png
     - assets/expense_month.svg
     - assets/leave.svg
@@ -151,7 +150,6 @@ flutter:
     - assets/email.png
     - assets/call.png
 
-    - assets/present_grey.svg
     - assets/present_worker.svg
     - assets/right_back_arrow.png
     - assets/changepassword.svg
