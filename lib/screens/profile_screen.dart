@@ -148,7 +148,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _businessNameController.text =
               _guestProfileCache?['businessName'] ?? 'Guest Company Ltd.';
           _companyIdController.text =
-              _guestProfileCache?['companyId'] ?? 'GUEST-001';
+              _guestProfileCache?['companyId'] ?? '';
           _emailController.text =
               _guestProfileCache?['email'] ?? 'guest@example.com';
           _currencyController.text = _guestProfileCache?['currency'] ?? 'USD';
@@ -227,11 +227,44 @@ class _ProfileBodyState extends State<ProfileBody> {
   }
 
   Future<bool> _saveProfile() async {
+    if (_businessNameController.text.trim().isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'please_enter_business_name'.tr(),
+          isError: true,
+        );
+      }
+      return false;
+    }
+
+    if (_companyIdController.text.trim().isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'please_enter_company_number'.tr(),
+          isError: true,
+        );
+      }
+      return false;
+    }
+
     if (_contact1Controller.text.trim().isEmpty) {
       if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'please_enter_contact_number'.tr(),
+          isError: true,
+        );
+      }
+      return false;
+    }
+
+    if (_addressController.text.trim().isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'please_enter_address'.tr(),
           isError: true,
         );
       }
@@ -703,10 +736,26 @@ class _ProfileBodyState extends State<ProfileBody> {
                             FilteringTextInputFormatter.digitsOnly,
                         ]
                       : null,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    hintText: isEmailField
+                        ? 'example@company.com'
+                        : isCompanyId
+                            ? 'e.g. 12345678'
+                            : isBusinessName
+                                ? 'e.g. ABC Corporation'
+                                : isContact
+                                    ? '+1 415-555-0198'
+                                    : isAddress
+                                        ? 'e.g. 123 Main St, City'
+                                        : '',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 15,
+                      fontFamily: 'SF Pro Display',
+                    ),
                   ),
                   style: TextStyle(
                     fontSize: 15,

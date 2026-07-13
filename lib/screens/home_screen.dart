@@ -132,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _showAssignTimeOff = false;
             _selectedTimeOffWorker = null;
           }),
+          onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
           initialWorker: _selectedTimeOffWorker,
         );
@@ -312,20 +313,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _femaleWorkersCount = fCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
 
-        // 🔥 FIX: Filter today's attendance
-        final today = DateTime.now();
-        _attendanceDocs = DummyData.attendance.where((att) {
-          final dateStr = att['createdAt']?.toString();
-          if (dateStr == null) return false;
-          try {
-            final date = DateTime.parse(dateStr);
-            return date.year == today.year &&
-                   date.month == today.month &&
-                   date.day == today.day;
-          } catch (_) {
-            return false;
-          }
-        }).toList();
+        // Guest: use all dummy attendance data (dummy data has no createdAt)
+        _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
 
         _totalAttendanceCount = _attendanceDocs.length;
         _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
@@ -517,6 +506,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _totalSalarySum = 0.0;
+
+    // Collect emails that already have payroll records
+    final Set<String> payrollEmails = {};
+    for (final doc in _rawPayrollDocs) {
+      final email = (doc['email'] ?? '').toString().trim().toLowerCase();
+      if (email.isNotEmpty) payrollEmails.add(email);
+    }
+
+    // Add salary from payroll records
     for (final doc in _rawPayrollDocs) {
       if (dateLimit != null) {
         final dateStr = (doc['date'] ?? '').toString();
@@ -533,6 +531,17 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
       _totalSalarySum += doc['netSalary'] as double;
+    }
+
+    // Add salaryAmount for workers WITHOUT a payroll record
+    for (final worker in _workersList) {
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      if (email.isNotEmpty && payrollEmails.contains(email)) continue;
+      final salaryStr = (worker['salaryAmount'] ?? '').toString();
+      final salaryVal = PayrollService.extractSalary(salaryStr);
+      if (salaryVal > 0) {
+        _totalSalarySum += salaryVal;
+      }
     }
   }
 

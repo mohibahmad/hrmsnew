@@ -13,11 +13,13 @@ import '../widgets/notification_bell.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onNotificationTap;
   final Map<String, dynamic>? initialWorker;
   const AssignTimeOffScreen({
     super.key,
     required this.onBack,
+    this.onProfileTap,
     this.onNotificationTap,
     this.initialWorker,
   });
@@ -356,7 +358,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 24),
-          const UserAvatar(),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
         ],
       ),
     );

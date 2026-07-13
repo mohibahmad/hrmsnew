@@ -2257,8 +2257,10 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   void _parseSelectedDate() {
     if (widget.selectedJoiningDate != null &&
         widget.selectedJoiningDate!.isNotEmpty) {
+      final dateStr = widget.selectedJoiningDate!;
+
+      // Format 1: "Month Day, Year" (e.g., "January 15, 2025")
       try {
-        final dateStr = widget.selectedJoiningDate!;
         final parts = dateStr.split(' ');
         if (parts.length >= 3) {
           final monthName = parts[0];
@@ -2271,6 +2273,23 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             setState(() {
               _selectedDate = DateTime(year, monthIndex + 1, day);
               _calendarMonth = DateTime(year, monthIndex + 1, 1);
+            });
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // Format 2: "M/D/YYYY" or "MM/DD/YYYY" (e.g., "1/15/2025")
+      try {
+        final parts = dateStr.split('/');
+        if (parts.length == 3) {
+          final month = int.parse(parts[0]);
+          final day = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            setState(() {
+              _selectedDate = DateTime(year, month, day);
+              _calendarMonth = DateTime(year, month, 1);
             });
             return;
           }
