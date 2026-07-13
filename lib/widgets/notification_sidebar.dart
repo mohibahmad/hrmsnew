@@ -116,6 +116,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFF4C84E0),
           bgColor: const Color(0xFFEAF0FF),
           label: 'notif_new_member'.tr(),
+          iconAsset: 'assets/workers_icon_slidebar.svg',
         );
       case 'holiday_added':
         return _NotifStyle(
@@ -123,6 +124,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFFFF5F65),
           bgColor: const Color(0xFFFFECED),
           label: 'notif_holiday'.tr(),
+          iconAsset: 'assets/holidays_icon.svg',
         );
       case 'attendance_marked':
         return _NotifStyle(
@@ -130,6 +132,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFF22C55E),
           bgColor: const Color(0xFFE8FAF0),
           label: 'notif_attendance'.tr(),
+          iconAsset: 'assets/total_salary.svg',
         );
       case 'payroll_added':
         return _NotifStyle(
@@ -137,6 +140,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFF8B5CF6),
           bgColor: const Color(0xFFF3EEFF),
           label: 'notif_payroll'.tr(),
+          iconAsset: 'assets/payroll_icon.svg',
         );
       case 'time_off_added':
         return _NotifStyle(
@@ -144,6 +148,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFFF59E0B),
           bgColor: const Color(0xFFFFF8E8),
           label: 'notif_time_off'.tr(),
+          iconAsset: 'assets/time_off_icon.svg',
         );
       case 'asset_added':
         return _NotifStyle(
@@ -151,6 +156,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFF14B8A6),
           bgColor: const Color(0xFFE6FAF8),
           label: 'notif_asset'.tr(),
+          iconAsset: 'assets/assets_icon.svg',
         );
       case 'expense_added':
         return _NotifStyle(
@@ -158,8 +164,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           color: const Color(0xFFEF4444),
           bgColor: const Color(0xFFFFECEC),
           label: 'notif_expense'.tr(),
-          iconAsset: 'assets/expenses.png',
-          iconSize: 32,
+          iconAsset: 'assets/expenses_icon_slidebar.svg',
         );
       default:
         return _NotifStyle(
@@ -637,19 +642,13 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                         ),
                         child: Center(
                           child: style.iconAsset != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: ColorFiltered(
-                                    colorFilter: ColorFilter.mode(
-                                      style.color,
-                                      BlendMode.srcIn,
-                                    ),
-                                    child: Image.asset(
-                                      style.iconAsset!,
-                                      width: style.iconSize,
-                                      height: style.iconSize,
-                                      fit: BoxFit.contain,
-                                    ),
+                              ? SvgPicture.asset(
+                                  style.iconAsset!,
+                                  width: style.iconSize,
+                                  height: style.iconSize,
+                                  colorFilter: ColorFilter.mode(
+                                    style.color,
+                                    BlendMode.srcIn,
                                   ),
                                 )
                               : Icon(

@@ -94,8 +94,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     if (isGuest) {
       setState(() {
         _workers = List<Map<String, dynamic>>.from(DummyData.workers);
-        _todayAttendance = List<Map<String, dynamic>>.from(
-          DummyData.attendance,
+        _todayAttendance = _latestAttendancePerWorker(
+          List<Map<String, dynamic>>.from(DummyData.attendance),
         );
         _isLoading = false;
       });
@@ -161,7 +161,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               }
               return 0;
             });
-            _todayAttendance = sortedList.where((att) {
+            final todays = sortedList.where((att) {
               final createdAt = att['createdAt'];
               DateTime? dt;
               if (createdAt is Timestamp) {
@@ -174,6 +174,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                   dt.month == now.month &&
                   dt.day == now.day;
             }).toList();
+            _todayAttendance = _latestAttendancePerWorker(todays);
             _attendanceLoaded = true;
             if (_workersLoaded && _attendanceLoaded) _isLoading = false;
           });
@@ -210,6 +211,43 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       }
     }
     return "";
+  }
+
+  DateTime? _attendanceDate(dynamic createdAt) {
+    if (createdAt == null) return null;
+    if (createdAt is Timestamp) return createdAt.toDate();
+    if (createdAt is DateTime) return createdAt;
+    if (createdAt is String) return DateTime.tryParse(createdAt);
+    return null;
+  }
+
+  // Keeps only the most recent attendance record per worker email so that an
+  // older "Absent" record can't linger next to a newer "Leave" record.
+  List<Map<String, dynamic>> _latestAttendancePerWorker(
+    List<Map<String, dynamic>> records,
+  ) {
+    final byEmail = <String, Map<String, dynamic>>{};
+    for (final att in records) {
+      final email = (att['email'] ?? '').toString().toLowerCase();
+      if (email.isEmpty) continue;
+      final existing = byEmail[email];
+      if (existing == null) {
+        byEmail[email] = att;
+        continue;
+      }
+      final da = _attendanceDate(att['createdAt']);
+      final db = _attendanceDate(existing['createdAt']);
+      final isNewer = da != null &&
+          (db == null ||
+              da.isAfter(db) ||
+              (da.isAtSameMomentAs(db) &&
+                  (att['id'] ?? '').toString().compareTo(
+                        (existing['id'] ?? '').toString(),
+                      ) >
+                      0));
+      if (isNewer) byEmail[email] = att;
+    }
+    return byEmail.values.toList();
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
