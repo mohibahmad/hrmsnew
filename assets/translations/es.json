@@ -471,7 +471,7 @@
   "tap_to_upload_profile_image": "Toque para subir una imagen de perfil\nPNG o JPG",
   "edit_asset": "Editar activo",
   "enter_asset_type": "Ingrese el tipo de activo",
-  "csv_required_columns_error": "El CSV debe contener al menos las columnas \"Nombre completo\", \"Número de contacto\", \"Correo electrónico\", \"Fecha de nacimiento\", \"Puesto\", \"Monto del salario\" y \"Fecha de ingreso\".",
+  "csv_required_columns_error": "El CSV debe contener todas las columnas requeridas: Nombre completo, Número de contacto, Correo electrónico, Nombre del padre, Nación ID, Religión, Fecha de nacimiento, Género, Dirección, Estado civil, Puesto, Tipo de empleado, Modelo de trabajo, Nivel de experiencia, Educación, Tipo de salario, Moneda, Monto del salario, Política de permisos, Permisos anuales, Permisos por enfermedad, Permisos casuales, Fecha de ingreso, URL de foto de perfil, URL de ID frontal, URL de ID trasera, URL del CV.",
   "workers_added_successfully": "Se agregaron exitosamente {count} trabajadores.",
   "skipped_duplicates_message": "Se omitieron {count} trabajadores duplicados.",
   "skipped_missing_required_message": "Se omitieron {count} trabajadores con campos requeridos faltantes.",

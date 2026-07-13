@@ -211,26 +211,23 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'currency': 'currency',
     };
 
-    // Check required columns (same as manual add worker flow)
-    bool hasName = false;
-    bool hasPhone = false;
-    bool hasEmail = false;
-    bool hasDob = false;
-    bool hasPosition = false;
-    bool hasSalaryAmount = false;
-    bool hasJoiningDate = false;
+    // Check ALL required columns
+    final requiredFields = [
+      'name', 'phone', 'email', 'fatherName', 'nationalId', 'religion',
+      'dob', 'gender', 'address', 'relationshipStatus', 'position',
+      'type1', 'type2', 'experienceLevel', 'education', 'salaryType',
+      'currency', 'salaryAmount', 'leavePolicy', 'annualLeaves',
+      'sickLeaves', 'casualLeaves', 'joiningDate', 'profileImage',
+      'frontId', 'backId', 'cv',
+    ];
+    Set<String> foundFields = {};
     for (var h in headers) {
       final m = headerMap[h] ?? h;
-      if (m == 'name') hasName = true;
-      if (m == 'phone') hasPhone = true;
-      if (m == 'email') hasEmail = true;
-      if (m == 'dob') hasDob = true;
-      if (m == 'position') hasPosition = true;
-      if (m == 'salaryAmount') hasSalaryAmount = true;
-      if (m == 'joiningDate') hasJoiningDate = true;
+      if (requiredFields.contains(m)) foundFields.add(m);
     }
 
-    if (!hasName || !hasPhone || !hasEmail || !hasDob || !hasPosition || !hasSalaryAmount || !hasJoiningDate) {
+    final missingFields = requiredFields.where((f) => !foundFields.contains(f)).toList();
+    if (missingFields.isNotEmpty) {
       FlashySnackBar.show(
         context,
         message: 'csv_required_columns_error'.tr(),
@@ -344,38 +341,16 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // Ensure required fields (same as manual add worker flow)
-      if (workerData['name'] == null || workerData['name'].toString().isEmpty) {
-        missingRequiredCount++;
-        continue;
+      // Ensure ALL required fields are filled
+      bool hasEmptyRequired = false;
+      for (var field in requiredFields) {
+        if (workerData[field] == null ||
+            workerData[field].toString().trim().isEmpty) {
+          hasEmptyRequired = true;
+          break;
+        }
       }
-      if (workerData['phone'] == null ||
-          workerData['phone'].toString().isEmpty) {
-        missingRequiredCount++;
-        continue;
-      }
-      if (workerData['email'] == null ||
-          workerData['email'].toString().isEmpty) {
-        missingRequiredCount++;
-        continue;
-      }
-      if (workerData['dob'] == null ||
-          workerData['dob'].toString().isEmpty) {
-        missingRequiredCount++;
-        continue;
-      }
-      if (workerData['position'] == null ||
-          workerData['position'].toString().isEmpty) {
-        missingRequiredCount++;
-        continue;
-      }
-      if (workerData['salaryAmount'] == null ||
-          workerData['salaryAmount'].toString().isEmpty) {
-        missingRequiredCount++;
-        continue;
-      }
-      if (workerData['joiningDate'] == null ||
-          workerData['joiningDate'].toString().isEmpty) {
+      if (hasEmptyRequired) {
         missingRequiredCount++;
         continue;
       }

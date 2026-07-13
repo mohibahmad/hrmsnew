@@ -223,6 +223,14 @@ class FirestoreService {
       await batch.commit();
     }
 
+    if (count > 0) {
+      await addNotification({
+        'type': 'worker_added',
+        'title': 'Bulk Workers Added',
+        'message': '$count workers have been successfully added via CSV import.',
+      });
+    }
+
     return BulkWorkerResult(imported: count, skipped: skipped);
   }
 

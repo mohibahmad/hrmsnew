@@ -471,7 +471,7 @@
   "tap_to_upload_profile_image": "Toque para enviar uma imagem de perfil\nPNG ou JPG",
   "edit_asset": "Editar ativo",
   "enter_asset_type": "Digite o tipo de ativo",
-  "csv_required_columns_error": "O CSV deve conter pelo menos as colunas \"Nome completo\", \"Número de contato\", \"Endereço de e-mail\", \"Data de nascimento\", \"Cargo\", \"Valor do salário\" e \"Data de admissão\".",
+  "csv_required_columns_error": "O CSV deve conter todas as colunas obrigatórias: Nome completo, Número de contato, Endereço de e-mail, Nome do pai, ID Nacional, Religião, Data de nascimento, Gênero, Endereço, Estado civil, Cargo, Tipo de funcionário, Modelo de trabalho, Nível de experiência, Educação, Tipo de salário, Moeda, Valor do salário, Política de férias, Férias anuais, Férias de doença, Férias casuais, Data de admissão, URL da foto de perfil, URL da ID frontal, URL da ID traseira, URL do CV.",
   "workers_added_successfully": "Adicionado com sucesso {count} trabalhadores.",
   "skipped_duplicates_message": "Ignorado {count} trabalhadores duplicados.",
   "skipped_missing_required_message": "Ignorado {count} trabalhadores com campos obrigatórios faltando.",
