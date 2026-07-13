@@ -183,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _workersList = [];
   Map<String, dynamic>? _selectedTimeOffWorker;
   bool _isPremium = false;
+  bool _dashboardReady = false;
 
   @override
   void dispose() {
@@ -247,6 +248,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // Try to restore profile pic from local storage first (survives restarts)
     _restoreProfilePic(currentUser);
     _loadDashboardData();
+    // Defer the heavy dashboard (charts/cards) build to after the first frame
+    // so the sign-in -> home page transition stays smooth.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _dashboardReady = true);
+    });
     // Real-time listener for premium status changes from Firestore
     _startPremiumListener();
     // Load premium status first, then show dialog if needed
@@ -592,9 +598,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _toggleNotifications() {
+    final willShow = !_showNotifications;
     setState(() {
-      _showNotifications = !_showNotifications;
+      _showNotifications = willShow;
     });
+    // Opening the panel counts as having "seen" the notifications,
+    // so the unread badge clears.
+    if (willShow) {
+      FirestoreService().markAllNotificationsRead();
+    }
   }
 
   @override
@@ -645,27 +657,44 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 // 0: Dashboard View
                                 _activatedScreens[0]
-                                    ? TweenAnimationBuilder<double>(
-                                        key: ValueKey(stackIndex == 0),
-                                        tween: Tween<double>(begin: 0, end: 1),
-                                        duration: const Duration(
-                                          milliseconds: 650,
-                                        ),
-                                        curve: Curves.easeOutQuart,
-                                        builder: (context, value, child) {
-                                          return Opacity(
-                                            opacity: value,
-                                            child: Transform.translate(
-                                              offset: Offset(
-                                                0,
-                                                15 * (1 - value),
-                                              ),
-                                              child: child,
+                                    ? (_dashboardReady
+                                        ? TweenAnimationBuilder<double>(
+                                            key: ValueKey(stackIndex == 0),
+                                            tween: Tween<double>(begin: 0, end: 1),
+                                            duration: const Duration(
+                                              milliseconds: 650,
                                             ),
-                                          );
-                                        },
-                                        child: _buildDashboardView(),
-                                      )
+                                            curve: Curves.easeOutQuart,
+                                            builder: (context, value, child) {
+                                              return Opacity(
+                                                opacity: value,
+                                                child: Transform.translate(
+                                                  offset: Offset(
+                                                    0,
+                                                    15 * (1 - value),
+                                                  ),
+                                                  child: child,
+                                                ),
+                                              );
+                                            },
+                                            child: _buildDashboardView(),
+                                          )
+                                        : Column(
+                                            children: [
+                                              TopHeader(
+                                                onProfileTap: _openProfile,
+                                                onNotificationTap:
+                                                    _toggleNotifications,
+                                                unreadCount: _unreadNotifCount,
+                                              ),
+                                              const Expanded(
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                              ),
+                                            ],
+                                          ))
                                     : const SizedBox.shrink(),
                                 // 1: Workers Screen
                                 _getScreen(1),

@@ -12,7 +12,6 @@ import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/snackbar_utils.dart';
-import '../shared/app_constants.dart';
 import '../shared/auth_widgets.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
@@ -505,7 +504,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_googleEnabled)
         buildSocialButton(context: context,
           text: 'continue_with_google'.tr(),
-          icon: SvgPicture.string(googleSvg, width: 16, height: 16),
+          icon: SvgPicture.asset('assets/google_icon.svg', width: 16, height: 16),
           isLoading: _isGoogleLoading,
           onPressed: _anyLoading ? null : _handleGoogleLogin,
           backgroundColor: Colors.white,
@@ -517,8 +516,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // Continue with Apple Button
       // buildSocialButton(context: context,
       //   text: 'continue_with_apple'.tr(),
-      //   icon: SvgPicture.string(
-      //     appleSvg,
+      //   icon: SvgPicture.asset(
+      //     'assets/apple_icon.svg',
       //     width: 16,
       //     height: 16,
       //     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
@@ -534,8 +533,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // Continue as Guest Button
       buildSocialButton(context: context,
         text: 'continue_as_guest'.tr(),
-        icon: SvgPicture.string(
-          guestSvg,
+        icon: SvgPicture.asset(
+          'assets/guest_icon.svg',
           width: 16,
           height: 16,
           colorFilter: const ColorFilter.mode(

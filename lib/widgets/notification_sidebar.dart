@@ -51,7 +51,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             setState(() {
               _notifications = snap.docs
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .where((n) => n['isRead'] != true)
                   .toList();
               _isLoading = false;
             });

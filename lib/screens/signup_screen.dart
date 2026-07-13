@@ -10,7 +10,6 @@ import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
-import '../shared/app_constants.dart';
 import '../shared/auth_widgets.dart';
 import '../shared/auth_utils.dart';
 import 'home_screen.dart';
@@ -508,7 +507,7 @@ class _SignupScreenState extends State<SignupScreen> {
         buildSocialButton(
           context: context,
           text: 'continue_with_google'.tr(),
-          icon: SvgPicture.string(googleSvg, width: 16, height: 16),
+          icon: SvgPicture.asset('assets/google_icon.svg', width: 16, height: 16),
           isLoading: _isGoogleLoading,
           onPressed: _anyLoading ? null : _handleGoogleLogin,
           backgroundColor: Colors.white,
@@ -521,8 +520,8 @@ class _SignupScreenState extends State<SignupScreen> {
       // buildSocialButton(
       //   context: context,
       //   text: 'continue_with_apple'.tr(),
-      //   icon: SvgPicture.string(
-      //     appleSvg,
+      //   icon: SvgPicture.asset(
+      //     'assets/apple_icon.svg',
       //     width: 16,
       //     height: 16,
       //     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
@@ -539,8 +538,8 @@ class _SignupScreenState extends State<SignupScreen> {
       buildSocialButton(
         context: context,
         text: 'continue_as_guest'.tr(),
-        icon: SvgPicture.string(
-          guestSvg,
+        icon: SvgPicture.asset(
+          'assets/guest_icon.svg',
           width: 16,
           height: 16,
           colorFilter: const ColorFilter.mode(
