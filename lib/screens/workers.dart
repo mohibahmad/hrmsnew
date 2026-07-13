@@ -1039,21 +1039,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     ),
                   ),
                 ),
-                Expanded(
-                  flex: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      'annual_leaves'.tr(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        fontFamily: 'SF Pro Display',
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
+
                 Expanded(
                   flex: 2,
                   child: Text(
@@ -1236,21 +1222,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               ),
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Text(
-                worker['annualLeaves']?.toString() ?? '0',
-                maxLines: 1,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 15,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-            ),
-          ),
+
           Expanded(
             flex: 2,
             child: Text(
