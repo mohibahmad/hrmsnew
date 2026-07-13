@@ -281,8 +281,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           ),
           Row(
             children: [
-              // ✅ CLEAR ALL BUTTON - Only show when 5+ notifications
-              if (_notifications.length >= 5)
+              // Clear All (replaces the old close button)
+              if (_notifications.isNotEmpty)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
@@ -326,28 +326,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     ),
                   ),
                 ),
-              const SizedBox(width: 8),
-              // Close Button
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _close,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.grey[800]
-                          : const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      size: 20,
-                      color: isDark ? Colors.white : const Color(0xFF000000),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ],
@@ -433,12 +411,14 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     required String timeAgo,
     required String notificationId,
   }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4C84E0), Color(0xFF0247C4)],
-          begin: Alignment.topLeft,
+    return GestureDetector(
+      onTap: _close,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4C84E0), Color(0xFF0247C4)],
+            begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
@@ -598,6 +578,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -623,13 +604,15 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             ),
             child: Stack(
               children: [
-                // Main Content
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                  child: Row(
+                // Main Content (tap to close the panel)
+                GestureDetector(
+                  onTap: _close,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Icon Container
@@ -736,7 +719,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           ],
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 // ✅ CROSS ICON (Right Side - Always Visible)
