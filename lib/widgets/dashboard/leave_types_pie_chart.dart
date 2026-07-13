@@ -191,10 +191,10 @@ class LeaveTypesPieChart extends StatelessWidget {
       ),
       const SlotConfig(
         targetAngle: 240.0,
-        elbow: Offset(105, 60),
-        labelEnd: Offset(55, 60),
+        elbow: Offset(105, 32),
+        labelEnd: Offset(55, 32),
         left: 65,
-        top: 36,
+        top: 8,
       ),
     ];
 
