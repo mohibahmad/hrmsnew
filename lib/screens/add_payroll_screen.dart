@@ -753,25 +753,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ],
           Divider(color: _borderLight, thickness: 1),
           const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.history, color: _textGrey, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'last_modified_by_admin_on'.tr(
-                      namedArgs: {
-                        'date': DateTime.now().toString().substring(0, 10),
-                      },
-                    ),
-                    style: const TextStyle(color: _textGrey, fontSize: 13),
-                  ),
-                ],
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -801,6 +782,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         TextField(
           controller: controller,
           readOnly: readOnly,
+          mouseCursor: readOnly ? SystemMouseCursors.basic : SystemMouseCursors.text,
           onChanged: readOnly ? null : (_) => _recalc(),
           keyboardType: isCurrency
               ? const TextInputType.numberWithOptions(decimal: true)
@@ -833,10 +815,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: focusedBorderColor ?? _primaryBlue),
             ),
+            hoverColor: Colors.transparent,
             filled: readOnly,
             fillColor: readOnly ? const Color(0xFFF9FAFB) : null,
           ),
-          style: const TextStyle(fontSize: 16, color: _textDark),
+          style: TextStyle(
+            fontSize: 16,
+            color: readOnly ? const Color(0xFF9CA3AF) : _textDark,
+          ),
         ),
       ],
     );
