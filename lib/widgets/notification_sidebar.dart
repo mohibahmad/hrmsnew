@@ -185,6 +185,14 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   color: Theme.of(context).brightness == Brightness.dark
                       ? const Color(0xFF1A1A1A)
                       : const Color(0xFFFFFFFF),
+                  border: Border(
+                    left: BorderSide(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]!
+                          : const Color(0xFFE5E7EB),
+                      width: 1,
+                    ),
+                  ),
                 ),
                 child: Column(
                   children: [

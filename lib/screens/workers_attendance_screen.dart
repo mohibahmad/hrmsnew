@@ -937,7 +937,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                 ],
                               ),
-                              if (selectedStatus == 'Leave') ...[
+                              if (selectedStatus == 'Leave' || selectedStatus == 'Absent') ...[
                                 const SizedBox(height: 16),
                                 Text(
                                   'leave_type'.tr(),
@@ -962,6 +962,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   child: DropdownButtonHideUnderline(
                                     child: DropdownButton<String>(
                                       isExpanded: true,
+                                      dropdownColor: Colors.white,
                                       value: selectedLeaveType,
                                       items: [
                                         DropdownMenuItem(
@@ -988,16 +989,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           value: 'Annual Leave',
                                           child: Text(
                                             'annual_leave'.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'Custom Leave',
-                                          child: Text(
-                                            'custom_leave_type'.tr(),
                                             style: const TextStyle(
                                               fontSize: 13,
                                               fontFamily: 'SF Pro Display',
@@ -1130,11 +1121,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                       ?.isAnonymous ??
                                                   false;
                                               final type =
-                                                  selectedStatus == 'Absent'
-                                                  ? 'Absent'
-                                                  : (selectedStatus == 'Leave'
-                                                        ? selectedLeaveType
-                                                        : null);
+                                                  (selectedStatus == 'Absent' ||
+                                                          selectedStatus == 'Leave')
+                                                      ? selectedLeaveType
+                                                      : null;
                                               final desc =
                                                   selectedStatus == 'Present'
                                                   ? (reason.isEmpty
