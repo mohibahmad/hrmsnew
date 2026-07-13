@@ -226,7 +226,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
-    return _timeoffDocs.where((doc) {
+    final filtered = _timeoffDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final email = (doc['email'] ?? '').toString().toLowerCase();
@@ -240,6 +240,17 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       if (!matchesSearch) return false;
       return _matchesFilter(position, _selectedTab);
     }).toList();
+
+    // Sort: Workers with assigned time off at top, then without
+    filtered.sort((a, b) {
+      final actionA = (a['action'] ?? '').toString();
+      final actionB = (b['action'] ?? '').toString();
+      if (actionA.isNotEmpty && actionB.isEmpty) return -1;
+      if (actionA.isEmpty && actionB.isNotEmpty) return 1;
+      return 0;
+    });
+
+    return filtered;
   }
 
   Future<void> _handleDelete(Map<String, dynamic> doc) async {

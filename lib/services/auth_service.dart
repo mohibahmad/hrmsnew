@@ -58,6 +58,8 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
+      _isGuestUser = false;
+      await PreferencesService.setGuest(false);
       await PreferencesService.setLoggedIn(true);
       return credential;
     } on FirebaseAuthException {
@@ -78,6 +80,8 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
+      _isGuestUser = false;
+      await PreferencesService.setGuest(false);
       await PreferencesService.setLoggedIn(true);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
@@ -133,6 +137,8 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
+      _isGuestUser = false;
+      await PreferencesService.setGuest(false);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
@@ -169,6 +175,8 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
+      _isGuestUser = false;
+      await PreferencesService.setGuest(false);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return userCredential;

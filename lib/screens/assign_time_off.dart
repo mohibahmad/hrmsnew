@@ -6,7 +6,7 @@ import 'package:flutter/cupertino.dart' hide GestureDetector;
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
-import '../utils/logout_dialog.dart';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/notification_bell.dart';
@@ -33,7 +33,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime _endDate = DateTime.now();
   DateTime _calendarMonth = DateTime.now();
   DateTime _calendarMonth2 = DateTime.now();
-  bool _hasSelection = false;
+  bool _hasStartSelection = false;
+  bool _hasEndSelection = false;
   final TextEditingController _notesController = TextEditingController();
   String? _editingId;
 
@@ -89,13 +90,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _timeOffType = _selectedWorker!['action'].toString();
       _startDate = _parseDate(_selectedWorker!['startDate']);
       _endDate = _parseDate(_selectedWorker!['endDate']);
-      _hasSelection = true;
+      _hasStartSelection = true;
+      _hasEndSelection = true;
       _notesController.text = _selectedWorker!['notes']?.toString() ?? '';
     } else {
       _editingId = null;
       _startDate = DateTime.now();
       _endDate = DateTime.now();
-      _hasSelection = false;
+      _hasStartSelection = false;
+      _hasEndSelection = false;
       _timeOffType = 'Annual Leave';
       _notesController.clear();
     }
@@ -195,7 +198,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
 
   int get _requestedDays {
-    if (!_hasSelection) return 0;
+    if (!_hasStartSelection || !_hasEndSelection) return 0;
     return _endDate.difference(_startDate).inDays + 1;
   }
 
@@ -320,9 +323,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final user = AuthService().currentUser;
-    final name = user?.displayName ?? 'user'.tr();
-
     return Container(
       height: 94,
       padding: const EdgeInsets.only(left: 32, right: 32, top: 24, bottom: 24),
@@ -356,67 +356,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 24),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                showLogoutDialog(context);
-              }
-            },
-            offset: const Offset(0, 52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            color: Color(0xFFFFFFFF),
-            elevation: 8,
-            tooltip: '',
-            child: const UserAvatar(),
-            itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                enabled: false,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.logout_rounded,
-                      size: 18,
-                      color: Colors.red.shade400,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'logout'.tr(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFFEF4444),
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          const UserAvatar(),
         ],
       ),
     );
@@ -465,7 +405,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'start_date'.tr(),
-            _hasSelection ? _formatDate(_startDate) : 'select_date'.tr(),
+            _hasStartSelection ? _formatDate(_startDate) : 'select_date'.tr(),
             isStart: true,
           ),
         ),
@@ -474,7 +414,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           flex: 3,
           child: _buildLabeledInput(
             'end_date'.tr(),
-            _hasSelection ? _formatDate(_endDate) : 'select_date'.tr(),
+            _hasEndSelection ? _formatDate(_endDate) : 'select_date'.tr(),
             isStart: false,
           ),
         ),
@@ -830,14 +770,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           // - End calendar: show end..start (inclusive)
           // This ensures one side doesn't show the other endpoint.
           bool isSelected =
-              _hasSelection &&
-              ((isStartCalendar && isStartDateCell) ||
-                  (!isStartCalendar && isEndDateCell));
+              ((isStartCalendar && _hasStartSelection && isStartDateCell) ||
+                  (!isStartCalendar && _hasEndSelection && isEndDateCell));
 
           // inRange: start..end inclusive highlight range.
-          // Reverse selection (end < start) me highlight na ho.
+          // Only show range when end date is selected.
           bool inRange = false;
-          if (_hasSelection && !endStart.isBefore(startStart)) {
+          if (_hasStartSelection && _hasEndSelection && !endStart.isBefore(startStart)) {
             inRange = (cellDate.isAfter(startStart) || cellDate.isAtSameMomentAs(startStart)) &&
                 (cellDate.isBefore(endStart) || cellDate.isAtSameMomentAs(endStart));
           }
@@ -909,17 +848,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               setState(() {
                 if (isStartCalendar) {
                   _startDate = _dateOnly(date);
+                  _hasStartSelection = true;
                 } else {
                   _endDate = _dateOnly(date);
                   if (_endDate.isBefore(_startDate)) {
-                    // End < Start ho to range highlight empty na rahe.
-                    // Start calendar me start highlight, end calendar me end highlight rahega.
                     final tmp = _startDate;
                     _startDate = _endDate;
                     _endDate = tmp;
                   }
+                  _hasEndSelection = true;
                 }
-                _hasSelection = true;
               });
             }
           },
@@ -1120,7 +1058,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-    if (!_hasSelection) {
+    if (!_hasStartSelection || !_hasEndSelection) {
       FlashySnackBar.show(
         context,
         message: 'please_select_dates'.tr(),

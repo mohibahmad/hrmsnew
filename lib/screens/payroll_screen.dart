@@ -305,7 +305,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredEmployees {
-    return _payrollDocs.where((doc) {
+    final filtered = _payrollDocs.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final pos = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
@@ -314,6 +314,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
       if (!matchesSearch) return false;
       return _matchesFilter(pos, _selectedFilter);
     }).toList();
+
+    // Sort: Paid workers at top, then Unpaid
+    filtered.sort((a, b) {
+      final statusA = (a['status'] ?? '').toString();
+      final statusB = (b['status'] ?? '').toString();
+      if (statusA == 'Paid' && statusB != 'Paid') return -1;
+      if (statusA != 'Paid' && statusB == 'Paid') return 1;
+      return 0;
+    });
+
+    return filtered;
   }
 
   List<Map<String, dynamic>> get _currentPageItems {

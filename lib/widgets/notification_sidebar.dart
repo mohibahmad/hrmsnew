@@ -262,8 +262,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           ),
           Row(
             children: [
-              // ✅ CLEAR ALL BUTTON - THEME COLOR (BLUE)
-              if (_notifications.isNotEmpty)
+              // ✅ CLEAR ALL BUTTON - Only show when 5+ notifications
+              if (_notifications.length >= 5)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
@@ -726,42 +726,40 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     ],
                   ),
                 ),
-                // ✅ HOVER CROSS ICON (Right Side)
+                // ✅ CROSS ICON (Right Side - Always Visible)
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: AnimatedOpacity(
-                    opacity: 0.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () async {
-                          // Mark as read and remove
-                          try {
-                            await FirestoreService().markNotificationRead(
-                              notificationId,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () async {
+                        // Mark as read and remove
+                        try {
+                          await FirestoreService().markNotificationRead(
+                            notificationId,
+                          );
+                          setState(() {
+                            _notifications.removeWhere(
+                              (n) => n['id'] == notificationId,
                             );
-                            setState(() {
-                              _notifications.removeWhere(
-                                (n) => n['id'] == notificationId,
-                              );
-                            });
-                          } catch (_) {}
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.close,
-                            size: 18,
-                            color: (isDark
-                                ? Colors.grey[600]
-                                : Colors.grey[400]),
-                          ),
+                          });
+                        } catch (_) {}
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.grey[800]
+                              : Colors.grey[200],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: 14,
+                          color: isDark
+                              ? Colors.grey[400]
+                              : Colors.grey[600],
                         ),
                       ),
                     ),

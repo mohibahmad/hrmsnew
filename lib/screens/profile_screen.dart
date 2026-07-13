@@ -570,9 +570,9 @@ class _ProfileBodyState extends State<ProfileBody> {
     } else {
       childWidget = Image.asset(
         'assets/profile_placeholder.png',
-        width: 75,
-        height: 75,
-        fit: BoxFit.contain,
+        width: 90,
+        height: 90,
+        fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildFallbackIcon(),
       );
     }
