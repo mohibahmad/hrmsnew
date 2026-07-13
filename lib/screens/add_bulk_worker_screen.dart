@@ -87,7 +87,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       await file.writeAsString(templateStr);
 
       if (mounted) {
-        await OpenFile.open(file.path);
         FlashySnackBar.show(
           context,
           message: 'template_saved_successfully'.tr(),
