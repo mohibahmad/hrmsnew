@@ -688,10 +688,30 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         final initialType =
             (todayRecord['type'] ?? '').toString();
         String selectedLeaveType =
-            (initialType.isNotEmpty &&
-                initialType != 'Absent')
-            ? initialType
-            : 'Sick Leave';
+            (initialType.isNotEmpty && initialType != 'Absent')
+                ? initialType
+                : (selectedStatus == 'Absent'
+                    ? 'Without Notice'
+                    : 'Sick Leave');
+
+        List<Map<String, String>> reasonOptions() {
+          if (selectedStatus == 'Absent') {
+            return const [
+              {'value': 'Without Notice', 'key': 'absent_without_notice'},
+              {'value': 'Sick', 'key': 'absent_sick'},
+              {'value': 'Family Emergency', 'key': 'absent_emergency'},
+              {'value': 'Other', 'key': 'absent_other'},
+            ];
+          }
+          return const [
+            {'value': 'Sick Leave', 'key': 'sick_leave_type'},
+            {'value': 'Casual Leave', 'key': 'casual_leave_type'},
+            {'value': 'Annual Leave', 'key': 'annual_leave'},
+          ];
+        }
+
+        String reasonLabelKey() =>
+            selectedStatus == 'Absent' ? 'absent_reason' : 'leave_type';
         final reasonController = TextEditingController(text: initialReason);
 
         return StatefulBuilder(
@@ -909,6 +929,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       onTap: () {
                                         setDialogState(() {
                                           selectedStatus = 'Absent';
+                                          selectedLeaveType = 'Without Notice';
                                         });
                                       },
                                       child: _buildToggleChip(
@@ -925,6 +946,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       onTap: () {
                                         setDialogState(() {
                                           selectedStatus = 'Leave';
+                                          selectedLeaveType = 'Sick Leave';
                                         });
                                       },
                                       child: _buildToggleChip(
@@ -940,7 +962,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               if (selectedStatus == 'Leave' || selectedStatus == 'Absent') ...[
                                 const SizedBox(height: 16),
                                 Text(
-                                  'leave_type'.tr(),
+                                  reasonLabelKey().tr(),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -964,38 +986,20 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       isExpanded: true,
                                       dropdownColor: Colors.white,
                                       value: selectedLeaveType,
-                                      items: [
-                                        DropdownMenuItem(
-                                          value: 'Sick Leave',
-                                          child: Text(
-                                            'sick_leave_type'.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontFamily: 'SF Pro Display',
+                                      items: reasonOptions()
+                                          .map(
+                                            (o) => DropdownMenuItem(
+                                              value: o['value'],
+                                              child: Text(
+                                                (o['key'] ?? '').tr(),
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'Casual Leave',
-                                          child: Text(
-                                            'casual_leave_type'.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'Annual Leave',
-                                          child: Text(
-                                            'annual_leave'.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                          )
+                                          .toList(),
                                       onChanged: (value) {
                                         if (value != null) {
                                           setDialogState(() {
@@ -1624,7 +1628,10 @@ class TodayAttendanceItem extends StatelessWidget {
           if (data["type"] != null) ...[
             const SizedBox(height: 12),
             Text(
-              'absent_type'.tr(namedArgs: {'type': data["type"].toString()}),
+              (data["status"] == 'Leave'
+                      ? 'leave_type_display'
+                      : 'absent_type')
+                  .tr(namedArgs: {'type': data["type"].toString()}),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

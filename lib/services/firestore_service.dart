@@ -230,6 +230,14 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
+  /// Directly updates leave-related fields on a worker document
+  /// without running full validation (which requires name & email).
+  Future<void> updateWorkerLeaves(String id, Map<String, dynamic> leaveData) async {
+    final coll = _workers;
+    if (coll == null || id.isEmpty) return;
+    await coll.doc(id).update(leaveData);
+  }
+
   Future<void> deleteWorker(String id) async {
     final coll = _workers;
     if (coll == null) return;

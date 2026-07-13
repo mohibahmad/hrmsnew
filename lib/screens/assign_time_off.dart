@@ -1142,11 +1142,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             await DummyData.saveToPrefs();
           }
         } else {
-          // Update Firestore
-          await FirestoreService().updateWorker(
-            _selectedWorker!['id'],
-            payrollUpdate
-          );
+          // Use updateWorkerLeaves to avoid validateWorker requiring name/email
+          final workerId = (_selectedWorker!['id'] ?? '').toString();
+          if (workerId.isNotEmpty) {
+            await FirestoreService().updateWorkerLeaves(workerId, payrollUpdate);
+          }
         }
       }
 

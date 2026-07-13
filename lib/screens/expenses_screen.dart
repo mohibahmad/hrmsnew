@@ -130,8 +130,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   String _formatCurrency(double amount) {
-    if (amount >= 1000) {
-      return '\$${NumberFormat.compact(locale: 'en_US').format(amount)}';
+    final String symbol = '\$ ';
+    if (amount.abs() >= 1e12) {
+      return '$symbol${(amount / 1e12).toStringAsFixed(1)}T';
+    } else if (amount.abs() >= 1e9) {
+      return '$symbol${(amount / 1e9).toStringAsFixed(1)}B';
+    } else if (amount.abs() >= 1e6) {
+      return '$symbol${(amount / 1e6).toStringAsFixed(1)}M';
+    } else if (amount.abs() >= 1e3) {
+      return '$symbol${(amount / 1e3).toStringAsFixed(1)}K';
     }
     final format = NumberFormat.currency(
       locale: 'en_US',
