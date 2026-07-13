@@ -448,6 +448,7 @@
   "holiday_list": "Liste des Jours Fériés",
   "no_holidays_found": "Aucun Jour Férié",
   "sick_leave_type": "Congé Maladie",
+  "leave_type": "Type de Congé",
   "please_enter_notes": "Veuillez entrer vos notes",
   "available_annual_leave": "Jours de Congé Annuel Disponibles",
   "assign_time_off_success": "Congé attribué avec succès",

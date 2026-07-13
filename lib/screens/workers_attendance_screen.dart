@@ -685,6 +685,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 initialStatus == 'Leave')
             ? initialStatus
             : 'Present';
+        final initialType =
+            (todayRecord['type'] ?? '').toString();
+        String selectedLeaveType =
+            (initialType.isNotEmpty &&
+                initialType != 'Absent')
+            ? initialType
+            : 'Sick Leave';
         final reasonController = TextEditingController(text: initialReason);
 
         return StatefulBuilder(
@@ -930,6 +937,85 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                 ],
                               ),
+                              if (selectedStatus == 'Leave') ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  'leave_type'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: selectedLeaveType,
+                                      items: [
+                                        DropdownMenuItem(
+                                          value: 'Sick Leave',
+                                          child: Text(
+                                            'sick_leave_type'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'Casual Leave',
+                                          child: Text(
+                                            'casual_leave_type'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'Annual Leave',
+                                          child: Text(
+                                            'annual_leave'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'Custom Leave',
+                                          child: Text(
+                                            'custom_leave_type'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setDialogState(() {
+                                            selectedLeaveType = value;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 16),
                               Text(
                                 selectedStatus == 'Present'
@@ -958,6 +1044,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 child: TextField(
                                   controller: reasonController,
                                   maxLines: null,
+                                  maxLength: 100,
                                   onChanged: (_) => setDialogState(() {}),
                                   decoration: InputDecoration.collapsed(
                                     hintText: 'enter_reason_hint'.tr(),
@@ -1046,7 +1133,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   selectedStatus == 'Absent'
                                                   ? 'Absent'
                                                   : (selectedStatus == 'Leave'
-                                                        ? 'Sick Leave'
+                                                        ? selectedLeaveType
                                                         : null);
                                               final desc =
                                                   selectedStatus == 'Present'

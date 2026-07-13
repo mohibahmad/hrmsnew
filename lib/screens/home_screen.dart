@@ -533,16 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _totalSalarySum += doc['netSalary'] as double;
     }
 
-    // Add salaryAmount for workers WITHOUT a payroll record
-    for (final worker in _workersList) {
-      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-      if (email.isNotEmpty && payrollEmails.contains(email)) continue;
-      final salaryStr = (worker['salaryAmount'] ?? '').toString();
-      final salaryVal = PayrollService.extractSalary(salaryStr);
-      if (salaryVal > 0) {
-        _totalSalarySum += salaryVal;
-      }
-    }
+
   }
 
   void _recalculateDummyTotals(String period) {

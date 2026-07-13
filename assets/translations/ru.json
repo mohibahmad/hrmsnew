@@ -445,6 +445,7 @@
   "holiday_list": "Список Праздников",
   "no_holidays_found": "Праздники не найдены",
   "sick_leave_type": "Больничный",
+  "leave_type": "Тип Отпуска",
   "please_enter_notes": "Пожалуйста, введите ваши заметки",
   "available_annual_leave": "Доступные Дни Ежегодного Отпуска",
   "assign_time_off_success": "Отпуск успешно назначен",

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -29,25 +31,42 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
-
   bool _isAppleLoading = false;
   bool _isGuestLoading = false;
   bool _obscurePassword = true;
   bool _submitted = false;
+  bool _googleEnabled = true;
 
   bool get _anyLoading =>
       _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
 
   final AuthService _authService = AuthService();
 
+  StreamSubscription? _googleSub;
+
   @override
   void initState() {
     super.initState();
-
+    _googleSub = FirebaseFirestore.instance
+        .collection('social_hrms')
+        .doc('google')
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists && mounted) {
+        setState(() {
+          _googleEnabled = doc.data()?['googleEnable'] == true;
+        });
+      } else if (mounted) {
+        setState(() {
+          _googleEnabled = true;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _googleSub?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -483,31 +502,33 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 16),
 
       // Continue with Google Button
-      buildSocialButton(context: context,
-        text: 'continue_with_google'.tr(),
-        icon: SvgPicture.string(googleSvg, width: 16, height: 16),
-        isLoading: _isGoogleLoading,
-        onPressed: _anyLoading ? null : _handleGoogleLogin,
-        backgroundColor: Colors.white,
-        textColor: const Color(0xFF000000),
-      ),
-      const SizedBox(height: 8),
+      if (_googleEnabled)
+        buildSocialButton(context: context,
+          text: 'continue_with_google'.tr(),
+          icon: SvgPicture.string(googleSvg, width: 16, height: 16),
+          isLoading: _isGoogleLoading,
+          onPressed: _anyLoading ? null : _handleGoogleLogin,
+          backgroundColor: Colors.white,
+          textColor: const Color(0xFF000000),
+        ),
+      if (_googleEnabled)
+        const SizedBox(height: 8),
 
       // Continue with Apple Button
-      buildSocialButton(context: context,
-        text: 'continue_with_apple'.tr(),
-        icon: SvgPicture.string(
-          appleSvg,
-          width: 16,
-          height: 16,
-          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-        ),
-        isLoading: _isAppleLoading,
-        onPressed: _anyLoading ? null : _handleAppleLogin,
-        backgroundColor: const Color(0xFF0F172A),
-        textColor: Colors.white,
-        border: const BorderSide(color: Color(0xFF0F172A)),
-      ),
+      // buildSocialButton(context: context,
+      //   text: 'continue_with_apple'.tr(),
+      //   icon: SvgPicture.string(
+      //     appleSvg,
+      //     width: 16,
+      //     height: 16,
+      //     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+      //   ),
+      //   isLoading: _isAppleLoading,
+      //   onPressed: _anyLoading ? null : _handleAppleLogin,
+      //   backgroundColor: const Color(0xFF0F172A),
+      //   textColor: Colors.white,
+      //   border: const BorderSide(color: Color(0xFF0F172A)),
+      // ),
       const SizedBox(height: 8),
 
       // Continue as Guest Button
