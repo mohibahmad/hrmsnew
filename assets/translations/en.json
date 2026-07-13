@@ -37,6 +37,7 @@
   "google_login_failed": "Google login failed. Please try again.",
   "apple_login_failed": "Apple login failed. Please try again.",
   "guest_login_failed": "Guest login failed. Please try again.",
+  "guest_action_not_allowed": "Please sign in to perform this action.",
   "unexpected_error": "An unexpected error occurred. Please try again.",
   "success": "Success",
   "continuing_as_guest": "Continuing as Guest User",

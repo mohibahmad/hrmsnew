@@ -37,6 +37,7 @@
   "google_login_failed": "Falha ao entrar com Google. Tente novamente.",
   "apple_login_failed": "Falha ao entrar com Apple. Tente novamente.",
   "guest_login_failed": "Falha ao entrar como convidado. Tente novamente.",
+  "guest_action_not_allowed": "Faça login para realizar esta ação.",
   "unexpected_error": "Ocorreu um erro inesperado. Tente novamente.",
   "success": "Sucesso",
   "continuing_as_guest": "Continuando como usuário convidado",

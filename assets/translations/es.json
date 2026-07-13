@@ -37,6 +37,7 @@
   "google_login_failed": "Error al iniciar sesión con Google. Inténtalo de nuevo.",
   "apple_login_failed": "Error al iniciar sesión con Apple. Inténtalo de nuevo.",
   "guest_login_failed": "Error al iniciar sesión como invitado. Inténtalo de nuevo.",
+  "guest_action_not_allowed": "Inicia sesión para realizar esta acción.",
   "unexpected_error": "Ocurrió un error inesperado. Inténtalo de nuevo.",
   "success": "Éxito",
   "continuing_as_guest": "Continuando como usuario invitado",

@@ -37,6 +37,7 @@
   "google_login_failed": "Échec de connexion avec Google. Veuillez réessayer.",
   "apple_login_failed": "Échec de connexion avec Apple. Veuillez réessayer.",
   "guest_login_failed": "Échec de connexion en tant qu'invité. Veuillez réessayer.",
+  "guest_action_not_allowed": "Veuillez vous connecter pour effectuer cette action.",
   "unexpected_error": "Une erreur inattendue s'est produite. Veuillez réessayer.",
   "success": "Succès",
   "continuing_as_guest": "Continuation en tant qu'utilisateur invité",

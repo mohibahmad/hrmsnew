@@ -191,6 +191,15 @@ class _ProfileBodyState extends State<ProfileBody> {
   String? _newProfileImagePath;
 
   Future<void> _pickProfilePic() async {
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      FlashySnackBar.show(
+        context,
+        message: 'guest_action_not_allowed'.tr(),
+        isError: true,
+      );
+      return;
+    }
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.image,
