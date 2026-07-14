@@ -118,6 +118,8 @@ class HolidayCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 1),
                 Text(
@@ -160,7 +162,8 @@ class HolidayCard extends StatelessWidget {
                         child: Text(
                           remainingDays,
                           textAlign: TextAlign.end,
-                          overflow: TextOverflow.visible,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                           style: TextStyle(
                             color: mainTextColor,
                             fontSize: 12,
@@ -197,6 +200,7 @@ class HolidayCard extends StatelessWidget {
                   Text(
                     holidayName,
                     maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: mainTextColor,
                       fontSize: 13,

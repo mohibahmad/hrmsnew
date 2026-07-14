@@ -13,6 +13,7 @@ import '../services/dummy_data.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
+import '../widgets/amount_text.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -900,8 +901,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       worker['email']?.toString() ?? '';
                                   final position =
                                       worker['position']?.toString() ?? '';
-                                  final salary =
+                                  final rawSalary =
                                       worker['salaryAmount']?.toString() ?? '';
+                                  final salary = rawSalary.isNotEmpty
+                                      ? AmountText.formatCompact(rawSalary)
+                                      : '';
                                   final profileImageUrl =
                                       worker['profileImage']?.toString() ?? '';
 

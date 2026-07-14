@@ -9,7 +9,8 @@ import '../services/auth_service.dart';
 
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
-  const NotificationSidebar({super.key, required this.onClose});
+  final ValueChanged<String>? onNotificationTap;
+  const NotificationSidebar({super.key, required this.onClose, this.onNotificationTap});
 
   @override
   State<NotificationSidebar> createState() => _NotificationSidebarState();
@@ -394,6 +395,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         }
 
         return _buildNotificationItem(
+          type: type,
           style: style,
           title: title,
           message: message,
@@ -411,7 +413,16 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     required String notificationId,
   }) {
     return GestureDetector(
-      onTap: _close,
+      onTap: () {
+        if (notificationId.isNotEmpty) {
+          FirestoreService().markNotificationRead(notificationId);
+          setState(() {
+            _notifications.removeWhere((n) => n['id'] == notificationId);
+          });
+        }
+        _close();
+        widget.onNotificationTap?.call('welcome');
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -469,10 +480,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.waving_hand_rounded,
-                        color: Color(0xFFFFFFFF),
-                        size: 20,
+                      child: SvgPicture.asset(
+                        'assets/app_icon.svg',
+                        width: 20,
+                        height: 20,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -522,6 +533,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     color: Color(0xFFFFFFFF),
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -532,6 +545,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     color: Colors.white.withValues(alpha: 0.8),
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -543,6 +558,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                         color: Colors.white.withValues(alpha: 0.6),
                         fontFamily: 'SF Pro Display',
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const Spacer(),
                     GestureDetector(
@@ -582,6 +599,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
   }
 
   Widget _buildNotificationItem({
+    required String type,
     required _NotifStyle style,
     required String title,
     required String message,
@@ -603,9 +621,18 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             ),
             child: Stack(
               children: [
-                // Main Content (tap to close the panel)
+                // Main Content (tap to navigate + close the panel)
                 GestureDetector(
-                  onTap: _close,
+                  onTap: () {
+                    if (notificationId.isNotEmpty) {
+                      FirestoreService().markNotificationRead(notificationId);
+                      setState(() {
+                        _notifications.removeWhere((n) => n['id'] == notificationId);
+                      });
+                    }
+                    _close();
+                    widget.onNotificationTap?.call(type);
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -665,6 +692,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                                       color: style.color,
                                       fontFamily: 'SF Pro Display',
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const Spacer(),
@@ -677,6 +706,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                                         : const Color(0xFF9CA3AF),
                                     fontFamily: 'SF Pro Display',
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(width: 8),
                                 Container(
@@ -700,6 +731,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                                     : const Color(0xFF111827),
                                 fontFamily: 'SF Pro Display',
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 3),
                             Text(

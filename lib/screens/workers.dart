@@ -18,6 +18,7 @@ import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
+import '../widgets/amount_text.dart';
 
 void main() {
   runApp(const WorkerManagementApp());
@@ -281,6 +282,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           const SizedBox(width: 8),
           Text(
             text,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
             style: const TextStyle(
               color: Color(0xFFFFFFFF),
               fontSize: 15,
@@ -321,6 +324,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   Expanded(
                     child: Text(
                       title,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                       style: TextStyle(
                         color: Color(0xFFFFFFFF),
                         fontSize: 18,
@@ -1171,6 +1176,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         Text(
                           name,
                           maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -1179,6 +1185,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         ),
                         Text(
                           email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black,
@@ -1199,6 +1207,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               child: Text(
                 localizedType1,
                 maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 15,
@@ -1214,6 +1223,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               child: Text(
                 position,
                 maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 15,
@@ -1228,6 +1238,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             child: Text(
               localizedType2,
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
@@ -1250,38 +1261,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               offset: const Offset(0, 40),
               onSelected: (value) {
                 if (value == 'preview') {
-                  final phone = (worker['phone'] ?? '').toString();
-                  final fatherName = (worker['fatherName'] ?? '').toString();
-                  final joiningDate = (worker['joiningDate'] ?? '').toString();
-                  final gender = (worker['gender'] ?? '').toString();
-                  final currency = (worker['currency'] ?? '').toString();
-                  final salaryAmount = (worker['salaryAmount'] ?? '')
-                      .toString();
-                  final salary = (salaryAmount.isNotEmpty)
-                      ? (currency.isNotEmpty
-                            ? '$currency $salaryAmount'
-                            : salaryAmount)
-                      : '';
-
                   showDialog(
                     context: context,
                     barrierColor: const Color(
                       0xFF0247C4,
                     ).withValues(alpha: 0.5),
                     builder: (context) => WorkerProfilePreviewDialog(
-                      name: name,
-                      email: email,
-                      position: position,
-                      workType: localizedType1,
-                      attendanceType: localizedType2,
-                      fatherName: fatherName,
-                      phone: phone,
-                      joiningDate: joiningDate,
-                      gender: gender,
-                      salary: salary,
-                      experienceLevel: (worker['experienceLevel'] ?? '')
-                          .toString(),
-                      profileImage: profileImage,
+                      worker: worker,
                     ),
                   );
                 } else if (value == 'edit') {
@@ -1381,22 +1367,21 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   Widget _buildActionButton({
     required String svgPath,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
         color: buttonColor,
         borderRadius: BorderRadius.circular(6),
-      ),
-      child: Material(
-        color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
           onTap: onTap,
-          child: Padding(
+          child: Container(
+            height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 SvgPicture.asset(
                   svgPath,
@@ -1410,6 +1395,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 const SizedBox(width: 8),
                 Text(
                   label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                   style: const TextStyle(
                     color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w500,
@@ -1445,6 +1432,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         ),
         child: Text(
           displayLabel,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
           style: TextStyle(
             color: isActive ? Color(0xFFFFFFFF) : Colors.black,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
@@ -1461,52 +1450,40 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 // WORKER PROFILE PREVIEW DIALOG (POPUP)
 // ==========================================
 class WorkerProfilePreviewDialog extends StatelessWidget {
-  final String name;
-  final String email;
-  final String position;
-  final String workType;
-  final String attendanceType;
-  final String fatherName;
-  final String phone;
-  final String joiningDate;
-  final String gender;
-  final String salary;
-  final String experienceLevel;
-  final String? profileImage;
+  final Map<String, dynamic> worker;
+
   const WorkerProfilePreviewDialog({
     super.key,
-    required this.name,
-    required this.email,
-    required this.position,
-    required this.workType,
-    required this.attendanceType,
-    required this.fatherName,
-    required this.phone,
-    required this.joiningDate,
-    required this.gender,
-    required this.salary,
-    required this.experienceLevel,
-    this.profileImage,
+    required this.worker,
   });
 
-  // Exact colors picked from the image
-  final Color primaryBlue = const Color(0xFF0953D4); // The main vibrant blue
-  final Color titleBarBlue = const Color(
-    0xFF0B58E6,
-  ); // Slightly lighter top bar
-  final Color iconLightBlue = const Color(0xFFE5EEFC); // Card icon background
-  final Color cardBorderGrey = const Color(0xFFE8E8E8); // Subtle card border
-  final Color textBlack = const Color(0xFF000000);
+  final Color primaryBlue = const Color(0xFF0953D4);
+  final Color iconLightBlue = const Color(0xFFE5EEFC);
+  final Color cardBorderGrey = const Color(0xFFE8E8E8);
+
+  String _v(String key) => (worker[key] ?? '').toString();
+  String _na(String val) => val.isNotEmpty ? val : 'na'.tr();
 
   @override
   Widget build(BuildContext context) {
+    final name = _v('name');
+    final email = _v('email');
+    final phone = _v('phone');
+    final profileImage = worker['profileImage'] as String?;
+    final currency = _v('currency');
+    final salaryAmount = _v('salaryAmount');
+    final rawSalary = salaryAmount.isNotEmpty
+        ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
+        : '';
+    final salary = rawSalary.isNotEmpty ? AmountText.formatCompact(rawSalary) : '';
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Center(
         child: Container(
-          width: 480,
-          height: 580,
+          width: 520,
+          height: 660,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Color(0xFFFFFFFF),
@@ -1521,14 +1498,10 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // ==========================================
-              // TOP HEADER SECTION (BLUE)
-              // ==========================================
               Container(
                 decoration: const BoxDecoration(color: Color(0xFF0247C4)),
                 child: Column(
                   children: [
-                    // --- Title Bar ---
                     Container(
                       height: 44,
                       decoration: const BoxDecoration(color: Color(0xFF004FDE)),
@@ -1536,10 +1509,10 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const SizedBox(width: 40), // Spacer for centering
+                          const SizedBox(width: 40),
                           Text(
                             'worker_profile_preview'.tr(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
@@ -1549,35 +1522,25 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           MouseRegion(
                             cursor: SystemMouseCursors.click,
                             child: IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: Color(0xFFFFFFFF),
-                                size: 20,
-                              ),
+                              icon: const Icon(Icons.close, color: Color(0xFFFFFFFF), size: 20),
                               onPressed: () => Navigator.of(context).pop(),
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    // --- Profile Details Area ---
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Avatar with White Border
                           Container(
                             margin: const EdgeInsets.only(left: 12),
-                            width: 140,
-                            height: 140,
+                            width: 130,
+                            height: 130,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFFFFFFFF),
-                                width: 2.0,
-                              ),
+                              border: Border.all(color: const Color(0xFFFFFFFF), width: 2.0),
                               image: DecorationImage(
                                 image: getProfileImage(profileImage, email, 0),
                                 fit: BoxFit.cover,
@@ -1585,8 +1548,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 20),
-
-                          // Name, Badge, and Contact Info
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1594,21 +1555,18 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                               children: [
                                 Text(
                                   name,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                   style: const TextStyle(
                                     color: Color(0xFFFFFFFF),
-                                    fontSize: 24,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-
-                                // "Active" Badge
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 3,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                                   decoration: BoxDecoration(
                                     color: Color(0xFFFFFFFF),
                                     borderRadius: BorderRadius.circular(20),
@@ -1616,11 +1574,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.circle,
-                                        color: Color(0xFF00FF00),
-                                        size: 10,
-                                      ), // Bright green dot
+                                      const Icon(Icons.circle, color: Color(0xFF00FF00), size: 10),
                                       const SizedBox(width: 6),
                                       Text(
                                         'active'.tr(),
@@ -1635,62 +1589,50 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-
-                                // Email Row
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
-                                      child: Image.asset(
-                                        'assets/email.png',
-                                        width: 20,
-                                        height: 20,
-                                        fit: BoxFit.contain,
-                                      ),
+                                      child: Image.asset('assets/email.png', width: 20, height: 20, fit: BoxFit.contain),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: Text(
-                                        email,
-                                        softWrap: true,
-                                        style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
+                                    child: Text(
+                                      email,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
                                       ),
+                                    ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-
-                                // Phone Row
+                                const SizedBox(height: 8),
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
-                                      child: Image.asset(
-                                        'assets/call.png',
-                                        width: 20,
-                                        height: 20,
-                                        fit: BoxFit.contain,
-                                      ),
+                                      child: Image.asset('assets/call.png', width: 20, height: 20, fit: BoxFit.contain),
                                     ),
                                     const SizedBox(width: 10),
                                     Flexible(
-                                      child: Text(
-                                        phone.isNotEmpty ? phone : 'na'.tr(),
-                                        style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        softWrap: true,
+                                    child: Text(
+                                      phone.isNotEmpty ? phone : 'na'.tr(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'SF Pro Display',
                                       ),
+                                    ),
                                     ),
                                   ],
                                 ),
@@ -1703,104 +1645,51 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // ==========================================
-              // BOTTOM GRID SECTION (WHITE)
-              // ==========================================
               Expanded(
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      // Row 1
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.person,
-                              'father_husband_name'.tr(),
-                              fatherName.isNotEmpty ? fatherName : 'na'.tr(),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Exact spelling from image ("Postion")
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.business_center,
-                              'postion'.tr(),
-                              position,
-                            ),
-                          ),
-                        ],
+                      _buildRow(
+                        _buildInfoCard(Icons.person, 'father_husband_name'.tr(), _na(_v('fatherName'))),
+                        _buildInfoCard(Icons.business_center, 'postion'.tr(), _v('position')),
                       ),
-                      const SizedBox(height: 12),
-
-                      // Row 2
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.location_city,
-                              'attendance_type'.tr(),
-                              attendanceType,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.schedule,
-                              'work_type'.tr(),
-                              workType,
-                            ),
-                          ),
-                        ],
+                      _buildRow(
+                        _buildInfoCard(Icons.badge, 'national_id'.tr(), _na(_v('nationalId'))),
+                        _buildInfoCard(Icons.location_city, 'attendance_type'.tr(), LocalizationHelper.localizeType2(_v('type2'))),
                       ),
-                      const SizedBox(height: 12),
-
-                      // Row 3
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.show_chart,
-                              'experience_level'.tr(),
-                              experienceLevel.isNotEmpty
-                                  ? experienceLevel
-                                  : 'na'.tr(),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.calendar_month,
-                              'joining_date'.tr(),
-                              joiningDate.isNotEmpty ? joiningDate : 'na'.tr(),
-                            ),
-                          ),
-                        ],
+                      _buildRow(
+                        _buildInfoCard(Icons.schedule, 'work_type'.tr(), LocalizationHelper.localizeType1(_v('type1'))),
+                        _buildInfoCard(Icons.show_chart, 'experience_level'.tr(), _na(_v('experienceLevel'))),
                       ),
-                      const SizedBox(height: 12),
-
-                      // Row 4
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.transgender,
-                              'gender'.tr(),
-                              gender.isNotEmpty ? gender : 'male'.tr(),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildInfoCard(
-                              Icons.volunteer_activism,
-                              'salary'.tr(),
-                              salary.isNotEmpty ? salary : 'na'.tr(),
-                            ),
-                          ),
-                        ],
+                      _buildRow(
+                        _buildInfoCard(Icons.transgender, 'gender'.tr(), _na(_v('gender'))),
+                        _buildInfoCard(Icons.calendar_month, 'joining_date'.tr(), _na(_v('joiningDate'))),
+                      ),
+                      _buildRow(
+                        _buildInfoCard(Icons.volunteer_activism, 'salary'.tr(), salary.isNotEmpty ? salary : 'na'.tr()),
+                        _buildInfoCard(Icons.school, 'education_title'.tr(), _na(_v('education'))),
+                      ),
+                      _buildRow(
+                        _buildInfoCard(Icons.money, 'salary_type'.tr(), _na(_v('salaryType'))),
+                        _buildInfoCard(Icons.fingerprint, 'religion_title'.tr(), _na(_v('religion'))),
+                      ),
+                      _buildRow(
+                        _buildInfoCard(Icons.cake, 'date_of_birth'.tr(), _na(_v('dob'))),
+                        _buildInfoCard(Icons.favorite, 'relationship_status'.tr(), _na(_v('relationshipStatus'))),
+                      ),
+                      _buildRow(
+                        _buildInfoCard(Icons.home, 'address'.tr(), _na(_v('address'))),
+                        _buildInfoCard(Icons.policy, 'leave_policy'.tr(), _na(_v('leavePolicy'))),
+                      ),
+                      _buildRow(
+                        _buildInfoCard(Icons.event_note, 'annual_leaves'.tr(), _na(_v('annualLeaves'))),
+                        _buildInfoCard(Icons.medical_services, 'sick_leaves_title'.tr(), _na(_v('sickLeaves'))),
+                      ),
+                      _buildRow(
+                        _buildInfoCard(Icons.free_breakfast, 'casual_leaves_title'.tr(), _na(_v('casualLeaves'))),
+                        _buildInfoCard(Icons.info, 'Status', _na(_v('status'))),
                       ),
                     ],
                   ),
@@ -1813,11 +1702,23 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     );
   }
 
-  // --- Helper Widget for the Cards ---
+  Widget _buildRow(Widget left, Widget right) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(child: left),
+          const SizedBox(width: 10),
+          Expanded(child: right),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoCard(IconData icon, String title, String value) {
     return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
@@ -1827,15 +1728,15 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: iconLightBlue,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Center(child: Icon(icon, color: primaryBlue, size: 20)),
+            child: Center(child: Icon(icon, color: primaryBlue, size: 18)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1844,18 +1745,19 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.black,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Color(0xFF000000),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',

@@ -602,11 +602,45 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _showNotifications = willShow;
     });
-    // Opening the panel counts as having "seen" the notifications,
-    // so the unread badge clears.
     if (willShow) {
       FirestoreService().markAllNotificationsRead();
     }
+  }
+
+  void _handleNotificationNavigation(String type) {
+    setState(() {
+      _showNotifications = false;
+      switch (type) {
+        case 'worker_added':
+          _selectedIndex = 1;
+          break;
+        case 'attendance_marked':
+          _selectedIndex = 2;
+          _selectedSubIndex = 0;
+          break;
+        case 'payroll_added':
+          _selectedIndex = 2;
+          _selectedSubIndex = 1;
+          break;
+        case 'time_off_added':
+          _selectedIndex = 2;
+          _selectedSubIndex = 2;
+          break;
+        case 'asset_added':
+          _selectedIndex = 2;
+          _selectedSubIndex = 3;
+          break;
+        case 'holiday_added':
+          _selectedIndex = 2;
+          _selectedSubIndex = 4;
+          break;
+        case 'expense_added':
+          _selectedIndex = 3;
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   @override
@@ -733,6 +767,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (_showNotifications)
                           NotificationSidebar(
                             onClose: _toggleNotifications,
+                            onNotificationTap: _handleNotificationNavigation,
                           ),
                       ],
                     ),

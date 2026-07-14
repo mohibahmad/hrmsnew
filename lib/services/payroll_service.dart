@@ -86,6 +86,11 @@ class PayrollService {
     if (number.isNaN || number.isInfinite) return '0';
     final isNegative = number < 0;
     final absolute = isNegative ? -number : number;
+    final abs = absolute;
+    if (abs >= 1e12) return '${(number / 1e12).toStringAsFixed(1)}T';
+    if (abs >= 1e9) return '${(number / 1e9).toStringAsFixed(1)}B';
+    if (abs >= 1e6) return '${(number / 1e6).toStringAsFixed(1)}M';
+    if (abs >= 1e3) return '${(number / 1e3).toStringAsFixed(1)}K';
     final roundedStr = absolute.toStringAsFixed(0);
     final formatted = roundedStr.replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),

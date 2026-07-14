@@ -76,6 +76,7 @@ class SparklineCard extends StatelessWidget {
                                   fontFamily: 'SF Pro Display',
                                 ),
                                 maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -90,14 +91,15 @@ class SparklineCard extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerRight,
-                              child: Text(
-                                amount,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                                maxLines: 1,
+                                child: Text(
+                                  amount,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             Text(

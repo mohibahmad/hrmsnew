@@ -8,7 +8,7 @@ class AmountText extends StatelessWidget {
 
   const AmountText(this.amount, {super.key, this.style, this.textAlign});
 
-  String _formatCompact(String input) {
+  static String formatCompact(String input) {
     try {
       if (RegExp(r'[KMBTkmbt]$').hasMatch(input.trim())) {
         return input;
@@ -37,11 +37,13 @@ class AmountText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final display = _formatCompact(amount);
+    final display = formatCompact(amount);
     return Text(
       display,
       style: style,
       textAlign: textAlign ?? TextAlign.right,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

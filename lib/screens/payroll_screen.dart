@@ -10,6 +10,7 @@ import '../services/payroll_service.dart';
 import '../utils/image_utils.dart';
 import 'add_payroll_screen.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/amount_text.dart';
 import 'login_screen.dart';
 
 class PayrollScreen extends StatefulWidget {
@@ -390,6 +391,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   fontSize: 14,
                   fontFamily: 'SF Pro Display',
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           );
@@ -427,6 +430,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
             ),
           ],
         ),
@@ -683,17 +688,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String absents = (data['absents'] ?? '').toString();
     final String leaves = (data['leaves'] ?? '').toString();
     final String overtimeDays = (data['overtimeDays'] ?? '').toString();
-    final String salary = (data['salary'] ?? '').toString();
+    final String salary = AmountText.formatCompact((data['salary'] ?? '').toString());
     String salaryAfterDeductionStr =
         (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
     if (salaryAfterDeductionStr.isEmpty && salary.isNotEmpty) {
       salaryAfterDeductionStr = PayrollService.getNetSalaryDisplay(
-        salary: salary,
+        salary: (data['salary'] ?? '').toString(),
         totalWorkDays: totalWorkDays,
         absents: absents,
         overtimeDays: overtimeDays,
       );
     }
+    salaryAfterDeductionStr = AmountText.formatCompact(salaryAfterDeductionStr);
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
@@ -816,6 +822,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'SF Pro Display',
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Container(
@@ -844,6 +851,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                       fontWeight: FontWeight.w600,
                                       fontFamily: 'SF Pro Display',
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
@@ -866,6 +874,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -892,6 +901,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                     softWrap: true,
                                   ),
                                 ),
@@ -1054,6 +1064,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
                   ),
+                  overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
                 const SizedBox(height: 2),
@@ -1065,6 +1076,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
               ],
             ),

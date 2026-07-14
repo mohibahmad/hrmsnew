@@ -1280,6 +1280,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
                 FittedBox(
@@ -1294,6 +1295,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -1458,6 +1460,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       fontWeight: FontWeight.bold,
                       fontFamily: 'SF Pro Display',
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1491,6 +1494,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -1537,6 +1542,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   fontFamily: 'SF Pro Display',
                 ),
                 maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -1553,6 +1559,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   fontFamily: 'SF Pro Display',
                 ),
                 maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),

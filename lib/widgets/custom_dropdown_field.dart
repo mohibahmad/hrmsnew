@@ -52,6 +52,8 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
             fontWeight: FontWeight.bold,
             fontFamily: 'SF Pro Display',
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 8),
         PopupMenuButton<String>(
@@ -105,6 +107,8 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                         : const Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Icon(
                   Icons.arrow_drop_down,
@@ -157,6 +161,8 @@ class _CustomDropdownFieldState extends State<CustomDropdownField> {
                   : const Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

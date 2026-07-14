@@ -700,6 +700,8 @@ class _ProfileBodyState extends State<ProfileBody> {
           children: [
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
@@ -856,7 +858,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               items: currencies.map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
-                  child: Text(localize(value)),
+                  child: Text(localize(value), maxLines: 1, overflow: TextOverflow.ellipsis),
                 );
               }).toList(),
             ),
@@ -997,6 +999,8 @@ class ProfilePreviewDialog extends StatelessWidget {
                     Expanded(
                       child: Text(
                         businessName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFFFFFFFF),
                           fontSize: 32,
@@ -1122,6 +1126,8 @@ class ProfilePreviewDialog extends StatelessWidget {
                 if (label.isNotEmpty) ...[
                   Text(
                     label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'SF Pro',
                       fontSize: 13,
@@ -1136,6 +1142,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                 Text(
                   value,
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'SF Pro',
                     fontSize: 13,

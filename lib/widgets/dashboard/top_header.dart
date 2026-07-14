@@ -49,6 +49,8 @@ class TopHeader extends StatelessWidget {
                   color: Color(0xFF000000),
                   fontFamily: 'SF Pro Display',
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 1),
               Text(
@@ -95,6 +97,8 @@ class TopHeader extends StatelessWidget {
                               color: Colors.white,
                               fontFamily: 'SF Pro Display',
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),

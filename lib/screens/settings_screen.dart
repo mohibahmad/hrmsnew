@@ -459,7 +459,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'setting'.tr(),
+                'Settings',
                 style: TextStyle(
                   color: Color(0xFF000000),
                   fontSize: 28,

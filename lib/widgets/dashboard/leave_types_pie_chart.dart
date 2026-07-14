@@ -344,6 +344,8 @@ class LeaveTypesPieChart extends StatelessWidget {
                       fontSize: 16,
                       fontFamily: 'SF Pro Display',
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 20),
                   Center(
@@ -547,6 +549,8 @@ class LeaveTypesPieChart extends StatelessWidget {
               color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -568,6 +572,8 @@ class ChartLabel extends StatelessWidget {
         color: Color(0xFF000000),
         fontFamily: 'SF Pro Display',
       ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
