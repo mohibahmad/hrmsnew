@@ -16,6 +16,7 @@ import 'time_off.dart';
 import 'assign_time_off.dart';
 import 'assets_screen.dart';
 import 'holidays_screen.dart';
+import 'documents_screen.dart';
 import 'expenses_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
@@ -56,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showAssignTimeOff = false;
   bool _showNotifications = false;
   bool _showWorkersAttendance = false;
-  final List<bool> _activatedScreens = List.filled(12, false);
+  final List<bool> _activatedScreens = List.filled(13, false);
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -136,6 +137,12 @@ class _HomeScreenState extends State<HomeScreen> {
           onNotificationTap: _toggleNotifications,
           initialWorker: _selectedTimeOffWorker,
         );
+      case 10:
+        return DocumentsScreen(
+          onLogout: _handleLogout,
+          onProfileTap: _openProfile,
+          onNotificationTap: _toggleNotifications,
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -153,6 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_selectedSubIndex == 2) return 4;
       if (_selectedSubIndex == 3) return 5;
       if (_selectedSubIndex == 4) return 6;
+      if (_selectedSubIndex == 5) return 12;
     }
     if (_selectedIndex == 3) return 7;
     if (_selectedIndex == 4) return 8;
@@ -760,6 +768,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                   onNotificationTap: _toggleNotifications,
                                 ),
+                                // 12: Documents Screen
+                                _getScreen(10),
                               ],
                             );
                           },

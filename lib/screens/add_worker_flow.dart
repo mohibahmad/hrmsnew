@@ -865,6 +865,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'cv': cvUrl,
         'payroll_initialized': true,
         'leavesUsed': '0',
+        'availableAnnualLeaves':
+            int.tryParse(_annualLeavesController.text.trim()) ?? 0,
+        'availableCasualLeaves':
+            int.tryParse(_casualLeavesController.text.trim()) ?? 0,
+        'availableSickLeaves':
+            int.tryParse(_sickLeavesController.text.trim()) ?? 0,
       };
 
       if (widget.workerToEdit != null) {
@@ -3856,7 +3862,7 @@ Widget _buildInputField(
                   FilteringTextInputFormatter.allow(
                     isAmount
                         ? RegExp(r'^\d*\.?\d*')
-                        : (isNationalId ? RegExp(r'^[\d_]*') : RegExp(r'^\d*')),
+                        : (isNationalId ? RegExp(r'^[\d_-]*') : RegExp(r'^\d*')),
                   ),
                   if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),

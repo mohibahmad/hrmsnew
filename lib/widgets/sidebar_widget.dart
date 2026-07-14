@@ -56,6 +56,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     ('assets/time_off_icon.svg', 'sidebar_time_off'),
     ('assets/assets_icon.svg', 'sidebar_assets'),
     ('assets/holidays_icon.svg', 'sidebar_holidays'),
+    ('assets/documents_icon.svg', 'sidebar_documents'),
   ];
 
   @override

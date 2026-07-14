@@ -11,6 +11,8 @@ import '../services/preferences_service.dart';
 import '../widgets/sidebar_widget.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
+import '../utils/date_utils.dart' as app_date_utils;
+import '../utils/leave_balance_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
@@ -46,6 +48,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
+  String _selectedTimeframe = 'Today';
   int _currentPage = 1;
   static const int _itemsPerPage = 10;
   List<Map<String, dynamic>> _workers = [];
@@ -146,7 +149,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       (snapshot) {
         if (mounted) {
           setState(() {
-            final now = DateTime.now();
             final sortedList = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
@@ -161,20 +163,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               }
               return 0;
             });
-            final todays = sortedList.where((att) {
-              final createdAt = att['createdAt'];
-              DateTime? dt;
-              if (createdAt is Timestamp) {
-                dt = createdAt.toDate();
-              } else if (createdAt is String) {
-                dt = DateTime.tryParse(createdAt);
-              }
-              return dt != null &&
-                  dt.year == now.year &&
-                  dt.month == now.month &&
-                  dt.day == now.day;
+            final filtered = sortedList.where((att) {
+              return app_date_utils.AppDateUtils.isTimestampWithinPeriod(
+                att['createdAt'],
+                _selectedTimeframe,
+              );
             }).toList();
-            _todayAttendance = _latestAttendancePerWorker(todays);
+            _todayAttendance = _latestAttendancePerWorker(filtered);
             _attendanceLoaded = true;
             if (_workersLoaded && _attendanceLoaded) _isLoading = false;
           });
@@ -237,7 +232,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       }
       final da = _attendanceDate(att['createdAt']);
       final db = _attendanceDate(existing['createdAt']);
-      final isNewer = da != null &&
+      final isNewer =
+          da != null &&
           (db == null ||
               da.isAfter(db) ||
               (da.isAtSameMomentAs(db) &&
@@ -446,29 +442,19 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                                         .value,
                                                                     index: entry
                                                                         .key,
-                                                                    onMarkAttendance: () {
-                                                                      final isGuest =
-                                                                          AuthService()
-                                                                              .currentUser
-                                                                              ?.isAnonymous ??
-                                                                          false;
-                                                                      if (isGuest) {
-                                                                        Navigator.of(
+                                                                    currentStatus:
+                                                                        _getWorkerStatus(
+                                                                            entry
+                                                                                .value,
+                                                                        ),
+                                                                    onMarkAttendance: (status) =>
+                                                                        _openAttendanceDialog(
                                                                           context,
-                                                                        ).push(
-                                                                          MaterialPageRoute(
-                                                                            builder: (_) =>
-                                                                                const LoginScreen(),
-                                                                          ),
-                                                                        );
-                                                                        return;
-                                                                      }
-                                                                      _showMarkAttendanceDialog(
-                                                                        context,
-                                                                        entry
-                                                                            .value,
-                                                                      );
-                                                                    },
+                                                                          entry
+                                                                              .value,
+                                                                          defaultStatus:
+                                                                              status,
+                                                                        ),
                                                                   ),
                                                                 )
                                                                 .toList();
@@ -562,6 +548,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                                     entry.value,
                                                                 index:
                                                                     entry.key,
+                                                                onEdit: () =>
+                                                                    _openAttendanceDialog(
+                                                                  context,
+                                                                  entry.value,
+                                                                  defaultStatus:
+                                                                      (entry.value['status'] ??
+                                                                              'Present')
+                                                                          .toString(),
+                                                                  titleKey:
+                                                                      'edit_attendance',
+                                                                ),
                                                               ),
                                                         )
                                                         .toList(),
@@ -585,6 +582,28 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _openAttendanceDialog(
+    BuildContext context,
+    Map<String, dynamic> data, {
+    String? defaultStatus,
+    String titleKey = 'mark_attendance',
+  }) {
+    final isGuest =
+        AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+    _showMarkAttendanceDialog(
+      context,
+      data,
+      defaultStatus: defaultStatus,
+      titleKey: titleKey,
     );
   }
 
@@ -696,18 +715,43 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   void _showMarkAttendanceDialog(
     BuildContext context,
-    Map<String, dynamic> data,
-  ) {
+    Map<String, dynamic> data, {
+    String? defaultStatus,
+    String titleKey = 'mark_attendance',
+  }) {
     final name = data["name"] ?? "";
     final email = data["email"] ?? "";
+
+    // Resolve the worker document (may differ from [data] when this dialog is
+    // opened from the Today Summary, where [data] is an attendance record).
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final normalizedEmail = email.trim().toLowerCase();
+    final workerDoc = isGuest
+        ? DummyData.workers.firstWhere(
+            (w) => (w['email']?.toString() ?? '').toLowerCase() == normalizedEmail,
+            orElse: () => <String, dynamic>{},
+          )
+        : _workers.firstWhere(
+            (w) => (w['email']?.toString() ?? '').toLowerCase() == normalizedEmail,
+            orElse: () => <String, dynamic>{},
+          );
+    final balanceDoc = workerDoc.isNotEmpty ? workerDoc : data;
 
     final todayRecord = _todayAttendance.firstWhere(
       (att) => att['email'] == email,
       orElse: () => <String, dynamic>{},
     );
 
+    const validStatuses = {'Present', 'Absent', 'Leave'};
+    // Pre-select the clicked status, otherwise fall back to today's record
+    final recordStatus = todayRecord['status'];
+    final initialStatus =
+        (defaultStatus != null && validStatuses.contains(defaultStatus))
+        ? defaultStatus
+        : (recordStatus != null && validStatuses.contains(recordStatus))
+        ? recordStatus
+        : 'Present';
     // Initial values - only from today's attendance record, NOT from worker doc
-    final initialStatus = todayRecord['status'] ?? 'Present';
     final initialReason = todayRecord['desc'] ?? '';
 
     setState(() => _isDialogOpen = true);
@@ -716,21 +760,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       context: context,
       barrierDismissible: false,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         String selectedStatus =
             (initialStatus == 'Present' ||
                 initialStatus == 'Absent' ||
                 initialStatus == 'Leave')
             ? initialStatus
             : 'Present';
-        final initialType =
-            (todayRecord['type'] ?? '').toString();
+        final initialType = (todayRecord['type'] ?? '').toString();
         String selectedLeaveType =
             (initialType.isNotEmpty && initialType != 'Absent')
-                ? initialType
-                : (selectedStatus == 'Absent'
-                    ? 'Without Notice'
-                    : 'Sick Leave');
+            ? initialType
+            : (selectedStatus == 'Absent' ? 'Without Notice' : 'Sick Leave');
 
         List<Map<String, String>> reasonOptions() {
           if (selectedStatus == 'Absent') {
@@ -741,11 +782,21 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               {'value': 'Other', 'key': 'absent_other'},
             ];
           }
-          return const [
+          final options = [
             {'value': 'Sick Leave', 'key': 'sick_leave_type'},
             {'value': 'Casual Leave', 'key': 'casual_leave_type'},
             {'value': 'Annual Leave', 'key': 'annual_leave'},
           ];
+          for (final o in options) {
+            o['disabled'] =
+                (LeaveBalanceHelper.remainingForType(
+                          balanceDoc,
+                          o['value']!,
+                        ) <=
+                        0)
+                    .toString();
+          }
+          return options;
         }
 
         String reasonLabelKey() =>
@@ -780,21 +831,27 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // AppBar (Height: 40, Color: #004FDE)
+                        // AppBar (Height: 40)
                         Container(
                           height: 40,
                           width: double.infinity,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF004FDE),
+                            color: Color(0xFFFFFFFF),
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Color(0xFFEEEEEE),
+                                width: 1,
+                              ),
+                            ),
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
                             children: [
                               const Spacer(),
                               Text(
-                                'mark_attendance'.tr(),
+                                titleKey.tr(),
                                 style: TextStyle(
-                                  color: Color(0xFFFFFFFF),
+                                  color: textDark,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   fontFamily: 'SF Pro Display',
@@ -802,143 +859,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               ),
                               const Spacer(),
                               GestureDetector(
-                                onTap: () => Navigator.pop(context),
+                                onTap: () => Navigator.pop(dialogContext),
                                 child: const Icon(
                                   Icons.close,
-                                  color: Color(0xFFFFFFFF),
+                                  color: textDark,
                                   size: 24,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Profile Section (Color: #0247C4)
-                        Container(
-                          color: const Color(0xFF0247C4),
-                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Profile Image: 140x140, circular with 2px border
-                              Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Color(0xFFFFFFFF),
-                                    width: 2,
-                                  ),
-                                  image: DecorationImage(
-                                    image: _getProfileImage(
-                                      data['profileImage'] is String
-                                          ? data['profileImage'] as String
-                                          : null,
-                                      data['email']?.toString(),
-                                      0,
-                                    ),
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 40),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.w700,
-                                          fontFamily: 'SF Pro Display',
-                                          height: 1.0,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 2,
-                                            ),
-                                            child: SvgPicture.asset(
-                                              'assets/email.svg',
-                                              height: 14,
-                                              width: 14,
-                                              colorFilter:
-                                                  const ColorFilter.mode(
-                                                    Color(0xFFFFFFFF),
-                                                    BlendMode.srcIn,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              email,
-                                              style: const TextStyle(
-                                                color: Color(0xFFFFFFFF),
-                                                fontSize: 14,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 2,
-                                            ),
-                                            child: Image.asset(
-                                              'assets/call.png',
-                                              height: 14,
-                                              width: 14,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              (() {
-                                                final phone =
-                                                    (data['phone'] ??
-                                                            data['contact'] ??
-                                                            '')
-                                                        .toString();
-                                                return phone.isNotEmpty
-                                                    ? phone
-                                                    : 'na'.tr();
-                                              })(),
-                                              style: const TextStyle(
-                                                color: Color(0xFFFFFFFF),
-                                                fontSize: 14,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                              softWrap: true,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
                             ],
@@ -974,7 +899,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                         setDialogState(() {
                                           selectedStatus = 'Absent';
                                           selectedLeaveType = 'Without Notice';
-                                        });
+                                       });
                                       },
                                       child: _buildToggleChip(
                                         'absent'.tr(),
@@ -1003,7 +928,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                 ],
                               ),
-                              if (selectedStatus == 'Leave' || selectedStatus == 'Absent') ...[
+                              if (selectedStatus == 'Leave' ||
+                                  selectedStatus == 'Absent') ...[
                                 const SizedBox(height: 16),
                                 Text(
                                   reasonLabelKey().tr(),
@@ -1034,11 +960,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           .map(
                                             (o) => DropdownMenuItem(
                                               value: o['value'],
+                                              enabled: o['disabled'] != 'true',
                                               child: Text(
                                                 (o['key'] ?? '').tr(),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 13,
                                                   fontFamily: 'SF Pro Display',
+                                                  color: o['disabled'] == 'true'
+                                                      ? Colors.grey
+                                                      : Colors.black,
                                                 ),
                                               ),
                                             ),
@@ -1101,37 +1031,37 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                      OutlinedButton(
-                                        onPressed: () {
-                                          setState(() => _isDialogOpen = false);
-                                          Navigator.pop(context);
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF0247C4),
-                                          side: const BorderSide(
-                                            color: Color(0xFF0247C4),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 24,
-                                            vertical: 14,
-                                          ),
-                                          minimumSize: const Size(0, 40),
-                                          elevation: 0,
-                                        ),
-
-                                        child: Text(
-                                          'cancel'.tr(),
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
+                                  OutlinedButton(
+                                    onPressed: () {
+                                      setState(() => _isDialogOpen = false);
+                                      Navigator.pop(dialogContext);
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF0247C4),
+                                      side: const BorderSide(
+                                        color: Color(0xFF0247C4),
                                       ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 14,
+                                      ),
+                                      minimumSize: const Size(0, 40),
+                                      elevation: 0,
+                                    ),
+
+                                    child: Text(
+                                      'cancel'.tr(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
                                   const SizedBox(width: 12),
                                   ElevatedButton(
                                     onPressed:
@@ -1170,9 +1100,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   false;
                                               final type =
                                                   (selectedStatus == 'Absent' ||
-                                                          selectedStatus == 'Leave')
-                                                      ? selectedLeaveType
-                                                      : null;
+                                                      selectedStatus == 'Leave')
+                                                  ? selectedLeaveType
+                                                  : null;
                                               final desc =
                                                   selectedStatus == 'Present'
                                                   ? (reason.isEmpty
@@ -1315,6 +1245,115 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                             data['profileImage'],
                                                       });
                                                 }
+                                              }
+
+                                              // Adjust the worker's paid leave
+                                              // balance per leave type. Decrement
+                                              // the chosen type when a NEW leave is
+                                              // recorded; restore it when an
+                                              // existing Leave is changed to
+                                              // Present/Absent.
+                                              final previousStatus =
+                                                  (todayRecord['status'] ?? '')
+                                                      .toString();
+
+                                              Map<String, dynamic>?
+                                                  findWorker() {
+                                                if (isGuest) {
+                                                  final wIdx = DummyData.workers
+                                                      .indexWhere(
+                                                    (w) =>
+                                                        w['email'] == email,
+                                                  );
+                                                  return wIdx != -1
+                                                      ? DummyData.workers[wIdx]
+                                                      : null;
+                                                }
+                                                final worker = _workers.firstWhere(
+                                                  (w) =>
+                                                      (w['email']
+                                                                  ?.toString() ??
+                                                              '')
+                                                          .toLowerCase() ==
+                                                      email.toLowerCase(),
+                                                  orElse: () => {},
+                                                );
+                                                return worker.isNotEmpty
+                                                    ? worker
+                                                    : null;
+                                              }
+
+                                              Future<void> applyLeaveDelta(
+                                                String leaveType,
+                                                int delta,
+                                              ) async {
+                                                final availKey =
+                                                    LeaveBalanceHelper
+                                                        .availKeyForType[
+                                                            leaveType];
+                                                if (availKey == null) return;
+                                                final workerMap = findWorker();
+                                                if (workerMap == null) return;
+                                                final current =
+                                                    LeaveBalanceHelper
+                                                        .remainingForType(
+                                                  workerMap,
+                                                  leaveType,
+                                                );
+                                                final total =
+                                                    LeaveBalanceHelper
+                                                        .totalForType(
+                                                  workerMap,
+                                                  leaveType,
+                                                );
+                                                final newVal = (current + delta)
+                                                    .clamp(0, total);
+                                                if (isGuest) {
+                                                  final wIdx = DummyData.workers
+                                                      .indexWhere(
+                                                    (w) =>
+                                                        w['email'] == email,
+                                                  );
+                                                  if (wIdx != -1) {
+                                                    DummyData.workers[wIdx]
+                                                            [availKey] =
+                                                        newVal;
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        _workers = List<
+                                                          Map<String, dynamic>
+                                                        >.from(
+                                                          DummyData.workers,
+                                                        );
+                                                      });
+                                                    }
+                                                  }
+                                                } else {
+                                                  final id = workerMap['id'];
+                                                  if (id != null) {
+                                                    await _firestore
+                                                        .updateWorkerLeaves(
+                                                      id,
+                                                      {availKey: newVal},
+                                                    );
+                                                  }
+                                                }
+                                              }
+
+                                              if (selectedStatus == 'Leave' &&
+                                                  previousStatus != 'Leave') {
+                                                await applyLeaveDelta(
+                                                  selectedLeaveType,
+                                                  -1,
+                                                );
+                                              } else if (previousStatus ==
+                                                      'Leave' &&
+                                                  selectedStatus != 'Leave') {
+                                                await applyLeaveDelta(
+                                                  (todayRecord['type'] ?? '')
+                                                      .toString(),
+                                                  1,
+                                                );
                                               }
 
                                               if (!context.mounted) {
@@ -1475,16 +1514,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           asset.endsWith('.svg')
-              ? SvgPicture.asset(
-                  asset,
-                  height: 20,
-                  width: 20,
-                )
-              : Image.asset(
-                  asset,
-                  height: 20,
-                  width: 20,
-                ),
+              ? SvgPicture.asset(asset, height: 20, width: 20)
+              : Image.asset(asset, height: 20, width: 20),
           const SizedBox(width: 6),
           Text(
             label,
@@ -1506,17 +1537,20 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 class WorkerListItem extends StatelessWidget {
   final Map<String, dynamic> data;
   final int index;
-  final VoidCallback onMarkAttendance;
+  final String currentStatus;
+  final ValueChanged<String> onMarkAttendance;
 
   const WorkerListItem({
     super.key,
     required this.data,
     required this.index,
+    this.currentStatus = '',
     required this.onMarkAttendance,
   });
 
   @override
   Widget build(BuildContext context) {
+    final leaveExhausted = LeaveBalanceHelper.allLeavesExhausted(data);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1538,84 +1572,156 @@ class WorkerListItem extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            flex: 4,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    (data["name"] ?? '').toString(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: textDark,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    maxLines: 1,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    (data["email"] ?? '').toString(),
-                    style: const TextStyle(
-                      color: textMuted,
-                      fontSize: 13,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    maxLines: 1,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                margin: const EdgeInsets.only(right: 24.0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: pillGray,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  (data["role"] ?? data["position"] ?? '').toString(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (data["name"] ?? '').toString(),
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
                     color: textDark,
-                    fontWeight: FontWeight.w500,
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  (data["email"] ?? '').toString(),
+                  style: const TextStyle(
+                    color: textMuted,
+                    fontSize: 13,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+          // Show attendance action buttons when no attendance has been marked yet,
+          // otherwise show "Attendance marked" label
+          if (currentStatus.isEmpty) ...[
+            const SizedBox(width: 12),
+            _AttendanceActionButton(
+              labelKey: 'present',
+              status: 'Present',
+              color: const Color(0xFF00C853),
+              onTap: onMarkAttendance,
+            ),
+            const SizedBox(width: 8),
+            _AttendanceActionButton(
+              labelKey: 'absent',
+              status: 'Absent',
+              color: const Color(0xFFF44336),
+              onTap: onMarkAttendance,
+            ),
+            const SizedBox(width: 8),
+            _AttendanceActionButton(
+              labelKey: 'leave',
+              status: 'Leave',
+              color: const Color(0xFFFF9800),
+              enabled: !leaveExhausted,
+              onTap: onMarkAttendance,
+              onDisabledTap: () {
+                FlashySnackBar.show(
+                  context,
+                  message: 'paid_leave_exhausted'.tr(),
+                  isError: true,
+                );
+              },
+            ),
+          ] else ...[
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E5EA),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Attendance Marked',
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: StatusPill(status: (data["status"] ?? '').toString()),
-            ),
-          ),
-          const SizedBox(width: 64),
-          GestureDetector(
-            onTap: onMarkAttendance,
-            child: SvgPicture.asset(
-              'assets/edit_icon.svg',
-              height: 20,
-              width: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _AttendanceActionButton extends StatelessWidget {
+  final String labelKey;
+  final String status;
+  final Color color;
+  final bool enabled;
+  final bool selected;
+  final ValueChanged<String> onTap;
+  final VoidCallback? onDisabledTap;
+
+  const _AttendanceActionButton({
+    required this.labelKey,
+    required this.status,
+    required this.color,
+    this.enabled = true,
+    this.selected = false,
+    required this.onTap,
+    this.onDisabledTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = enabled;
+    return GestureDetector(
+      onTap: isEnabled
+          ? () => onTap(status)
+          : onDisabledTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isEnabled ? color : Colors.grey.shade400,
+          borderRadius: BorderRadius.circular(6),
+          border: selected
+              ? Border.all(color: Color(0xFFFFFFFF), width: 2)
+              : null,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              const Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: Icon(
+                  Icons.check,
+                  color: Color(0xFFFFFFFF),
+                  size: 14,
+                ),
+              ),
+            Text(
+              labelKey.tr(),
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1624,11 +1730,13 @@ class WorkerListItem extends StatelessWidget {
 class TodayAttendanceItem extends StatelessWidget {
   final Map<String, dynamic> data;
   final int index;
+  final VoidCallback? onEdit;
 
   const TodayAttendanceItem({
     super.key,
     required this.data,
     required this.index,
+    this.onEdit,
   });
 
   @override
@@ -1669,14 +1777,25 @@ class TodayAttendanceItem extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               StatusPill(status: (data["status"] ?? '').toString()),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: onEdit,
+                child: SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  height: 20,
+                  width: 20,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF000000),
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
             ],
           ),
           if (data["type"] != null) ...[
             const SizedBox(height: 12),
             Text(
-              (data["status"] == 'Leave'
-                      ? 'leave_type_display'
-                      : 'absent_type')
+              (data["status"] == 'Leave' ? 'leave_type_display' : 'absent_type')
                   .tr(namedArgs: {'type': data["type"].toString()}),
               style: const TextStyle(
                 fontSize: 12,

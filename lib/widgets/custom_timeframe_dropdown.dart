@@ -5,11 +5,13 @@ import 'clickable_gesture_detector.dart';
 class CustomTimeframeDropdown extends StatefulWidget {
   final String selectedPeriod;
   final ValueChanged<String> onChanged;
+  final List<String>? options;
 
   const CustomTimeframeDropdown({
     super.key,
     required this.selectedPeriod,
     required this.onChanged,
+    this.options,
   });
 
   static String localizePeriod(String period) {
@@ -20,6 +22,10 @@ class CustomTimeframeDropdown extends StatefulWidget {
         return 'week'.tr();
       case 'Month':
         return 'month'.tr();
+      case 'Monthly':
+        return 'monthly'.tr();
+      case '3 Month':
+        return '3_month'.tr();
       case '6 Month':
         return '6_month'.tr();
       case 'Yearly':
@@ -39,13 +45,8 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
-  static const List<String> _options = [
-    'Today',
-    'Week',
-    'Month',
-    '6 Month',
-    'Yearly',
-  ];
+  List<String> get _options =>
+      widget.options ?? const ['Today', 'Week', 'Month', '6 Month', 'Yearly'];
 
   void _toggleDropdown() {
     if (_isOpen) {

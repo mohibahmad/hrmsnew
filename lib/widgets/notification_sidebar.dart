@@ -282,7 +282,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           Row(
             children: [
               // Clear All (replaces the old close button)
-              if (_notifications.isNotEmpty)
+              if (_notifications.length > 1)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(

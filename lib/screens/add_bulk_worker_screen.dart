@@ -28,6 +28,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   bool _isSaving = false;
   List<Map<String, dynamic>> _validWorkers = [];
   bool _hasParsedFile = false;
+  int _invalidDobCount = 0;
+  int _invalidGenderCount = 0;
+  int _missingRequiredCount = 0;
+  int _duplicateCount = 0;
 
   @override
   void initState() {
@@ -169,6 +173,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   Future<void> _processCsvData(List<List<dynamic>> rows) async {
     if (rows.isEmpty) return;
 
+    setState(() {
+      _invalidDobCount = 0;
+      _invalidGenderCount = 0;
+      _missingRequiredCount = 0;
+      _duplicateCount = 0;
+    });
+
     final headers = rows.first
         .map((e) => e.toString().trim().toLowerCase())
         .toList();
@@ -213,12 +224,33 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     // Check ALL required columns
     final requiredFields = [
-      'name', 'phone', 'email', 'fatherName', 'nationalId', 'religion',
-      'dob', 'gender', 'address', 'relationshipStatus', 'position',
-      'type1', 'type2', 'experienceLevel', 'education', 'salaryType',
-      'currency', 'salaryAmount', 'leavePolicy', 'annualLeaves',
-      'sickLeaves', 'casualLeaves', 'joiningDate', 'profileImage',
-      'frontId', 'backId', 'cv',
+      'name',
+      'phone',
+      'email',
+      'fatherName',
+      'nationalId',
+      'religion',
+      'dob',
+      'gender',
+      'address',
+      'relationshipStatus',
+      'position',
+      'type1',
+      'type2',
+      'experienceLevel',
+      'education',
+      'salaryType',
+      'currency',
+      'salaryAmount',
+      'leavePolicy',
+      'annualLeaves',
+      'sickLeaves',
+      'casualLeaves',
+      'joiningDate',
+      'profileImage',
+      'frontId',
+      'backId',
+      'cv',
     ];
     Set<String> foundFields = {};
     for (var h in headers) {
@@ -226,7 +258,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (requiredFields.contains(m)) foundFields.add(m);
     }
 
-    final missingFields = requiredFields.where((f) => !foundFields.contains(f)).toList();
+    final missingFields = requiredFields
+        .where((f) => !foundFields.contains(f))
+        .toList();
     if (missingFields.isNotEmpty) {
       FlashySnackBar.show(
         context,
@@ -275,8 +309,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             )
             .where((n) => n.isNotEmpty)
             .toSet();
-      } catch (e) {
-      }
+      } catch (e) {}
     }
 
     if (!mounted) return;
@@ -284,9 +317,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     List<Map<String, dynamic>> parsedWorkers = [];
     Set<String> csvEmails = {};
     Set<String> csvNames = {};
-    int duplicateCount = 0;
-    int invalidDobCount = 0;
-    int missingRequiredCount = 0;
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -343,35 +373,92 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       // Ensure ALL required fields are filled
       bool hasEmptyRequired = false;
+      String emptyFieldName = '';
       for (var field in requiredFields) {
         if (workerData[field] == null ||
             workerData[field].toString().trim().isEmpty) {
           hasEmptyRequired = true;
+          emptyFieldName = field;
           break;
         }
       }
       if (hasEmptyRequired) {
-        missingRequiredCount++;
+        _missingRequiredCount++;
+        final workerName =
+            workerData['name']?.toString().trim() ?? 'Row ${i + 1}';
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'field_missing_for_worker'.tr(
+              namedArgs: {'field': emptyFieldName, 'name': workerName},
+            ),
+            isError: true,
+          );
+        }
         continue;
       }
 
       // Validate DOB - must be 18+
       final dobStr = (workerData['dob'] ?? '').toString().trim();
       final dob = AppDateUtils.parseDateString(dobStr);
+      final workerName =
+          workerData['name']?.toString().trim() ?? 'Row ${i + 1}';
       if (dob == null) {
-        invalidDobCount++;
+        _invalidDobCount++;
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'invalid_dob_for_worker'.tr(
+              namedArgs: {'name': workerName, 'value': dobStr},
+            ),
+            isError: true,
+          );
+        }
         continue;
       }
       final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
       if (dob.isAfter(cutoff)) {
-        invalidDobCount++;
+        _invalidDobCount++;
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'worker_too_young'.tr(namedArgs: {'name': workerName}),
+            isError: true,
+          );
+        }
+        continue;
+      }
+
+      // Validate gender - only Male or Female allowed
+      final gender = workerData['gender']?.toString().trim() ?? '';
+      if (!gender.toLowerCase().contains('male') &&
+          !gender.toLowerCase().contains('female')) {
+        _invalidGenderCount++;
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'invalid_gender_for_worker'.tr(
+              namedArgs: {'name': workerName, 'value': gender},
+            ),
+            isError: true,
+          );
+        }
         continue;
       }
 
       // Validate email format
       final email = workerData['email']?.toString().toLowerCase().trim() ?? '';
       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-        missingRequiredCount++;
+        _missingRequiredCount++;
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'invalid_email_for_worker'.tr(
+              namedArgs: {'name': workerName, 'email': email},
+            ),
+            isError: true,
+          );
+        }
         continue;
       }
 
@@ -388,37 +475,61 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       if (isDuplicate) {
-        duplicateCount++;
+        _duplicateCount++;
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'duplicate_worker_skipped'.tr(
+              namedArgs: {'name': name.isNotEmpty ? name : email},
+            ),
+            isError: true,
+          );
+        }
         continue;
       }
 
       if (email.isNotEmpty) csvEmails.add(email);
       if (name.isNotEmpty) csvNames.add(name);
 
+      workerData['availableAnnualLeaves'] =
+          int.tryParse(workerData['annualLeaves']?.toString() ?? '0') ?? 0;
+      workerData['availableCasualLeaves'] =
+          int.tryParse(workerData['casualLeaves']?.toString() ?? '0') ?? 0;
+      workerData['availableSickLeaves'] =
+          int.tryParse(workerData['sickLeaves']?.toString() ?? '0') ?? 0;
+
       parsedWorkers.add(workerData);
     }
 
-    if (duplicateCount > 0 && mounted) {
+    if (_duplicateCount > 0 && mounted) {
       FlashySnackBar.show(
         context,
         message: 'skipped_duplicates_message'.tr(
-          namedArgs: {'count': duplicateCount.toString()},
+          namedArgs: {'count': _duplicateCount.toString()},
         ),
       );
     }
-    if (invalidDobCount > 0 && mounted) {
+    if (_invalidDobCount > 0 && mounted) {
       FlashySnackBar.show(
         context,
         message: 'skipped_invalid_dob_message'.tr(
-          namedArgs: {'count': invalidDobCount.toString()},
+          namedArgs: {'count': _invalidDobCount.toString()},
         ),
       );
     }
-    if (missingRequiredCount > 0 && mounted) {
+    if (_invalidGenderCount > 0 && mounted) {
+      FlashySnackBar.show(
+        context,
+        message: 'skipped_invalid_gender_message'.tr(
+          namedArgs: {'count': _invalidGenderCount.toString()},
+        ),
+      );
+    }
+    if (_missingRequiredCount > 0 && mounted) {
       FlashySnackBar.show(
         context,
         message: 'skipped_missing_required_message'.tr(
-          namedArgs: {'count': missingRequiredCount.toString()},
+          namedArgs: {'count': _missingRequiredCount.toString()},
         ),
       );
     }
@@ -436,6 +547,55 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         message: 'no_valid_workers_found_in_csv'.tr(),
         isError: true,
       );
+      return;
+    }
+
+    final hasValidationErrors =
+        _missingRequiredCount > 0 ||
+        _invalidDobCount > 0 ||
+        _invalidGenderCount > 0 ||
+        _duplicateCount > 0;
+
+    if (hasValidationErrors) {
+      final parts = <String>[];
+      if (_missingRequiredCount > 0) {
+        parts.add(
+          'skipped_missing_required_message'.tr(
+            namedArgs: {'count': _missingRequiredCount.toString()},
+          ),
+        );
+      }
+      if (_invalidDobCount > 0) {
+        parts.add(
+          'skipped_invalid_dob_message'.tr(
+            namedArgs: {'count': _invalidDobCount.toString()},
+          ),
+        );
+      }
+      if (_invalidGenderCount > 0) {
+        parts.add(
+          'skipped_invalid_gender_message'.tr(
+            namedArgs: {'count': _invalidGenderCount.toString()},
+          ),
+        );
+      }
+      if (_duplicateCount > 0) {
+        parts.add(
+          'skipped_duplicates_message'.tr(
+            namedArgs: {'count': _duplicateCount.toString()},
+          ),
+        );
+      }
+
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'csv_validation_errors_found'.tr(
+            namedArgs: {'errors': parts.join('\n')},
+          ),
+          isError: true,
+        );
+      }
       return;
     }
 
@@ -603,7 +763,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 Builder(
                   builder: (context) {
                     final bool isSaveReady = _validWorkers.isNotEmpty;
-                    final bool canSave = isSaveReady && !_isSaving;
+                    final bool hasValidationErrors =
+                        _missingRequiredCount > 0 ||
+                        _invalidDobCount > 0 ||
+                        _invalidGenderCount > 0 ||
+                        _duplicateCount > 0;
+                    final bool canSave =
+                        isSaveReady && !_isSaving && !hasValidationErrors;
 
                     return GestureDetector(
                       onTap: canSave ? _saveBulkWorkers : null,
@@ -715,7 +881,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF000000).withValues(alpha: 0.02),
+                            color: const Color(
+                              0xFF000000,
+                            ).withValues(alpha: 0.02),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -726,7 +894,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF34D399).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFF34D399,
+                              ).withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -778,7 +948,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF000000).withValues(alpha: 0.03),
+                            color: const Color(
+                              0xFF000000,
+                            ).withValues(alpha: 0.03),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),
@@ -934,8 +1106,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     const Color(0xFFBE185D),
                                     const Color(0xFFC2410C),
                                   ];
-                                  final colorIdx =
-                                      index % bgColors.length;
+                                  final colorIdx = index % bgColors.length;
 
                                   final rowWidget = Padding(
                                     padding: const EdgeInsets.symmetric(

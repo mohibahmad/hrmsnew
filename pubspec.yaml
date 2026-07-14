@@ -132,6 +132,7 @@ flutter:
     - assets/company_id.svg
     - assets/cnic_back.svg
     - assets/cnic_front.svg
+    - assets/documents_icon.svg
     - assets/currency_preview.svg
     - assets/location_preview.svg
     - assets/phone_preview.svg

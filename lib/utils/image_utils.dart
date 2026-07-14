@@ -43,6 +43,8 @@ Uint8List? _decodeBase64(String url) {
 
 bool _isValidUrl(String? url) {
   if (url == null || url.isEmpty) return false;
+  final lower = url.toLowerCase();
+  if (lower.contains('example.com')) return false;
   return url.startsWith('http') ||
       url.startsWith('data:image/') ||
       url.startsWith('/') ||

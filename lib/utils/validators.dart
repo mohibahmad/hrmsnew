@@ -84,6 +84,11 @@ class Validators {
         throw ValidationException('worker_must_be_18'.tr(), field: 'dob');
       }
     }
+
+    final gender = _str(w, 'gender').toLowerCase();
+    if (gender.isNotEmpty && gender != 'male' && gender != 'female') {
+      throw ValidationException('invalid_gender_value'.tr(), field: 'gender');
+    }
   }
 
   static void validateExpense(Map<String, dynamic> e) {

@@ -865,7 +865,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                 ? [
                     FilteringTextInputFormatter.allow(
                       label.toLowerCase().contains('national')
-                          ? RegExp(r'^[\d_]*')
+                          ? RegExp(r'^[\d_-]*')
                           : RegExp(r'^\d*'),
                     ),
                     if (label.toLowerCase().contains('phone') ||

@@ -560,7 +560,8 @@ class FirestoreService {
     required String email,
     bool force = false,
   }) async {
-    final docRef = _db.collection('hrms_user').doc(uid);
+    final emailKey = email.trim().toLowerCase().replaceAll('.', '_');
+    final docRef = _db.collection('hrms_user').doc(emailKey);
     final userSnap = await docRef.get();
 
     if (!force && userSnap.exists) {

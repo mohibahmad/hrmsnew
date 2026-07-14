@@ -13,7 +13,6 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/attendance_service.dart';
 import '../widgets/notification_bell.dart';
-
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
 import '../utils/image_utils.dart';
@@ -278,7 +277,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   const SizedBox(height: 24),
                   _buildSummaryCardsRow(),
                   const SizedBox(height: 24),
-                  _buildFilterAndDropdownRow(),
+                  _buildFilterRow(),
                   const SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,44 +579,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildFilterAndDropdownRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Left Tabs
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            children: [
-              _buildTab('All', 'all_tab'.tr()),
-              _buildTab('Present', 'present_tab'.tr()),
-              _buildTab('Absent', 'absent_tab'.tr()),
-              _buildTab('Leaves', 'leaves_tab'.tr()),
-            ],
-          ),
+  Widget _buildFilterRow() {
+    return IntrinsicWidth(
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(6),
         ),
-
-        // Right Dropdown Header
-        CustomTimeframeDropdown(
-          selectedPeriod: _selectedTimeframe,
-          onChanged: (value) {
-            setState(() {
-              _selectedTimeframe = value;
-              _currentPage = 1;
-              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                _attendanceDocs = List<Map<String, dynamic>>.from(
-                  DummyData.attendance,
-                );
-              }
-            });
-          },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildTab('All', 'all_tab'.tr()),
+            _buildTab('Present', 'present_tab'.tr()),
+            _buildTab('Absent', 'absent_tab'.tr()),
+            _buildTab('Leaves', 'leaves_tab'.tr()),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -632,7 +611,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       },
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 12 : 24,
+          horizontal: isActive ? 8 : 14,
           vertical: 8,
         ),
         decoration: BoxDecoration(
@@ -1019,7 +998,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 }
 
-class WorkerAttendancePreviewCard extends StatelessWidget {
+class WorkerAttendancePreviewCard extends StatefulWidget {
   final AttendanceRecord record;
   final int totalWorkingDays;
   final int presents;
@@ -1038,6 +1017,34 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
     required this.percentage,
     required this.workerRecords,
   });
+
+  @override
+  State<WorkerAttendancePreviewCard> createState() =>
+      _WorkerAttendancePreviewCardState();
+}
+
+class _WorkerAttendancePreviewCardState
+    extends State<WorkerAttendancePreviewCard> {
+  String _selectedPeriod = 'All';
+
+  List<Map<String, dynamic>> get _filteredRecords {
+    if (_selectedPeriod == 'All') return widget.workerRecords;
+    return widget.workerRecords.where((att) {
+      final createdAt = att['createdAt'];
+      if (createdAt == null) return true;
+      return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedPeriod);
+    }).toList();
+  }
+
+  int get _filteredTotal => _filteredRecords.length;
+  int get _filteredPresents =>
+      _filteredRecords.where((d) => d['status'] == 'Present').length;
+  int get _filteredAbsents =>
+      _filteredRecords.where((d) => d['status'] == 'Absent').length;
+  int get _filteredLeaves =>
+      _filteredRecords.where((d) => d['status'] == 'Leave').length;
+  double get _filteredPercentage =>
+      _filteredTotal > 0 ? (_filteredPresents / _filteredTotal) * 100 : 0.0;
 
   static const Color primaryBlue = Color(0xFF0A51D0);
 
@@ -1143,8 +1150,8 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   border: Border.all(color: Color(0xFFFFFFFF), width: 2),
                   image: DecorationImage(
                     image: getProfileImage(
-                      record.profileImage,
-                      record.email,
+                      widget.record.profileImage,
+                      widget.record.email,
                       0,
                     ),
                     fit: BoxFit.cover,
@@ -1158,7 +1165,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      record.name,
+                      widget.record.name,
                       style: const TextStyle(
                         color: Color(0xFFFFFFFF),
                         fontSize: 22,
@@ -1178,7 +1185,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        record.workType,
+                        widget.record.workType,
                         style: const TextStyle(
                           color: Color(0xFF0A51D0),
                           fontSize: 14,
@@ -1208,7 +1215,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            record.email,
+                            widget.record.email,
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 15,
@@ -1236,7 +1243,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            record.phone ?? 'na'.tr(),
+                            widget.record.phone ?? 'na'.tr(),
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
                               fontSize: 15,
@@ -1247,6 +1254,28 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Period dropdown inside header
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: CustomTimeframeDropdown(
+                        selectedPeriod: _selectedPeriod,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPeriod = value;
+                          });
+                        },
+                        options: const [
+                          'All',
+                          'Today',
+                          'Week',
+                          'Month',
+                          '3 Month',
+                          '6 Month',
+                          'Yearly',
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1268,7 +1297,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             width: 140,
             child: _buildSummaryCard(
               title: 'total_presents'.tr(),
-              value: '$presents',
+              value: '$_filteredPresents',
               bgColor: lightGreenBg,
               iconColor: darkGreen,
               iconBuilder: (color) => _buildPresentIcon(color),
@@ -1279,7 +1308,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             width: 140,
             child: _buildSummaryCard(
               title: 'total_absent'.tr(),
-              value: '$absents',
+              value: '$_filteredAbsents',
               bgColor: lightRedBg,
               iconColor: darkRed,
               iconBuilder: (color) => _buildAbsentIcon(color),
@@ -1290,7 +1319,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
             width: 140,
             child: _buildSummaryCard(
               title: 'total_leaves'.tr(),
-              value: '$leaves',
+              value: '$_filteredLeaves',
               bgColor: lightOrangeBg,
               iconColor: darkOrange,
               iconBuilder: (color) => _buildLeaveIcon(color),
@@ -1453,27 +1482,27 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 rows: [
                   _buildDetailRow(
                     'total_working_days'.tr(),
-                    '$totalWorkingDays ${'days_unit'.tr()}',
+                    '$_filteredTotal ${'days_unit'.tr()}',
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'total_presents'.tr(),
-                    '$presents ${'days_unit'.tr()}',
+                    '$_filteredPresents ${'days_unit'.tr()}',
                     darkGreen,
                   ),
                   _buildDetailRow(
                     'total_absents'.tr(),
-                    '$absents ${'days_unit'.tr()}',
+                    '$_filteredAbsents ${'days_unit'.tr()}',
                     darkRed,
                   ),
                   _buildDetailRow(
                     'total_leaves'.tr(),
-                    '$leaves ${'days_unit'.tr()}',
+                    '$_filteredLeaves ${'days_unit'.tr()}',
                     darkOrange,
                   ),
                   _buildDetailRow(
                     'attendance_percentage'.tr(),
-                    '${percentage.toStringAsFixed(1)}%',
+                    '${_filteredPercentage.toStringAsFixed(1)}%',
                     primaryBlue,
                   ),
                 ],
@@ -1487,17 +1516,17 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
                 rows: [
                   _buildDetailRow(
                     'position'.tr(),
-                    record.role,
+                    widget.record.role,
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'work_type'.tr(),
-                    record.localizedWorkType,
+                    widget.record.localizedWorkType,
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'attendance_type'.tr(),
-                    record.localizedAttendanceType,
+                    widget.record.localizedAttendanceType,
                     Color(0xFF000000),
                   ),
                 ],
@@ -1575,17 +1604,20 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
 
     // Header section
     rows.add(['Worker Attendance Summary']);
-    rows.add(['Name', record.name]);
-    rows.add(['Email', record.email]);
-    rows.add(['Position', record.role]);
-    rows.add(['Work Type', record.workType]);
-    rows.add(['Attendance Type', record.attendanceType]);
+    rows.add(['Name', widget.record.name]);
+    rows.add(['Email', widget.record.email]);
+    rows.add(['Position', widget.record.role]);
+    rows.add(['Work Type', widget.record.workType]);
+    rows.add(['Attendance Type', widget.record.attendanceType]);
     rows.add([]);
-    rows.add(['Total Working Days', '$totalWorkingDays ${'days_unit'.tr()}']);
-    rows.add(['Total Presents', '$presents ${'days_unit'.tr()}']);
-    rows.add(['Total Absents', '$absents ${'days_unit'.tr()}']);
-    rows.add(['Total Leaves', '$leaves ${'days_unit'.tr()}']);
-    rows.add(['Attendance Percentage', '${percentage.toStringAsFixed(1)}%']);
+    rows.add(['Total Working Days', '$_filteredTotal ${'days_unit'.tr()}']);
+    rows.add(['Total Presents', '$_filteredPresents ${'days_unit'.tr()}']);
+    rows.add(['Total Absents', '$_filteredAbsents ${'days_unit'.tr()}']);
+    rows.add(['Total Leaves', '$_filteredLeaves ${'days_unit'.tr()}']);
+    rows.add([
+      'Attendance Percentage',
+      '${_filteredPercentage.toStringAsFixed(1)}%',
+    ]);
     rows.add([]);
 
     // Daily Logs header
@@ -1599,7 +1631,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
     ]);
 
     // Sort workerRecords by date (newest first)
-    final sortedRecords = List<Map<String, dynamic>>.from(workerRecords);
+    final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);
     sortedRecords.sort((a, b) {
       final aTime = a['createdAt'];
       final bTime = b['createdAt'];
@@ -1643,7 +1675,7 @@ class WorkerAttendancePreviewCard extends StatelessWidget {
     try {
       String? outputFile = await FilePicker.saveFile(
         dialogTitle: 'export_attendance'.tr(),
-        fileName: '${record.name.replaceAll(' ', '_')}_attendance.csv',
+        fileName: '${widget.record.name.replaceAll(' ', '_')}_attendance.csv',
         type: FileType.custom,
         allowedExtensions: ['csv'],
       );
