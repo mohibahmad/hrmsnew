@@ -621,12 +621,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             onTap: () {
               if (widget.onBack != null) {
                 widget.onBack!();
-              } else {
+              } else if (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
               }
             },
-            child: const Padding(
-              padding: EdgeInsets.only(top: 2.0),
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(
+              width: 32,
+              height: 32,
               child: Icon(
                 Icons.arrow_back_ios_new,
                 color: Color(0xFF000000),
@@ -634,7 +636,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
           Text(
             'workforce'.tr(),
             style: TextStyle(
@@ -985,48 +987,48 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 16),
-                              Text(
-                                selectedStatus == 'Present'
-                                    ? 'reason_optional'.tr()
-                                    : 'reason_required'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 100,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
+                              if (selectedStatus != 'Present') ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  'reason_required'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                    fontFamily: 'SF Pro Display',
                                   ),
-                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: TextField(
-                                  controller: reasonController,
-                                  maxLines: null,
-                                  maxLength: 100,
-                                  onChanged: (_) => setDialogState(() {}),
-                                  decoration: InputDecoration.collapsed(
-                                    hintText: 'enter_reason_hint'.tr(),
-                                    hintStyle: TextStyle(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.38,
+                                const SizedBox(height: 8),
+                                Container(
+                                  height: 100,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: TextField(
+                                    controller: reasonController,
+                                    maxLines: null,
+                                    maxLength: 100,
+                                    onChanged: (_) => setDialogState(() {}),
+                                    decoration: InputDecoration.collapsed(
+                                      hintText: 'enter_reason_hint'.tr(),
+                                      hintStyle: TextStyle(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.38,
+                                        ),
+                                        fontSize: 13,
+                                        fontFamily: 'SF Pro Display',
                                       ),
-                                      fontSize: 13,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
                               const SizedBox(height: 16),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,

@@ -68,7 +68,6 @@ void main() {
           persistenceEnabled: true,
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
-
       } catch (e) {
         rethrow;
       }

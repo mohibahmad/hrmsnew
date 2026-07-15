@@ -81,20 +81,15 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Color(0xFFFFFFFF), width: 1.0),
+                            border: Border.all(color: Color(0xFFFFFFFF), width: 1.2),
                   image: const DecorationImage(
                     image: AssetImage('assets/premium_bg.png'),
                     fit: BoxFit.cover,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFFFFFFFF).withValues(alpha: 0.55),
-                      blurRadius: 14,
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: Color(0xFF4C84E0).withValues(alpha: 0.25),
-                      blurRadius: 18,
+                      color: Color(0xFFFFFFFF).withValues(alpha: 0.4),
+                      blurRadius: 12,
                       spreadRadius: 1,
                     ),
                   ],
@@ -141,10 +136,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           decoration: BoxDecoration(
                             color: Color(0xFF000000),
                             borderRadius: BorderRadius.circular(25),
-                            border: Border.all(
-                              color: Color(0xFFFFFFFF),
-                              width: 1.0,
-                            ),
+                            border: Border.all(color: Color(0xFFFFFFFF), width: 1.2),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

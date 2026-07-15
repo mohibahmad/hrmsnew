@@ -452,6 +452,7 @@
   "leaves_label": "Licenças",
   "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Horas Extras",
+  "overtime_amount": "Valor das Horas Extras",
   "payroll_data_preview": "Pré-visualização de Folha de Pagamento",
   "holiday_list": "Lista de Feriados",
   "no_holidays_found": "Nenhum Feriado Encontrado",

@@ -455,6 +455,7 @@
   "leaves_label": "Permisos",
   "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Horas Extra",
+  "overtime_amount": "Monto de Horas Extra",
   "payroll_data_preview": "Vista Previa de Nómina",
   "holiday_list": "Lista de Festivos",
   "no_holidays_found": "No Hay Festivos",

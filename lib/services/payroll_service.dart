@@ -41,7 +41,7 @@ class PayrollService {
           'totalWorkDays': '',
           'absents': '',
           'leaves': '',
-          'overtimeDays': '',
+          'overtimeAmount': '',
           'salary': salaryAmount.isNotEmpty
               ? '$currencySymbol $salaryAmount'
               : '',
@@ -136,53 +136,55 @@ class PayrollService {
     String daysWorked = '',
     required String absents,
     required String leaves,
-    required String overtimeDays,
+    String overtimeAmount = '',
     String absentDeductionPerDay = '',
     String leaveDeductionPerDay = '',
+    String salaryType = 'Monthly',
   }) {
     final rawSalaryVal = extractSalary(salary);
     final totalWorkDaysVal = parseIntSafe(totalWorkDays);
     final absentDays = parseIntSafe(absents);
     final leaveDays = parseIntSafe(leaves);
-    final overtime = parseIntSafe(overtimeDays);
+    final customOvertimeAmount = extractSalary(overtimeAmount);
     final customAbsentDeduction = extractSalary(absentDeductionPerDay);
     final customLeaveDeduction = extractSalary(leaveDeductionPerDay);
     final currency = getCurrencyPrefix(salary);
     final p = currency.isNotEmpty ? '$currency ' : '';
 
-    final isAnnualPeriod = totalWorkDaysVal > 100;
-    double periodBaseSalary;
-    if (isAnnualPeriod) {
-      periodBaseSalary = rawSalaryVal;
-    } else {
-      final isAnnualSalary = rawSalaryVal >= 15000;
-      periodBaseSalary = isAnnualSalary ? rawSalaryVal / 12 : rawSalaryVal;
-    }
-
+    // Daily Rate = Monthly Salary / Total Work Days
     final dailyRate = totalWorkDaysVal > 0
-        ? periodBaseSalary / totalWorkDaysVal
+        ? rawSalaryVal / totalWorkDaysVal
         : 0.0;
-    final workedDaysVal = daysWorked.isEmpty
-        ? totalWorkDaysVal
-        : parseIntSafe(daysWorked);
-    final overtimeRate = dailyRate * 1.5;
 
+    // Worked Days = Total Work Days - Absents (if daysWorked not provided)
+    final workedDaysVal = daysWorked.isEmpty
+        ? totalWorkDaysVal - absentDays
+        : parseIntSafe(daysWorked);
+
+    // Gross Pay = Daily Rate × Worked Days
     final grossSalary = workedDaysVal * dailyRate;
-    final overtimePay = overtime * overtimeRate;
-    final absentDeduction = absentDays * customAbsentDeduction;
-    final leaveDeduction = leaveDays * customLeaveDeduction;
+
+    // Overtime Pay = Custom Amount (HR enters manually)
+    final overtimePay = customOvertimeAmount;
+
+    // Deductions
+    final absentDeduction = absentDays * dailyRate;
+    final leaveDeduction = leaveDays * dailyRate;
+
     final totalDeductions = absentDeduction + leaveDeduction;
+
+    // Net Pay = Gross + OT - Deductions
     final netSalary = grossSalary + overtimePay - totalDeductions;
 
     return {
       'annualSalary': rawSalaryVal,
       'totalWorkDaysPerYear': totalWorkDaysVal,
       'dailyRate': dailyRate,
-      'overtimeRate': overtimeRate,
+      'overtimeRate': dailyRate * 1.5,
       'workedDays': workedDaysVal,
       'absentDays': absentDays,
       'leaveDays': leaveDays,
-      'overtimeDays': overtime,
+      'overtimeDays': 0,
       'grossSalary': grossSalary,
       'overtimePay': overtimePay,
       'absentDeduction': absentDeduction,
@@ -190,18 +192,18 @@ class PayrollService {
       'totalDeductions': totalDeductions,
       'netSalary': netSalary,
       'formattedDailyRate': _fmt(dailyRate, p),
-      'formattedOvertimeRate': _fmt(overtimeRate, p),
+      'formattedOvertimeRate': _fmt(dailyRate * 1.5, p),
       'formattedGross': _fmt(grossSalary, p),
       'formattedOvertime': _fmt(overtimePay, p),
       'formattedAbsentDeduct': absentDeduction > 0
           ? '-${_fmt(absentDeduction, p)}'
-          : '0',
+          : '-${_fmt(0.0, p)}',
       'formattedLeaveDeduct': leaveDeduction > 0
           ? '-${_fmt(leaveDeduction, p)}'
-          : '0',
+          : '-${_fmt(0.0, p)}',
       'formattedTotalDeductions': totalDeductions > 0
           ? '-${_fmt(totalDeductions, p)}'
-          : '0',
+          : '-${_fmt(0.0, p)}',
       'formattedNet': _fmt(netSalary, p),
     };
   }
@@ -210,28 +212,29 @@ class PayrollService {
     required String salary,
     required String totalWorkDays,
     required String absents,
-    required String overtimeDays,
+    String overtimeAmount = '',
+    String salaryType = 'Monthly',
   }) {
-    final annualSalary = extractSalary(salary);
+    final rawSalary = extractSalary(salary);
     final workDays = parseIntSafe(totalWorkDays);
     final absentDays = parseIntSafe(absents);
-    final overtime = parseIntSafe(overtimeDays);
+    final overtime = extractSalary(overtimeAmount);
     final currency = getCurrencyPrefix(salary);
     final prefix = currency.isNotEmpty ? '$currency ' : '';
 
-    final isAnnualPeriod = workDays > 100;
-    double periodBaseSalary;
-    if (isAnnualPeriod) {
-      periodBaseSalary = annualSalary;
-    } else {
-      final isAnnualSalary = annualSalary >= 15000;
-      periodBaseSalary = isAnnualSalary ? annualSalary / 12 : annualSalary;
-    }
+    // Daily Rate = Monthly Salary / Total Work Days
+    final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
 
-    final dailyRate = workDays > 0 ? periodBaseSalary / workDays : 0.0;
+    // Worked Days = Total Work Days - Absents
     final effectiveWorkDays = workDays - absentDays;
+
+    // Gross Pay = Daily Rate × Worked Days
     final grossSalary = effectiveWorkDays * dailyRate;
-    final overtimePay = overtime * dailyRate * 1.5;
+
+    // Overtime Pay = Custom Amount
+    final overtimePay = overtime;
+
+    // Net Pay = Gross + OT
     final netSalary = grossSalary + overtimePay;
 
     return '$prefix${formatNumber(netSalary)}';

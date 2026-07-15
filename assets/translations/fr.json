@@ -455,6 +455,7 @@
   "leaves_label": "Congés",
   "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Heures Supplémentaires",
+  "overtime_amount": "Montant des Heures Supplémentaires",
   "payroll_data_preview": "Aperçu des Données de Paie",
   "holiday_list": "Liste des Jours Fériés",
   "no_holidays_found": "Aucun Jour Férié",

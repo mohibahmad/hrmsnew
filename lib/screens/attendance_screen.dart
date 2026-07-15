@@ -1137,17 +1137,17 @@ class _WorkerAttendancePreviewCardState
           ),
         ),
         Container(
-          color: const Color(0xFF0247C4),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          color: const Color(0xFFFFFFFF),
+          padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 140,
-                height: 140,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Color(0xFFFFFFFF), width: 2),
+                  border: Border.all(color: Color(0xFF0A51D0), width: 2),
                   image: DecorationImage(
                     image: getProfileImage(
                       widget.record.profileImage,
@@ -1163,121 +1163,70 @@ class _WorkerAttendancePreviewCardState
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       widget.record.name,
                       style: const TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 22,
+                        color: Color(0xFF333333),
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        widget.record.workType,
-                        style: const TextStyle(
-                          color: Color(0xFF0A51D0),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
+                    const SizedBox(height: 4),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: SvgPicture.asset(
-                            'assets/email.svg',
-                            height: 14,
-                            width: 14,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFFFFFFFF),
-                              BlendMode.srcIn,
-                            ),
+                        SvgPicture.asset(
+                          'assets/email.svg',
+                          height: 12,
+                          width: 12,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFF666666),
+                            BlendMode.srcIn,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             widget.record.email,
                             style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF666666),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Image.asset(
-                            'assets/call.png',
-                            height: 14,
-                            width: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.record.phone ?? 'na'.tr(),
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Period dropdown inside header
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: CustomTimeframeDropdown(
-                        selectedPeriod: _selectedPeriod,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedPeriod = value;
-                          });
-                        },
-                        options: const [
-                          'All',
-                          'Today',
-                          'Week',
-                          'Month',
-                          '3 Month',
-                          '6 Month',
-                          'Yearly',
-                        ],
-                      ),
                     ),
                   ],
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Align(
+                  alignment: Alignment.center,
+                  child: CustomTimeframeDropdown(
+                    selectedPeriod: _selectedPeriod,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedPeriod = value;
+                      });
+                    },
+                    options: const [
+                      'All',
+                      'Today',
+                      'Week',
+                      'Month',
+                      '3 Month',
+                      '6 Month',
+                      'Yearly',
+                    ],
+                  ),
                 ),
               ),
             ],

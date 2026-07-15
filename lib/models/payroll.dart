@@ -9,7 +9,7 @@ class Payroll {
   final String totalWorkDays;
   final String absents;
   final String leaves;
-  final String overtimeDays;
+  final String overtimeAmount;
   final String absentDeduction;
   final String leaveDeduction;
   final String salary;
@@ -28,7 +28,7 @@ class Payroll {
     this.totalWorkDays = '',
     this.absents = '',
     this.leaves = '',
-    this.overtimeDays = '',
+    this.overtimeAmount = '',
     this.absentDeduction = '',
     this.leaveDeduction = '',
     this.salary = '',
@@ -49,7 +49,7 @@ class Payroll {
       totalWorkDays: data['totalWorkDays'] ?? '',
       absents: data['absents'] ?? '',
       leaves: data['leaves'] ?? '',
-      overtimeDays: data['overtimeDays'] ?? '',
+      overtimeAmount: data['overtimeAmount'] ?? '',
       absentDeduction: data['absentDeduction'] ?? '',
       leaveDeduction: data['leaveDeduction'] ?? '',
       salary: data['salary'] ?? '',
@@ -71,7 +71,7 @@ class Payroll {
       'totalWorkDays': totalWorkDays,
       'absents': absents,
       'leaves': leaves,
-      'overtimeDays': overtimeDays,
+      'overtimeAmount': overtimeAmount,
       'absentDeduction': absentDeduction,
       'leaveDeduction': leaveDeduction,
       'salary': salary,

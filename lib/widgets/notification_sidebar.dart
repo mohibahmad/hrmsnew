@@ -609,196 +609,183 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return MouseRegion(
-          onEnter: (_) => setState(() {}),
-          onExit: (_) => setState(() {}),
-          child: Container(
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.grey[850] : const Color(0xFFF8FAFF)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Stack(
-              children: [
-                // Main Content (tap to navigate + close the panel)
-                GestureDetector(
-                  onTap: () {
-                    if (notificationId.isNotEmpty) {
-                      FirestoreService().markNotificationRead(notificationId);
-                      setState(() {
-                        _notifications.removeWhere((n) => n['id'] == notificationId);
-                      });
-                    }
-                    _close();
-                    widget.onNotificationTap?.call(type);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
+    return Container(
+      decoration: BoxDecoration(
+        color: (isDark ? Colors.grey[850] : const Color(0xFFF8FAFF)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Stack(
+        children: [
+          // Main Content (tap to navigate + close the panel)
+          GestureDetector(
+            onTap: () {
+              if (notificationId.isNotEmpty) {
+                FirestoreService().markNotificationRead(notificationId);
+                setState(() {
+                  _notifications.removeWhere((n) => n['id'] == notificationId);
+                });
+              }
+              _close();
+              widget.onNotificationTap?.call(type);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 14,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon Container
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: style.bgColor,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Icon Container
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: style.bgColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(
-                          child: style.iconAsset != null
-                              ? SvgPicture.asset(
-                                  style.iconAsset!,
-                                  width: style.iconSize,
-                                  height: style.iconSize,
-                                  colorFilter: ColorFilter.mode(
-                                    style.color,
-                                    BlendMode.srcIn,
-                                  ),
-                                )
-                              : Icon(
-                                  style.icon,
-                                  size: style.iconSize,
-                                  color: style.color,
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      // Text Content
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Center(
+                      child: style.iconAsset != null
+                          ? SvgPicture.asset(
+                              style.iconAsset!,
+                              width: style.iconSize,
+                              height: style.iconSize,
+                              colorFilter: ColorFilter.mode(
+                                style.color,
+                                BlendMode.srcIn,
+                              ),
+                            )
+                          : Icon(
+                              style.icon,
+                              size: style.iconSize,
+                              color: style.color,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // Text Content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: style.bgColor,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    style.label,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: style.color,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: style.bgColor,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                style.label,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: style.color,
+                                  fontFamily: 'SF Pro Display',
                                 ),
-                                const Spacer(),
-                                Text(
-                                  timeAgo,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark
-                                        ? Colors.grey[600]
-                                        : const Color(0xFF9CA3AF),
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: BoxDecoration(
-                                    color: theme.primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const SizedBox(height: 5),
+                            const Spacer(),
                             Text(
-                              title,
+                              timeAgo,
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
                                 color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF111827),
+                                    ? Colors.grey[600]
+                                    : const Color(0xFF9CA3AF),
                                 fontFamily: 'SF Pro Display',
                               ),
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              message,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : const Color(0xFF6B7280),
-                                fontFamily: 'SF Pro Display',
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: theme.primaryColor,
+                                shape: BoxShape.circle,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 5),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF111827),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          message,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: isDark
+                                ? Colors.grey[400]
+                                : const Color(0xFF6B7280),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
-                ),
-                // ✅ CROSS ICON (Right Side - Always Visible)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () async {
-                        // Mark as read and remove
-                        try {
-                          await FirestoreService().markNotificationRead(
-                            notificationId,
-                          );
-                          setState(() {
-                            _notifications.removeWhere(
-                              (n) => n['id'] == notificationId,
-                            );
-                          });
-                        } catch (_) {}
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.grey[800]
-                              : Colors.grey[200],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          size: 14,
-                          color: isDark
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        );
-      },
+          // ✅ CROSS ICON (Right Side - Always Visible)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () async {
+                  if (notificationId.isNotEmpty) {
+                    await FirestoreService().markNotificationRead(notificationId);
+                  }
+                  setState(() {
+                    _notifications.removeWhere((n) => n['id'] == notificationId);
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.grey[800]
+                        : Colors.grey[200],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    size: 14,
+                    color: isDark
+                        ? Colors.grey[400]
+                        : Colors.grey[600],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

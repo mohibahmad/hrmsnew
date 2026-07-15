@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/cupertino.dart' hide GestureDetector;
- import '../services/auth_service.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
@@ -83,7 +83,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-
   void _resetFormFields() {
     if (_selectedWorker != null &&
         _selectedWorker!['action'] != null &&
@@ -115,18 +114,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         _workers = DummyData.workers;
         _timeoffRecords = DummyData.timeoff;
         if (widget.initialWorker != null) {
-          final targetEmail = (widget.initialWorker!['email'] ?? '').toString().trim().toLowerCase();
+          final targetEmail = (widget.initialWorker!['email'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
           _selectedWorker = _workers.firstWhere(
-            (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
+            (w) =>
+                (w['email'] ?? '').toString().trim().toLowerCase() ==
+                targetEmail,
             orElse: () => widget.initialWorker!,
           );
         } else if (_workers.isNotEmpty) {
           if (_selectedWorker == null) {
             _selectedWorker = _workers.first;
           } else {
-            final targetEmail = (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
+            final targetEmail = (_selectedWorker!['email'] ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
             _selectedWorker = _workers.firstWhere(
-              (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
+              (w) =>
+                  (w['email'] ?? '').toString().trim().toLowerCase() ==
+                  targetEmail,
               orElse: () => _workers.first,
             );
           }
@@ -143,18 +152,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
               if (widget.initialWorker != null) {
-                final targetEmail = (widget.initialWorker!['email'] ?? '').toString().trim().toLowerCase();
+                final targetEmail = (widget.initialWorker!['email'] ?? '')
+                    .toString()
+                    .trim()
+                    .toLowerCase();
                 _selectedWorker = _workers.firstWhere(
-                  (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
+                  (w) =>
+                      (w['email'] ?? '').toString().trim().toLowerCase() ==
+                      targetEmail,
                   orElse: () => widget.initialWorker!,
                 );
               } else if (_workers.isNotEmpty) {
                 if (_selectedWorker == null) {
                   _selectedWorker = _workers.first;
                 } else {
-                  final targetEmail = (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase();
+                  final targetEmail = (_selectedWorker!['email'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase();
                   _selectedWorker = _workers.firstWhere(
-                    (w) => (w['email'] ?? '').toString().trim().toLowerCase() == targetEmail,
+                    (w) =>
+                        (w['email'] ?? '').toString().trim().toLowerCase() ==
+                        targetEmail,
                     orElse: () => _workers.first,
                   );
                 }
@@ -200,8 +219,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final year = date.year.toString();
     return '$day/$month/$year';
   }
-
-
 
   int get _requestedDays {
     if (!_hasStartSelection || !_hasEndSelection) return 0;
@@ -264,9 +281,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (raw.isEmpty) {
       // common aliases
       final aliases = switch (_timeOffType) {
-        'Annual Leave' => const ['annual_leave', 'annualLeave', 'annual_leave_days', 'annualLeaves'],
-        'Sick Leave' => const ['sick_leave', 'sickLeave', 'sick_leave_days', 'sickLeaves'],
-        'Casual Leave' => const ['casual_leave', 'casualLeave', 'casual_leave_days', 'casualLeaves'],
+        'Annual Leave' => const [
+          'annual_leave',
+          'annualLeave',
+          'annual_leave_days',
+          'annualLeaves',
+        ],
+        'Sick Leave' => const [
+          'sick_leave',
+          'sickLeave',
+          'sick_leave_days',
+          'sickLeaves',
+        ],
+        'Casual Leave' => const [
+          'casual_leave',
+          'casualLeave',
+          'casual_leave_days',
+          'casualLeaves',
+        ],
         _ => const [],
       };
 
@@ -610,7 +642,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               children: [
                 InkWell(
                   onTap: () {
-                    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+                    final currentMonth = DateTime(
+                      DateTime.now().year,
+                      DateTime.now().month,
+                      1,
+                    );
                     if (isStartCalendar) {
                       final newMonth = DateTime(
                         _calendarMonth.year,
@@ -768,11 +804,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           final startStart = _dateOnly(_startDate);
           final endStart = _dateOnly(_endDate);
 
-
-          final bool isStartDateCell =
-              cellDate.isAtSameMomentAs(startStart);
-          final bool isEndDateCell =
-              cellDate.isAtSameMomentAs(endStart);
+          final bool isStartDateCell = cellDate.isAtSameMomentAs(startStart);
+          final bool isEndDateCell = cellDate.isAtSameMomentAs(endStart);
 
           // Per calendar clamping:
           // - Start calendar: show start..end (inclusive)
@@ -780,20 +813,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           // This ensures one side doesn't show the other endpoint.
           bool isSelected =
               ((isStartCalendar && _hasStartSelection && isStartDateCell) ||
-                  (!isStartCalendar && _hasEndSelection && isEndDateCell));
+              (!isStartCalendar && _hasEndSelection && isEndDateCell));
 
           // inRange: start..end inclusive highlight range.
           // Only show range when end date is selected.
           bool inRange = false;
-          if (_hasStartSelection && _hasEndSelection && !endStart.isBefore(startStart)) {
-            inRange = (cellDate.isAfter(startStart) || cellDate.isAtSameMomentAs(startStart)) &&
-                (cellDate.isBefore(endStart) || cellDate.isAtSameMomentAs(endStart));
+          if (_hasStartSelection &&
+              _hasEndSelection &&
+              !endStart.isBefore(startStart)) {
+            inRange =
+                (cellDate.isAfter(startStart) ||
+                    cellDate.isAtSameMomentAs(startStart)) &&
+                (cellDate.isBefore(endStart) ||
+                    cellDate.isAtSameMomentAs(endStart));
           }
-
-
-
-
-
 
           rowChildren.add(
             _buildDayCell(
@@ -1133,19 +1166,23 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         if (isGuest) {
           // Update dummy data
           final workerIdx = DummyData.workers.indexWhere(
-            (w) => w['email'] == _selectedWorker!['email']
+            (w) => w['email'] == _selectedWorker!['email'],
           );
           if (workerIdx != -1) {
-            DummyData.workers[workerIdx]['annualLeaves'] = remainingLeaves.toString();
+            DummyData.workers[workerIdx]['annualLeaves'] = remainingLeaves
+                .toString();
             DummyData.workers[workerIdx]['leavesUsed'] =
-              (_alreadyUsedDays + _requestedDays).toString();
+                (_alreadyUsedDays + _requestedDays).toString();
             await DummyData.saveToPrefs();
           }
         } else {
           // Use updateWorkerLeaves to avoid validateWorker requiring name/email
           final workerId = (_selectedWorker!['id'] ?? '').toString();
           if (workerId.isNotEmpty) {
-            await FirestoreService().updateWorkerLeaves(workerId, payrollUpdate);
+            await FirestoreService().updateWorkerLeaves(
+              workerId,
+              payrollUpdate,
+            );
           }
         }
       }

@@ -452,6 +452,7 @@
   "leaves_label": "Отпуска",
   "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Сверхурочные Дни",
+  "overtime_amount": "Сумма Сверхурочных",
   "payroll_data_preview": "Предпросмотр Данных Зарплаты",
   "holiday_list": "Список Праздников",
   "no_holidays_found": "Праздники не найдены",

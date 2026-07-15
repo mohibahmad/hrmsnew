@@ -66,7 +66,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         doc['totalWorkDays'] = '0';
         doc['absents'] = '0';
         doc['leaves'] = '0';
-        doc['overtimeDays'] = '0';
+        doc['overtimeAmount'] = '0';
         doc['salary'] = doc['salary'] ?? '\$ 0';
         doc['netSalary'] = '\$ 0';
       }
@@ -687,7 +687,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String totalWorkDays = (data['totalWorkDays'] ?? '').toString();
     final String absents = (data['absents'] ?? '').toString();
     final String leaves = (data['leaves'] ?? '').toString();
-    final String overtimeDays = (data['overtimeDays'] ?? '').toString();
+    final String overtimeAmount = (data['overtimeAmount'] ?? '').toString();
     final String salary = AmountText.formatCompact((data['salary'] ?? '').toString());
     String salaryAfterDeductionStr =
         (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
@@ -696,7 +696,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
         salary: (data['salary'] ?? '').toString(),
         totalWorkDays: totalWorkDays,
         absents: absents,
-        overtimeDays: overtimeDays,
+        overtimeAmount: overtimeAmount,
+        salaryType: (data['salaryType'] ?? 'Monthly').toString(),
       );
     }
     salaryAfterDeductionStr = AmountText.formatCompact(salaryAfterDeductionStr);
@@ -971,8 +972,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildOvertimeDaysIcon(),
-                                  title: 'overtime_days'.tr(),
-                                  value: overtimeDays,
+                                  title: 'overtime_amount'.tr(),
+                                  value: overtimeAmount,
                                 ),
                               ),
                             ],

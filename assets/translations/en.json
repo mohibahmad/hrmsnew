@@ -460,6 +460,7 @@
   "leaves_label": "Leaves",
   "absents_leaves_auto_note": "Auto-calculated from this month's attendance",
   "overtime_days": "Overtime Days",
+  "overtime_amount": "Overtime Amount",
   "payroll_data_preview": "PayRoll Data Preview",
   "holiday_list": "Holiday List",
   "no_holidays_found": "No Holidays Found",

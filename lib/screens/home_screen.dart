@@ -447,7 +447,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 totalWorkDays: (data?['totalWorkDays'] ?? '').toString(),
                 absents: (data?['absents'] ?? '').toString(),
                 leaves: (data?['leaves'] ?? '').toString(),
-                overtimeDays: (data?['overtimeDays'] ?? '').toString(),
+                overtimeAmount: (data?['overtimeAmount'] ?? '').toString(),
+                salaryType: (data?['salaryType'] ?? 'Monthly').toString(),
               );
               return {
                 'id': doc.id,
@@ -576,7 +577,8 @@ class _HomeScreenState extends State<HomeScreen> {
             totalWorkDays: (item['totalWorkDays'] ?? '').toString(),
             absents: (item['absents'] ?? '').toString(),
             leaves: (item['leaves'] ?? '').toString(),
-            overtimeDays: (item['overtimeDays'] ?? '').toString(),
+            overtimeAmount: (item['overtimeAmount'] ?? '').toString(),
+            salaryType: (item['salaryType'] ?? 'Monthly').toString(),
           );
           return sum + (result['netSalary'] as double);
         }) *

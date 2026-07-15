@@ -14,7 +14,7 @@ class InvoiceService {
     required String daysWorked,
     required String absents,
     required String leaves,
-    required String overtimeDays,
+    required String overtimeAmount,
     required String salary,
     required String dailyRate,
     required String grossPay,
@@ -39,7 +39,7 @@ class InvoiceService {
         build: (context) => [
           _buildHeader(primaryColor, accentColor, greyColor, payPeriod),
           pw.SizedBox(height: 24),
-          _buildEmployeeSection(primaryColor, lightBg, borderColor, employeeName, email, position, totalWorkDays, daysWorked, absents, leaves, overtimeDays),
+          _buildEmployeeSection(primaryColor, lightBg, borderColor, employeeName, email, position, totalWorkDays, daysWorked, absents, leaves, overtimeAmount),
           pw.SizedBox(height: 24),
           _buildSalarySection(primaryColor, lightBg, borderColor, dailyRate, grossPay, overtimePay, absentDeduction, leaveDeduction, totalDeductions),
           pw.SizedBox(height: 20),
@@ -110,7 +110,7 @@ class InvoiceService {
     );
   }
 
-  static pw.Widget _buildEmployeeSection(PdfColor primaryColor, PdfColor lightBg, PdfColor borderColor, String name, String email, String position, String totalWorkDays, String daysWorked, String absents, String leaves, String overtimeDays) {
+  static pw.Widget _buildEmployeeSection(PdfColor primaryColor, PdfColor lightBg, PdfColor borderColor, String name, String email, String position, String totalWorkDays, String daysWorked, String absents, String leaves, String overtimeAmount) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(20),
       decoration: pw.BoxDecoration(
@@ -155,7 +155,7 @@ class InvoiceService {
                     _infoRow('Days Worked', daysWorked),
                     _infoRow('Absents', absents),
                     _infoRow('Leaves', leaves),
-                    _infoRow('Overtime Days', overtimeDays),
+                    _infoRow('Overtime Amount', overtimeAmount),
                   ],
                 ),
               ),

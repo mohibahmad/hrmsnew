@@ -33,7 +33,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
   final _leavesCtrl = TextEditingController();
-  final _overtimeCtrl = TextEditingController();
+  final _overtimeAmountCtrl = TextEditingController();
   final _salaryCtrl = TextEditingController();
   final _absentDeductionCtrl = TextEditingController();
   final _leaveDeductionCtrl = TextEditingController();
@@ -67,9 +67,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           daysWorked: _workDaysCtrl.text,
           absents: _absentsCtrl.text,
           leaves: _leavesCtrl.text,
-          overtimeDays: _overtimeCtrl.text,
+          overtimeAmount: _overtimeAmountCtrl.text,
           absentDeductionPerDay: _absentDeductionCtrl.text,
           leaveDeductionPerDay: _leaveDeductionCtrl.text,
+          salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
         );
         _calculatedNet = _calcResult['formattedNet'] as String;
         _netCtrl.text = _calculatedNet;
@@ -110,7 +111,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
-      _overtimeCtrl.text = (widget.workerData['overtimeDays'] ?? '').toString();
+      _overtimeAmountCtrl.text = (widget.workerData['overtimeAmount'] ?? '').toString();
       _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '')
           .toString();
       _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '')
@@ -119,6 +120,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
     if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
     if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
+    
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _fetchMonthlyAttendance(),
     );
@@ -143,7 +145,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     _workDaysCtrl.dispose();
     _absentsCtrl.dispose();
     _leavesCtrl.dispose();
-    _overtimeCtrl.dispose();
+    _overtimeAmountCtrl.dispose();
     _salaryCtrl.dispose();
     _absentDeductionCtrl.dispose();
     _leaveDeductionCtrl.dispose();
@@ -159,7 +161,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       (_workDaysCtrl.text.trim(), 'Please enter Total Work Days'),
       (_absentsCtrl.text.trim(), 'Please enter Absents'),
       (_leavesCtrl.text.trim(), 'Please enter Leaves'),
-      (_overtimeCtrl.text.trim(), 'Please enter Overtime Days'),
       (_salaryStr.trim(), 'Please enter Salary'),
     ];
     for (final entry in validators) {
@@ -195,7 +196,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'totalWorkDays': _workDaysCtrl.text.trim(),
       'absents': _absentsCtrl.text.trim(),
       'leaves': _leavesCtrl.text.trim(),
-      'overtimeDays': _overtimeCtrl.text.trim(),
+      'overtimeAmount': _overtimeAmountCtrl.text.trim(),
       'absentDeduction': _absentDeductionCtrl.text.trim(),
       'leaveDeduction': _leaveDeductionCtrl.text.trim(),
       'salary': _salaryStr,
@@ -290,7 +291,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       daysWorked: _workDaysCtrl.text.trim(),
       absents: _absentsCtrl.text.trim(),
       leaves: _leavesCtrl.text.trim(),
-      overtimeDays: _overtimeCtrl.text.trim(),
+      overtimeAmount: _overtimeAmountCtrl.text.trim(),
       salary: _salaryStr,
       dailyRate: cr['formattedDailyRate'] as String? ?? '',
       grossPay: cr['formattedGross'] as String? ?? '',
@@ -781,7 +782,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _buildInput('overtime_days'.tr(), '2', _overtimeCtrl),
+                child: _buildInput(
+                  'overtime_amount'.tr(),
+                  '0',
+                  _overtimeAmountCtrl,
+                  isCurrency: true,
+                ),
               ),
               const SizedBox(width: 24),
               Expanded(
@@ -956,7 +962,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'salary_after_deduction'.tr(),
+          'net_pay'.tr(),
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -1017,7 +1023,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           _breakdownRow(
             'overtime_pay'.tr(),
             (cr['formattedOvertime'] ?? '').toString(),
-            '${cr['overtimeDays'] ?? 0} ${'days_overtime_multiplier'.tr()}',
+            null,
           ),
           _breakdownRow(
             'absent_deduction'.tr(),
@@ -1031,7 +1037,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(
-            'net_pay'.tr(),
+          'salary_after_deduction'.tr(),
             (cr['formattedNet'] ?? '').toString(),
             null,
             isTotal: true,
