@@ -134,11 +134,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                           Expanded(
                             child: Container(
                               height: 48,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFFFFF),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFFEEEEEE)),
+                                border: Border.all(
+                                  color: const Color(0xFFEEEEEE),
+                                ),
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -212,110 +216,114 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFEEEEEE)),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF000000).withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Image(
-                    image: getProfileImage(
-                      worker['profileImage']?.toString(),
-                      email,
-                      _index++,
-                    ),
-                    fit: BoxFit.cover,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            ClipOval(
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Image(
+                  image: getProfileImage(
+                    worker['profileImage']?.toString(),
+                    email,
+                    _index++,
                   ),
+                  fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                      color: Color(0xFF000000),
+                    ),
+                  ),
+                  if (position.isNotEmpty) ...[
+                    const SizedBox(height: 4),
                     Text(
-                      name,
+                      position,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[500],
                         fontFamily: 'SF Pro Display',
-                        color: Color(0xFF000000),
                       ),
                     ),
-                    if (position.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        position,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[500],
-                          fontFamily: 'SF Pro Display',
-                        ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: () => _openDocumentDialog(worker),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0247C4).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SvgPicture.asset(
+                      'assets/edit_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF0247C4),
+                        BlendMode.srcIn,
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Edit Documents',
+                      style: const TextStyle(
+                        color: Color(0xFF0247C4),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () => _openDocumentDialog(worker),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFF0247C4).withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SvgPicture.asset(
-                        'assets/edit_icon.svg',
-                        width: 16,
-                        height: 16,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFF0247C4),
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Edit Documents',
-                        style: const TextStyle(
-                          color: Color(0xFF0247C4),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
+
   void _openDocumentDialog(Map<String, dynamic> worker) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -368,7 +376,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   Future<void> _pickFile(String field) async {
     final result = await FilePicker.pickFiles(
       type: field == 'cv' ? FileType.custom : FileType.image,
-      allowedExtensions: field == 'cv' ? ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'] : null,
+      allowedExtensions: field == 'cv'
+          ? ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg']
+          : null,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
@@ -421,9 +431,14 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       if (bytes != null) {
         if (isGuest) {
           final isImage = field != 'cv';
-          url = 'data:${isImage ? 'image/jpeg' : 'application/pdf'};base64,${base64Encode(bytes)}';
+          url =
+              'data:${isImage ? 'image/jpeg' : 'application/pdf'};base64,${base64Encode(bytes)}';
         } else {
-          final folder = field == 'frontId' ? 'front_ids' : field == 'backId' ? 'back_ids' : 'cvs';
+          final folder = field == 'frontId'
+              ? 'front_ids'
+              : field == 'backId'
+              ? 'back_ids'
+              : 'cvs';
           final results = await UploadService.uploadFiles(
             files: [
               UploadFile(
@@ -447,13 +462,22 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         if (mounted) {
           FlashySnackBar.show(
             context,
-            message: '$_workerName ${field == 'frontId' ? "CNIC Front" : field == 'backId' ? "CNIC Back" : "CV"} updated',
+            message:
+                '$_workerName ${field == 'frontId'
+                    ? "CNIC Front"
+                    : field == 'backId'
+                    ? "CNIC Back"
+                    : "CV"} updated',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        FlashySnackBar.show(context, message: 'Upload failed: $e', isError: true);
+        FlashySnackBar.show(
+          context,
+          message: 'Upload failed: $e',
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -465,11 +489,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _FullScreenDocumentViewer(
-        url: url,
-        label: label,
-        isImage: isImage,
-      ),
+      builder: (ctx) =>
+          _FullScreenDocumentViewer(url: url, label: label, isImage: isImage),
     );
   }
 
@@ -612,7 +633,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _isCvUploaded || (_existingCv != null && _existingCv!.isNotEmpty)
+                      _isCvUploaded ||
+                              (_existingCv != null && _existingCv!.isNotEmpty)
                           ? _buildCvPreview()
                           : _buildCvUpload(),
                     ],
@@ -638,21 +660,25 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     String? existingUrl,
     VoidCallback? onTap,
   }) {
-    final bool hasFile = bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
-    final bool isPdf = (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
+    final bool hasFile =
+        bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
+    final bool isPdf =
+        (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
         (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 250,
+        height: 300,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: hasFile ? const Color(0xFF0B50C3).withValues(alpha: 0.5) : Colors.grey.shade200,
+            color: hasFile
+                ? const Color(0xFF0B50C3).withValues(alpha: 0.5)
+                : Colors.grey.shade200,
             width: hasFile ? 2 : 1,
           ),
         ),
@@ -666,7 +692,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.picture_as_pdf, color: Color(0xFFE53935), size: 48),
+                          const Icon(
+                            Icons.picture_as_pdf,
+                            color: Color(0xFFE53935),
+                            size: 48,
+                          ),
                           const SizedBox(height: 12),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -687,17 +717,21 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                     )
                   else if (bytes != null)
                     Image.memory(bytes, fit: BoxFit.cover)
-                  else if (existingUrl != null && existingUrl.startsWith('http'))
+                  else if (existingUrl != null &&
+                      existingUrl.startsWith('http'))
                     CachedNetworkImage(
                       imageUrl: existingUrl,
                       fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => _buildIdPlaceholder(label, hasFile),
+                      errorWidget: (context, url, error) =>
+                          _buildIdPlaceholder(label, hasFile),
                     )
-                  else if (existingUrl != null && existingUrl.startsWith('data:image'))
+                  else if (existingUrl != null &&
+                      existingUrl.startsWith('data:image'))
                     Image.memory(
                       base64Decode(existingUrl.split(',').last),
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildIdPlaceholder(label, hasFile),
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildIdPlaceholder(label, hasFile),
                     )
                   else
                     _buildIdPlaceholder(label, hasFile),
@@ -711,7 +745,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.greenAccent,
+                            size: 14,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -767,268 +805,299 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   }
 
   Widget _buildCvUpload() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth;
-        final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
-        final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
-        return Container(
-          height: containerHeight,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F3F6),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                top: 12,
-                bottom: 12,
-                left: sidePadding,
-                right: sidePadding,
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
-                  child: Container(
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(height: 16, width: 200, color: Colors.grey.shade300),
-                          const SizedBox(height: 8),
-                          Container(height: 10, width: 150, color: Colors.grey.shade300),
-                          const SizedBox(height: 40),
-                          ...List.generate(
-                            8,
-                            (index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Container(height: 12, width: double.infinity, color: Colors.grey.shade300),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+    return Container(
+      height: 596,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 12,
+            bottom: 12,
+            left: 24,
+            right: 24,
+            child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
                 ),
-              ),
-              GestureDetector(
-                onTap: () => _pickFile('cv'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF000000),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        'upload'.tr(),
-                        style: TextStyle(
-                          color: Color(0xFFFFFFFF),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                      Container(
+                        height: 16,
+                        width: 200,
+                        color: Colors.grey.shade300,
                       ),
-                      const SizedBox(width: 8),
-                      SvgPicture.asset(
-                        'assets/Upload_profile.svg',
-                        height: 18,
-                        width: 18,
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 10,
+                        width: 150,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 40),
+                      ...List.generate(
+                        8,
+                        (index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            height: 12,
+                            width: double.infinity,
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+          GestureDetector(
+            onTap: () => _pickFile('cv'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF000000),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'upload'.tr(),
+                    style: TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SvgPicture.asset(
+                    'assets/Upload_profile.svg',
+                    height: 18,
+                    width: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCvPreview() {
     final cvUrl = _existingCv;
     final isPdf = cvUrl != null && cvUrl.toLowerCase().endsWith('.pdf');
-    final isImage = cvUrl != null && (cvUrl.toLowerCase().endsWith('.png') || cvUrl.toLowerCase().endsWith('.jpg') || cvUrl.toLowerCase().endsWith('.jpeg'));
+    final isImage =
+        cvUrl != null &&
+        (cvUrl.toLowerCase().endsWith('.png') ||
+            cvUrl.toLowerCase().endsWith('.jpg') ||
+            cvUrl.toLowerCase().endsWith('.jpeg'));
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth;
-        final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
-        final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
-        return Container(
-          height: containerHeight,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F3F6),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                top: 8,
-                bottom: 8,
-                left: sidePadding,
-                right: sidePadding,
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+    return Container(
+      height: 700,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 8,
+            bottom: 8,
+            left: 50,
+            right: 50,
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
                   ),
-                  child: isImage
-                      ? (_cvBytes != null
-                          ? Image.memory(_cvBytes!, fit: BoxFit.cover)
-                          : (cvUrl != null && cvUrl.isNotEmpty
+                ],
+              ),
+              child: isImage
+                  ? (_cvBytes != null
+                        ? Image.memory(_cvBytes!, fit: BoxFit.cover)
+                        : (cvUrl != null && cvUrl.isNotEmpty
                               ? CachedNetworkImage(
                                   imageUrl: cvUrl,
                                   fit: BoxFit.cover,
-                                  errorWidget: (context, url, error) => const Center(child: Icon(Icons.broken_image, size: 48)),
+                                  errorWidget: (context, url, error) =>
+                                      const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          size: 48,
+                                        ),
+                                      ),
                                 )
                               : const SizedBox.shrink()))
-                      : isPdf
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.picture_as_pdf, color: Color(0xFFE53935), size: 48),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    _cvName ?? 'CV/Resume',
-                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontFamily: 'SF Pro Display'),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.description, size: 48, color: Color(0xFF0247C4)),
-                                  const SizedBox(height: 12),
-                                  Text('CV/Resume', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontFamily: 'SF Pro Display')),
-                                ],
-                              ),
+                  : isPdf
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.picture_as_pdf,
+                            color: Color(0xFFE53935),
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _cvName ?? 'CV/Resume',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                              fontFamily: 'SF Pro Display',
                             ),
-                ),
-              ),
-              // Centered Edit/Delete buttons
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () => _pickFile('cv'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF000000),
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.description,
+                            size: 48,
+                            color: Color(0xFF0247C4),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'CV/Resume',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                              fontFamily: 'SF Pro Display',
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'edit'.tr(),
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SvgPicture.asset(
-                              'assets/edit_icon.svg',
-                              height: 18,
-                              width: 18,
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _cvBytes = null;
-                          _cvName = null;
-                          _isCvUploaded = false;
-                        });
-                        // Update worker data
-                        if (_workerId.isNotEmpty) {
-                          FirestoreService().updateWorker(_workerId, {'cv': ''});
-                          widget.worker['cv'] = '';
-                          widget.onDocumentsUpdated();
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF000000),
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'delete'.tr(),
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SvgPicture.asset(
-                              'assets/delete_icon.svg',
-                              height: 18,
-                              width: 18,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => _pickFile('cv'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'edit'.tr(),
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SvgPicture.asset(
+                          'assets/edit_icon.svg',
+                          height: 18,
+                          width: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _cvBytes = null;
+                      _cvName = null;
+                      _isCvUploaded = false;
+                    });
+                    if (_workerId.isNotEmpty) {
+                      FirestoreService().updateWorker(_workerId, {'cv': ''});
+                      widget.worker['cv'] = '';
+                      widget.onDocumentsUpdated();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'delete'.tr(),
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SvgPicture.asset(
+                          'assets/delete_icon.svg',
+                          height: 18,
+                          width: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1045,7 +1114,8 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   });
 
   @override
-  State<_FullScreenDocumentViewer> createState() => _FullScreenDocumentViewerState();
+  State<_FullScreenDocumentViewer> createState() =>
+      _FullScreenDocumentViewerState();
 }
 
 class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
@@ -1060,7 +1130,10 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _scaleAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOutBack);
+    _scaleAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutBack,
+    );
     _animController.forward();
   }
 
@@ -1094,7 +1167,10 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -1120,7 +1196,11 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                         color: const Color(0xFFFFFFFF).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, color: Color(0xFFFFFFFF), size: 20),
+                      child: const Icon(
+                        Icons.close,
+                        color: Color(0xFFFFFFFF),
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
@@ -1142,14 +1222,25 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                                 imageUrl: widget.url,
                                 fit: BoxFit.contain,
                                 placeholder: (c, u) => const Center(
-                                  child: CircularProgressIndicator(color: Color(0xFFFFFFFF)),
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFFFFFFFF),
+                                  ),
                                 ),
                                 errorWidget: (c, u, e) => const Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.broken_image, size: 48, color: Color(0xFFFFFFFF)),
+                                    Icon(
+                                      Icons.broken_image,
+                                      size: 48,
+                                      color: Color(0xFFFFFFFF),
+                                    ),
                                     SizedBox(height: 12),
-                                    Text('Failed to load', style: TextStyle(color: Color(0xFFFFFFFF))),
+                                    Text(
+                                      'Failed to load',
+                                      style: TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1159,7 +1250,11 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.picture_as_pdf, size: 72, color: Color(0xFFEF4444)),
+                          const Icon(
+                            Icons.picture_as_pdf,
+                            size: 72,
+                            color: Color(0xFFEF4444),
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             widget.url.split('/').last,
@@ -1175,7 +1270,10 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF0247C4),
                                 borderRadius: BorderRadius.circular(10),

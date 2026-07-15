@@ -152,23 +152,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, false),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 48,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'cancel'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF000000),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context, false),
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  height: 48,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'cancel'.tr(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF000000),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
                               ),
@@ -176,32 +179,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context, true),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                height: 48,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444),
-                                  borderRadius: BorderRadius.circular(6),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context, true),
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  height: 48,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEF4444),
+                                    borderRadius: BorderRadius.circular(6),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFFEF4444,
+                                        ).withValues(alpha: 0.2),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    'delete_account'.tr(),
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'SF Pro Display',
                                     ),
-                                  ],
-                                ),
-                                child: Text(
-                                  'delete_account'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ),
@@ -474,9 +480,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            child: const UserAvatar(),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: widget.onProfileTap,
+              child: const UserAvatar(),
+            ),
           ),
         ],
       ),
@@ -525,28 +534,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: disabled ? null : onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: disabled
-                    ? const Color(0xFFE0E0E0)
-                    : buttonColor ?? const Color(0xFFF1F3F5),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                buttonText,
-                style: TextStyle(
-                  fontSize: 16,
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: disabled ? null : onTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
                   color: disabled
-                      ? const Color(0xFFAAAAAA)
-                      : buttonColor != null ? Colors.white : const Color(0xFF000000),
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                  height: 1.0,
-                  letterSpacing: 0,
+                      ? const Color(0xFFE0E0E0)
+                      : buttonColor ?? const Color(0xFFF1F3F5),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  buttonText,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: disabled
+                        ? const Color(0xFFAAAAAA)
+                        : buttonColor != null ? Colors.white : const Color(0xFF000000),
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                    height: 1.0,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
             ),
@@ -557,57 +569,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLanguageItem() {
-    return GestureDetector(
-      onTap: () => _showLanguageModal(context),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          children: [
-            SvgPicture.asset(
-              'assets/lanuguage.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showLanguageModal(context),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              SvgPicture.asset(
+                'assets/lanuguage.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF000000),
+                  BlendMode.srcIn,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              'language'.tr(),
-              style: const TextStyle(
-                fontSize: 16,
+              const SizedBox(width: 16),
+              Text(
+                'language'.tr(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF000000),
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                  height: 1.0,
+                  letterSpacing: 0,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _getCurrentLanguageName(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF000000),
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                  height: 1.0,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_drop_down,
                 color: Color(0xFF000000),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-                height: 1.0,
-                letterSpacing: 0,
+                size: 28,
               ),
-            ),
-            const Spacer(),
-            Text(
-              _getCurrentLanguageName(),
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF000000),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-                height: 1.0,
-                letterSpacing: 0,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.arrow_drop_down,
-              color: Color(0xFF000000),
-              size: 28,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -618,40 +633,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String text, {
     VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          children: [
-            SvgPicture.asset(
-              iconPath,
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF000000),
-                BlendMode.srcIn,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              SvgPicture.asset(
+                iconPath,
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF000000),
+                  BlendMode.srcIn,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF000000),
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
-                height: 1.0,
-                letterSpacing: 0,
+              const SizedBox(width: 16),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF000000),
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                  height: 1.0,
+                  letterSpacing: 0,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

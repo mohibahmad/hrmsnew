@@ -59,6 +59,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
+  static const _defaultFilters = ['All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
   StreamSubscription? _timeoffSub;
   StreamSubscription? _workersSub;
 
@@ -197,27 +198,66 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final pos = position.toLowerCase();
     final f = filter.toLowerCase();
     if (f == 'designer') {
-      return pos.contains('designer') &&
-          !pos.contains('engineer') &&
-          !pos.contains('developer');
+      return pos.contains('designer') ||
+          pos.contains('design lead') ||
+          pos.contains('creative director') ||
+          pos.contains('ui') ||
+          pos.contains('ux') ||
+          pos.contains('graphic') ||
+          pos.contains('visual');
     } else if (f == 'developer') {
-      return (pos.contains('developer') || pos.contains('development')) &&
-          !pos.contains('designer');
+      return pos.contains('developer') ||
+          pos.contains('programmer') ||
+          pos.contains('coder') ||
+          pos.contains('software') ||
+          pos.contains('frontend') ||
+          pos.contains('backend') ||
+          pos.contains('full stack') ||
+          pos.contains('fullstack');
     } else if (f == 'engineering') {
-      return (pos.contains('engineer') ||
-              pos.contains('architect') ||
-              pos.contains('analyst') ||
-              pos.contains('scientist')) &&
-          !pos.contains('designer') &&
-          !pos.contains('developer');
+      return pos.contains('engineer') ||
+          pos.contains('architect') ||
+          pos.contains('devops') ||
+          pos.contains('cloud') ||
+          pos.contains('data') ||
+          pos.contains('scientist') ||
+          pos.contains('machine learning') ||
+          pos.contains('ml') ||
+          pos.contains('qa') ||
+          pos.contains('tester') ||
+          pos.contains('it support') ||
+          pos.contains('network') ||
+          pos.contains('database') ||
+          pos.contains('dba') ||
+          pos.contains('cyber') ||
+          pos.contains('security') ||
+          pos.contains('cto') ||
+          pos.contains('chief technology');
     } else if (f == 'sales') {
-      return pos.contains('sales') || pos.contains('marketing');
+      return pos.contains('sales') ||
+          pos.contains('marketing') ||
+          pos.contains('seo') ||
+          pos.contains('content') ||
+          pos.contains('social media') ||
+          pos.contains('brand') ||
+          pos.contains('business development') ||
+          pos.contains('account executive') ||
+          pos.contains('customer success');
     } else if (f == 'management') {
       return pos.contains('manager') ||
-          pos.contains('writer') ||
-          pos.contains('hr');
+          pos.contains('director') ||
+          pos.contains('head') ||
+          pos.contains('lead') ||
+          pos.contains('chief') ||
+          pos.contains('cpo') ||
+          pos.contains('product') ||
+          pos.contains('project') ||
+          pos.contains('program') ||
+          pos.contains('scrum') ||
+          pos.contains('agile') ||
+          pos.contains('business analyst');
     }
-    return false;
+    return pos.contains(f) || f.contains(pos);
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
@@ -498,15 +538,33 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
+  List<String> get _extraPositions {
+    final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
+    final extras = <String>{};
+    for (final doc in _workersList) {
+      final pos = (doc['position'] ?? '').toString().trim();
+      if (pos.isNotEmpty && !existing.contains(pos.toLowerCase())) {
+        extras.add(pos);
+      }
+    }
+    final sorted = extras.toList()..sort();
+    return sorted;
+  }
+
   Widget _buildFilterTabs() {
     return Container(
-      padding: const EdgeInsets.all(6),
+      width: 550,
+      height: 50,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _buildTabItem('All', 'all_filter'.tr()),
           _buildTabItem('Designer', 'designer'.tr()),
@@ -514,7 +572,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           _buildTabItem('Engineering', 'engineering'.tr()),
           _buildTabItem('Sales', 'sales'.tr()),
           _buildTabItem('Management', 'management'.tr()),
+          ..._extraPositions.map((pos) => _buildTabItem(pos, pos)),
         ],
+      ),
       ),
     );
   }

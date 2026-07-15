@@ -65,7 +65,9 @@ class TopHeader extends StatelessWidget {
           ),
           Row(
             children: [
-              GestureDetector(
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
                 onTap: onNotificationTap,
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -104,6 +106,7 @@ class TopHeader extends StatelessWidget {
                       ),
                   ],
                 ),
+              ),
               ),
               const SizedBox(width: 20),
               GestureDetector(onTap: onProfileTap, child: const UserAvatar()),

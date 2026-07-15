@@ -415,7 +415,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     return GestureDetector(
       onTap: () {
         if (notificationId.isNotEmpty) {
-          FirestoreService().markNotificationRead(notificationId);
+          FirestoreService().deleteNotification(notificationId);
           setState(() {
             _notifications.removeWhere((n) => n['id'] == notificationId);
           });
@@ -565,7 +565,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     GestureDetector(
                       onTap: () async {
                         if (notificationId.isNotEmpty) {
-                          await FirestoreService().markNotificationRead(notificationId);
+                          await FirestoreService().deleteNotification(notificationId);
                           setState(() {
                             _notifications.removeWhere((n) => n['id'] == notificationId);
                           });
@@ -620,7 +620,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           GestureDetector(
             onTap: () {
               if (notificationId.isNotEmpty) {
-                FirestoreService().markNotificationRead(notificationId);
+                FirestoreService().deleteNotification(notificationId);
                 setState(() {
                   _notifications.removeWhere((n) => n['id'] == notificationId);
                 });
@@ -756,15 +756,15 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             right: 8,
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () async {
-                  if (notificationId.isNotEmpty) {
-                    await FirestoreService().markNotificationRead(notificationId);
-                  }
-                  setState(() {
-                    _notifications.removeWhere((n) => n['id'] == notificationId);
-                  });
-                },
+                      child: GestureDetector(
+                        onTap: () async {
+                          if (notificationId.isNotEmpty) {
+                            await FirestoreService().deleteNotification(notificationId);
+                            setState(() {
+                              _notifications.removeWhere((n) => n['id'] == notificationId);
+                            });
+                          }
+                        },
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(

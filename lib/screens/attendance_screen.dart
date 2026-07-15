@@ -357,9 +357,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           // Notification Bell
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            child: const UserAvatar(),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: widget.onProfileTap,
+              child: const UserAvatar(),
+            ),
           ),
         ],
       ),
@@ -413,20 +416,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
                 if (_searchQuery.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                        _currentPage = 1;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Icon(
-                        Icons.close,
-                        size: 18,
-                        color: Colors.grey[400],
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                          _currentPage = 1;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.grey[400],
+                        ),
                       ),
                     ),
                   ),
@@ -602,31 +608,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildTab(String filterKey, String displayLabel) {
     final bool isActive = _selectedTab == filterKey;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTab = filterKey;
-          _currentPage = 1;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 8 : 14,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: isActive ? primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          displayLabel,
-          style: TextStyle(
-            color: isActive ? Color(0xFFFFFFFF) : textDark,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
-            fontFamily: 'SF Pro Display',
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTab = filterKey;
+            _currentPage = 1;
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isActive ? 8 : 14,
+            vertical: 8,
           ),
-          overflow: TextOverflow.ellipsis,
+          decoration: BoxDecoration(
+            color: isActive ? primaryBlue : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            displayLabel,
+            style: TextStyle(
+              color: isActive ? Color(0xFFFFFFFF) : textDark,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14,
+              fontFamily: 'SF Pro Display',
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ),
     );
@@ -914,12 +923,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ),
                       SizedBox(
                         width: 48,
-                        child: GestureDetector(
-                          onTap: () => _showAttendancePreview(context, doc),
-                          child: const Icon(
-                            Icons.visibility,
-                            color: Colors.black,
-                            size: 24,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () => _showAttendancePreview(context, doc),
+                            child: const Icon(
+                              Icons.visibility,
+                              color: Colors.black,
+                              size: 24,
+                            ),
                           ),
                         ),
                       ),
@@ -935,16 +947,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                GestureDetector(
-                  onTap: _currentPage > 1
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: _currentPage > 1
-                        ? Colors.black
-                        : Colors.grey.shade400,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _currentPage > 1
+                        ? () => setState(() => _currentPage--)
+                        : null,
+                    behavior: HitTestBehavior.opaque,
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: _currentPage > 1
+                          ? Colors.black
+                          : Colors.grey.shade400,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -965,16 +980,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _currentPage < totalPages
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_right,
-                    color: _currentPage < totalPages
-                        ? Colors.black
-                        : Colors.grey.shade400,
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _currentPage < totalPages
+                        ? () => setState(() => _currentPage++)
+                        : null,
+                    behavior: HitTestBehavior.opaque,
+                    child: Icon(
+                      Icons.chevron_right,
+                      color: _currentPage < totalPages
+                          ? Colors.black
+                          : Colors.grey.shade400,
+                    ),
                   ),
                 ),
               ],
@@ -1219,11 +1237,8 @@ class _WorkerAttendancePreviewCardState
                     },
                     options: const [
                       'All',
-                      'Today',
-                      'Week',
-                      'Month',
+                      'Monthly',
                       '3 Month',
-                      '6 Month',
                       'Yearly',
                     ],
                   ),

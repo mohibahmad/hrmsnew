@@ -41,6 +41,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
+  static const _defaultFilters = ['All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
 
@@ -206,9 +207,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            child: const UserAvatar(),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: widget.onProfileTap,
+              child: const UserAvatar(),
+            ),
           ),
         ],
       ),
@@ -259,17 +263,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ),
           ),
           if (_searchQuery.isNotEmpty)
-            GestureDetector(
-              onTap: () {
-                _searchController.clear();
-                setState(() {
-                  _searchQuery = '';
-                  _currentPage = 1;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                    _currentPage = 1;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                ),
               ),
             ),
         ],
@@ -282,27 +289,66 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final pos = position.toLowerCase();
     final f = filter.toLowerCase();
     if (f == 'designer') {
-      return pos.contains('designer') &&
-          !pos.contains('engineer') &&
-          !pos.contains('developer');
+      return pos.contains('designer') ||
+          pos.contains('design lead') ||
+          pos.contains('creative director') ||
+          pos.contains('ui') ||
+          pos.contains('ux') ||
+          pos.contains('graphic') ||
+          pos.contains('visual');
     } else if (f == 'developer') {
-      return (pos.contains('developer') || pos.contains('development')) &&
-          !pos.contains('designer');
+      return pos.contains('developer') ||
+          pos.contains('programmer') ||
+          pos.contains('coder') ||
+          pos.contains('software') ||
+          pos.contains('frontend') ||
+          pos.contains('backend') ||
+          pos.contains('full stack') ||
+          pos.contains('fullstack');
     } else if (f == 'engineering') {
-      return (pos.contains('engineer') ||
-              pos.contains('architect') ||
-              pos.contains('analyst') ||
-              pos.contains('scientist')) &&
-          !pos.contains('designer') &&
-          !pos.contains('developer');
+      return pos.contains('engineer') ||
+          pos.contains('architect') ||
+          pos.contains('devops') ||
+          pos.contains('cloud') ||
+          pos.contains('data') ||
+          pos.contains('scientist') ||
+          pos.contains('machine learning') ||
+          pos.contains('ml') ||
+          pos.contains('qa') ||
+          pos.contains('tester') ||
+          pos.contains('it support') ||
+          pos.contains('network') ||
+          pos.contains('database') ||
+          pos.contains('dba') ||
+          pos.contains('cyber') ||
+          pos.contains('security') ||
+          pos.contains('cto') ||
+          pos.contains('chief technology');
     } else if (f == 'sales') {
-      return pos.contains('sales') || pos.contains('marketing');
+      return pos.contains('sales') ||
+          pos.contains('marketing') ||
+          pos.contains('seo') ||
+          pos.contains('content') ||
+          pos.contains('social media') ||
+          pos.contains('brand') ||
+          pos.contains('business development') ||
+          pos.contains('account executive') ||
+          pos.contains('customer success');
     } else if (f == 'management') {
       return pos.contains('manager') ||
-          pos.contains('writer') ||
-          pos.contains('hr');
+          pos.contains('director') ||
+          pos.contains('head') ||
+          pos.contains('lead') ||
+          pos.contains('chief') ||
+          pos.contains('cpo') ||
+          pos.contains('product') ||
+          pos.contains('project') ||
+          pos.contains('program') ||
+          pos.contains('scrum') ||
+          pos.contains('agile') ||
+          pos.contains('business analyst');
     }
-    return false;
+    return pos.contains(f) || f.contains(pos);
   }
 
   List<Map<String, dynamic>> get _filteredEmployees {
@@ -345,6 +391,19 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return (filtered.length / _itemsPerPage).ceil();
   }
 
+  List<String> get _extraPositions {
+    final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
+    final extras = <String>{};
+    for (final doc in _workersList) {
+      final pos = (doc['position'] ?? '').toString().trim();
+      if (pos.isNotEmpty && !existing.contains(pos.toLowerCase())) {
+        extras.add(pos);
+      }
+    }
+    final sorted = extras.toList()..sort();
+    return sorted;
+  }
+
   Widget _buildFilterTabs() {
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
@@ -353,23 +412,31 @@ class _PayrollScreenState extends State<PayrollScreen> {
       {'key': 'Engineering', 'label': 'engineering'.tr()},
       {'key': 'Sales', 'label': 'sales'.tr()},
       {'key': 'Management', 'label': 'management'.tr()},
+      ..._extraPositions.map((pos) => {'key': pos, 'label': pos}),
     ];
     return Container(
-      padding: const EdgeInsets.all(6),
+      width: 550,
+      height: 50,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: filters.map((filter) {
           final isSelected = _selectedFilter == filter['key'];
-          return GestureDetector(
-            onTap: () => setState(() {
-              _selectedFilter = filter['key']!;
-              _currentPage = 1;
-            }),
-            child: Container(
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _selectedFilter = filter['key']!;
+                _currentPage = 1;
+              }),
+              child: Container(
               margin: const EdgeInsets.only(right: 4),
               padding: EdgeInsets.symmetric(
                 horizontal: isSelected ? 12 : 16,
@@ -395,8 +462,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 maxLines: 1,
               ),
             ),
+          ),
           );
         }).toList(),
+      ),
       ),
     );
   }
@@ -1164,12 +1233,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        GestureDetector(
-          onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
-          behavior: HitTestBehavior.opaque,
-          child: Icon(
-            Icons.chevron_left,
-            color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+            behavior: HitTestBehavior.opaque,
+            child: Icon(
+              Icons.chevron_left,
+              color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -1190,14 +1262,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        GestureDetector(
-          onTap: _currentPage < total
-              ? () => setState(() => _currentPage++)
-              : null,
-          behavior: HitTestBehavior.opaque,
-          child: Icon(
-            Icons.chevron_right,
-            color: _currentPage < total ? Colors.black : Colors.grey.shade400,
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _currentPage < total
+                ? () => setState(() => _currentPage++)
+                : null,
+            behavior: HitTestBehavior.opaque,
+            child: Icon(
+              Icons.chevron_right,
+              color: _currentPage < total ? Colors.black : Colors.grey.shade400,
+            ),
           ),
         ),
       ],
