@@ -569,50 +569,59 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F3F6),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'upload_front_side'.tr(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                fontFamily: 'SF Pro Display',
-                              ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final h = (constraints.maxWidth * 1.8).clamp(
+                            320.0,
+                            650.0,
+                          );
+                          return Container(
+                            height: h,
+                            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F3F6),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            const SizedBox(height: 12),
-                            _buildIdUploadBox(
-                              label: 'upload_front_id_hint'.tr(),
-                              bytes: _frontIdBytes,
-                              fileName: _frontIdName,
-                              existingUrl: _existingFrontId,
-                              onTap: () => _pickFile('frontId'),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'upload_front_side'.tr(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _buildIdUploadBox(
+                                  label: 'upload_front_id_hint'.tr(),
+                                  bytes: _frontIdBytes,
+                                  fileName: _frontIdName,
+                                  existingUrl: _existingFrontId,
+                                  onTap: () => _pickFile('frontId'),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'upload_back_side'.tr(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _buildIdUploadBox(
+                                  label: 'upload_back_id_hint'.tr(),
+                                  bytes: _backIdBytes,
+                                  fileName: _backIdName,
+                                  existingUrl: _existingBackId,
+                                  onTap: () => _pickFile('backId'),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'upload_back_side'.tr(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            _buildIdUploadBox(
-                              label: 'upload_back_id_hint'.tr(),
-                              bytes: _backIdBytes,
-                              fileName: _backIdName,
-                              existingUrl: _existingBackId,
-                              onTap: () => _pickFile('backId'),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -669,7 +678,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 300,
+        height: 250,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(

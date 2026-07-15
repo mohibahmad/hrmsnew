@@ -1,4 +1,4 @@
-- [ ] Remove period/today dropdown from WorkersAttendanceScreen UI
-- [ ] Remove "mark attendance" label from Mark Attendance dialog header
-- [ ] Run flutter analyze to verify compilation
-i
+- [x] Adjust day chip (width/height) in holiday calendar list UI (TODO complete)
+
+
+

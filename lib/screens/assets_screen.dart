@@ -325,7 +325,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   DummyData.saveToPrefs();
                                 });
                               } else {
-                                await FirestoreService().addAsset(assetMap);
+                                try {
+                                  await FirestoreService().addAsset(assetMap);
+                                } catch (e, st) {
+                                  // Helpful debug output (see console)
+                                  // ignore: avoid_print
+                                  print('❌ addAsset failed: $e');
+                                  // ignore: avoid_print
+                                  print(st);
+                                  if (!context.mounted) return;
+                                  FlashySnackBar.show(
+                                    context,
+                                    message:
+                                        'failed_to_add_asset'.tr(namedArgs: {'error': e.toString()}),
+                                  );
+                                  return;
+                                }
                               }
                               if (!context.mounted) return;
                               Navigator.of(context).pop();
