@@ -677,6 +677,7 @@
   "invalid_date_format": "Invalid date format. Please use DD/MM/YYYY.",
   "invalid_gender_value": "Invalid gender value. Only Male or Female is allowed.",
   "holiday_already_exists": "Holiday already exists for this day",
+  "please_enter_holiday_name": "Please enter a holiday name.",
   "uploading_files": "Uploading {count} file(s)...",
   "custom_leave_info": "Custom mode: Enter annual, sick and casual leaves manually",
   "confirm_delete": "Confirm Delete",

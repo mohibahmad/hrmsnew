@@ -286,6 +286,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                   },
                                 ),
                               );
+                            } else {
+                              if (!context.mounted) return;
+                              FlashySnackBar.show(
+                                context,
+                                message: 'please_enter_holiday_name'.tr(),
+                                isError: true,
+                              );
                             }
                           },
                            child: Text(

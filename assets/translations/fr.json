@@ -672,6 +672,7 @@
   "invalid_date_format": "Format de date invalide. Utilisez JJ/MM/AAAA.",
   "invalid_gender_value": "Valeur de genre non valide. Seul Masculin ou Féminin est autorisé.",
   "holiday_already_exists": "Un jour férié existe déjà pour cette date",
+  "please_enter_holiday_name": "Veuillez saisir un nom de jour férié.",
   "uploading_files": "Téléchargement de {count} fichier(s)...",
   "custom_leave_info": "Mode personnalisé: Entrez les congés annuels, maladie et occasionnels manuellement",
   "notifications": "Notifications",

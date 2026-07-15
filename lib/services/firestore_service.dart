@@ -485,12 +485,17 @@ class FirestoreService {
       ...asset,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    final assetName = (asset['name'] ?? asset['assetName'] ?? '').toString();
-    if (assetName.isNotEmpty) {
+    final workerName = (asset['name'] ?? asset['assetName'] ?? '').toString();
+    final assetType = (asset['type'] ?? asset['assetType'] ?? '').toString();
+    if (workerName.isNotEmpty) {
       await addNotification({
         'type': 'asset_added',
-        'title': 'New asset added: $assetName',
-        'message': '$assetName has been added to the company assets.',
+        'title': assetType.isNotEmpty
+            ? 'Asset assigned: $assetType'
+            : 'Asset assigned',
+        'message': assetType.isNotEmpty
+            ? '$assetType has been assigned to $workerName.'
+            : 'An asset has been assigned to $workerName.',
       });
     }
     return docRef.id;

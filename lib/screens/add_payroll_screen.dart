@@ -11,6 +11,7 @@ import '../utils/image_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/notification_sidebar.dart';
 
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
@@ -40,6 +41,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
   bool _isSaving = false;
+  bool _showNotifications = false;
   final TextEditingController _netCtrl = TextEditingController(text: r'$ 0');
 
   static const _primaryBlue = Color(0xFF0A44C2);
@@ -404,40 +406,61 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     ).then((_) => controller.dispose());
   }
 
+  void _toggleNotifications() {
+    setState(() => _showNotifications = !_showNotifications);
+    if (_showNotifications) {
+      FirestoreService().markAllNotificationsRead();
+    }
+  }
+
+  void _onNotificationTap(String type) {
+    // Close the panel; navigation back to list is handled on discard/back.
+    setState(() => _showNotifications = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPayrollDataHeader(),
-                        const SizedBox(height: 24),
-                        _buildEmployeeBanner(),
-                        const SizedBox(height: 12),
-                        _buildLastModifiedNotice(),
-                        const SizedBox(height: 12),
-                        _buildDetailsCard(),
-                        const SizedBox(height: 40),
-                      ],
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFFF8F9FB),
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPayrollDataHeader(),
+                            const SizedBox(height: 24),
+                            _buildEmployeeBanner(),
+                            const SizedBox(height: 12),
+                            _buildLastModifiedNotice(),
+                            const SizedBox(height: 12),
+                            _buildDetailsCard(),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        if (_showNotifications)
+          NotificationSidebar(
+            onClose: _toggleNotifications,
+            onNotificationTap: _onNotificationTap,
+          ),
+      ],
     );
   }
 
@@ -534,7 +557,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
           ),
           const Spacer(),
-          NotificationBell(onTap: widget.onNotificationTap),
+          NotificationBell(onTap: _toggleNotifications),
           const SizedBox(width: 20),
           GestureDetector(
             onTap: widget.onProfileTap,

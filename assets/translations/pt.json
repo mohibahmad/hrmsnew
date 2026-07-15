@@ -669,6 +669,7 @@
   "invalid_date_format": "Formato de data inválido. Use DD/MM/AAAA.",
   "invalid_gender_value": "Valor de gênero inválido. Apenas Masculino ou Feminino é permitido.",
   "holiday_already_exists": "Já existe um feriado para este dia",
+  "please_enter_holiday_name": "Por favor, insira um nome de feriado.",
   "uploading_files": "Enviando {count} arquivo(s)...",
   "custom_leave_info": "Modo personalizado: Insira férias anuais, sick leave e casual manualmente",
   "notifications": "Notificações",
