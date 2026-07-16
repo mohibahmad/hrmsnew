@@ -585,13 +585,40 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'upload_front_side'.tr(),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => _pickFile('frontId'),
+                                      child: Text(
+                                        'upload_front_side'.tr(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (_frontIdBytes != null || (_existingFrontId != null && _existingFrontId!.isNotEmpty))
+                                      GestureDetector(
+                                        onTap: () => _pickFile('frontId'),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF000000),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                              const SizedBox(width: 6),
+                                              SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 12),
                                 _buildIdUploadBox(
@@ -602,13 +629,40 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                   onTap: () => _pickFile('frontId'),
                                 ),
                                 const SizedBox(height: 12),
-                                Text(
-                                  'upload_back_side'.tr(),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => _pickFile('backId'),
+                                      child: Text(
+                                        'upload_back_side'.tr(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (_backIdBytes != null || (_existingBackId != null && _existingBackId!.isNotEmpty))
+                                      GestureDetector(
+                                        onTap: () => _pickFile('backId'),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF000000),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                              const SizedBox(width: 6),
+                                              SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 12),
                                 _buildIdUploadBox(
@@ -633,13 +687,69 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'upload_cv_label'.tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'upload_cv_label'.tr(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_isCvUploaded ||
+                              (_existingCv != null && _existingCv!.isNotEmpty)) ...[
+                            GestureDetector(
+                              onTap: () => _pickFile('cv'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF000000),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                    const SizedBox(width: 6),
+                                    SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _cvBytes = null;
+                                  _cvName = null;
+                                  _isCvUploaded = false;
+                                });
+                                if (_workerId.isNotEmpty) {
+                                  FirestoreService().updateWorker(_workerId, {'cv': ''});
+                                  widget.worker['cv'] = '';
+                                  widget.onDocumentsUpdated();
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF000000),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                    const SizedBox(width: 6),
+                                    SvgPicture.asset('assets/delete_icon.svg', height: 14, width: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _isCvUploaded ||
@@ -674,9 +784,20 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     final bool isPdf =
         (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
         (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
+    final bool isImage =
+        (fileName != null &&
+            (fileName.toLowerCase().endsWith('.png') ||
+                fileName.toLowerCase().endsWith('.jpg') ||
+                fileName.toLowerCase().endsWith('.jpeg'))) ||
+        (existingUrl != null &&
+            (existingUrl.toLowerCase().endsWith('.png') ||
+                existingUrl.toLowerCase().endsWith('.jpg') ||
+                existingUrl.toLowerCase().endsWith('.jpeg')));
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: hasFile
+          ? () => _viewDocument(existingUrl, isImage, label)
+          : onTap,
       child: Container(
         height: 250,
         width: double.infinity,
@@ -831,7 +952,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             left: 24,
             right: 24,
             child: ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+              imageFilter: ui.ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
               child: Container(
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
@@ -1004,105 +1125,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                         ],
                       ),
                     ),
-            ),
-          ),
-          Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () => _pickFile('cv'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'edit'.tr(),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SvgPicture.asset(
-                          'assets/edit_icon.svg',
-                          height: 18,
-                          width: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _cvBytes = null;
-                      _cvName = null;
-                      _isCvUploaded = false;
-                    });
-                    if (_workerId.isNotEmpty) {
-                      FirestoreService().updateWorker(_workerId, {'cv': ''});
-                      widget.worker['cv'] = '';
-                      widget.onDocumentsUpdated();
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'delete'.tr(),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SvgPicture.asset(
-                          'assets/delete_icon.svg',
-                          height: 18,
-                          width: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],

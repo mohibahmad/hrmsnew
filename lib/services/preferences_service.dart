@@ -92,8 +92,8 @@ class PreferencesService {
 
   static Future<void> setRateUsRemindLater() async {
     final prefs = await SharedPreferences.getInstance();
-    // Remind in 3 days
-    final remindDate = DateTime.now().add(const Duration(days: 3));
+    // Remind in 1 day
+    final remindDate = DateTime.now().add(const Duration(days: 1));
     await prefs.setString(_rateUsRemindLaterKey, remindDate.toIso8601String());
   }
 

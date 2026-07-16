@@ -299,7 +299,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = AuthService().currentUser;
     if (user == null || user.isAnonymous) return;
     _profileSub = FirestoreService().userProfileStream.listen((profile) {
-      final isPremium = profile?['isPremium'] == true;
+      if (profile == null) {
+        AuthService().signOut();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+        return;
+      }
+      final isPremium = profile['isPremium'] == true;
       PreferencesService.setPremium(isPremium);
       if (mounted && _isPremium != isPremium) {
         setState(() => _isPremium = isPremium);

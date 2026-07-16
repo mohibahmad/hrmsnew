@@ -3089,13 +3089,40 @@ class DocumentationSection extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'upload_front_side'.tr(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            fontFamily: 'SF Pro Display',
-                          ),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: onUploadFrontTap,
+                              child: Text(
+                                'upload_front_side'.tr(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            if (frontIdBytes != null || (existingFrontIdUrl != null && existingFrontIdUrl!.isNotEmpty))
+                              GestureDetector(
+                                onTap: onUploadFrontTap,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF000000),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                      const SizedBox(width: 6),
+                                      SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         _buildIdUploadBox(
@@ -3106,13 +3133,40 @@ class DocumentationSection extends StatelessWidget {
                           onTap: onUploadFrontTap,
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          'upload_back_side'.tr(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            fontFamily: 'SF Pro Display',
-                          ),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: onUploadBackTap,
+                              child: Text(
+                                'upload_back_side'.tr(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            if (backIdBytes != null || (existingBackIdUrl != null && existingBackIdUrl!.isNotEmpty))
+                              GestureDetector(
+                                onTap: onUploadBackTap,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF000000),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                      const SizedBox(width: 6),
+                                      SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         _buildIdUploadBox(
@@ -3137,13 +3191,57 @@ class DocumentationSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'upload_cv_label'.tr(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'upload_cv_label'.tr(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const Spacer(),
+                      if (isCvUploaded) ...[
+                        GestureDetector(
+                          onTap: onUploadCvTap,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000000),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                const SizedBox(width: 6),
+                                SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: onDeleteCvTap,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000000),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('delete'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                const SizedBox(width: 6),
+                                SvgPicture.asset('assets/delete_icon.svg', height: 14, width: 14),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 16),
                   isCvUploaded ? _buildCvPreview(context) : _buildCvUpload(),
@@ -3170,7 +3268,7 @@ class DocumentationSection extends StatelessWidget {
         (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: hasFile ? null : onTap,
       child: Container(
         height: 250,
         width: double.infinity,
@@ -3632,96 +3730,6 @@ class DocumentationSection extends StatelessWidget {
                     ),
             ),
           ),
-
-          // Centered controls overlay (Edit / Delete) in the middle of the preview container
-          Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: onUploadCvTap,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'edit'.tr(),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SvgPicture.asset(
-                          'assets/edit_icon.svg',
-                          height: 18,
-                          width: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: onDeleteCvTap,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'delete'.tr(),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SvgPicture.asset(
-                          'assets/delete_icon.svg',
-                          height: 18,
-                          width: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -3755,7 +3763,7 @@ class DocumentationSection extends StatelessWidget {
                 left: sidePadding,
                 right: sidePadding,
                 child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 2.5, sigmaY: 2.5),
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
                   child: Container(
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
@@ -4116,7 +4124,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
         child: ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
+          imageFilter: ui.ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
           child: SizedBox.expand(
             child: Image.memory(
               _pageImages[0],

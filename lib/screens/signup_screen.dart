@@ -211,14 +211,6 @@ class _SignupScreenState extends State<SignupScreen> {
       final email = _emailController.text.trim();
       final isDeleted = await FirestoreService().isEmailDeleted(email);
       if (isDeleted) {
-      final userName = _usernameController.text.trim();
-      await FirestoreService().addNotification({
-        'type': 'welcome',
-        'title': 'Welcome $userName!',
-        'message':
-            'Your HRMS account has been created successfully. Welcome aboard!',
-      });
-
       if (mounted) {
           FlashySnackBar.show(
             context,
@@ -246,16 +238,6 @@ class _SignupScreenState extends State<SignupScreen> {
         email: _emailController.text.trim(),
         phone: "",
       );
-
-      final user = AuthService().currentUser;
-      if (user != null && !user.isAnonymous) {
-        await FirestoreService().seedDummyDataForUser(
-          uid: user.uid,
-          displayName: _usernameController.text.trim(),
-          email: _emailController.text.trim(),
-          force: true,
-        );
-      }
 
       final userName = _usernameController.text.trim();
       await FirestoreService().addNotification({
