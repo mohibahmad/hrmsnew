@@ -336,8 +336,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   if (!context.mounted) return;
                                   FlashySnackBar.show(
                                     context,
-                                    message:
-                                        'failed_to_add_asset'.tr(namedArgs: {'error': e.toString()}),
+                                    message: 'failed_to_add_asset'.tr(
+                                      namedArgs: {'error': e.toString()},
+                                    ),
                                   );
                                   return;
                                 }
@@ -670,13 +671,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
             controller: controller,
             readOnly: readOnly,
             maxLength: maxLength,
-            buildCounter: (
-              context, {
-              required currentLength,
-              required isFocused,
-              maxLength,
-            }) =>
-                null,
+            buildCounter:
+                (
+                  context, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) => null,
             decoration: InputDecoration.collapsed(
               hintText: hintText,
               hintStyle: TextStyle(
@@ -719,20 +720,20 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-          Container(
-            height: 44,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                elevation: 8,
-                dropdownColor: Colors.white,
-                value: isEmpty ? null : (items.contains(value) ? value : null),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+        Container(
+          height: 44,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              elevation: 8,
+              dropdownColor: Colors.white,
+              value: isEmpty ? null : (items.contains(value) ? value : null),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               hint: Text(
                 isEmpty ? 'no_workers_found'.tr() : hintText,
                 style: TextStyle(
@@ -988,11 +989,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (isGuest) {
               if (!mounted) return;
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const LoginScreen(),
-                ),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
               return;
             }
             final isPremium = await PreferencesService.isPremium();
@@ -1023,7 +1022,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             elevation: 0,
           ),
           icon: SvgPicture.asset(
-            'assets/add asset.svg',
+            'assets/assets_icon.svg',
             width: 20,
             height: 20,
             colorFilter: const ColorFilter.mode(
@@ -1598,7 +1597,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                           positionController.text,
                                           typeController.text,
                                           formatDate(loanedDate),
-                                          isReturned ? formatDate(returnedDate) : _inUseKey,
+                                          isReturned
+                                              ? formatDate(returnedDate)
+                                              : _inUseKey,
                                           isReturned,
                                           id: data.id,
                                           profileImage: workerProfileImage,

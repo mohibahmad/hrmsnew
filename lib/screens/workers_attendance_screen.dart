@@ -1609,7 +1609,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           asset.endsWith('.svg')
-              ? SvgPicture.asset(asset, height: 20, width: 20)
+              ? SvgPicture.asset(
+                  asset,
+                  height: 20,
+                  width: 20,
+                  colorFilter: isSelected
+                      ? const ColorFilter.mode(
+                          Color(0xFFFFFFFF),
+                          BlendMode.srcIn,
+                        )
+                      : null,
+                )
               : Image.asset(asset, height: 20, width: 20),
           const SizedBox(width: 6),
           Text(
