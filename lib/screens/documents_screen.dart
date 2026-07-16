@@ -394,7 +394,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   Uint8List? _cvBytes;
   String? _cvName;
   bool _isCvUploaded = false;
-  double _idColumnHeight = 320.0;
+  final GlobalKey _idBoxKey = GlobalKey();
+  double _idBoxHeight = 0;
 
   String? get _existingFrontId => widget.worker['frontId']?.toString();
   String? get _existingBackId => widget.worker['backId']?.toString();
@@ -402,11 +403,26 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   String get _workerId => widget.worker['id'] ?? '';
   String get _workerName => (widget.worker['name'] ?? 'Unknown').toString();
 
+  void _measureIdBox() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final height = _idBoxKey.currentContext?.size?.height;
+      if (height != null && height != _idBoxHeight) {
+        setState(() => _idBoxHeight = height);
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _measureIdBox();
+  }
+
   Future<void> _pickFile(String field) async {
     final result = await FilePicker.pickFiles(
       type: field == 'cv' ? FileType.custom : FileType.image,
       allowedExtensions: field == 'cv'
-          ? ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg']
+          ? ['pdf', 'doc', 'docx']
           : null,
       withData: true,
     );
@@ -556,6 +572,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    _measureIdBox();
     return Container(
       color: const Color(0xFFF8F9FA),
       child: SingleChildScrollView(
@@ -591,114 +608,105 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      LayoutBuilder(
-                        builder: (context, idConstraints) {
-                          final h = (idConstraints.maxWidth * 1.8).clamp(
-                            320.0,
-                            650.0,
-                          );
-                          _idColumnHeight = h;
-                          return Container(
-                            height: h,
-                            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F3F6),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      Container(
+                        key: _idBoxKey,
+                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F3F6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => _pickFile('frontId'),
-                                      child: Text(
-                                        'upload_front_side'.tr(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    if (_frontIdBytes != null || (_existingFrontId != null && _existingFrontId!.isNotEmpty))
-                                    GestureDetector(
-                                      onTap: () => _pickFile('frontId'),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF000000),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
-                                            const SizedBox(width: 6),
-                                            SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                _buildIdUploadBox(
-                                  label: 'upload_front_id_hint'.tr(),
-                                  bytes: _frontIdBytes,
-                                  fileName: _frontIdName,
-                                  existingUrl: _existingFrontId,
+                                GestureDetector(
                                   onTap: () => _pickFile('frontId'),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => _pickFile('backId'),
-                                      child: Text(
-                                        'upload_back_side'.tr(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
+                                  child: Text(
+                                    'upload_front_side'.tr(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
                                     ),
-                                    const Spacer(),
-                                    if (_backIdBytes != null || (_existingBackId != null && _existingBackId!.isNotEmpty))
-                                      GestureDetector(
-                                        onTap: () => _pickFile('backId'),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF000000),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
-                                              const SizedBox(width: 6),
-                                              SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+                                  ),
                                 ),
-                                const SizedBox(height: 12),
-                                _buildIdUploadBox(
-                                  label: 'upload_back_id_hint'.tr(),
-                                  bytes: _backIdBytes,
-                                  fileName: _backIdName,
-                                  existingUrl: _existingBackId,
-                                  onTap: () => _pickFile('backId'),
+                                const Spacer(),
+                                if (_frontIdBytes != null || (_existingFrontId != null && _existingFrontId!.isNotEmpty))
+                                GestureDetector(
+                                  onTap: () => _pickFile('frontId'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF000000),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                        const SizedBox(width: 6),
+                                        SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                          );
-                        },
+                            const SizedBox(height: 12),
+                            _buildIdUploadBox(
+                              label: 'upload_front_id_hint'.tr(),
+                              bytes: _frontIdBytes,
+                              fileName: _frontIdName,
+                              existingUrl: _existingFrontId,
+                              onTap: () => _pickFile('frontId'),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _pickFile('backId'),
+                                  child: Text(
+                                    'upload_back_side'.tr(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (_backIdBytes != null || (_existingBackId != null && _existingBackId!.isNotEmpty))
+                                  GestureDetector(
+                                    onTap: () => _pickFile('backId'),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF000000),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                          const SizedBox(width: 6),
+                                          SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildIdUploadBox(
+                              label: 'upload_back_id_hint'.tr(),
+                              bytes: _backIdBytes,
+                              fileName: _backIdName,
+                              existingUrl: _existingBackId,
+                              onTap: () => _pickFile('backId'),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -785,8 +793,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       const SizedBox(height: 16),
                       _isCvUploaded ||
                               (_existingCv != null && _existingCv!.isNotEmpty)
-                          ? _buildCvPreview(height: _idColumnHeight - 60)
-                          : _buildCvUpload(height: _idColumnHeight - 60),
+                          ? _buildCvPreview(height: _idBoxHeight > 0 ? _idBoxHeight : 350)
+                          : _buildCvUpload(height: _idBoxHeight > 0 ? _idBoxHeight : 350),
                     ],
                   ),
                 ),

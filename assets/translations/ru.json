@@ -339,6 +339,8 @@
   "holiday_name": "Название праздника",
   "holiday_day": "День {day}",
   "successfully_added_holiday": "Праздник \"{name}\" успешно добавлен",
+  "non_working_day": "Нерабочий день",
+  "non_working_day_message": "Отметка посещаемости недоступна в праздничные дни",
   "custom": "Пользовательский",
   "holiday_name_hint": "День труда",
   "time_off_list": "Список отгулов",

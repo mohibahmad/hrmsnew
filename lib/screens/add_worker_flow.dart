@@ -3252,12 +3252,12 @@ class DocumentationSection extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Edit'.tr(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    fontFamily: 'SF Pro Display',
+                                            'edit'.tr(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                                 const SizedBox(width: 6),

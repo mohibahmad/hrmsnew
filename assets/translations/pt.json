@@ -339,6 +339,8 @@
   "holiday_name": "Nome do feriado",
   "holiday_day": "Dia {day}",
   "successfully_added_holiday": "Feriado \"{name}\" adicionado com sucesso",
+  "non_working_day": "Dia não útil",
+  "non_working_day_message": "O registro de presença não está disponível em feriados",
   "custom": "Personalizado",
   "holiday_name_hint": "Dia do Trabalho",
   "time_off_list": "Lista de folgas",

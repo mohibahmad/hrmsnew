@@ -342,6 +342,8 @@
   "holiday_name": "Nom du jour férié",
   "holiday_day": "Jour {day}",
   "successfully_added_holiday": "Jour férié \"{name}\" ajouté avec succès",
+  "non_working_day": "Jour non ouvrable",
+  "non_working_day_message": "Le pointage n'est pas disponible les jours fériés",
   "custom": "Personnalisé",
   "holiday_name_hint": "Fête du Travail",
   "time_off_list": "Liste des congés",

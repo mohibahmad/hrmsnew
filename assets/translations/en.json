@@ -347,6 +347,8 @@
   "holiday_day": "Day {day}",
   "successfully_added_holiday": "Successfully added holiday \"{name}\"",
   "custom": "Custom",
+  "non_working_day": "Non-Working Day",
+  "non_working_day_message": "Attendance marking is not available on holidays",
   "holiday_name_hint": "Labour Day",
   "time_off_list": "Time off List",
   "no_time_off_requests": "No Time Off Requests",

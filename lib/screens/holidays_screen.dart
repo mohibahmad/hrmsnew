@@ -118,7 +118,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   void _showAddHolidayModal(BuildContext context) {
     final holidayNameController = TextEditingController();
-    int selectedDay = DateTime.now().day;
+    int? selectedDay;
     DateTime calendarDate = DateTime.now();
     const months = [
       'January',
@@ -200,13 +200,22 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             ),
                             minimumSize: const Size(0, 32),
                           ),
-                           onPressed: () async {
-                             if (holidayNameController.text.isNotEmpty) {
-                               final dateObj = DateTime(
-                                 calendarDate.year,
-                                 calendarDate.month,
-                                 selectedDay,
-                               );
+                            onPressed: () async {
+                              if (selectedDay == null) {
+                                if (!context.mounted) return;
+                                FlashySnackBar.show(
+                                  context,
+                                  message: 'Please select a day',
+                                  isError: true,
+                                );
+                                return;
+                              }
+                              if (holidayNameController.text.isNotEmpty) {
+                                final dateObj = DateTime(
+                                  calendarDate.year,
+                                  calendarDate.month,
+                                  selectedDay!,
+                                );
                                final dayOfWeekName =
                                    weekdays[dateObj.weekday - 1];
                                final remainingDaysVal = dateObj
@@ -249,7 +258,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     _holidaysByMonth[selectedMonthName] = [];
                                   }
                                   final newItem = HolidayItem(
-                                    selectedDay,
+                                    selectedDay!,
                                     holidayNameController.text,
                                     true,
                                     month: selectedMonthName,
@@ -363,13 +372,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       (newDate) {
                         setModalState(() {
                           calendarDate = newDate;
-                          int daysInNewMonth = DateTime(
-                            newDate.year,
-                            newDate.month + 1,
-                            0,
-                          ).day;
-                          if (selectedDay > daysInNewMonth) {
-                            selectedDay = daysInNewMonth;
+                          if (selectedDay != null) {
+                            int daysInNewMonth = DateTime(
+                              newDate.year,
+                              newDate.month + 1,
+                              0,
+                            ).day;
+                            if (selectedDay! > daysInNewMonth) {
+                              selectedDay = daysInNewMonth;
+                            }
                           }
                         });
                       },
@@ -386,7 +397,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   Widget _buildModalCalendar(
     DateTime calendarDate,
-    int selectedDay,
+    int? selectedDay,
     ValueChanged<int> onDaySelected,
     ValueChanged<DateTime> onMonthChanged,
   ) {
@@ -483,7 +494,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   Widget _buildDaysGrid(
     DateTime calendarDate,
-    int selectedDay,
+    int? selectedDay,
     ValueChanged<int> onDaySelected,
   ) {
     List<Widget> rows = [];
@@ -509,7 +520,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           rowChildren.add(_buildDayCell('', false, null, null));
         } else if (currentDay <= daysInMonth) {
           final int tapDay = currentDay;
-          final bool isSelected = (currentDay == selectedDay);
+          final bool isSelected = selectedDay != null && (currentDay == selectedDay);
           final cellDate = DateTime(calendarDate.year, calendarDate.month, currentDay);
           rowChildren.add(
             _buildDayCell('$currentDay', isSelected, () {
@@ -662,7 +673,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             fontFamily: 'SF Pro Display',
           ),
         ),
-        ElevatedButton.icon(
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: ElevatedButton.icon(
           onPressed: () async {
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
             if (isGuest) {
@@ -722,6 +735,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               fontFamily: 'SF Pro Display',
             ),
           ),
+        ),
         ),
       ],
     );
