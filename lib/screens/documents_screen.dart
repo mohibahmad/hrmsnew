@@ -14,6 +14,7 @@ import '../services/dummy_data.dart';
 import '../services/upload_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/delete_dialog.dart';
 import '../widgets/notification_bell.dart';
 
 class DocumentsScreen extends StatefulWidget {
@@ -578,26 +579,26 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                 // Left Side: ID Card Upload
                 Expanded(
                   flex: 1,
-                  child: LayoutBuilder(
-                    builder: (context, idConstraints) {
-                      final h = (idConstraints.maxWidth * 1.8).clamp(
-                        320.0,
-                        650.0,
-                      );
-                      _idColumnHeight = h;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'id_card_label'.tr(),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'id_card_label'.tr(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      LayoutBuilder(
+                        builder: (context, idConstraints) {
+                          final h = (idConstraints.maxWidth * 1.8).clamp(
+                            320.0,
+                            650.0,
+                          );
+                          _idColumnHeight = h;
+                          return Container(
                             height: h,
                             padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                             decoration: BoxDecoration(
@@ -696,10 +697,10 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -710,6 +711,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             'upload_cv_label'.tr(),
@@ -733,25 +735,32 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                    Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
                                     const SizedBox(width: 6),
                                     SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
                                   ],
                                 ),
                               ),
                             ),
-                const SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _cvBytes = null;
-                                  _cvName = null;
-                                  _isCvUploaded = false;
-                                });
-                                if (_workerId.isNotEmpty) {
-                                  FirestoreService().updateWorker(_workerId, {'cv': ''});
-                                  widget.worker['cv'] = '';
-                                  widget.onDocumentsUpdated();
+                              onTap: () async {
+                                final confirmed = await DeleteDialog.show(
+                                  context: context,
+                                  title: 'confirm_delete'.tr(),
+                                  content: 'Are you sure you want to delete this CV?',
+                                );
+                                if (confirmed) {
+                                  setState(() {
+                                    _cvBytes = null;
+                                    _cvName = null;
+                                    _isCvUploaded = false;
+                                  });
+                                  if (_workerId.isNotEmpty) {
+                                    FirestoreService().updateWorker(_workerId, {'cv': ''});
+                                    widget.worker['cv'] = '';
+                                    widget.onDocumentsUpdated();
+                                  }
                                 }
                               },
                               child: Container(
@@ -763,7 +772,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                    Text('delete'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
                                     const SizedBox(width: 6),
                                     SvgPicture.asset('assets/delete_icon.svg', height: 14, width: 14),
                                   ],
@@ -988,7 +997,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -1059,12 +1068,15 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
   Widget _buildCvPreview({required double height}) {
     final cvUrl = _existingCv;
-    final isPdf = cvUrl != null && cvUrl.toLowerCase().endsWith('.pdf');
-    final isImage =
-        cvUrl != null &&
-        (cvUrl.toLowerCase().endsWith('.png') ||
-            cvUrl.toLowerCase().endsWith('.jpg') ||
-            cvUrl.toLowerCase().endsWith('.jpeg'));
+    final lowerUrl = cvUrl?.toLowerCase() ?? '';
+    final isPdf = lowerUrl.endsWith('.pdf') ||
+        lowerUrl.contains('application/pdf') ||
+        lowerUrl.contains('/cvs/') ||
+        (cvUrl != null && !lowerUrl.endsWith('.png') && !lowerUrl.endsWith('.jpg') && !lowerUrl.endsWith('.jpeg') && !lowerUrl.contains('image/'));
+    final isImage = lowerUrl.endsWith('.png') ||
+        lowerUrl.endsWith('.jpg') ||
+        lowerUrl.endsWith('.jpeg') ||
+        lowerUrl.contains('image/');
 
     return Container(
       height: height,
@@ -1317,7 +1329,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                      const SizedBox(height: 26),
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
                             child: Container(
