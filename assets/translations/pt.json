@@ -284,6 +284,8 @@
   "workforce": "Força de trabalho",
   "search_by_workers_name": "Pesquisar por nome",
   "today_attendance": "Presença de hoje",
+  "today_is_holiday": "Hoje é feriado",
+  "holiday_attendance_disabled": "O registro de presença está desativado hoje",
   "weekly_attendance": "Presença semanal",
   "monthly_attendance": "Presença mensal",
   "six_month_attendance": "Presença de 6 meses",
@@ -682,5 +684,10 @@
   "clear_search": "Limpar pesquisa",
   "Present": "Presente",
   "Absent": "Ausente",
-  "On leave": "De licença"
+  "On leave": "De licença",
+  "rate_us": "Avalie-nos",
+  "rate_us_desc": "Se você gosta de usar o HRMS, reserve um momento para nos avaliar!",
+  "rate_now": "Avaliar Agora",
+  "remind_me_later": "Lembrar Mais Tarde",
+  "never_show_again": "Nunca Mostrar Novamente"
 }

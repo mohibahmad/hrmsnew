@@ -17,6 +17,7 @@ import 'login_screen.dart';
 import 'home_screen.dart';
 import '../widgets/custom_dropdown_field.dart';
 import '../utils/delete_dialog.dart';
+import '../utils/rate_us_helper.dart';
 
 class AddNewWorkerScreen extends StatefulWidget {
   const AddNewWorkerScreen({super.key});
@@ -231,6 +232,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       if (mounted) {
         FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
         _clearForm(); // Clear the form after saving
+      }
+      if (mounted) {
+        tryShowFirstMilestoneRateUs(context, 'worker');
       }
     } catch (e) {
        if (mounted) {

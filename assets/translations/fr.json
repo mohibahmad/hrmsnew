@@ -287,6 +287,8 @@
   "workforce": "Main-d'œuvre",
   "search_by_workers_name": "Rechercher par nom",
   "today_attendance": "Présence du jour",
+  "today_is_holiday": "Aujourd'hui est un jour férié",
+  "holiday_attendance_disabled": "Le pointage est désactivé aujourd'hui",
   "weekly_attendance": "Présence hebdomadaire",
   "monthly_attendance": "Présence mensuelle",
   "six_month_attendance": "Présence de 6 mois",
@@ -685,5 +687,10 @@
   "clear_search": "Effacer la recherche",
   "Present": "Présent",
   "Absent": "Absent",
-  "On leave": "En congé"
+  "On leave": "En congé",
+  "rate_us": "Notre App",
+  "rate_us_desc": "Si vous appréciez l'utilisation de HRMS, prenez un moment pour nous noter !",
+  "rate_now": "Noter Maintenant",
+  "remind_me_later": "Me Rappeler Plus Tard",
+  "never_show_again": "Ne Plus Afficher"
 }

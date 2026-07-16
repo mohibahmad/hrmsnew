@@ -291,6 +291,8 @@
   "workforce": "Workforce",
   "search_by_workers_name": "Search by workers name",
   "today_attendance": "Today Attendance",
+  "today_is_holiday": "Today is Holiday",
+  "holiday_attendance_disabled": "Attendance marking is disabled today",
   "weekly_attendance": "Weekly Attendance",
   "monthly_attendance": "Monthly Attendance",
   "six_month_attendance": "6 Month Attendance",
@@ -704,5 +706,10 @@
   "On leave": "On leave",
   "remove_profile_image": "Remove Profile Image",
   "remove_profile_image_desc": "Are you sure you want to remove this profile image? This action cannot be undone.",
-  "remove": "Remove"
+  "remove": "Remove",
+  "rate_us": "Rate Us",
+  "rate_us_desc": "If you enjoy using HRMS, please take a moment to rate us!",
+  "rate_now": "Rate Now",
+  "remind_me_later": "Remind Me Later",
+  "never_show_again": "Never Show Again"
 }

@@ -12,6 +12,7 @@ import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/premium_gate.dart';
+import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 
@@ -286,6 +287,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                   },
                                 ),
                               );
+                              tryShowFirstMilestoneRateUs(context, 'holiday');
                             } else {
                               if (!context.mounted) return;
                               FlashySnackBar.show(

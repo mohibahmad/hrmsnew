@@ -284,6 +284,8 @@
   "workforce": "Рабочая сила",
   "search_by_workers_name": "Поиск по имени",
   "today_attendance": "Посещаемость сегодня",
+  "today_is_holiday": "Сегодня праздник",
+  "holiday_attendance_disabled": "Отметка посещаемости сегодня отключена",
   "weekly_attendance": "Еженедельная посещаемость",
   "monthly_attendance": "Ежемесячная посещаемость",
   "six_month_attendance": "Посещаемость за 6 месяцев",
@@ -682,5 +684,10 @@
   "clear_search": "Очистить поиск",
   "Present": "Присутствует",
   "Absent": "Отсутствует",
-  "On leave": "В отпуске"
+  "On leave": "В отпуске",
+  "rate_us": "Оцените нас",
+  "rate_us_desc": "Если вам нравится использовать HRMS, пожалуйста, найдите время оценить нас!",
+  "rate_now": "Оценить сейчас",
+  "remind_me_later": "Напомнить позже",
+  "never_show_again": "Больше не показывать"
 }

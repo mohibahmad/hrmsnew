@@ -287,6 +287,8 @@
   "workforce": "Fuerza laboral",
   "search_by_workers_name": "Buscar por nombre",
   "today_attendance": "Asistencia de hoy",
+  "today_is_holiday": "Hoy es festivo",
+  "holiday_attendance_disabled": "El registro de asistencia está desactivado hoy",
   "weekly_attendance": "Asistencia semanal",
   "monthly_attendance": "Asistencia mensual",
   "six_month_attendance": "Asistencia de 6 meses",
@@ -688,5 +690,10 @@
   "clear_search": "Borrar búsqueda",
   "Present": "Presente",
   "Absent": "Ausente",
-  "On leave": "De permiso"
+  "On leave": "De permiso",
+  "rate_us": "Califícanos",
+  "rate_us_desc": "Si disfrutas usando HRMS, ¡tómate un momento para calificarnos!",
+  "rate_now": "Calificar Ahora",
+  "remind_me_later": "Recordármelo Más Tarde",
+  "never_show_again": "No Mostrar Más"
 }

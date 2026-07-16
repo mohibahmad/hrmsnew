@@ -16,9 +16,10 @@ import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
 import '../utils/premium_gate.dart';
 import '../services/preferences_service.dart';
+import '../utils/rate_us_helper.dart';
 import 'login_screen.dart';
 import '../widgets/amount_text.dart';
- 
+
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -63,8 +64,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     if (!isGuest) {
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
         if (mounted) {
-          setState(() {
-          });
+          setState(() {});
         }
       });
       _expensesSub = FirestoreService().expensesStream.listen(
@@ -588,6 +588,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 namedArgs: {'name': categoryController.text},
                               ),
                             );
+                            tryShowFirstMilestoneRateUs(context, 'expense');
                           },
                           child: Text(
                             'save'.tr(),
@@ -603,84 +604,84 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                     const SizedBox(height: 24),
 
-// === Modal Form Rows ===
-                     Row(
-                       children: [
-                         Expanded(
-                           child: _buildModalTextField(
-                             'expense_category'.tr(),
-                             categoryController,
-                             hintText: 'Enter Expense category',
-                             maxLength: 50,
-                           ),
-                         ),
-                         const SizedBox(width: 16),
-                         Expanded(
-                           child: _buildModalTextField(
-                             'amount_dollar'.tr(),
-                             amountController,
-                             hintText: 'hint_amount'.tr(),
-                             keyboardType: const TextInputType.numberWithOptions(
-                               decimal: true,
-                             ),
-                           ),
-                         ),
-                       ],
-                     ),
-                     const SizedBox(height: 16),
-                     Row(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         Expanded(
-                           child: Column(
-                             crossAxisAlignment: CrossAxisAlignment.start,
-                             children: [
-                               Text(
-                                 'expense_title'.tr(),
-                                 style: TextStyle(
-                                   fontSize: 13,
-                                   fontWeight: FontWeight.w600,
-                                   color: Color(0xFF000000),
-                                   fontFamily: 'SF Pro Display',
-                                 ),
-                               ),
-                               const SizedBox(height: 8),
-                               Container(
-                                 height: 215,
-                                 padding: const EdgeInsets.symmetric(
-                                   horizontal: 12,
-                                 ),
-                                 decoration: BoxDecoration(
-                                   border: Border.all(
-                                     color: Colors.grey.shade300,
-                                   ),
-                                   borderRadius: BorderRadius.circular(6),
-                                 ),
-                                 child: TextField(
-                                   controller: descriptionController,
-                                   maxLines: null,
-                                   maxLength: 150,
-                                   decoration: InputDecoration(
-                                     hintText: 'Enter Expense Title',
-                                     counterText: '',
-                                     contentPadding: const EdgeInsets.only(
-                                       top: 1,
-                                     ),
-                                     hintStyle: const TextStyle(
-                                       color: Colors.grey,
-                                     ),
-                                     border: InputBorder.none,
-                                   ),
-                                   style: const TextStyle(
-                                     fontSize: 14,
-                                     color: Colors.black,
-                                     fontFamily: 'SF Pro Display',
-                                   ),
-                                 ),
-                               ),
-                             ],
-                           ),
-                         ),
+                    // === Modal Form Rows ===
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildModalTextField(
+                            'expense_category'.tr(),
+                            categoryController,
+                            hintText: 'Enter Expense category',
+                            maxLength: 50,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildModalTextField(
+                            'amount_dollar'.tr(),
+                            amountController,
+                            hintText: 'hint_amount'.tr(),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'expense_title'.tr(),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF000000),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                height: 215,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: TextField(
+                                  controller: descriptionController,
+                                  maxLines: null,
+                                  maxLength: 150,
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter Expense Title',
+                                    counterText: '',
+                                    contentPadding: const EdgeInsets.only(
+                                      top: 1,
+                                    ),
+                                    hintStyle: const TextStyle(
+                                      color: Colors.grey,
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildModalCalendar(
@@ -751,7 +752,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             keyboardType: keyboardType,
             maxLength: maxLength,
             inputFormatters: () {
-              final isAmount = keyboardType ==
+              final isAmount =
+                  keyboardType ==
                       const TextInputType.numberWithOptions(decimal: true) ||
                   keyboardType == TextInputType.number ||
                   label.toLowerCase().contains('amount');
@@ -786,7 +788,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-   Widget _buildModalCalendar(
+  Widget _buildModalCalendar(
     DateTime calendarDate,
     int selectedDay,
     ValueChanged<int> onDaySelected,
@@ -942,7 +944,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       for (int j = 0; j < 7; j++) {
         int index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
+          rowChildren.add(
+            Expanded(child: _buildDayCell('', false, null, null)),
+          );
         } else if (currentDay <= daysInMonth) {
           final day = currentDay;
           final cellDate = DateTime(calendarDate.year, calendarDate.month, day);
@@ -958,7 +962,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           );
           currentDay++;
         } else {
-          rowChildren.add(Expanded(child: _buildDayCell('', false, null, null)));
+          rowChildren.add(
+            Expanded(child: _buildDayCell('', false, null, null)),
+          );
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 4));
       }
@@ -969,14 +975,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap, DateTime? date) {
+  Widget _buildDayCell(
+    String day,
+    bool isSelected,
+    VoidCallback? onTap,
+    DateTime? date,
+  ) {
     if (day.isEmpty) return const SizedBox();
     final isSunday = date?.weekday == 7;
     final isFriday = date?.weekday == 5;
     final dayColor = isSunday
         ? const Color(0xFFFF0004)
         : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-    final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFF0247C4);
+    final selectedBg = isFriday
+        ? const Color(0xFF4AC000)
+        : const Color(0xFF0247C4);
     return AspectRatio(
       aspectRatio: 1.1,
       child: GestureDetector(
@@ -989,10 +1002,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               color: isSelected
                   ? selectedBg
                   : (isSunday
-                      ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                      : (isFriday
-                          ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                          : Colors.grey.shade300)),
+                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                        : (isFriday
+                              ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                              : Colors.grey.shade300)),
               width: 1,
             ),
             borderRadius: BorderRadius.circular(3),
@@ -1162,58 +1175,56 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               final isGuest = AuthService().currentUser?.isAnonymous ?? false;
               if (isGuest) {
                 if (!mounted) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const LoginScreen(),
-                  ),
-                );
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
                 return;
               }
               final isPremium = await PreferencesService.isPremium();
-            if (!mounted) return;
-            if (!PremiumGate.canAddEntry(
-              currentEntryCount: _expensesDocs.length,
-              isPremium: isPremium,
-              isGuest: isGuest,
-            )) {
               if (!mounted) return;
-              final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                context,
-              );
-              if (upgraded == true && mounted) {
-                _showAddExpenseModal(context);
+              if (!PremiumGate.canAddEntry(
+                currentEntryCount: _expensesDocs.length,
+                isPremium: isPremium,
+                isGuest: isGuest,
+              )) {
+                if (!mounted) return;
+                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                  context,
+                );
+                if (upgraded == true && mounted) {
+                  _showAddExpenseModal(context);
+                }
+                return;
               }
-              return;
-            }
-            _showAddExpenseModal(context);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0247C4),
-            minimumSize: const Size(150, 44),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+              _showAddExpenseModal(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0247C4),
+              minimumSize: const Size(150, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
             ),
-            elevation: 0,
-          ),
-          icon: SvgPicture.asset(
-            'assets/add_expense.svg',
-            width: 18,
-            height: 18,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFFFFFF),
-              BlendMode.srcIn,
+            icon: SvgPicture.asset(
+              'assets/add_expense.svg',
+              width: 18,
+              height: 18,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFFFFFFF),
+                BlendMode.srcIn,
+              ),
+            ),
+            label: Text(
+              'add_expenses'.tr(),
+              style: TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
-          label: Text(
-            'add_expenses'.tr(),
-            style: TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
         ),
       ],
     );
@@ -1663,7 +1674,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
- 
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.only(top: 80),
@@ -1696,5 +1706,3 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 }
-
-

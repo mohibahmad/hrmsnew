@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
 import '../services/auth_service.dart';
@@ -568,16 +569,19 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  Widget _buildLastModifiedNotice() {
-    final raw = widget.workerData['lastModified'];
-    if (raw == null || raw.toString().isEmpty) return const SizedBox.shrink();
+  DateTime? _parseDate(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is DateTime) return raw;
+    if (raw is Timestamp) return raw.toDate();
+    final str = raw.toString().trim();
+    if (str.isEmpty) return null;
+    return DateTime.tryParse(str);
+  }
 
-    DateTime? date;
-    if (raw is DateTime) {
-      date = raw;
-    } else {
-      date = DateTime.tryParse(raw.toString());
-    }
+  Widget _buildLastModifiedNotice() {
+    final date =
+        _parseDate(widget.workerData['lastModified']) ??
+        _parseDate(widget.workerData['createdAt']);
     if (date == null) return const SizedBox.shrink();
 
     final dateStr = AppDateUtils.formatDate(date);

@@ -53,6 +53,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   static const int _itemsPerPage = 10;
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
+  List<Map<String, dynamic>> _holidays = [];
   bool _isLoading = true;
   bool _workersLoaded = false;
   bool _attendanceLoaded = false;
@@ -63,11 +64,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   final FirestoreService _firestore = FirestoreService();
   StreamSubscription? _workersSub;
   StreamSubscription? _attendanceSub;
+  StreamSubscription? _holidaysSub;
 
   @override
   void dispose() {
     _workersSub?.cancel();
     _attendanceSub?.cancel();
+    _holidaysSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -100,6 +103,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         _todayAttendance = _latestAttendancePerWorker(
           List<Map<String, dynamic>>.from(DummyData.attendance),
         );
+        _holidays = DummyData.holidays.values
+            .expand((l) => l)
+            .cast<Map<String, dynamic>>()
+            .toList();
         _isLoading = false;
       });
       return;
@@ -184,6 +191,19 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         }
       },
     );
+
+    _holidaysSub = _firestore.holidaysStream.listen(
+      (snap) {
+        if (mounted) {
+          setState(() {
+            _holidays = snap.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+          });
+        }
+      },
+      onError: (_) {},
+    );
   }
 
   String _getWorkerStatus(Map<String, dynamic> worker) {
@@ -213,6 +233,20 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     if (createdAt is Timestamp) return createdAt.toDate();
     if (createdAt is DateTime) return createdAt;
     if (createdAt is String) return DateTime.tryParse(createdAt);
+    return null;
+  }
+
+  // Returns the holiday record if today's date matches an enabled holiday.
+  Map<String, dynamic>? get _todayHoliday {
+    final now = DateTime.now();
+    for (final h in _holidays) {
+      if (h['isEnabled'] != true) continue;
+      final monthNum = app_date_utils.AppDateUtils.parseMonth(
+        (h['month'] ?? '').toString(),
+      );
+      final dayNum = int.tryParse((h['day'] ?? '').toString());
+      if (monthNum == now.month && dayNum == now.day) return h;
+    }
     return null;
   }
 
@@ -262,7 +296,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredWorkers = _filteredWorkers;
+    final holiday = _todayHoliday;
 
     if (_isLoading) {
       return const Scaffold(
@@ -342,6 +376,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                         children: [
                           _buildSearchBar(),
                           const SizedBox(height: 32),
+                          if (holiday != null) ...[
+                            _buildHolidayBanner(
+                              (holiday['name'] ?? '').toString(),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
                           Expanded(
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -378,92 +418,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                           child: Column(
                                             children: [
                                               Expanded(
-                                                child: filteredWorkers.isEmpty
-                                                    ? Center(
-                                                        child: Column(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .center,
-                                                          children: [
-                                                            Image.asset(
-                                                              'assets/placeholdemptystate.png',
-                                                              width: 120,
-                                                              height: 100,
-                                                              color:
-                                                                  const Color(
-                                                                    0xFFCBCBCB,
-                                                                  ),
-                                                            ),
-                                                            const SizedBox(
-                                                              height: 16,
-                                                            ),
-                                                            Text(
-                                                              'no_workers_found_title'
-                                                                  .tr(),
-                                                              style: const TextStyle(
-                                                                color: Color(
-                                                                  0xFF0247C4,
-                                                                ),
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                fontFamily:
-                                                                    'SF Pro Display',
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      )
-                                                    : SingleChildScrollView(
-                                                        child: Column(
-                                                          children: () {
-                                                            final startIndex =
-                                                                (_currentPage -
-                                                                    1) *
-                                                                _itemsPerPage;
-                                                            final paginatedList =
-                                                                filteredWorkers
-                                                                    .skip(
-                                                                      startIndex,
-                                                                    )
-                                                                    .take(
-                                                                      _itemsPerPage,
-                                                                    )
-                                                                    .toList();
-                                                            return paginatedList
-                                                                .asMap()
-                                                                .entries
-                                                                .map(
-                                                                  (
-                                                                    entry,
-                                                                  ) => WorkerListItem(
-                                                                    data: entry
-                                                                        .value,
-                                                                    index: entry
-                                                                        .key,
-                                                                    currentStatus:
-                                                                        _getWorkerStatus(
-                                                                            entry
-                                                                                .value,
-                                                                        ),
-                                                                    onMarkAttendance: (status) =>
-                                                                        _openAttendanceDialog(
-                                                                          context,
-                                                                          entry
-                                                                              .value,
-                                                                          defaultStatus:
-                                                                              status,
-                                                                        ),
-                                                                  ),
-                                                                )
-                                                                .toList();
-                                                          }(),
-                                                        ),
-                                                      ),
+                                                child: _buildWorkerAttendanceBody(
+                                                  holiday,
+                                                ),
                                               ),
                                               const SizedBox(height: 8),
-                                              _buildPagination(),
+                                              if (holiday == null) _buildPagination(),
                                             ],
                                           ),
                                         ),
@@ -501,69 +461,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               color: const Color(0xFFEEEEEE),
                                             ),
                                           ),
-                                          child: _todayAttendance.isEmpty
-                                              ? Center(
-                                                  child: Column(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Image.asset(
-                                                        'assets/placeholdemptystate.png',
-                                                        width: 120,
-                                                        height: 100,
-                                                        color: const Color(
-                                                          0xFFCBCBCB,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        height: 16,
-                                                      ),
-                                                      Text(
-                                                        'no_attendance_records'
-                                                            .tr(),
-                                                        style: const TextStyle(
-                                                          color: Color(
-                                                            0xFF0247C4,
-                                                          ),
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          fontFamily:
-                                                              'SF Pro Display',
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                )
-                                              : SingleChildScrollView(
-                                                  child: Column(
-                                                    children: _todayAttendance
-                                                        .asMap()
-                                                        .entries
-                                                        .map(
-                                                          (entry) =>
-                                                              TodayAttendanceItem(
-                                                                data:
-                                                                    entry.value,
-                                                                index:
-                                                                    entry.key,
-                                                                onEdit: () =>
-                                                                    _openAttendanceDialog(
-                                                                  context,
-                                                                  entry.value,
-                                                                  defaultStatus:
-                                                                      (entry.value['status'] ??
-                                                                              'Present')
-                                                                          .toString(),
-                                                                  titleKey:
-                                                                      'edit_attendance',
-                                                                ),
-                                                              ),
-                                                        )
-                                                        .toList(),
-                                                  ),
-                                                ),
+                                          child: _buildTodayAttendanceBody(holiday),
                                         ),
                                       ),
                                     ],
@@ -1494,6 +1392,208 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHolidayBanner(String name) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B51C1), Color(0xFF1E5EE0)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          SvgPicture.asset(
+            'assets/holidays_icon.svg',
+            width: 32,
+            height: 32,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'today_is_holiday'.tr(),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                if (name.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHolidayNotice(String name) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/holidays_icon.svg',
+            width: 56,
+            height: 56,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFF0B51C1),
+              BlendMode.srcIn,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'today_is_holiday'.tr(),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textDark,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          if (name.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              name,
+              style: const TextStyle(
+                fontSize: 14,
+                color: textMuted,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            'holiday_attendance_disabled'.tr(),
+            style: const TextStyle(
+              fontSize: 13,
+              color: textMuted,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerAttendanceBody(Map<String, dynamic>? holiday) {
+    if (holiday != null) {
+      return _buildHolidayNotice((holiday['name'] ?? '').toString());
+    }
+    if (_filteredWorkers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/placeholdemptystate.png',
+              width: 120,
+              height: 100,
+              color: const Color(0xFFCBCBCB),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'no_workers_found_title'.tr(),
+              style: const TextStyle(
+                color: Color(0xFF0247C1),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final startIndex = (_currentPage - 1) * _itemsPerPage;
+    final paginatedList = _filteredWorkers
+        .skip(startIndex)
+        .take(_itemsPerPage)
+        .toList();
+    return SingleChildScrollView(
+      child: Column(
+        children: paginatedList.asMap().entries.map(
+          (entry) => WorkerListItem(
+            data: entry.value,
+            index: entry.key,
+            currentStatus: _getWorkerStatus(entry.value),
+            onMarkAttendance: (status) => _openAttendanceDialog(
+              context,
+              entry.value,
+              defaultStatus: status,
+            ),
+          ),
+        ).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTodayAttendanceBody(Map<String, dynamic>? holiday) {
+    if (holiday != null) {
+      return _buildHolidayNotice((holiday['name'] ?? '').toString());
+    }
+    if (_todayAttendance.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/placeholdemptystate.png',
+              width: 120,
+              height: 100,
+              color: const Color(0xFFCBCBCB),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'no_attendance_records'.tr(),
+              style: const TextStyle(
+                color: Color(0xFF0247C1),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      child: Column(
+        children: _todayAttendance.asMap().entries.map(
+          (entry) => TodayAttendanceItem(
+            data: entry.value,
+            index: entry.key,
+            onEdit: () => _openAttendanceDialog(
+              context,
+              entry.value,
+              defaultStatus: (entry.value['status'] ?? 'Present').toString(),
+              titleKey: 'edit_attendance',
+            ),
+          ),
+        ).toList(),
+      ),
     );
   }
 

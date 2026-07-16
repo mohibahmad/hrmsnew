@@ -21,6 +21,7 @@ import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
+import '../utils/rate_us_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 const List<String> _months = [
@@ -912,6 +913,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       });
       if (!context.mounted) return;
       FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
+      if (mounted) {
+        tryShowFirstMilestoneRateUs(context, 'worker');
+      }
       widget.onBack?.call();
     } on ValidationException catch (e) {
       if (mounted) {

@@ -5,6 +5,12 @@ class PreferencesService {
   static const String _guestKey = 'is_guest';
   static const String _premiumKey = 'is_premium';
   static const String _profilePicUrlKey = 'profile_pic_url';
+  static const String _rateUsNeverShowKey = 'rate_us_never_show';
+  static const String _rateUsRemindLaterKey = 'rate_us_remind_later';
+  static const String _rateUsFirstExpenseKey = 'rate_us_first_expense';
+  static const String _rateUsFirstWorkerKey = 'rate_us_first_worker';
+  static const String _rateUsFirstHolidayKey = 'rate_us_first_holiday';
+  static const String _rateUsFirstBulkWorkerKey = 'rate_us_first_bulk_worker';
 
   /// Synchronous cache of the profile pic URL so it's available on the first
   /// frame (no async delay). Populated the first time [getProfilePicUrl] is
@@ -65,12 +71,76 @@ class PreferencesService {
     return url;
   }
 
+  static Future<bool> getRateUsNeverShow() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_rateUsNeverShowKey) ?? false;
+  }
+
+  static Future<void> setRateUsNeverShow(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_rateUsNeverShowKey, value);
+  }
+
+  static Future<DateTime?> getRateUsRemindLater() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timestamp = prefs.getString(_rateUsRemindLaterKey);
+    if (timestamp != null) {
+      return DateTime.tryParse(timestamp);
+    }
+    return null;
+  }
+
+  static Future<void> setRateUsRemindLater() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Remind in 3 days
+    final remindDate = DateTime.now().add(const Duration(days: 3));
+    await prefs.setString(_rateUsRemindLaterKey, remindDate.toIso8601String());
+  }
+
+  // ============== Rate Us counters for milestone triggers ==============
+
+  static Future<bool> _getBool(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(key) ?? false;
+  }
+
+  static Future<void> _setBool(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  static Future<bool> wasFirstExpenseTriggered() =>
+      _getBool(_rateUsFirstExpenseKey);
+  static Future<void> markFirstExpenseTriggered() =>
+      _setBool(_rateUsFirstExpenseKey, true);
+
+  static Future<bool> wasFirstWorkerTriggered() =>
+      _getBool(_rateUsFirstWorkerKey);
+  static Future<void> markFirstWorkerTriggered() =>
+      _setBool(_rateUsFirstWorkerKey, true);
+
+  static Future<bool> wasFirstHolidayTriggered() =>
+      _getBool(_rateUsFirstHolidayKey);
+  static Future<void> markFirstHolidayTriggered() =>
+      _setBool(_rateUsFirstHolidayKey, true);
+
+  static Future<bool> wasFirstBulkWorkerTriggered() =>
+      _getBool(_rateUsFirstBulkWorkerKey);
+  static Future<void> markFirstBulkWorkerTriggered() =>
+      _setBool(_rateUsFirstBulkWorkerKey, true);
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_loggedInKey);
     await prefs.remove(_guestKey);
     await prefs.remove(_premiumKey);
     await prefs.remove(_profilePicUrlKey);
+    await prefs.remove(_rateUsNeverShowKey);
+    await prefs.remove(_rateUsRemindLaterKey);
+    await prefs.remove(_rateUsFirstExpenseKey);
+    await prefs.remove(_rateUsFirstWorkerKey);
+    await prefs.remove(_rateUsFirstHolidayKey);
+    await prefs.remove(_rateUsFirstBulkWorkerKey);
     _cachedProfilePicUrl = null;
   }
 }

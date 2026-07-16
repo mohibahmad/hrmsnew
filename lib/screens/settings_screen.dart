@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'package:share_plus/share_plus.dart';
@@ -47,14 +49,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'password_reset_email_sent'.tr(namedArgs: {'email': email}),
+            message: 'password_reset_email_sent'.tr(
+              namedArgs: {'email': email},
+            ),
           );
         }
       } catch (e) {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'failed_to_send_reset_email'.tr(namedArgs: {'error': e.toString()}),
+            message: 'failed_to_send_reset_email'.tr(
+              namedArgs: {'error': e.toString()},
+            ),
             isError: true,
           );
         }
@@ -249,7 +255,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_delete_account'.tr(namedArgs: {'error': e.toString()}),
+          message: 'failed_to_delete_account'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
           isError: true,
         );
       }
@@ -259,8 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _shareApp() {
     final String appLink =
         'https://apps.apple.com/app/hrms-workforce-manager/id6743024022';
-    final String text =
-        'share_app_text'.tr(namedArgs: {'link': appLink});
+    final String text = 'share_app_text'.tr(namedArgs: {'link': appLink});
     Share.share(text);
   }
 
@@ -411,6 +418,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   _buildLanguageItem(),
                   _buildSimpleSettingItem(
+                    'assets/rating.png',
+                    'rate_us'.tr(),
+                    onTap: () => showRateUsDialogNow(context),
+                  ),
+                  _buildSimpleSettingItem(
                     'assets/share.svg',
                     'share_app'.tr(),
                     onTap: _shareApp,
@@ -540,7 +552,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: disabled ? null : onTap,
               behavior: HitTestBehavior.opaque,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: disabled
                       ? const Color(0xFFE0E0E0)
@@ -553,7 +568,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontSize: 16,
                     color: disabled
                         ? const Color(0xFFAAAAAA)
-                        : buttonColor != null ? Colors.white : const Color(0xFF000000),
+                        : buttonColor != null
+                        ? Colors.white
+                        : const Color(0xFF000000),
                     fontWeight: FontWeight.w500,
                     fontFamily: 'SF Pro Display',
                     height: 1.0,
@@ -647,15 +664,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Row(
             children: [
-              SvgPicture.asset(
-                iconPath,
-                width: 24,
-                height: 24,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF000000),
-                  BlendMode.srcIn,
-                ),
-              ),
+              if (iconPath.endsWith('.svg'))
+                SvgPicture.asset(
+                  iconPath,
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF000000),
+                    BlendMode.srcIn,
+                  ),
+                )
+              else
+                Image.asset(iconPath, width: 24, height: 24),
               const SizedBox(width: 16),
               Text(
                 text,

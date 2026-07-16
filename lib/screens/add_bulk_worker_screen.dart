@@ -13,6 +13,7 @@ import '../services/dummy_data.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
+import '../utils/rate_us_helper.dart';
 import '../widgets/amount_text.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
@@ -627,6 +628,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             namedArgs: {'count': _validWorkers.length.toString()},
           ),
         );
+        tryShowFirstMilestoneRateUs(context, 'bulk_worker');
 
         if (isGuest) {
           setState(() {
