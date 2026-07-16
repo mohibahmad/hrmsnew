@@ -2185,9 +2185,7 @@ class WorkerDetailFormSection extends StatelessWidget {
       LocalizationHelper.localizeGender(value);
 }
 
-// ==========================================
-// EXPERIENCE SECTION (IMAGE 1 + CUSTOM LEAVE)
-// ==========================================
+//
 class ExperienceFormSection extends StatefulWidget {
   final TextEditingController positionController;
   final TextEditingController type1Controller;
@@ -2289,7 +2287,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         }
       } catch (e) {}
 
-      // Format 2: "M/D/YYYY" or "MM/DD/YYYY" (e.g., "1/15/2025")
       try {
         final parts = dateStr.split('/');
         if (parts.length == 3) {
@@ -3078,107 +3075,144 @@ class DocumentationSection extends StatelessWidget {
                   const SizedBox(height: 16),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final h = (constraints.maxWidth * 1.8).clamp(320.0, 650.0);
+                      final h = (constraints.maxWidth * 1.8).clamp(
+                        320.0,
+                        650.0,
+                      );
                       return Container(
-                    height: h,
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F3F6),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                        height: h,
+                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F3F6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            GestureDetector(
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: onUploadFrontTap,
+                                  child: Text(
+                                    'upload_front_side'.tr(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (frontIdBytes != null ||
+                                    (existingFrontIdUrl != null &&
+                                        existingFrontIdUrl!.isNotEmpty))
+                                  GestureDetector(
+                                    onTap: onUploadFrontTap,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF000000),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Edit'.tr(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          SvgPicture.asset(
+                                            'assets/edit_icon.svg',
+                                            height: 14,
+                                            width: 14,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildIdUploadBox(
+                              label: 'upload_front_id_hint'.tr(),
+                              bytes: frontIdBytes,
+                              fileName: frontIdName,
+                              existingUrl: existingFrontIdUrl,
                               onTap: onUploadFrontTap,
-                              child: Text(
-                                'upload_front_side'.tr(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
                             ),
-                            const Spacer(),
-                            if (frontIdBytes != null || (existingFrontIdUrl != null && existingFrontIdUrl!.isNotEmpty))
-                              GestureDetector(
-                                onTap: onUploadFrontTap,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF000000),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
-                                      const SizedBox(width: 6),
-                                      SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                    ],
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: onUploadBackTap,
+                                  child: Text(
+                                    'upload_back_side'.tr(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _buildIdUploadBox(
-                          label: 'upload_front_id_hint'.tr(),
-                          bytes: frontIdBytes,
-                          fileName: frontIdName,
-                          existingUrl: existingFrontIdUrl,
-                          onTap: onUploadFrontTap,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            GestureDetector(
+                                const Spacer(),
+                                if (backIdBytes != null ||
+                                    (existingBackIdUrl != null &&
+                                        existingBackIdUrl!.isNotEmpty))
+                                  GestureDetector(
+                                    onTap: onUploadBackTap,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF000000),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Edit'.tr(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          SvgPicture.asset(
+                                            'assets/edit_icon.svg',
+                                            height: 14,
+                                            width: 14,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildIdUploadBox(
+                              label: 'upload_back_id_hint'.tr(),
+                              bytes: backIdBytes,
+                              fileName: backIdName,
+                              existingUrl: existingBackIdUrl,
                               onTap: onUploadBackTap,
-                              child: Text(
-                                'upload_back_side'.tr(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
                             ),
-                            const Spacer(),
-                            if (backIdBytes != null || (existingBackIdUrl != null && existingBackIdUrl!.isNotEmpty))
-                              GestureDetector(
-                                onTap: onUploadBackTap,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF000000),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
-                                      const SizedBox(width: 6),
-                                      SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                    ],
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        _buildIdUploadBox(
-                          label: 'upload_back_id_hint'.tr(),
-                          bytes: backIdBytes,
-                          fileName: backIdName,
-                          existingUrl: existingBackIdUrl,
-                          onTap: onUploadBackTap,
-                        ),
-                      ],
-                    ),
-                  );
+                      );
                     },
                   ),
                 ],
@@ -3206,7 +3240,10 @@ class DocumentationSection extends StatelessWidget {
                         GestureDetector(
                           onTap: onUploadCvTap,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF000000),
                               borderRadius: BorderRadius.circular(6),
@@ -3214,9 +3251,21 @@ class DocumentationSection extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                Text(
+                                  'Edit'.tr(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                SvgPicture.asset(
+                                  'assets/edit_icon.svg',
+                                  height: 14,
+                                  width: 14,
+                                ),
                               ],
                             ),
                           ),
@@ -3225,7 +3274,10 @@ class DocumentationSection extends StatelessWidget {
                         GestureDetector(
                           onTap: onDeleteCvTap,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF000000),
                               borderRadius: BorderRadius.circular(6),
@@ -3233,9 +3285,21 @@ class DocumentationSection extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('delete'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                Text(
+                                  'Delete'.tr(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                SvgPicture.asset('assets/delete_icon.svg', height: 14, width: 14),
+                                SvgPicture.asset(
+                                  'assets/delete_icon.svg',
+                                  height: 14,
+                                  width: 14,
+                                ),
                               ],
                             ),
                           ),
@@ -3589,150 +3653,150 @@ class DocumentationSection extends StatelessWidget {
         final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
         final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
         return Container(
-      height: containerHeight,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: 8,
-            bottom: 8,
-            left: sidePadding,
-            right: sidePadding,
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
+          height: containerHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F3F6),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                top: 8,
+                bottom: 8,
+                left: sidePadding,
+                right: sidePadding,
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: isImage
-                  ? GestureDetector(
-                      onTap: () => _openDocumentPreview(buildContext),
-                      child: cvBytes != null
-                          ? Image.memory(
-                              cvBytes!,
-                              fit: BoxFit.cover,
-                              filterQuality: FilterQuality.high,
-                            )
-                          : (existingCvUrl != null && existingCvUrl!.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: existingCvUrl!,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (context, url, error) =>
-                                        const Center(
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 48,
+                  child: isImage
+                      ? GestureDetector(
+                          onTap: () => _openDocumentPreview(buildContext),
+                          child: cvBytes != null
+                              ? Image.memory(
+                                  cvBytes!,
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.high,
+                                )
+                              : (existingCvUrl != null &&
+                                        existingCvUrl!.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: existingCvUrl!,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (context, url, error) =>
+                                            const Center(
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 48,
+                                              ),
+                                            ),
+                                      )
+                                    : const SizedBox.shrink()),
+                        )
+                      : (isPdf || isDoc)
+                      ? GestureDetector(
+                          onTap: () => _openDocumentPreview(buildContext),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (cvBytes == null &&
+                                  (existingCvUrl == null ||
+                                      existingCvUrl!.isEmpty))
+                                Container(
+                                  height: double.infinity,
+                                  width: double.infinity,
+                                  color: Colors.grey.shade200,
+                                ),
+                              if (isDoc &&
+                                  (cvBytes != null ||
+                                      (existingCvUrl != null &&
+                                          existingCvUrl!.isNotEmpty)))
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            cvName?.endsWith('.docx') ?? false
+                                                ? Icons.article_outlined
+                                                : Icons.description_outlined,
+                                            size: 64,
+                                            color: const Color(0xFF0B50C3),
                                           ),
-                                        ),
-                                  )
-                                : const SizedBox.shrink()),
-                    )
-                  : (isPdf || isDoc)
-                  ? GestureDetector(
-                      onTap: () => _openDocumentPreview(buildContext),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          if (cvBytes == null &&
-                              (existingCvUrl == null || existingCvUrl!.isEmpty))
-                            Container(
-                              height: double.infinity,
-                              width: double.infinity,
-                              color: Colors.grey.shade200,
-                            ),
-                          if (isDoc &&
-                              (cvBytes != null ||
-                                  (existingCvUrl != null &&
-                                      existingCvUrl!.isNotEmpty)))
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        cvName?.endsWith('.docx') ?? false
-                                            ? Icons.article_outlined
-                                            : Icons.description_outlined,
-                                        size: 64,
-                                        color: const Color(0xFF0B50C3),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            cvName ?? 'Document',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade600,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        cvName ?? 'Document',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey.shade600,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          if (isPdf &&
-                              (cvBytes != null ||
-                                  (existingCvUrl != null &&
-                                      existingCvUrl!.isNotEmpty)))
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: PdfPagePreview(
-                                  cvBytes: cvBytes,
-                                  existingCvUrl: existingCvUrl,
+                              if (isPdf &&
+                                  (cvBytes != null ||
+                                      (existingCvUrl != null &&
+                                          existingCvUrl!.isNotEmpty)))
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: PdfPagePreview(
+                                      cvBytes: cvBytes,
+                                      existingCvUrl: existingCvUrl,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                            ],
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: () => _openDocumentPreview(buildContext),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.insert_drive_file,
+                                  size: 64,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  cvName ?? 'CV',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                        ],
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: () => _openDocumentPreview(buildContext),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.insert_drive_file,
-                              size: 64,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              cvName ?? 'CV',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
       },
     );
   }
@@ -3749,10 +3813,7 @@ class DocumentationSection extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFF2F3F6),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
           ),
           child: Stack(
             alignment: Alignment.center,
@@ -3812,7 +3873,6 @@ class DocumentationSection extends StatelessWidget {
     );
   }
 }
-
 
 // ==========================================
 // FILE-LEVEL SHARED HELPERS
@@ -3874,7 +3934,9 @@ Widget _buildInputField(
                   FilteringTextInputFormatter.allow(
                     isAmount
                         ? RegExp(r'^\d*\.?\d*')
-                        : (isNationalId ? RegExp(r'^[\d_-]*') : RegExp(r'^\d*')),
+                        : (isNationalId
+                              ? RegExp(r'^[\d_-]*')
+                              : RegExp(r'^\d*')),
                   ),
                   if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),

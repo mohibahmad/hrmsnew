@@ -39,6 +39,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   bool _isLoading = false;
   StreamSubscription? _workersSub;
   int _index = 0;
+  Map<String, dynamic>? _editingWorker;
 
   @override
   void dispose() {
@@ -84,7 +85,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       children: [
         Container(
           height: 94,
-          padding: const EdgeInsets.symmetric(horizontal: 40),
+          padding: EdgeInsets.only(
+            left: _editingWorker != null ? 16 : 40,
+            right: 40,
+          ),
           decoration: const BoxDecoration(
             color: Color(0xFFFFFFFF),
             border: Border(
@@ -93,12 +97,29 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           ),
           child: Row(
             children: [
+              if (_editingWorker != null) ...[
+                GestureDetector(
+                  onTap: () => setState(() => _editingWorker = null),
+                  child: const SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Color(0xFF000000),
+                      size: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Workforce',
+                    _editingWorker != null
+                        ? (_editingWorker!['name'] ?? 'Unknown').toString()
+                        : 'Workforce',
                     style: TextStyle(
                       color: const Color(0xFF000000),
                       fontSize: 28,
@@ -119,92 +140,107 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           ),
         ),
         Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
+          child: _editingWorker != null
+              ? _EditDocumentsPage(
+                  worker: _editingWorker!,
+                  onDocumentsUpdated: () {
+                    setState(() {});
+                  },
+                  onBack: () => setState(() => _editingWorker = null),
+                  onNotificationTap: widget.onNotificationTap,
+                  onProfileTap: widget.onProfileTap,
+                )
+              : _buildWorkerList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkerList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 40.0,
+        vertical: 22.0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 48,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 40.0,
-                    vertical: 22.0,
+                    horizontal: 16,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFFEEEEEE),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 48,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFFFFF),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFFEEEEEE),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  SvgPicture.asset(
-                                    'assets/search icon.svg',
-                                    width: 24,
-                                    height: 24,
-                                    colorFilter: const ColorFilter.mode(
-                                      Color(0xFFBDBDBD),
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _searchController,
-                                      onChanged: (val) {
-                                        setState(() => _searchQuery = val);
-                                      },
-                                      decoration: InputDecoration(
-                                        hintText: 'Search workers...',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey[400],
-                                          fontSize: 14,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_searchQuery.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        _searchController.clear();
-                                        setState(() => _searchQuery = '');
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(left: 8),
-                                        child: Icon(
-                                          Icons.close,
-                                          size: 18,
-                                          color: Colors.grey[400],
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
+                      SvgPicture.asset(
+                        'assets/search icon.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFFBDBDBD),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) {
+                            setState(() => _searchQuery = val);
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search workers...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      if (_searchQuery.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Icon(
+                              Icons.close,
+                              size: 18,
+                              color: Colors.grey[400],
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      ..._filteredWorkers.map(
-                        (worker) => _buildWorkerCard(worker),
-                      ),
+                        ),
                     ],
                   ),
                 ),
-        ),
-      ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ..._filteredWorkers.map(
+            (worker) => _buildWorkerCard(worker),
+          ),
+        ],
+      ),
     );
   }
 
@@ -325,30 +361,21 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   void _openDocumentDialog(Map<String, dynamic> worker) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _EditDocumentsPage(
-          worker: worker,
-          onDocumentsUpdated: () {
-            setState(() {});
-          },
-          onNotificationTap: widget.onNotificationTap,
-          onProfileTap: widget.onProfileTap,
-        ),
-      ),
-    );
+    setState(() => _editingWorker = worker);
   }
 }
 
 class _EditDocumentsPage extends StatefulWidget {
   final Map<String, dynamic> worker;
   final VoidCallback onDocumentsUpdated;
+  final VoidCallback onBack;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
 
   const _EditDocumentsPage({
     required this.worker,
     required this.onDocumentsUpdated,
+    required this.onBack,
     this.onNotificationTap,
     this.onProfileTap,
   });
@@ -366,6 +393,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   Uint8List? _cvBytes;
   String? _cvName;
   bool _isCvUploaded = false;
+  double _idColumnHeight = 320.0;
 
   String? get _existingFrontId => widget.worker['frontId']?.toString();
   String? get _existingBackId => widget.worker['backId']?.toString();
@@ -486,57 +514,50 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
   void _viewDocument(String? url, bool isImage, String label) {
     if (url == null || url.isEmpty) return;
-    showDialog(
+    showGeneralDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) =>
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim, secAnim) =>
           _FullScreenDocumentViewer(url: url, label: label, isImage: isImage),
+      transitionBuilder: (ctx, anim, secAnim, child) {
+        final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+        final scale = Tween<double>(begin: 0.92, end: 1.0).animate(
+          CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+        );
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: 6 * anim.value,
+                  sigmaY: 6 * anim.value,
+                ),
+                child: FadeTransition(
+                  opacity: fade,
+                  child: Container(
+                    color: const Color(0xFF000000).withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: fade,
+              child: ScaleTransition(scale: scale, child: child),
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(94),
-        child: Container(
-          height: 94,
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          decoration: const BoxDecoration(
-            color: Color(0xFFFFFFFF),
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-            ),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF333333)),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _workerName,
-                style: const TextStyle(
-                  color: Color(0xFF333333),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              const Spacer(),
-              NotificationBell(onTap: widget.onNotificationTap),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: widget.onProfileTap,
-                child: const UserAvatar(),
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
+    return Container(
+      color: const Color(0xFFF8F9FA),
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,25 +578,26 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                 // Left Side: ID Card Upload
                 Expanded(
                   flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'id_card_label'.tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final h = (constraints.maxWidth * 1.8).clamp(
-                            320.0,
-                            650.0,
-                          );
-                          return Container(
+                  child: LayoutBuilder(
+                    builder: (context, idConstraints) {
+                      final h = (idConstraints.maxWidth * 1.8).clamp(
+                        320.0,
+                        650.0,
+                      );
+                      _idColumnHeight = h;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'id_card_label'.tr(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
                             height: h,
                             padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                             decoration: BoxDecoration(
@@ -600,24 +622,24 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                     ),
                                     const Spacer(),
                                     if (_frontIdBytes != null || (_existingFrontId != null && _existingFrontId!.isNotEmpty))
-                                      GestureDetector(
-                                        onTap: () => _pickFile('frontId'),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF000000),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
-                                              const SizedBox(width: 6),
-                                              SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                            ],
-                                          ),
+                                    GestureDetector(
+                                      onTap: () => _pickFile('frontId'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF000000),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                            const SizedBox(width: 6),
+                                            SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                          ],
                                         ),
                                       ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -655,7 +677,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                              Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
                                               const SizedBox(width: 6),
                                               SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
                                             ],
@@ -674,10 +696,10 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                    ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -711,14 +733,14 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                    const Text('Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
                                     const SizedBox(width: 6),
                                     SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
                                   ],
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                const SizedBox(width: 4),
                             GestureDetector(
                               onTap: () {
                                 setState(() {
@@ -741,7 +763,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13, fontFamily: 'SF Pro Display')),
+                                    const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
                                     const SizedBox(width: 6),
                                     SvgPicture.asset('assets/delete_icon.svg', height: 14, width: 14),
                                   ],
@@ -754,8 +776,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       const SizedBox(height: 16),
                       _isCvUploaded ||
                               (_existingCv != null && _existingCv!.isNotEmpty)
-                          ? _buildCvPreview()
-                          : _buildCvUpload(),
+                          ? _buildCvPreview(height: _idColumnHeight)
+                          : _buildCvUpload(height: _idColumnHeight),
                     ],
                   ),
                 ),
@@ -781,22 +803,29 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   }) {
     final bool hasFile =
         bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
-    final bool isPdf =
-        (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
-        (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
+    final cleanUrl = (existingUrl ?? '').split('?').first.toLowerCase();
+    final cleanName = (fileName ?? '').toLowerCase();
+    final bool isPdf = cleanName.endsWith('.pdf') || cleanUrl.endsWith('.pdf');
     final bool isImage =
-        (fileName != null &&
-            (fileName.toLowerCase().endsWith('.png') ||
-                fileName.toLowerCase().endsWith('.jpg') ||
-                fileName.toLowerCase().endsWith('.jpeg'))) ||
+        cleanName.endsWith('.png') ||
+        cleanName.endsWith('.jpg') ||
+        cleanName.endsWith('.jpeg') ||
+        cleanUrl.endsWith('.png') ||
+        cleanUrl.endsWith('.jpg') ||
+        cleanUrl.endsWith('.jpeg') ||
         (existingUrl != null &&
-            (existingUrl.toLowerCase().endsWith('.png') ||
-                existingUrl.toLowerCase().endsWith('.jpg') ||
-                existingUrl.toLowerCase().endsWith('.jpeg')));
+            existingUrl.startsWith('data:image'));
 
     return GestureDetector(
       onTap: hasFile
-          ? () => _viewDocument(existingUrl, isImage, label)
+          ? () {
+              if (bytes != null) {
+                final dataUrl = 'data:image/png;base64,${base64Encode(bytes)}';
+                _viewDocument(dataUrl, true, label);
+              } else if (existingUrl != null && existingUrl.isNotEmpty) {
+                _viewDocument(existingUrl, isImage, label);
+              }
+            }
           : onTap,
       child: Container(
         height: 250,
@@ -934,9 +963,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildCvUpload() {
+  Widget _buildCvUpload({required double height}) {
     return Container(
-      height: 596,
+      height: height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F6),
@@ -1028,7 +1057,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildCvPreview() {
+  Widget _buildCvPreview({required double height}) {
     final cvUrl = _existingCv;
     final isPdf = cvUrl != null && cvUrl.toLowerCase().endsWith('.pdf');
     final isImage =
@@ -1038,7 +1067,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             cvUrl.toLowerCase().endsWith('.jpeg'));
 
     return Container(
-      height: 700,
+      height: height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F6),
@@ -1149,31 +1178,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
       _FullScreenDocumentViewerState();
 }
 
-class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animController;
-  late final Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _scaleAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutBack,
-    );
-    _animController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
+class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   Uint8List _base64ToBytes(String dataUrl) {
     try {
       final base64 = dataUrl.split(',').last;
@@ -1185,60 +1190,71 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(0xFF0F0F1A),
-      insetPadding: const EdgeInsets.all(16),
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFFFF).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Color(0xFFFFFFFF),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    final size = MediaQuery.of(context).size;
+    final previewSize = (size.width * 0.4).clamp(280.0, 520.0);
+
+    final content = Container(
+      width: previewSize,
+      height: previewSize * 1.35,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF7F8FA),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
             ),
-            const Divider(color: Color(0xFF2A2A3E), height: 1),
-            Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A1A).withValues(alpha: 0.06),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Color(0xFF1A1A1A),
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Color(0xFFEEEEEE), height: 1),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(14),
+              ),
               child: widget.isImage
                   ? InteractiveViewer(
                       minScale: 0.5,
@@ -1254,7 +1270,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                                 fit: BoxFit.contain,
                                 placeholder: (c, u) => const Center(
                                   child: CircularProgressIndicator(
-                                    color: Color(0xFFFFFFFF),
+                                    color: Color(0xFF0247C4),
                                   ),
                                 ),
                                 errorWidget: (c, u, e) => const Column(
@@ -1263,13 +1279,13 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                                     Icon(
                                       Icons.broken_image,
                                       size: 48,
-                                      color: Color(0xFFFFFFFF),
+                                      color: Color(0xFF9E9E9E),
                                     ),
                                     SizedBox(height: 12),
                                     Text(
                                       'Failed to load',
                                       style: TextStyle(
-                                        color: Color(0xFFFFFFFF),
+                                        color: Color(0xFF9E9E9E),
                                       ),
                                     ),
                                   ],
@@ -1283,18 +1299,22 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                         children: [
                           const Icon(
                             Icons.picture_as_pdf,
-                            size: 72,
+                            size: 64,
                             color: Color(0xFFEF4444),
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            widget.url.split('/').last,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 14,
-                              fontFamily: 'SF Pro Display',
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              widget.url.split('/').last,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Color(0xFF1A1A1A),
+                                fontSize: 14,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -1324,7 +1344,17 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer>
                       ),
                     ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: GestureDetector(onTap: () {}, child: content),
         ),
       ),
     );
