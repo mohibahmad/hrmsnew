@@ -111,13 +111,13 @@ void _showRateUsDialog(BuildContext context) {
                       width: 64,
                       height: 64,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFFF7ED),
+                        color: Color(0xFFEFF6FF),
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
                         child: Icon(
                           Icons.star_rounded,
-                          color: Color(0xFFF59E0B),
+                          color: Color(0xFF0247C4),
                           size: 36,
                         ),
                       ),
@@ -173,7 +173,7 @@ void _showRateUsDialog(BuildContext context) {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                              colors: [Color(0xFF0247C4), Color(0xFF003DA5)],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
@@ -181,7 +181,7 @@ void _showRateUsDialog(BuildContext context) {
                             boxShadow: [
                               BoxShadow(
                                 color: const Color(
-                                  0xFFF59E0B,
+                                  0xFF0247C4,
                                 ).withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
@@ -292,7 +292,7 @@ class _StarRatingState extends State<_StarRating> {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Icon(
                 index < _rating ? Icons.star : Icons.star_border,
-                color: const Color(0xFFF59E0B),
+                color: const Color(0xFF0247C4),
                 size: 40,
               ),
             ),
