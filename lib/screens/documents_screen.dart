@@ -785,8 +785,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       const SizedBox(height: 16),
                       _isCvUploaded ||
                               (_existingCv != null && _existingCv!.isNotEmpty)
-                          ? _buildCvPreview(height: _idColumnHeight)
-                          : _buildCvUpload(height: _idColumnHeight),
+                          ? _buildCvPreview(height: _idColumnHeight - 60)
+                          : _buildCvUpload(height: _idColumnHeight - 60),
                     ],
                   ),
                 ),
