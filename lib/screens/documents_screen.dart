@@ -394,8 +394,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   Uint8List? _cvBytes;
   String? _cvName;
   bool _isCvUploaded = false;
-  final GlobalKey _idBoxKey = GlobalKey();
-  double _idBoxHeight = 0;
 
   String? get _existingFrontId => widget.worker['frontId']?.toString();
   String? get _existingBackId => widget.worker['backId']?.toString();
@@ -403,19 +401,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   String get _workerId => widget.worker['id'] ?? '';
   String get _workerName => (widget.worker['name'] ?? 'Unknown').toString();
 
-  void _measureIdBox() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final height = _idBoxKey.currentContext?.size?.height;
-      if (height != null && height != _idBoxHeight) {
-        setState(() => _idBoxHeight = height);
-      }
-    });
-  }
-
   @override
   void initState() {
     super.initState();
-    _measureIdBox();
   }
 
   Future<void> _pickFile(String field) async {
@@ -572,7 +560,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    _measureIdBox();
     return Container(
       color: const Color(0xFFF8F9FA),
       child: SingleChildScrollView(
@@ -590,8 +577,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            IntrinsicHeight(
+              child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Left Side: ID Card Upload
                 Expanded(
@@ -599,17 +587,22 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'id_card_label'.tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
+                      SizedBox(
+                        height: 36,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'id_card_label'.tr(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Container(
-                        key: _idBoxKey,
                         padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF2F3F6),
@@ -718,7 +711,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      SizedBox(
+                        height: 36,
+                        child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
@@ -789,16 +784,18 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                             ),
                           ],
                         ],
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _isCvUploaded ||
                               (_existingCv != null && _existingCv!.isNotEmpty)
-                          ? _buildCvPreview(height: _idBoxHeight > 0 ? _idBoxHeight : 350)
-                          : _buildCvUpload(height: _idBoxHeight > 0 ? _idBoxHeight : 350),
+                          ? Expanded(child: _buildCvPreview())
+                          : Expanded(child: _buildCvUpload()),
                     ],
                   ),
                 ),
               ],
+              ),
             ),
             const SizedBox(height: 32),
             if (_isUploading)
@@ -980,9 +977,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildCvUpload({required double height}) {
+  Widget _buildCvUpload() {
     return Container(
-      height: height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F6),
@@ -1074,7 +1070,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     );
   }
 
-  Widget _buildCvPreview({required double height}) {
+  Widget _buildCvPreview() {
     final cvUrl = _existingCv;
     final lowerUrl = cvUrl?.toLowerCase() ?? '';
     final isPdf = lowerUrl.endsWith('.pdf') ||
@@ -1087,7 +1083,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         lowerUrl.contains('image/');
 
     return Container(
-      height: height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F6),

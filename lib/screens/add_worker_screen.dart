@@ -629,11 +629,17 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               // === RIGHT: Profile Upload & Status ===
                               Expanded(
                                 flex: 1,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'worker_profile'.tr(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: formBgGrey,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'worker_profile'.tr(),
                                       style: TextStyle(
                                         color: Color(0xFF000000),
                                         fontSize: 16,
@@ -788,6 +794,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                       ],
                                     ),
                                   ],
+                                ),
                                 ),
                               ),
                             ],

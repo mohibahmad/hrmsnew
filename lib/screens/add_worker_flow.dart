@@ -3064,12 +3064,18 @@ class DocumentationSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'id_card_label'.tr(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
+                  SizedBox(
+                    height: 36,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'id_card_label'.tr(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -3225,17 +3231,20 @@ class DocumentationSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'upload_cv_label'.tr(),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
+                  SizedBox(
+                    height: 36,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'upload_cv_label'.tr(),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
-                      ),
-                      const Spacer(),
+                        const Spacer(),
                       if (isCvUploaded) ...[
                         GestureDetector(
                           onTap: onUploadCvTap,
@@ -3304,8 +3313,9 @@ class DocumentationSection extends StatelessWidget {
                             ),
                           ),
                         ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   isCvUploaded ? _buildCvPreview(context) : _buildCvUpload(),
