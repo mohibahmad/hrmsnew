@@ -620,6 +620,7 @@
   "failed_to_pick_image": "Error al seleccionar imagen",
   "failed_to_pick_file": "Error al seleccionar archivo",
   "file_too_large": "Archivo demasiado grande. El tamaño máximo es {size}.",
+  "same_csv_file_already_uploaded": "Este archivo CSV ya ha sido subido.",
   "uploaded": "Subido",
   "not_uploaded": "No subido",
   "pdf_preview_not_available": "Vista previa de PDF no disponible",

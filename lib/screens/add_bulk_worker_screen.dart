@@ -33,6 +33,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   int _invalidGenderCount = 0;
   int _missingRequiredCount = 0;
   int _duplicateCount = 0;
+  String? _lastFileHash;
 
   @override
   void initState() {
@@ -149,6 +150,18 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (bytes == null) return;
 
+      final fileHash = bytes.hashCode.toString();
+      if (_lastFileHash != null && _lastFileHash == fileHash) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'same_csv_file_already_uploaded'.tr(),
+            isError: true,
+          );
+        }
+        return;
+      }
+
       // BOM strip + UTF-8 safe + normalize line endings
       var csvString = utf8.decode(bytes, allowMalformed: true);
       if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
@@ -160,6 +173,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (!mounted) return;
       await _processCsvData(rows);
+      _lastFileHash = fileHash;
     } catch (e) {
       if (mounted) {
         FlashySnackBar.show(

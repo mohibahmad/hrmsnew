@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../services/dummy_data.dart';
 
 class NotificationBell extends StatefulWidget {
   final VoidCallback? onTap;
@@ -20,7 +21,10 @@ class _NotificationBellState extends State<NotificationBell> {
   void initState() {
     super.initState();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-    if (isGuest) return;
+    if (isGuest) {
+      _unreadCount = DummyData.notifications.where((n) => n['isRead'] != true).length;
+      return;
+    }
     _notifSub = FirestoreService().notificationsStream.listen((snap) {
       if (mounted) {
         setState(() {

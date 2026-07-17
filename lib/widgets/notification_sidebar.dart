@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../services/dummy_data.dart';
 
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
@@ -44,6 +45,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
 
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
+      _notifications = List<Map<String, dynamic>>.from(DummyData.notifications);
       _isLoading = false;
     } else {
       _notifSub = FirestoreService().notificationsStream.listen(
@@ -287,8 +289,13 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () async {
-                      await FirestoreService().clearAllNotifications();
-                      setState(() {});
+                      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                      if (!isGuest) {
+                        await FirestoreService().clearAllNotifications();
+                      }
+                      setState(() {
+                        _notifications.clear();
+                      });
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -501,7 +508,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              'notif_new_member'.tr(),
+                              'notif_welcome'.tr(),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,

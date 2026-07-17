@@ -348,6 +348,8 @@ class _HomeScreenState extends State<HomeScreen> {
             .expand((list) => list)
             .cast<Map<String, dynamic>>()
             .toList();
+
+        _unreadNotifCount = DummyData.notifications.where((n) => n['isRead'] != true).length;
       });
     } else {
       final firestore = FirestoreService();

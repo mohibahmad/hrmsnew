@@ -617,6 +617,7 @@
   "failed_to_pick_image": "Не удалось выбрать изображение",
   "failed_to_pick_file": "Не удалось выбрать файл",
   "file_too_large": "Файл слишком большой. Максимальный размер {size}.",
+  "same_csv_file_already_uploaded": "Этот CSV-файл уже был загружен.",
   "uploaded": "Загружено",
   "not_uploaded": "Не загружено",
   "pdf_preview_not_available": "Предварительный просмотр PDF недоступен",

@@ -1256,6 +1256,73 @@ class DummyData {
     ],
   };
 
+  static final List<Map<String, dynamic>> notifications = [
+    {
+      'id': 'dummy_n1',
+      'type': 'welcome',
+      'title': 'Welcome to HRMS!',
+      'message': 'Your account is ready. Explore all features in guest mode.',
+      'isRead': false,
+      'createdAt': DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n2',
+      'type': 'attendance_marked',
+      'title': 'Attendance Marked',
+      'message': 'Daily attendance has been recorded for 15 employees.',
+      'isRead': false,
+      'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n3',
+      'type': 'time_off_added',
+      'title': 'Time Off Request',
+      'message': 'Michael Johnson requested sick leave for July 12-13.',
+      'isRead': false,
+      'createdAt': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n4',
+      'type': 'payroll_added',
+      'title': 'Payroll Processed',
+      'message': 'June 2026 payroll has been successfully processed.',
+      'isRead': true,
+      'createdAt': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n5',
+      'type': 'holiday_added',
+      'title': 'Holiday Upcoming',
+      'message': 'Independence Day on July 4th - office will be closed.',
+      'isRead': true,
+      'createdAt': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n6',
+      'type': 'expense_added',
+      'title': 'New Expense Submitted',
+      'message': 'Robert Wilson submitted a travel expense of \$475.00.',
+      'isRead': false,
+      'createdAt': DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n7',
+      'type': 'expense_added',
+      'title': 'Expense Recorded',
+      'message': 'Client Dinner with Acme Corp - \$124.50 submitted.',
+      'isRead': true,
+      'createdAt': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+    },
+    {
+      'id': 'dummy_n8',
+      'type': 'asset_added',
+      'title': 'Asset Assigned',
+      'message': 'MacBook Pro assigned to Sophia Martinez.',
+      'isRead': true,
+      'createdAt': DateTime.now().subtract(const Duration(days: 4)).toIso8601String(),
+    },
+  ];
+
   static final List<Map<String, dynamic>> assets = [
     {
       'name': 'Emily Davis',
