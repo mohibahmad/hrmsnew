@@ -368,6 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _emailController,
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               style: const TextStyle(
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
@@ -390,6 +391,8 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _passwordController,
               enabled: !_anyLoading,
               obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {},
               style: const TextStyle(
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',

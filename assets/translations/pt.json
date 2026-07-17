@@ -657,7 +657,7 @@
   "overtime_pay": "Pagamento de Horas Extras",
   "absent_deduction": "Dedução de Ausência",
   "leave_deduction": "Dedução de Licença",
-  "net_pay": "Salário Líquido",
+  "net_pay": "Salary After Deduction",
   "days_per_year": "dias/ano",
   "days_overtime_multiplier": "dias @ 1.5×",
   "last_modified_by_admin_on": "Última modificação pelo Administrador em {date}",

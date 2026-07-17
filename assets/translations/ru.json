@@ -657,7 +657,7 @@
   "overtime_pay": "Оплата сверхурочных",
   "absent_deduction": "Вычет за прогулы",
   "leave_deduction": "Вычет за отпуск",
-  "net_pay": "Чистая зарплата",
+  "net_pay": "Зарплата после вычетов",
   "days_per_year": "дней/год",
   "days_overtime_multiplier": "дней @ 1.5×",
   "last_modified_by_admin_on": "Последнее изменение: Администратор, {date}",

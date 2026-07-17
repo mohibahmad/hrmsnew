@@ -660,7 +660,7 @@
   "overtime_pay": "Heures Supplémentaires",
   "absent_deduction": "Déduction d'Absence",
   "leave_deduction": "Déduction de Congé",
-  "net_pay": "Salaire Net",
+  "net_pay": "Salaire After Deduction",
   "days_per_year": "jours/an",
   "days_overtime_multiplier": "jours @ 1.5×",
   "last_modified_by_admin_on": "Dernière modification par l'Administrateur le {date}",

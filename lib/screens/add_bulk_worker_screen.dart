@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io' as io;
+import 'dart:math';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
@@ -38,6 +39,15 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  String _computeFileHash(Uint8List bytes) {
+    int hash = 0;
+    final minLen = min(bytes.length, 8192);
+    for (int i = 0; i < minLen; i++) {
+      hash = ((hash << 5) + hash + bytes[i]) & 0xFFFFFFFF;
+    }
+    return hash.toRadixString(16);
   }
 
   Future<void> _downloadTemplate() async {
@@ -150,7 +160,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (bytes == null) return;
 
-      final fileHash = bytes.hashCode.toString();
+      final fileHash = _computeFileHash(bytes);
       if (_lastFileHash != null && _lastFileHash == fileHash) {
         if (mounted) {
           FlashySnackBar.show(

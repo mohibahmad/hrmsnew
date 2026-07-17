@@ -660,7 +660,7 @@
   "overtime_pay": "Pago por Horas Extras",
   "absent_deduction": "Deducción por Ausencia",
   "leave_deduction": "Deducción por Licencia",
-  "net_pay": "Salario Neto",
+  "net_pay": "Salario After Deduction",
   "days_per_year": "días/año",
   "days_overtime_multiplier": "días @ 1.5×",
   "last_modified_by_admin_on": "Última modificación por el Administrador el {date}",

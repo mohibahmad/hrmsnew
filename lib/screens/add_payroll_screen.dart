@@ -64,10 +64,15 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   void _recalc() {
     setState(() {
       if (_workDaysCtrl.text.trim().isNotEmpty) {
+        final totalDays = int.tryParse(_workDaysCtrl.text.trim()) ?? 0;
+        final absentDays = int.tryParse(_absentsCtrl.text.trim()) ?? 0;
+        final leaveDays = int.tryParse(_leavesCtrl.text.trim()) ?? 0;
+        final hasLeaveDeduction = _leaveDeductionCtrl.text.trim().isNotEmpty;
+        final effectiveWorkedDays = totalDays - absentDays - (hasLeaveDeduction ? leaveDays : 0);
         _calcResult = PayrollService.calculatePayroll(
           salary: _salaryStr,
           totalWorkDays: _workDaysCtrl.text,
-          daysWorked: _workDaysCtrl.text,
+          daysWorked: effectiveWorkedDays > 0 ? effectiveWorkedDays.toString() : '0',
           absents: _absentsCtrl.text,
           leaves: _leavesCtrl.text,
           overtimeAmount: _overtimeAmountCtrl.text,
@@ -442,8 +447,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                             const SizedBox(height: 24),
                             _buildEmployeeBanner(),
                             const SizedBox(height: 12),
-                            _buildLastModifiedNotice(),
-                            const SizedBox(height: 12),
                             _buildDetailsCard(),
                             const SizedBox(height: 40),
                           ],
@@ -563,45 +566,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           GestureDetector(
             onTap: widget.onProfileTap,
             child: const UserAvatar(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  DateTime? _parseDate(dynamic raw) {
-    if (raw == null) return null;
-    if (raw is DateTime) return raw;
-    if (raw is Timestamp) return raw.toDate();
-    final str = raw.toString().trim();
-    if (str.isEmpty) return null;
-    return DateTime.tryParse(str);
-  }
-
-  Widget _buildLastModifiedNotice() {
-    final date =
-        _parseDate(widget.workerData['lastModified']) ??
-        _parseDate(widget.workerData['createdAt']);
-    if (date == null) return const SizedBox.shrink();
-
-    final dateStr = AppDateUtils.formatDate(date);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _borderLight),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.history, size: 16, color: Color(0xFF6B7280)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'last_modified_by_admin_on'.tr(args: [dateStr]),
-              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-            ),
           ),
         ],
       ),

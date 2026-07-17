@@ -353,6 +353,7 @@ class _SignupScreenState extends State<SignupScreen> {
               controller: _usernameController,
               enabled: !_anyLoading,
               textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
               style: const TextStyle(
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
@@ -375,6 +376,7 @@ class _SignupScreenState extends State<SignupScreen> {
               controller: _emailController,
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               style: const TextStyle(
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
@@ -399,6 +401,8 @@ class _SignupScreenState extends State<SignupScreen> {
               controller: _passwordController,
               enabled: !_anyLoading,
               obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {},
               style: const TextStyle(
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',

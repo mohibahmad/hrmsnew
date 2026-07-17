@@ -665,7 +665,7 @@
   "overtime_pay": "Overtime Pay",
   "absent_deduction": "Absent Deduction",
   "leave_deduction": "Leave Deduction",
-  "net_pay": "Net Pay",
+  "net_pay": "Salary After Deduction",
   "days_per_year": "days/year",
   "days_overtime_multiplier": "days @ 1.5×",
   "last_modified_by_admin_on": "Last modified by Admin on {date}",

@@ -167,9 +167,13 @@ class PayrollService {
     // Overtime Pay = Custom Amount (HR enters manually)
     final overtimePay = customOvertimeAmount;
 
-    // Deductions
-    final absentDeduction = absentDays * dailyRate;
-    final leaveDeduction = leaveDays * dailyRate;
+    // Deductions: only apply if user explicitly entered a per-day value
+    final absentDeduction = absentDeductionPerDay.trim().isNotEmpty
+        ? absentDays * customAbsentDeduction
+        : 0.0;
+    final leaveDeduction = leaveDeductionPerDay.trim().isNotEmpty
+        ? leaveDays * customLeaveDeduction
+        : 0.0;
 
     final totalDeductions = absentDeduction + leaveDeduction;
 
