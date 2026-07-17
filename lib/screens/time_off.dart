@@ -59,9 +59,19 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   bool _isLoading = true;
   int _currentPage = 1;
   static const int _itemsPerPage = 8;
-  static const _defaultFilters = ['All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+  static const _defaultFilters = [
+    'All',
+    'Designer',
+    'Developer',
+    'Engineering',
+    'Sales',
+    'Management',
+  ];
   StreamSubscription? _timeoffSub;
   StreamSubscription? _workersSub;
+
+  bool _isAssigningTimeOff = false;
+  Map<String, dynamic>? _workerForTimeOff;
 
   @override
   void dispose() {
@@ -113,8 +123,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
     // 🔥 FIX: Calculate remaining leaves for each worker
     for (var doc in combined) {
-      final annualLeaves = int.tryParse(doc['annualLeaves']?.toString() ?? '0') ?? 0;
-      final usedLeaves = int.tryParse(doc['leavesUsed']?.toString() ?? '0') ?? 0;
+      final annualLeaves =
+          int.tryParse(doc['annualLeaves']?.toString() ?? '0') ?? 0;
+      final usedLeaves =
+          int.tryParse(doc['leavesUsed']?.toString() ?? '0') ?? 0;
       final remaining = annualLeaves - usedLeaves;
       doc['remainingLeaves'] = remaining.toString();
     }
@@ -393,6 +405,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAssigningTimeOff && _workerForTimeOff != null) {
+      return AssignTimeOffScreen(
+        onBack: () {
+          setState(() {
+            _isAssigningTimeOff = false;
+            _workerForTimeOff = null;
+          });
+        },
+        initialWorker: _workerForTimeOff,
+        onNotificationTap: widget.onNotificationTap,
+        onProfileTap: widget.onProfileTap,
+      );
+    }
+
     final filtered = _filteredWorkers;
 
     return Scaffold(
@@ -564,17 +590,17 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildTabItem('All', 'all_filter'.tr()),
-          _buildTabItem('Designer', 'designer'.tr()),
-          _buildTabItem('Developer', 'developer'.tr()),
-          _buildTabItem('Engineering', 'engineering'.tr()),
-          _buildTabItem('Sales', 'sales'.tr()),
-          _buildTabItem('Management', 'management'.tr()),
-          ..._extraPositions.map((pos) => _buildTabItem(pos, pos)),
-        ],
-      ),
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildTabItem('All', 'all_filter'.tr()),
+            _buildTabItem('Designer', 'designer'.tr()),
+            _buildTabItem('Developer', 'developer'.tr()),
+            _buildTabItem('Engineering', 'engineering'.tr()),
+            _buildTabItem('Sales', 'sales'.tr()),
+            _buildTabItem('Management', 'management'.tr()),
+            ..._extraPositions.map((pos) => _buildTabItem(pos, pos)),
+          ],
+        ),
       ),
     );
   }
@@ -589,7 +615,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isSelected ? 12 : 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 16,
+          vertical: 8,
+        ),
         margin: const EdgeInsets.only(right: 4),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0247C4) : Colors.transparent,
@@ -749,172 +778,178 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
-                        children: [
-                          // Worker Name with Avatar
-                          Expanded(
-                            flex: 3,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 24.0),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundImage: getProfileImage(
-                                      doc['profileImage']?.toString(),
-                                      doc['email']?.toString(),
-                                      index,
-                                    ),
+                      children: [
+                        // Worker Name with Avatar
+                        Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 24.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundImage: getProfileImage(
+                                    doc['profileImage']?.toString(),
+                                    doc['email']?.toString(),
+                                    index,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            color: Color(0xFF000000),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 2,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          email,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          // Position
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 24.0),
-                              child: Text(
-                                position,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
-                                  fontFamily: 'SF Pro Display',
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                              ),
-                            ),
-                          ),
-                          // Contact
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 24.0),
-                              child: Text(
-                                contact,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                          ),
-                          // Time Off Action
-                          Expanded(
-                            flex: 2,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: InkWell(
-                                onTap: () {
-                                  final isGuest = AuthService()
-                                          .currentUser
-                                          ?.isAnonymous ??
-                                      false;
-                                  if (isGuest) {
-                                    Navigator.of(context)
-                                        .push(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                AssignTimeOffScreen(
-                                                  onBack: () => Navigator.of(
-                                                    context,
-                                                  ).pop(),
-                                                  initialWorker: doc,
-                                                ),
-                                          ),
-                                        )
-                                        .then((_) => _refreshGuestData());
-                                    return;
-                                  }
-                                  if (widget.onAssignTimeOff != null) {
-                                    widget.onAssignTimeOff!(doc);
-                                  } else {
-                                    // Fallback if rendered as standalone
-                                    Navigator.of(context)
-                                        .push(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                AssignTimeOffScreen(
-                                                  onBack: () => Navigator.of(
-                                                    context,
-                                                  ).pop(),
-                                                  initialWorker: doc,
-                                                ),
-                                          ),
-                                        )
-                                        .then((_) => _refreshGuestData());
-                                  }
-                                },
-                                mouseCursor: SystemMouseCursors.click,
-                                borderRadius: BorderRadius.circular(6),
-                                splashColor: const Color(
-                                  0xFF0D4CC6,
-                                ).withValues(alpha: 0.15),
-                                highlightColor: const Color(
-                                  0xFF0D4CC6,
-                                ).withValues(alpha: 0.05),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: Text(
-                                      action,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        color: Color(0xFF0D4CC6),
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Color(0xFF000000),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        email,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Position
+                        Expanded(
+                          flex: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 24.0),
+                            child: Text(
+                              position,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                        ),
+                        // Contact
+                        Expanded(
+                          flex: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 24.0),
+                            child: Text(
+                              contact,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ),
+                        // Time Off Action
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: InkWell(
+                              onTap: () {
+                                final rawAction = (doc['action'] ?? '')
+                                    .toString();
+                                final hasTimeOff = rawAction.isNotEmpty;
+
+                                if (hasTimeOff) {
+                                  _showTimeOffDataDialog(context, doc, index);
+                                  return;
+                                }
+
+                                final isGuest =
+                                    AuthService().currentUser?.isAnonymous ??
+                                    false;
+                                if (isGuest) {
+                                  Navigator.of(context)
+                                      .push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AssignTimeOffScreen(
+                                                onBack: () =>
+                                                    Navigator.of(context).pop(),
+                                                initialWorker: doc,
+                                              ),
+                                        ),
+                                      )
+                                      .then((_) => _refreshGuestData());
+                                  return;
+                                }
+                                if (widget.onAssignTimeOff != null) {
+                                  widget.onAssignTimeOff!(doc);
+                                } else {
+                                  // Fallback if rendered as standalone
+                                  Navigator.of(context)
+                                      .push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AssignTimeOffScreen(
+                                                onBack: () =>
+                                                    Navigator.of(context).pop(),
+                                                initialWorker: doc,
+                                              ),
+                                        ),
+                                      )
+                                      .then((_) => _refreshGuestData());
+                                }
+                              },
+                              mouseCursor: SystemMouseCursors.click,
+                              borderRadius: BorderRadius.circular(6),
+                              splashColor: const Color(
+                                0xFF0D4CC6,
+                              ).withValues(alpha: 0.15),
+                              highlightColor: const Color(
+                                0xFF0D4CC6,
+                              ).withValues(alpha: 0.05),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    action,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF0D4CC6),
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
+                  ),
+                );
               },
             ),
           ),
@@ -965,6 +1000,433 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ? Colors.black
                         : Colors.grey.shade400,
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTimeOffDataDialog(
+    BuildContext context,
+    Map<String, dynamic> data,
+    int index,
+  ) async {
+    final String name = (data['name'] ?? '').toString();
+    final String email = (data['email'] ?? '').toString();
+    final String contact = (data['contact'] ?? data['phone'] ?? '').toString();
+    final String status = (data['status'] ?? 'Active').toString();
+    final String action = (data['action'] ?? '').toString();
+    final String startDate = (data['startDate'] ?? '').toString();
+    final String endDate = (data['endDate'] ?? '').toString();
+    final String notes = (data['notes'] ?? '').toString();
+    final String requestedDays = (data['requestedDays'] ?? '0').toString();
+    final String remainingLeaves = (data['remainingLeaves'] ?? '0').toString();
+
+    String localizedAction = action;
+    if (action == 'Annual Leave') {
+      localizedAction = 'annual_leave'.tr();
+    } else if (action == 'Sick Leave') {
+      localizedAction = 'sick_leave_type'.tr();
+    } else if (action == 'Casual Leave') {
+      localizedAction = 'casual_leave_type'.tr();
+    } else if (action == 'Maternity Leave') {
+      localizedAction = 'maternity_leave'.tr();
+    } else if (action == 'Custom Leave') {
+      localizedAction = 'custom_leave_type'.tr();
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
+
+    final result = await showDialog<String>(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Center(
+          child: Container(
+            width: dialogWidth,
+            height: 520,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Color(0xFFFFFFFF),
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFF000000).withValues(alpha: 0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  height: 40,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF004FDE),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(6),
+                      topRight: Radius.circular(6),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Icon(
+                            Icons.close,
+                            color: Color(0xFFFFFFFF),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          'assign_time_off'.tr(),
+                          style: TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop('edit'),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: SvgPicture.asset(
+                            'assets/edit_icon.svg',
+                            height: 20,
+                            width: 20,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFFFFFFFF),
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  color: const Color(0xFF0247C4),
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Color(0xFFFFFFFF),
+                            width: 2,
+                          ),
+                          image: DecorationImage(
+                            image: getProfileImage(
+                              data['profileImage']?.toString(),
+                              data['email']?.toString(),
+                              index,
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                color: Color(0xFFFFFFFF),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFFFFFFF),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.circle,
+                                    color: Color(0xFF00FF00),
+                                    size: 10,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    status,
+                                    style: const TextStyle(
+                                      color: Color(0xFF0247C4),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.mail_outline,
+                                  color: Color(0xFFFFFFFF),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    email,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    Icons.phone,
+                                    color: Color(0xFFFFFFFF),
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    contact,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFFFFF),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: true,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFFFFF),
+                      border: Border(
+                        left: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
+                        right: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
+                        bottom: BorderSide(
+                          color: Color(0xFFE8E8E8),
+                          width: 1.5,
+                        ),
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(6),
+                        bottomRight: Radius.circular(6),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.event_note,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'time_off_type'.tr(),
+                                  value: localizedAction,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.calendar_today,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'start_date'.tr(),
+                                  value: startDate,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.calendar_today,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'end_date'.tr(),
+                                  value: endDate,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.event_available,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'requested_days'.tr(),
+                                  value: requestedDays,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.beach_access,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'remaining_days'.tr(),
+                                  value: remainingLeaves,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.notes,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'notes_label'.tr(),
+                                  value: notes.isNotEmpty ? notes : '-',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (result == 'edit' && mounted) {
+      setState(() {
+        _isAssigningTimeOff = true;
+        _workerForTimeOff = data;
+      });
+    }
+  }
+
+  Widget _buildTimeOffMetricCard({
+    required Widget icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE8E8E8), width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5EEFC),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Center(child: icon),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF000000),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
               ],
             ),
