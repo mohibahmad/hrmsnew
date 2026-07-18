@@ -105,7 +105,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _notesController.clear();
     }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-    _calendarMonth2 = DateTime(_endDate.year, _endDate.month, 1);
+    // Second calendar shows the month after the first calendar's month
+    _calendarMonth2 = DateTime(
+      _calendarMonth.year,
+      _calendarMonth.month + 1,
+      1,
+    );
   }
 
   void _loadWorkers() {
@@ -405,7 +410,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildMainCard() {
-    final bool isExhausted = _selectedWorker != null && LeaveBalanceHelper.allLeavesExhausted(_selectedWorker!);
+    final bool isExhausted =
+        _selectedWorker != null &&
+        LeaveBalanceHelper.allLeavesExhausted(_selectedWorker!);
 
     if (isExhausted) {
       return Container(
@@ -1270,7 +1277,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
         if (_timeOffType == 'Annual Leave') {
           payrollUpdate['availableAnnualLeaves'] = remainingLeaves.toString();
-          payrollUpdate['leavesUsed'] = (_alreadyUsedDays + _requestedDays).toString();
+          payrollUpdate['leavesUsed'] = (_alreadyUsedDays + _requestedDays)
+              .toString();
         } else if (_timeOffType == 'Sick Leave') {
           payrollUpdate['availableSickLeaves'] = remainingLeaves.toString();
         } else if (_timeOffType == 'Casual Leave') {
@@ -1284,12 +1292,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           );
           if (workerIdx != -1) {
             if (_timeOffType == 'Annual Leave') {
-              DummyData.workers[workerIdx]['availableAnnualLeaves'] = remainingLeaves.toString();
-              DummyData.workers[workerIdx]['leavesUsed'] = (_alreadyUsedDays + _requestedDays).toString();
+              DummyData.workers[workerIdx]['availableAnnualLeaves'] =
+                  remainingLeaves.toString();
+              DummyData.workers[workerIdx]['leavesUsed'] =
+                  (_alreadyUsedDays + _requestedDays).toString();
             } else if (_timeOffType == 'Sick Leave') {
-              DummyData.workers[workerIdx]['availableSickLeaves'] = remainingLeaves.toString();
+              DummyData.workers[workerIdx]['availableSickLeaves'] =
+                  remainingLeaves.toString();
             } else if (_timeOffType == 'Casual Leave') {
-              DummyData.workers[workerIdx]['availableCasualLeaves'] = remainingLeaves.toString();
+              DummyData.workers[workerIdx]['availableCasualLeaves'] =
+                  remainingLeaves.toString();
             }
             await DummyData.saveToPrefs();
           }
@@ -1332,7 +1344,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           title: Text(
             'add_leaves_title'.tr(),
             style: const TextStyle(
@@ -1365,7 +1379,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
@@ -1386,7 +1403,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text(
                 'cancel'.tr(),
-                style: const TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display'),
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
             ),
             ElevatedButton(
@@ -1406,7 +1426,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               },
               child: Text(
                 'add_btn'.tr(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
             ),
           ],
@@ -1422,8 +1446,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     try {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       final workerId = (_selectedWorker!['id'] ?? '').toString();
-      final currentAnnual = int.tryParse(_selectedWorker!['annualLeaves']?.toString() ?? '12') ?? 12;
-      final currentAvailable = int.tryParse(_selectedWorker!['availableAnnualLeaves']?.toString() ?? '0') ?? 0;
+      final currentAnnual =
+          int.tryParse(_selectedWorker!['annualLeaves']?.toString() ?? '12') ??
+          12;
+      final currentAvailable =
+          int.tryParse(
+            _selectedWorker!['availableAnnualLeaves']?.toString() ?? '0',
+          ) ??
+          0;
       final newAnnual = currentAnnual + amount;
       final newAvailable = currentAvailable + amount;
 
@@ -1433,11 +1463,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         );
         if (workerIdx != -1) {
           DummyData.workers[workerIdx]['annualLeaves'] = newAnnual.toString();
-          DummyData.workers[workerIdx]['availableAnnualLeaves'] = newAvailable.toString();
+          DummyData.workers[workerIdx]['availableAnnualLeaves'] = newAvailable
+              .toString();
           await DummyData.saveToPrefs();
-          
+
           setState(() {
-            _selectedWorker = Map<String, dynamic>.from(DummyData.workers[workerIdx]);
+            _selectedWorker = Map<String, dynamic>.from(
+              DummyData.workers[workerIdx],
+            );
           });
         }
       } else {
@@ -1446,7 +1479,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             'annualLeaves': newAnnual.toString(),
             'availableAnnualLeaves': newAvailable.toString(),
           });
-          
+
           setState(() {
             _selectedWorker = {
               ..._selectedWorker!,
@@ -1460,7 +1493,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'add_leaves_success'.tr(namedArgs: {'count': amount.toString()}),
+          message: 'add_leaves_success'.tr(
+            namedArgs: {'count': amount.toString()},
+          ),
         );
       }
     } catch (e) {

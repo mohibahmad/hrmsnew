@@ -695,30 +695,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     },
                     mouseCursor: SystemMouseCursors.click,
                     borderRadius: BorderRadius.circular(6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: isPaid
-                                ? const Color(0xFF27AE60)
-                                : const Color(0xFFE74C3C),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isPaid ? 'paid'.tr() : 'pay'.tr(),
-                          style: const TextStyle(
-                            color: Color(0xFF0247C4),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      isPaid ? 'paid'.tr() : 'pay'.tr(),
+                      style: TextStyle(
+                        color: isPaid
+                            ? const Color(0xFF27AE60)
+                            : const Color(0xFFE74C3C),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   );
                 },
@@ -1215,5 +1201,4 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ],
     );
   }
-
 }

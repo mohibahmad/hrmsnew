@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
-
   static Future<void> loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -18,8 +17,7 @@ class DummyData {
               ..addAll(list);
           }
         }
-      } catch (e) {
-       }
+      } catch (e) {}
 
       try {
         final expensesJson = prefs.getString('dummy_expenses');
@@ -125,16 +123,20 @@ class DummyData {
 
       // Populate defaults for leave fields in case they are missing
       for (var w in workers) {
-        if (w['annualLeaves'] == null || w['annualLeaves'].toString().trim().isEmpty) {
+        if (w['annualLeaves'] == null ||
+            w['annualLeaves'].toString().trim().isEmpty) {
           w['annualLeaves'] = '12';
         }
-        if (w['sickLeaves'] == null || w['sickLeaves'].toString().trim().isEmpty) {
+        if (w['sickLeaves'] == null ||
+            w['sickLeaves'].toString().trim().isEmpty) {
           w['sickLeaves'] = '8';
         }
-        if (w['casualLeaves'] == null || w['casualLeaves'].toString().trim().isEmpty) {
+        if (w['casualLeaves'] == null ||
+            w['casualLeaves'].toString().trim().isEmpty) {
           w['casualLeaves'] = '10';
         }
-        if (w['leavesUsed'] == null || w['leavesUsed'].toString().trim().isEmpty) {
+        if (w['leavesUsed'] == null ||
+            w['leavesUsed'].toString().trim().isEmpty) {
           w['leavesUsed'] = '0';
         }
       }
@@ -171,6 +173,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'Senior Web Developer',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_2',
@@ -185,6 +191,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'UI/UX Designer',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_3',
@@ -199,6 +209,10 @@ class DummyData {
       'type1': 'Contract',
       'position': 'DevOps Engineer',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_4',
@@ -213,6 +227,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'Product Manager',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_5',
@@ -227,6 +245,10 @@ class DummyData {
       'type1': 'Part-Time',
       'position': 'Marketing Specialist',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_6',
@@ -241,6 +263,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'Backend Engineer',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_7',
@@ -255,6 +281,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'HR Manager',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_8',
@@ -269,6 +299,10 @@ class DummyData {
       'type1': 'Contract',
       'position': 'Frontend Developer',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_9',
@@ -283,6 +317,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'QA Engineer',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_10',
@@ -297,6 +335,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'Solutions Architect',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_11',
@@ -311,6 +353,10 @@ class DummyData {
       'type1': 'Part-Time',
       'position': 'Graphic Designer',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_12',
@@ -325,6 +371,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'Mobile Developer',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_13',
@@ -339,6 +389,10 @@ class DummyData {
       'type1': 'Full-Time',
       'position': 'Cyber Security Analyst',
       'type2': 'On-Site',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_14',
@@ -353,6 +407,10 @@ class DummyData {
       'type1': 'Contract',
       'position': 'Data Scientist',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
     {
       'id': 'dummy_15',
@@ -367,6 +425,10 @@ class DummyData {
       'type1': 'Part-Time',
       'position': 'Technical Writer',
       'type2': 'Remote',
+      'annualLeaves': '12',
+      'sickLeaves': '8',
+      'casualLeaves': '10',
+      'leavesUsed': '0',
     },
   ];
 
@@ -1263,7 +1325,9 @@ class DummyData {
       'title': 'Welcome to HRMS!',
       'message': 'Your account is ready. Explore all features in guest mode.',
       'isRead': false,
-      'createdAt': DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(minutes: 5))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n2',
@@ -1271,7 +1335,9 @@ class DummyData {
       'title': 'Attendance Marked',
       'message': 'Daily attendance has been recorded for 15 employees.',
       'isRead': false,
-      'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(hours: 2))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n3',
@@ -1279,7 +1345,9 @@ class DummyData {
       'title': 'Time Off Request',
       'message': 'Michael Johnson requested sick leave for July 12-13.',
       'isRead': false,
-      'createdAt': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(hours: 5))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n4',
@@ -1287,7 +1355,9 @@ class DummyData {
       'title': 'Payroll Processed',
       'message': 'June 2026 payroll has been successfully processed.',
       'isRead': true,
-      'createdAt': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(days: 1))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n5',
@@ -1295,7 +1365,9 @@ class DummyData {
       'title': 'Holiday Upcoming',
       'message': 'Independence Day on July 4th - office will be closed.',
       'isRead': true,
-      'createdAt': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(days: 2))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n6',
@@ -1303,7 +1375,9 @@ class DummyData {
       'title': 'New Expense Submitted',
       'message': 'Robert Wilson submitted a travel expense of \$475.00.',
       'isRead': false,
-      'createdAt': DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(hours: 8))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n7',
@@ -1311,7 +1385,9 @@ class DummyData {
       'title': 'Expense Recorded',
       'message': 'Client Dinner with Acme Corp - \$124.50 submitted.',
       'isRead': true,
-      'createdAt': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(days: 3))
+          .toIso8601String(),
     },
     {
       'id': 'dummy_n8',
@@ -1319,7 +1395,9 @@ class DummyData {
       'title': 'Asset Assigned',
       'message': 'MacBook Pro assigned to Sophia Martinez.',
       'isRead': true,
-      'createdAt': DateTime.now().subtract(const Duration(days: 4)).toIso8601String(),
+      'createdAt': DateTime.now()
+          .subtract(const Duration(days: 4))
+          .toIso8601String(),
     },
   ];
 
