@@ -982,28 +982,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
                             children: [
                               Expanded(
                                 child: _buildMetricCard(
-                                  icon: const Icon(
-                                    Icons.person,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'total_work_days'.tr(),
-                                  value: totalWorkDays,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMetricCard(
                                   icon: _buildAbsentsIcon(),
                                   title: 'absents_label'.tr(),
                                   value: absents,
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildLeavesIcon(),
@@ -1011,7 +995,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: leaves,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildOvertimeDaysIcon(),
@@ -1019,11 +1007,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: overtimeAmount,
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: const Icon(
@@ -1035,7 +1019,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: salary,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: const Icon(

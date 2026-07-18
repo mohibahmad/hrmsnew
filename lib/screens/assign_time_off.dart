@@ -974,10 +974,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           onTap: () {
             if (date != null) {
               setState(() {
-                if (isStartCalendar) {
+                // First click = start date, second click = end date
+                // regardless of which calendar is clicked
+                if (!_hasStartSelection) {
                   _startDate = _dateOnly(date);
                   _hasStartSelection = true;
-                } else {
+                  _hasEndSelection = false;
+                } else if (!_hasEndSelection) {
                   _endDate = _dateOnly(date);
                   if (_endDate.isBefore(_startDate)) {
                     final tmp = _startDate;
@@ -985,6 +988,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     _endDate = tmp;
                   }
                   _hasEndSelection = true;
+                } else {
+                  // Both already selected: start new selection
+                  _startDate = _dateOnly(date);
+                  _hasStartSelection = true;
+                  _hasEndSelection = false;
                 }
 
                 if (_hasStartSelection && _hasEndSelection) {
@@ -994,10 +1002,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                       message: 'requested_leaves_exceed_available'.tr(),
                       isError: true,
                     );
-                    _hasStartSelection = false;
-                    _hasEndSelection = false;
-                    _startDate = DateTime.now();
-                    _endDate = DateTime.now();
                   }
                 }
               });
@@ -1215,12 +1219,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         message: 'requested_leaves_exceed_available'.tr(),
         isError: true,
       );
-      setState(() {
-        _hasStartSelection = false;
-        _hasEndSelection = false;
-        _startDate = DateTime.now();
-        _endDate = DateTime.now();
-      });
       return;
     }
 

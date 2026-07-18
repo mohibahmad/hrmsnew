@@ -753,10 +753,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildInput('total_work_days'.tr(), '22', _workDaysCtrl),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
                 child: _buildInput(
                   'absents_label'.tr(),
                   '0',
@@ -775,12 +771,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   focusedBorderColor: _borderLight,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              const SizedBox(width: 24),
               Expanded(
                 child: _buildInput(
                   'overtime_amount'.tr(),
@@ -789,7 +780,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   isCurrency: true,
                 ),
               ),
-              const SizedBox(width: 24),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Expanded(
                 child: _buildInput(
                   'salary'.tr(),
