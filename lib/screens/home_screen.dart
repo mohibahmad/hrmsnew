@@ -788,11 +788,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                         ),
-                        if (_showNotifications)
+                        if (_showNotifications) ...[
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTap: _toggleNotifications,
+                              behavior: HitTestBehavior.opaque,
+                            ),
+                          ),
                           NotificationSidebar(
                             onClose: _toggleNotifications,
                             onNotificationTap: _handleNotificationNavigation,
                           ),
+                        ],
                       ],
                     ),
                   ),

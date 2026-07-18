@@ -461,11 +461,18 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
           ),
         ),
-        if (_showNotifications)
+        if (_showNotifications) ...[
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _toggleNotifications,
+              behavior: HitTestBehavior.opaque,
+            ),
+          ),
           NotificationSidebar(
             onClose: _toggleNotifications,
             onNotificationTap: _onNotificationTap,
           ),
+        ],
       ],
     );
   }

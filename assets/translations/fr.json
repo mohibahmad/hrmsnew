@@ -354,6 +354,7 @@
   "time_off": "Congé",
   "assign_time_off": "Attribuer un congé",
   "assign": "Attribuer",
+  "assigned": "Attribué",
   "time_off_type": "Type de congé",
   "start_date": "Date de début",
   "end_date": "Date de fin",

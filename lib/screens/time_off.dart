@@ -735,18 +735,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 final contact = (doc['contact'] ?? doc['phone'] ?? '')
                     .toString();
                 String action = (doc['action'] ?? '').toString();
-                if (action == 'Annual Leave') {
-                  action = 'annual_leave'.tr();
-                } else if (action == 'Sick Leave') {
-                  action = 'sick_leave_type'.tr();
-                } else if (action == 'Casual Leave') {
-                  action = 'casual_leave_type'.tr();
-                } else if (action == 'Maternity Leave') {
-                  action = 'maternity_leave'.tr();
-                } else if (action == 'Custom Leave') {
-                  action = 'custom_leave_type'.tr();
-                } else if (action.isEmpty) {
-                  action = 'no_time_off'.tr();
+                final bool hasTimeOff = action.isNotEmpty;
+                if (hasTimeOff) {
+                  action = 'assigned'.tr();
+                } else {
+                  action = 'assign'.tr();
                 }
                 return GestureDetector(
                   onLongPress: (doc['action'] ?? '').toString().isNotEmpty
@@ -914,11 +907,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                 ),
                                 child: MouseRegion(
                                   cursor: SystemMouseCursors.click,
-                                  child: Text(
-                                    action,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Color(0xFF0D4CC6),
+                                    child: Text(
+                                      action,
+                                      style: TextStyle(
+                                      fontSize: 19,
+                                      color: hasTimeOff
+                                          ? const Color(0xFF4AC000)
+                                          : const Color(0xFF0D4CC6),
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
                                     ),
