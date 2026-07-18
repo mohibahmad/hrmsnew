@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/delete_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
@@ -300,7 +301,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                 ),
                               );
                               if (parentContext.mounted) {
-                                tryShowFirstMilestoneRateUs(parentContext, 'holiday');
+                                tryShowFirstMilestoneRateUs(
+                                  parentContext,
+                                  'holiday',
+                                );
                               }
                             } else {
                               if (!context.mounted) return;
@@ -793,6 +797,287 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
+  Future<void> _deleteHoliday(HolidayItem item) async {
+    final confirmed = await DeleteDialog.show(
+      context: context,
+      title: 'delete_holiday'.tr(),
+      content: 'delete_holiday_desc'.tr(),
+    );
+    if (!confirmed) return;
+
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      setState(() {
+        final monthList = _holidaysByMonth[item.month];
+        if (monthList != null) {
+          monthList.removeWhere(
+            (h) => h.day == item.day && h.name == item.name,
+          );
+          if (monthList.isEmpty) _holidaysByMonth.remove(item.month);
+        }
+        final dummyMonthList = DummyData.holidays[item.month];
+        if (dummyMonthList != null) {
+          dummyMonthList.removeWhere(
+            (h) => h['day'] == item.day && h['name'] == item.name,
+          );
+          if (dummyMonthList.isEmpty) DummyData.holidays.remove(item.month);
+        }
+        DummyData.saveToPrefs();
+      });
+    } else {
+      if (item.id != null) {
+        await FirestoreService().deleteHoliday(item.id!);
+      }
+    }
+    if (mounted) {
+      FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+    }
+  }
+
+  void _editHoliday(HolidayItem item) {
+    final holidayNameController = TextEditingController(text: item.name);
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    int selectedDay = item.day;
+    int monthIndex = months.indexOf(item.month);
+    if (monthIndex < 0) monthIndex = DateTime.now().month - 1;
+    DateTime calendarDate = DateTime(2025, monthIndex + 1, selectedDay);
+
+    showDialog(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            String selectedMonthName = months[calendarDate.month - 1];
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              backgroundColor: Color(0xFFFFFFFF),
+              elevation: 10,
+              child: Container(
+                width: 400,
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Modal Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 20,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        Text(
+                          'edit_holiday'.tr(),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0247C4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          onPressed: () async {
+                            if (holidayNameController.text.isNotEmpty) {
+                              final isGuest =
+                                  AuthService().currentUser?.isAnonymous ??
+                                  false;
+                              if (isGuest) {
+                                setState(() {
+                                  final monthList =
+                                      DummyData.holidays[item.month];
+                                  if (monthList != null) {
+                                    for (var h in monthList) {
+                                      if (h['day'] == item.day &&
+                                          h['name'] == item.name) {
+                                        h['name'] =
+                                            holidayNameController.text.trim();
+                                        h['day'] = selectedDay;
+                                        h['month'] = selectedMonthName;
+                                        break;
+                                      }
+                                    }
+                                  }
+                                  DummyData.saveToPrefs();
+                                  _holidaysByMonth = DummyData.holidays.map((
+                                    m,
+                                    list,
+                                  ) {
+                                    return MapEntry(
+                                      m,
+                                      list
+                                          .map(
+                                            (h) => HolidayItem(
+                                              h['day'] as int,
+                                              h['name'] as String,
+                                              h['isEnabled'] as bool,
+                                              month: m,
+                                            ),
+                                          )
+                                          .toList(),
+                                    );
+                                  });
+                                });
+                              } else {
+                                if (item.id != null) {
+                                  await FirestoreService()
+                                      .updateHoliday(item.id!, {
+                                        'name':
+                                            holidayNameController.text.trim(),
+                                        'day': selectedDay,
+                                        'month': selectedMonthName,
+                                      });
+                                }
+                              }
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop();
+                              FlashySnackBar.show(
+                                context,
+                                message: 'holiday_updated'.tr(),
+                              );
+                            } else {
+                              if (!context.mounted) return;
+                              FlashySnackBar.show(
+                                context,
+                                message: 'please_enter_holiday_name'.tr(),
+                                isError: true,
+                              );
+                            }
+                          },
+                          child: Text(
+                            'save'.tr(),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Input Field
+                    Text(
+                      'holiday_name'.tr(),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 38,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      alignment: Alignment.centerLeft,
+                      child: TextField(
+                        controller: holidayNameController,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(50),
+                        ],
+                        decoration: InputDecoration.collapsed(
+                          hintText: 'enter_holiday_name'.tr(),
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Calendar Widget inside Modal
+                    _buildModalCalendar(
+                      calendarDate,
+                      selectedDay,
+                      (day) {
+                        setModalState(() {
+                          selectedDay = day;
+                        });
+                      },
+                      (newDate) {
+                        setModalState(() {
+                          calendarDate = newDate;
+                          if (selectedDay != null) {
+                            int daysInNewMonth = DateTime(
+                              newDate.year,
+                              newDate.month + 1,
+                              0,
+                            ).day;
+                            if (selectedDay! > daysInNewMonth) {
+                              selectedDay = daysInNewMonth;
+                            }
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildListItem(HolidayItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -910,6 +1195,85 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 ),
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            tooltip: '',
+            icon: const Icon(
+              Icons.more_vert,
+              color: Color.fromARGB(255, 0, 0, 0),
+              size: 20,
+            ),
+            offset: const Offset(0, 40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+              side: const BorderSide(color: Color(0xFFCBCBCB)),
+            ),
+            color: const Color(0xFFFBFBFC),
+            elevation: 4,
+            onSelected: (value) {
+              if (value == 'edit') {
+                _editHoliday(item);
+              } else if (value == 'delete') {
+                _deleteHoliday(item);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'edit',
+                height: 36,
+                child: Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/edit_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF0247C4),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'edit'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFF0247C4),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                height: 36,
+                child: Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/delete_icon.svg',
+                      width: 16,
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.red,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'delete'.tr(),
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -163,10 +163,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 40.0,
-        vertical: 22.0,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 22.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -175,15 +172,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               Expanded(
                 child: Container(
                   height: 48,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFFEEEEEE),
-                    ),
+                    border: Border.all(color: const Color(0xFFEEEEEE)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -238,9 +231,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          ..._filteredWorkers.map(
-            (worker) => _buildWorkerCard(worker),
-          ),
+          ..._filteredWorkers.map((worker) => _buildWorkerCard(worker)),
         ],
       ),
     );
@@ -451,9 +442,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   Future<void> _pickFile(String field) async {
     final result = await FilePicker.pickFiles(
       type: field == 'cv' ? FileType.custom : FileType.image,
-      allowedExtensions: field == 'cv'
-          ? ['pdf', 'doc', 'docx']
-          : null,
+      allowedExtensions: field == 'cv' ? ['pdf', 'doc', 'docx'] : null,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
@@ -590,9 +579,10 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           _FullScreenDocumentViewer(url: url, label: label, isImage: isImage),
       transitionBuilder: (ctx, anim, secAnim, child) {
         final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
-        final scale = Tween<double>(begin: 0.92, end: 1.0).animate(
-          CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-        );
+        final scale = Tween<double>(
+          begin: 0.92,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack));
         return Stack(
           children: [
             Positioned.fill(
@@ -640,57 +630,200 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             const SizedBox(height: 24),
             IntrinsicHeight(
               child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left Side: ID Card Upload
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 36,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'id_card_label'.tr(),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left Side: ID Card Upload
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 36,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'id_card_label'.tr(),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F3F6),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _pickFile('frontId'),
-                                  child: Text(
-                                    'upload_front_side'.tr(),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      fontFamily: 'SF Pro Display',
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F3F6),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _pickFile('frontId'),
+                                    child: Text(
+                                      'upload_front_side'.tr(),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
                                   ),
+                                  const Spacer(),
+                                  if (_frontIdBytes != null ||
+                                      (_existingFrontId != null &&
+                                          _existingFrontId!.isNotEmpty))
+                                    GestureDetector(
+                                      onTap: () => _pickFile('frontId'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF000000),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'edit'.tr(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            SvgPicture.asset(
+                                              'assets/edit_icon.svg',
+                                              height: 14,
+                                              width: 14,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              _buildIdUploadBox(
+                                label: 'upload_front_id_hint'.tr(),
+                                bytes: _frontIdBytes,
+                                fileName: _frontIdName,
+                                existingUrl: _existingFrontId,
+                                onTap: () => _pickFile('frontId'),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _pickFile('backId'),
+                                    child: Text(
+                                      'upload_back_side'.tr(),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  if (_backIdBytes != null ||
+                                      (_existingBackId != null &&
+                                          _existingBackId!.isNotEmpty))
+                                    GestureDetector(
+                                      onTap: () => _pickFile('backId'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF000000),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'edit'.tr(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            SvgPicture.asset(
+                                              'assets/edit_icon.svg',
+                                              height: 14,
+                                              width: 14,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              _buildIdUploadBox(
+                                label: 'upload_back_id_hint'.tr(),
+                                bytes: _backIdBytes,
+                                fileName: _backIdName,
+                                existingUrl: _existingBackId,
+                                onTap: () => _pickFile('backId'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Right Side: CV Upload
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 36,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                'upload_cv_label'.tr(),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'SF Pro Display',
                                 ),
-                                const Spacer(),
-                                if (_frontIdBytes != null || (_existingFrontId != null && _existingFrontId!.isNotEmpty))
+                              ),
+                              const Spacer(),
+                              if (_isCvUploaded ||
+                                  (_existingCv != null &&
+                                      _existingCv!.isNotEmpty)) ...[
                                 GestureDetector(
-                                  onTap: () => _pickFile('frontId'),
+                                  onTap: () => _pickFile('cv'),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF000000),
                                       borderRadius: BorderRadius.circular(6),
@@ -698,127 +831,38 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
+                                        Text(
+                                          'edit'.tr(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
                                         const SizedBox(width: 6),
-                                        SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
+                                        SvgPicture.asset(
+                                          'assets/edit_icon.svg',
+                                          height: 14,
+                                          width: 14,
+                                        ),
                                       ],
                                     ),
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 12),
-                            _buildIdUploadBox(
-                              label: 'upload_front_id_hint'.tr(),
-                              bytes: _frontIdBytes,
-                              fileName: _frontIdName,
-                              existingUrl: _existingFrontId,
-                              onTap: () => _pickFile('frontId'),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _pickFile('backId'),
-                                  child: Text(
-                                    'upload_back_side'.tr(),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (_backIdBytes != null || (_existingBackId != null && _existingBackId!.isNotEmpty))
-                                  GestureDetector(
-                                    onTap: () => _pickFile('backId'),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF000000),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
-                                          const SizedBox(width: 6),
-                                          SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _buildIdUploadBox(
-                              label: 'upload_back_id_hint'.tr(),
-                              bytes: _backIdBytes,
-                              fileName: _backIdName,
-                              existingUrl: _existingBackId,
-                              onTap: () => _pickFile('backId'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Right Side: CV Upload
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 36,
-                        child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'upload_cv_label'.tr(),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
-                            ),
+                            ],
                           ),
-                          const Spacer(),
-                          if (_isCvUploaded ||
-                              (_existingCv != null && _existingCv!.isNotEmpty)) ...[
-                            GestureDetector(
-                              onTap: () => _pickFile('cv'),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF000000),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('edit'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
-                                    const SizedBox(width: 6),
-                                    SvgPicture.asset('assets/edit_icon.svg', height: 14, width: 14),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      _isCvUploaded ||
-                              (_existingCv != null && _existingCv!.isNotEmpty)
-                          ? Expanded(child: _buildCvPreview())
-                          : Expanded(child: _buildCvUpload()),
-                    ],
+                        const SizedBox(height: 16),
+                        _isCvUploaded ||
+                                (_existingCv != null && _existingCv!.isNotEmpty)
+                            ? Expanded(child: _buildCvPreview())
+                            : Expanded(child: _buildCvUpload()),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
               ),
             ),
             const SizedBox(height: 32),
@@ -851,8 +895,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         cleanUrl.endsWith('.png') ||
         cleanUrl.endsWith('.jpg') ||
         cleanUrl.endsWith('.jpeg') ||
-        (existingUrl != null &&
-            existingUrl.startsWith('data:image'));
+        (existingUrl != null && existingUrl.startsWith('data:image'));
 
     return GestureDetector(
       onTap: hasFile
@@ -975,8 +1018,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       children: [
         Image.asset(
           'assets/Id card.png',
-          width: 80,
-          height: 80,
+          width: 50,
+          height: 50,
           fit: BoxFit.contain,
         ),
         const SizedBox(height: 12),
@@ -1099,19 +1142,20 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     final cvUrl = _existingCv;
     final lowerUrl = cvUrl?.toLowerCase() ?? '';
     final cvNameLower = (_cvName ?? '').toLowerCase();
-    final isPdf = cvNameLower.endsWith('.pdf') ||
+    final isPdf =
+        cvNameLower.endsWith('.pdf') ||
         lowerUrl.endsWith('.pdf') ||
         lowerUrl.contains('application/pdf') ||
         lowerUrl.contains('/cvs/');
-    final isImage = cvNameLower.endsWith('.png') ||
+    final isImage =
+        cvNameLower.endsWith('.png') ||
         cvNameLower.endsWith('.jpg') ||
         cvNameLower.endsWith('.jpeg') ||
         lowerUrl.endsWith('.png') ||
         lowerUrl.endsWith('.jpg') ||
         lowerUrl.endsWith('.jpeg') ||
         lowerUrl.contains('image/');
-    final isDoc = cvNameLower.endsWith('.doc') ||
-        cvNameLower.endsWith('.docx');
+    final isDoc = cvNameLower.endsWith('.doc') || cvNameLower.endsWith('.docx');
 
     return Container(
       width: double.infinity,
@@ -1158,10 +1202,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 )
                               : const SizedBox.shrink()))
                   : isPdf
-                  ? PdfPagePreview(
-                      cvBytes: _cvBytes,
-                      existingCvUrl: cvUrl,
-                    )
+                  ? PdfPagePreview(cvBytes: _cvBytes, existingCvUrl: cvUrl)
                   : isDoc
                   ? Center(
                       child: Column(
@@ -1332,17 +1373,16 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                               errorWidget: (c, u, e) => const Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  SizedBox(height: 250),
                                   Icon(
                                     Icons.broken_image,
                                     size: 48,
                                     color: Color(0xFF9E9E9E),
                                   ),
-                                  SizedBox(height: 12),
+                                  SizedBox(height: 10),
                                   Text(
                                     'Failed to load',
-                                    style: TextStyle(
-                                      color: Color(0xFF9E9E9E),
-                                    ),
+                                    style: TextStyle(color: Color(0xFF9E9E9E)),
                                   ),
                                 ],
                               ),
@@ -1372,7 +1412,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                               ),
                             ),
                           ),
-                      const SizedBox(height: 26),
+                          const SizedBox(height: 26),
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
                             child: Container(

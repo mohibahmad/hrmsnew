@@ -698,5 +698,16 @@
   "rate_us_desc": "Si disfrutas usando HRMS, ¡tómate un momento para calificarnos!",
   "rate_now": "Calificar Ahora",
   "remind_me_later": "Recordármelo Más Tarde",
-  "never_show_again": "No Mostrar Más"
+  "never_show_again": "No Mostrar Más",
+  "unsaved_changes": "Cambios Sin Guardar",
+  "unsaved_changes_message": "Tiene cambios sin guardar. ¿Está seguro de que desea volver? Sus cambios se perderán.",
+  "discard": "Descartar",
+  "delete_holiday": "Eliminar Feriado",
+  "delete_holiday_desc": "¿Estás seguro de que deseas eliminar este feriado? Esta acción no se puede deshacer.",
+  "holiday_deleted": "Feriado eliminado exitosamente",
+  "edit_holiday": "Editar Feriado",
+  "holiday_updated": "Feriado actualizado exitosamente",
+  "holiday_name": "Nombre del Feriado",
+  "enter_holiday_name": "Ingrese el nombre del feriado",
+  "select_date": "Seleccionar Fecha"
 }

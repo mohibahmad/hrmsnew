@@ -692,5 +692,16 @@
   "rate_us_desc": "Se você gosta de usar o HRMS, reserve um momento para nos avaliar!",
   "rate_now": "Avaliar Agora",
   "remind_me_later": "Lembrar Mais Tarde",
-  "never_show_again": "Nunca Mostrar Novamente"
+  "never_show_again": "Nunca Mostrar Novamente",
+  "unsaved_changes": "Alterações Não Salvas",
+  "unsaved_changes_message": "Você tem alterações não salvas. Tem certeza de que deseja voltar? Suas alterações serão perdidas.",
+  "discard": "Descartar",
+  "delete_holiday": "Excluir Feriado",
+  "delete_holiday_desc": "Tem certeza de que deseja excluir este feriado? Esta ação não pode ser desfeita.",
+  "holiday_deleted": "Feriado excluído com sucesso",
+  "edit_holiday": "Editar Feriado",
+  "holiday_updated": "Feriado atualizado com sucesso",
+  "holiday_name": "Nome do Feriado",
+  "enter_holiday_name": "Digite o nome do feriado",
+  "select_date": "Selecionar Data"
 }

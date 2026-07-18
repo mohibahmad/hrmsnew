@@ -129,6 +129,49 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   bool _isSaving = false;
 
+  bool get _hasUnsavedChanges {
+    if (widget.workerToEdit != null) return false;
+    if (_nameController.text.trim().isNotEmpty) return true;
+    if (_fatherNameController.text.trim().isNotEmpty) return true;
+    if (_emailController.text.trim().isNotEmpty) return true;
+    if (_phoneController.text.trim().isNotEmpty) return true;
+    if (_nationalIdController.text.trim().isNotEmpty) return true;
+    if (_religionController.text.trim().isNotEmpty) return true;
+    if (_dobController.text.trim().isNotEmpty) return true;
+    if (_addressController.text.trim().isNotEmpty) return true;
+    if (_positionController.text.trim().isNotEmpty) return true;
+    if (_frontIdBytes != null) return true;
+    if (_backIdBytes != null) return true;
+    if (_cvBytes != null) return true;
+    if (_profileImageBytes != null) return true;
+    return false;
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_hasUnsavedChanges) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('unsaved_changes'.tr()),
+        content: Text('unsaved_changes_message'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              'discard'.tr(),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1082,426 +1125,455 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF7F8FA), // Dashboard background
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top Header Area
-          Container(
-            height: 94,
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFFFFF),
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          widget.onBack?.call();
+        }
+      },
+      child: Container(
+        color: const Color(0xFFF7F8FA), // Dashboard background
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Header Area
+            Container(
+              height: 94,
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFFFFF),
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () async {
+                          final shouldPop = await _onWillPop();
+                          if (shouldPop) widget.onBack?.call();
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.only(top: 2.0),
+                          child: Icon(
+                            Icons.arrow_back_ios_new,
+                            color: Color(0xFF000000),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'add_new_worker'.tr(),
+                            style: const TextStyle(
+                              color: Color(0xFF000000),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'fill_worker_details'.tr(),
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  // Save Button (Blue state based on image 2)
+                  Builder(
+                    builder: (context) {
+                      final bool isEditMode = widget.workerToEdit != null;
+                      final bool hasChanges = _hasChanges();
+
+                      final bool isSaveReady = isEditMode
+                          ? hasChanges
+                          : (_activeTabIndex == 2 &&
+                                _nameController.text.trim().isNotEmpty &&
+                                _phoneController.text.trim().isNotEmpty);
+                      final bool canSave = isSaveReady && !_isSaving;
+
+                      return GestureDetector(
+                        onTap: canSave ? _saveWorker : null,
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: isSaveReady
+                                ? const Color(0xFF0B50C3)
+                                : const Color(0xFFE6EAEF),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          alignment: Alignment.center,
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'save'.tr(),
+                                  style: TextStyle(
+                                    color: isSaveReady
+                                        ? const Color(0xFFFFFFFF)
+                                        : const Color(0xFF555555),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+
+            // Tabs and Form Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: () => widget.onBack?.call(),
-                      child: const Padding(
-                        padding: EdgeInsets.only(top: 2.0),
-                        child: Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Color(0xFF000000),
-                          size: 24,
-                        ),
+                    // Tabs Section
+                    Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF000000).withValues(alpha: 0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildTopTab('worker_detail'.tr(), 0),
+                          ),
+                          VerticalDivider(
+                            width: 1,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
+                          Expanded(child: _buildTopTab('experience'.tr(), 1)),
+                          VerticalDivider(
+                            width: 1,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
+                          Expanded(
+                            child: _buildTopTab('documentation'.tr(), 2),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'add_new_worker'.tr(),
-                          style: const TextStyle(
-                            color: Color(0xFF000000),
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'fill_worker_details'.tr(),
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                // Save Button (Blue state based on image 2)
-                Builder(
-                  builder: (context) {
-                    final bool isEditMode = widget.workerToEdit != null;
-                    final bool hasChanges = _hasChanges();
+                    const SizedBox(height: 32),
 
-                    final bool isSaveReady = isEditMode
-                        ? hasChanges
-                        : (_activeTabIndex == 2 &&
-                              _nameController.text.trim().isNotEmpty &&
-                              _phoneController.text.trim().isNotEmpty);
-                    final bool canSave = isSaveReady && !_isSaving;
-
-                    return GestureDetector(
-                      onTap: canSave ? _saveWorker : null,
-                      child: Container(
-                        height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: isSaveReady
-                              ? const Color(0xFF0B50C3)
-                              : const Color(0xFFE6EAEF),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        alignment: Alignment.center,
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                'save'.tr(),
-                                style: TextStyle(
-                                  color: isSaveReady
-                                      ? const Color(0xFFFFFFFF)
-                                      : const Color(0xFF555555),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
+                    // Switch Content based on active tab
+                    if (_activeTabIndex == 0)
+                      WorkerDetailFormSection(
+                        nameController: _nameController,
+                        fatherNameController: _fatherNameController,
+                        emailController: _emailController,
+                        phoneController: _phoneController,
+                        nationalIdController: _nationalIdController,
+                        religionController: _religionController,
+                        dobController: _dobController,
+                        genderController: _genderController,
+                        addressController: _addressController,
+                        profileImageBytes: _profileImageBytes,
+                        profileImageName: _profileImageName,
+                        existingProfileImageUrl: _existingProfileImageUrl,
+                        onUploadProfileTap: _pickProfileImage,
+                        onDeleteProfileTap: () {
+                          setState(() {
+                            _profileImageBytes = null;
+                            _profileImageName = null;
+                            _existingProfileImageUrl = null;
+                          });
+                        },
+                        relationshipStatus: _relationshipStatus,
+                        onRelationshipStatusChanged: (status) {
+                          setState(() {
+                            _relationshipStatus = status;
+                          });
+                        },
+                        onNextStep: _validateAndGoToExperience,
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // Tabs and Form Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Tabs Section
-                  Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF000000).withValues(alpha: 0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(child: _buildTopTab('worker_detail'.tr(), 0)),
-                        VerticalDivider(
-                          width: 1,
-                          color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                        ),
-                        Expanded(child: _buildTopTab('experience'.tr(), 1)),
-                        VerticalDivider(
-                          width: 1,
-                          color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                        ),
-                        Expanded(child: _buildTopTab('documentation'.tr(), 2)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Switch Content based on active tab
-                  if (_activeTabIndex == 0)
-                    WorkerDetailFormSection(
-                      nameController: _nameController,
-                      fatherNameController: _fatherNameController,
-                      emailController: _emailController,
-                      phoneController: _phoneController,
-                      nationalIdController: _nationalIdController,
-                      religionController: _religionController,
-                      dobController: _dobController,
-                      genderController: _genderController,
-                      addressController: _addressController,
-                      profileImageBytes: _profileImageBytes,
-                      profileImageName: _profileImageName,
-                      existingProfileImageUrl: _existingProfileImageUrl,
-                      onUploadProfileTap: _pickProfileImage,
-                      onDeleteProfileTap: () {
-                        setState(() {
-                          _profileImageBytes = null;
-                          _profileImageName = null;
-                          _existingProfileImageUrl = null;
-                        });
-                      },
-                      relationshipStatus: _relationshipStatus,
-                      onRelationshipStatusChanged: (status) {
-                        setState(() {
-                          _relationshipStatus = status;
-                        });
-                      },
-                      onNextStep: _validateAndGoToExperience,
-                    ),
-                  if (_activeTabIndex == 1)
-                    ExperienceFormSection(
-                      positionController: _positionController,
-                      type1Controller: _type1Controller,
-                      type2Controller: _type2Controller,
-                      experienceLevelController: _experienceLevelController,
-                      educationController: _educationController,
-                      salaryTypeController: _salaryTypeController,
-                      currencyController: _currencyController,
-                      salaryAmountController: _salaryAmountController,
-                      leavePolicyController: _leavePolicyController,
-                      annualLeavesController: _annualLeavesController,
-                      sickLeavesController: _sickLeavesController,
-                      casualLeavesController: _casualLeavesController,
-                      selectedJoiningDate: _joiningDate,
-                      onJoiningDateChanged: (date) {
-                        setState(() => _joiningDate = date);
-                      },
-                      onNextStep: _validateAndGoToDocumentation,
-                      onPrevStep: () => setState(() => _activeTabIndex = 0),
-                    ),
-                  if (_activeTabIndex == 2)
-                    DocumentationSection(
-                      frontIdBytes: _frontIdBytes,
-                      frontIdName: _frontIdName,
-                      existingFrontIdUrl: _existingFrontIdUrl,
-                      onUploadFrontTap: _pickFrontId,
-                      backIdBytes: _backIdBytes,
-                      backIdName: _backIdName,
-                      existingBackIdUrl: _existingBackIdUrl,
-                      onUploadBackTap: _pickBackId,
-                      cvBytes: _cvBytes,
-                      cvName: _cvName,
-                      existingCvUrl: _existingCvUrl,
-                      isCvUploaded: _isCvUploaded,
-                      onUploadCvTap: _pickCv,
-                      onDeleteCvTap: () {
-                        showGeneralDialog(
-                          context: context,
-                          barrierDismissible: true,
-                          barrierLabel: 'DeleteCvDialog',
-                          barrierColor: const Color(
-                            0xFF0F172A,
-                          ).withValues(alpha: 0.3),
-                          transitionDuration: const Duration(milliseconds: 400),
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  const SizedBox(),
-                          transitionBuilder: (context, animation, secondaryAnimation, child) {
-                            final curve = CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOutBack,
-                            );
-                            return BackdropFilter(
-                              filter: ui.ImageFilter.blur(
-                                sigmaX: 12 * animation.value,
-                                sigmaY: 12 * animation.value,
-                              ),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: ScaleTransition(
-                                  scale: curve,
-                                  child: Dialog(
-                                    backgroundColor: Colors.transparent,
-                                    child: Container(
-                                      width: 380,
-                                      padding: const EdgeInsets.all(28),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFFFFF),
-                                        borderRadius: BorderRadius.circular(16),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: const Color(
-                                              0xFF000000,
-                                            ).withValues(alpha: 0.15),
-                                            blurRadius: 24,
-                                            offset: const Offset(0, 8),
+                    if (_activeTabIndex == 1)
+                      ExperienceFormSection(
+                        positionController: _positionController,
+                        type1Controller: _type1Controller,
+                        type2Controller: _type2Controller,
+                        experienceLevelController: _experienceLevelController,
+                        educationController: _educationController,
+                        salaryTypeController: _salaryTypeController,
+                        currencyController: _currencyController,
+                        salaryAmountController: _salaryAmountController,
+                        leavePolicyController: _leavePolicyController,
+                        annualLeavesController: _annualLeavesController,
+                        sickLeavesController: _sickLeavesController,
+                        casualLeavesController: _casualLeavesController,
+                        selectedJoiningDate: _joiningDate,
+                        onJoiningDateChanged: (date) {
+                          setState(() => _joiningDate = date);
+                        },
+                        onNextStep: _validateAndGoToDocumentation,
+                        onPrevStep: () => setState(() => _activeTabIndex = 0),
+                      ),
+                    if (_activeTabIndex == 2)
+                      DocumentationSection(
+                        frontIdBytes: _frontIdBytes,
+                        frontIdName: _frontIdName,
+                        existingFrontIdUrl: _existingFrontIdUrl,
+                        onUploadFrontTap: _pickFrontId,
+                        backIdBytes: _backIdBytes,
+                        backIdName: _backIdName,
+                        existingBackIdUrl: _existingBackIdUrl,
+                        onUploadBackTap: _pickBackId,
+                        cvBytes: _cvBytes,
+                        cvName: _cvName,
+                        existingCvUrl: _existingCvUrl,
+                        isCvUploaded: _isCvUploaded,
+                        onUploadCvTap: _pickCv,
+                        onDeleteCvTap: () {
+                          showGeneralDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            barrierLabel: 'DeleteCvDialog',
+                            barrierColor: const Color(
+                              0xFF0F172A,
+                            ).withValues(alpha: 0.3),
+                            transitionDuration: const Duration(
+                              milliseconds: 400,
+                            ),
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const SizedBox(),
+                            transitionBuilder: (context, animation, secondaryAnimation, child) {
+                              final curve = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutBack,
+                              );
+                              return BackdropFilter(
+                                filter: ui.ImageFilter.blur(
+                                  sigmaX: 12 * animation.value,
+                                  sigmaY: 12 * animation.value,
+                                ),
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: curve,
+                                    child: Dialog(
+                                      backgroundColor: Colors.transparent,
+                                      child: Container(
+                                        width: 380,
+                                        padding: const EdgeInsets.all(28),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFFFFF),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
                                           ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 64,
-                                            height: 64,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFFEE2E2),
-                                              shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFF000000,
+                                              ).withValues(alpha: 0.15),
+                                              blurRadius: 24,
+                                              offset: const Offset(0, 8),
                                             ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.warning_rounded,
-                                                color: Color(0xFFEF4444),
-                                                size: 36,
+                                          ],
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 64,
+                                              height: 64,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFFFEE2E2),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.warning_rounded,
+                                                  color: Color(0xFFEF4444),
+                                                  size: 36,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 20),
-                                          Text(
-                                            'confirm_delete'.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w800,
-                                              color: Color(0xFF000000),
-                                              fontFamily: 'SF Pro Display',
+                                            const SizedBox(height: 20),
+                                            Text(
+                                              'confirm_delete'.tr(),
+                                              style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF000000),
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                              textAlign: TextAlign.center,
                                             ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'delete_cv_confirmation'.tr(),
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xFF64748B),
-                                              fontWeight: FontWeight.w400,
-                                              fontFamily: 'SF Pro Display',
-                                              height: 1.4,
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'delete_cv_confirmation'.tr(),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Color(0xFF64748B),
+                                                fontWeight: FontWeight.w400,
+                                                fontFamily: 'SF Pro Display',
+                                                height: 1.4,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 28),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: GestureDetector(
-                                                  onTap: () => Navigator.of(
-                                                    context,
-                                                  ).pop(),
-                                                  behavior:
-                                                      HitTestBehavior.opaque,
-                                                  child: Container(
-                                                    height: 48,
-                                                    alignment: Alignment.center,
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(
-                                                        0xFFF1F5F9,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      'cancel'.tr(),
-                                                      style: const TextStyle(
-                                                        color: Color(
-                                                          0xFF000000,
+                                            const SizedBox(height: 28),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: GestureDetector(
+                                                    onTap: () => Navigator.of(
+                                                      context,
+                                                    ).pop(),
+                                                    behavior:
+                                                        HitTestBehavior.opaque,
+                                                    child: Container(
+                                                      height: 48,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFF1F5F9,
                                                         ),
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontFamily:
-                                                            'SF Pro Display',
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        'cancel'.tr(),
+                                                        style: const TextStyle(
+                                                          color: Color(
+                                                            0xFF000000,
+                                                          ),
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Expanded(
-                                                child: GestureDetector(
-                                                  onTap: () {
-                                                    Navigator.of(context).pop();
-                                                    setState(() {
-                                                      _cvBytes = null;
-                                                      _cvName = null;
-                                                      _existingCvUrl = null;
-                                                      _isCvUploaded = false;
-                                                    });
-                                                  },
-                                                  behavior:
-                                                      HitTestBehavior.opaque,
-                                                  child: Container(
-                                                    height: 48,
-                                                    alignment: Alignment.center,
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(
-                                                        0xFFEF4444,
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: GestureDetector(
+                                                    onTap: () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop();
+                                                      setState(() {
+                                                        _cvBytes = null;
+                                                        _cvName = null;
+                                                        _existingCvUrl = null;
+                                                        _isCvUploaded = false;
+                                                      });
+                                                    },
+                                                    behavior:
+                                                        HitTestBehavior.opaque,
+                                                    child: Container(
+                                                      height: 48,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFEF4444,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6,
+                                                            ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color:
+                                                                const Color(
+                                                                  0xFFEF4444,
+                                                                ).withValues(
+                                                                  alpha: 0.2,
+                                                                ),
+                                                            blurRadius: 8,
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  4,
+                                                                ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
+                                                      child: Text(
+                                                        'delete'.tr(),
+                                                        style: const TextStyle(
+                                                          color: Color(
+                                                            0xFFFFFFFF,
                                                           ),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color:
-                                                              const Color(
-                                                                0xFFEF4444,
-                                                              ).withValues(
-                                                                alpha: 0.2,
-                                                              ),
-                                                          blurRadius: 8,
-                                                          offset: const Offset(
-                                                            0,
-                                                            4,
-                                                          ),
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontFamily:
+                                                              'SF Pro Display',
                                                         ),
-                                                      ],
-                                                    ),
-                                                    child: Text(
-                                                      'delete'.tr(),
-                                                      style: const TextStyle(
-                                                        color: Color(
-                                                          0xFFFFFFFF,
-                                                        ),
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontFamily:
-                                                            'SF Pro Display',
                                                       ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      onPrevStep: () => setState(() => _activeTabIndex = 1),
-                    ),
-                ],
+                              );
+                            },
+                          );
+                        },
+                        onPrevStep: () => setState(() => _activeTabIndex = 1),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3450,8 +3522,8 @@ class DocumentationSection extends StatelessWidget {
       children: [
         Image.asset(
           'assets/Id card.png',
-          width: 80,
-          height: 80,
+          width: 50,
+          height: 50,
           fit: BoxFit.contain,
         ),
         const SizedBox(height: 12),

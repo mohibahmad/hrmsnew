@@ -695,5 +695,16 @@
   "rate_us_desc": "Si vous appréciez l'utilisation de HRMS, prenez un moment pour nous noter !",
   "rate_now": "Noter Maintenant",
   "remind_me_later": "Me Rappeler Plus Tard",
-  "never_show_again": "Ne Plus Afficher"
+  "never_show_again": "Ne Plus Afficher",
+  "unsaved_changes": "Modifications Non Enregistrées",
+  "unsaved_changes_message": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir revenir en arrière ? Vos modifications seront perdues.",
+  "discard": "Abandonner",
+  "delete_holiday": "Supprimer le Jour Férié",
+  "delete_holiday_desc": "Êtes-vous sûr de vouloir supprimer ce jour férié ? Cette action est irréversible.",
+  "holiday_deleted": "Jour férié supprimé avec succès",
+  "edit_holiday": "Modifier le Jour Férié",
+  "holiday_updated": "Jour férié mis à jour avec succès",
+  "holiday_name": "Nom du Jour Férié",
+  "enter_holiday_name": "Entrez le nom du jour férié",
+  "select_date": "Sélectionner la Date"
 }

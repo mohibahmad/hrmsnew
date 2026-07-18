@@ -1403,7 +1403,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'today_is_holiday'.tr(),
+            name.isNotEmpty
+                ? 'Today is $name Holiday'
+                : 'today_is_holiday'.tr(),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,

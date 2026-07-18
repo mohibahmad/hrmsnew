@@ -714,5 +714,16 @@
   "rate_us_desc": "If you enjoy using HRMS, please take a moment to rate us!",
   "rate_now": "Rate Now",
   "remind_me_later": "Remind Me Later",
-  "never_show_again": "Never Show Again"
+  "never_show_again": "Never Show Again",
+  "unsaved_changes": "Unsaved Changes",
+  "unsaved_changes_message": "You have unsaved changes. Are you sure you want to go back? Your changes will be lost.",
+  "discard": "Discard",
+  "delete_holiday": "Delete Holiday",
+  "delete_holiday_desc": "Are you sure you want to delete this holiday? This action cannot be undone.",
+  "holiday_deleted": "Holiday deleted successfully",
+  "edit_holiday": "Edit Holiday",
+  "holiday_updated": "Holiday updated successfully",
+  "holiday_name": "Holiday Name",
+  "enter_holiday_name": "Enter holiday name",
+  "select_date": "Select Date"
 }
