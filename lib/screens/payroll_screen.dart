@@ -987,12 +987,36 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: absents,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildLeavesIcon(),
                                   title: 'leaves_label'.tr(),
                                   value: leaves,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  icon: const Icon(
+                                    Icons.payments,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'salary'.tr(),
+                                  value: salary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  icon: const Icon(
+                                    Icons.account_balance_wallet,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'salary_after_deduction'.tr(),
+                                  value: salaryAfterDeductionStr,
                                 ),
                               ),
                             ],
@@ -1005,34 +1029,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   icon: _buildOvertimeDaysIcon(),
                                   title: 'overtime_amount'.tr(),
                                   value: overtimeAmount,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: const Icon(
-                                    Icons.payments,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'salary'.tr(),
-                                  value: salary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: const Icon(
-                                    Icons.account_balance_wallet,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'salary_after_deduction'.tr(),
-                                  value: salaryAfterDeductionStr,
                                 ),
                               ),
                             ],

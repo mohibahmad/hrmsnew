@@ -761,7 +761,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   focusedBorderColor: _borderLight,
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
                   'leaves_label'.tr(),
@@ -771,7 +771,40 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   focusedBorderColor: _borderLight,
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildInput(
+                  'salary'.tr(),
+                  '',
+                  _salaryCtrl,
+                  readOnly: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: _buildCalculatedInput(cr)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInput(
+                  'absent_deduction_per_day'.tr(),
+                  '0',
+                  _absentDeductionCtrl,
+                  isCurrency: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildInput(
+                  'leave_deduction_per_day'.tr(),
+                  '0',
+                  _leaveDeductionCtrl,
+                  isCurrency: true,
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
                   'overtime_amount'.tr(),
@@ -781,93 +814,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildInput(
-                  'salary'.tr(),
-                  '',
-                  _salaryCtrl,
-                  readOnly: true,
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(child: _buildCalculatedInput(cr)),
-            ],
-          ),
-          Builder(
-            builder: (context) {
-              final hasAbsents =
-                  (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
-              final hasLeaves =
-                  (int.tryParse(_leavesCtrl.text.trim()) ?? 0) > 0;
-              if (!hasAbsents && !hasLeaves) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (hasAbsents)
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInput(
-                                'absent_deduction_per_day'.tr(),
-                                '0',
-                                _absentDeductionCtrl,
-                                isCurrency: true,
-                              ),
-                              if (cr.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      if (hasAbsents && hasLeaves) const SizedBox(width: 24),
-                      if (hasLeaves)
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInput(
-                                'leave_deduction_per_day'.tr(),
-                                '0',
-                                _leaveDeductionCtrl,
-                                isCurrency: true,
-                              ),
-                              if (cr.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${'daily_rate'.tr()}: ${cr['formattedDailyRate'] ?? ''}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      if (hasAbsents || hasLeaves) const SizedBox(width: 24),
-                      const Expanded(child: SizedBox()),
-                    ],
-                  ),
-                ],
-              );
-            },
           ),
           const SizedBox(height: 32),
           if (cr.isNotEmpty) ...[
