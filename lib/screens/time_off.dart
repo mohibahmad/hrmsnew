@@ -903,19 +903,24 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                 ),
                                 child: MouseRegion(
                                   cursor: SystemMouseCursors.click,
-                                    child: Text(
-                                      action,
-                                      style: TextStyle(
-                                       fontSize: 17,
-                                      color: hasTimeOff
-                                          ? const Color(0xFF4AC000)
-                                          : const Color(0xFF0D4CC6),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
+                                 child: Row(
+                                   mainAxisSize: MainAxisSize.min,
+                                   children: [
+                                     Text(
+                                       action,
+                                       style: TextStyle(
+                                         fontSize: 17,
+                                         color: hasTimeOff
+                                             ? const Color(0xFF4AC000)
+                                             : const Color(0xFF0D4CC6),
+                                         fontWeight: FontWeight.w500,
+                                         fontFamily: 'SF Pro Display',
+                                       ),
+                                       overflow: TextOverflow.ellipsis,
+                                       maxLines: 1,
+                                     ),
+                                   ],
+                                 ),
                                 ),
                               ),
                             ),
