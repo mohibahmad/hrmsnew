@@ -736,11 +736,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     .toString();
                 String action = (doc['action'] ?? '').toString();
                 final bool hasTimeOff = action.isNotEmpty;
-                if (hasTimeOff) {
-                  action = 'assigned'.tr();
-                } else {
-                  action = 'assign'.tr();
-                }
+                action = hasTimeOff ? 'assigned'.tr() : 'assign'.tr();
                 return GestureDetector(
                   onLongPress: (doc['action'] ?? '').toString().isNotEmpty
                       ? () => _handleDelete(doc)
@@ -792,7 +788,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       Text(
                                         email,
                                         style: const TextStyle(
-                                          fontSize: 14,
+                                       fontSize: 17,
                                           color: Colors.black,
                                           fontFamily: 'SF Pro Display',
                                         ),
@@ -910,7 +906,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     child: Text(
                                       action,
                                       style: TextStyle(
-                                      fontSize: 19,
+                                       fontSize: 17,
                                       color: hasTimeOff
                                           ? const Color(0xFF4AC000)
                                           : const Color(0xFF0D4CC6),
