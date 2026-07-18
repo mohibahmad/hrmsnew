@@ -593,12 +593,15 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildTabItem('All', 'all_filter'.tr()),
-            _buildTabItem('Designer', 'designer'.tr()),
-            _buildTabItem('Developer', 'developer'.tr()),
-            _buildTabItem('Engineering', 'engineering'.tr()),
-            _buildTabItem('Sales', 'sales'.tr()),
-            _buildTabItem('Management', 'management'.tr()),
-            ..._extraPositions.map((pos) => _buildTabItem(pos, pos)),
+            if (_workersList.isEmpty) ...[
+              _buildTabItem('Designer', 'designer'.tr()),
+              _buildTabItem('Developer', 'developer'.tr()),
+              _buildTabItem('Engineering', 'engineering'.tr()),
+              _buildTabItem('Sales', 'sales'.tr()),
+              _buildTabItem('Management', 'management'.tr()),
+            ] else ...[
+              ..._extraPositions.map((pos) => _buildTabItem(pos, pos)),
+            ],
           ],
         ),
       ),
@@ -788,7 +791,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       Text(
                                         email,
                                         style: const TextStyle(
-                                       fontSize: 17,
+                                          fontSize: 17,
                                           color: Colors.black,
                                           fontFamily: 'SF Pro Display',
                                         ),
@@ -903,24 +906,24 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                 ),
                                 child: MouseRegion(
                                   cursor: SystemMouseCursors.click,
-                                 child: Row(
-                                   mainAxisSize: MainAxisSize.min,
-                                   children: [
-                                     Text(
-                                       action,
-                                       style: TextStyle(
-                                         fontSize: 17,
-                                         color: hasTimeOff
-                                             ? const Color(0xFF4AC000)
-                                             : const Color(0xFF0D4CC6),
-                                         fontWeight: FontWeight.w500,
-                                         fontFamily: 'SF Pro Display',
-                                       ),
-                                       overflow: TextOverflow.ellipsis,
-                                       maxLines: 1,
-                                     ),
-                                   ],
-                                 ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        action,
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          color: hasTimeOff
+                                              ? const Color(0xFF4AC000)
+                                              : const Color(0xFF0D4CC6),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

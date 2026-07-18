@@ -889,14 +889,17 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _buildFilterTab('All', 'all_filter'.tr()),
-                        _buildFilterTab('Designer', 'designer'.tr()),
-                        _buildFilterTab('Developer', 'developer'.tr()),
-                        _buildFilterTab('Engineering', 'engineering'.tr()),
-                        _buildFilterTab('Sales', 'sales'.tr()),
-                        _buildFilterTab('Management', 'management'.tr()),
-                        ..._extraPositions.map(
-                          (pos) => _buildFilterTab(pos, pos),
-                        ),
+                        if (_allWorkers.isEmpty) ...[
+                          _buildFilterTab('Designer', 'designer'.tr()),
+                          _buildFilterTab('Developer', 'developer'.tr()),
+                          _buildFilterTab('Engineering', 'engineering'.tr()),
+                          _buildFilterTab('Sales', 'sales'.tr()),
+                          _buildFilterTab('Management', 'management'.tr()),
+                        ] else ...[
+                          ..._extraPositions.map(
+                            (pos) => _buildFilterTab(pos, pos),
+                          ),
+                        ],
                       ],
                     ),
                   ),

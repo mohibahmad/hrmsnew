@@ -808,7 +808,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               Expanded(
                 child: _buildInput(
                   'overtime_amount'.tr(),
-                  '0',
+                  'e.g. 500',
                   _overtimeAmountCtrl,
                   isCurrency: true,
                 ),

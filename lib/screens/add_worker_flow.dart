@@ -359,10 +359,21 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _sickLeavesController.addListener(_onControllerChanged);
     _casualLeavesController.addListener(_onControllerChanged);
 
+    _annualLeavesController.addListener(_clampAnnualLeaves);
     _sickLeavesController.addListener(_autoCalcAnnualLeaves);
     _casualLeavesController.addListener(_autoCalcAnnualLeaves);
     if (widget.workerToEdit == null) {
       _autoCalcAnnualLeaves();
+    }
+  }
+
+  void _clampAnnualLeaves() {
+    final text = _annualLeavesController.text;
+    if (text.startsWith('-') || text.startsWith('+')) {
+      _annualLeavesController.text = text.replaceAll(RegExp(r'^[+\-]+'), '');
+      _annualLeavesController.selection = TextSelection.collapsed(
+        offset: _annualLeavesController.text.length,
+      );
     }
   }
 
@@ -2920,75 +2931,11 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  const Expanded(child: SizedBox()), // empty
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 40),
-
-        // Custom Leave Section (As Requested by user)
-        Text(
-          'leave_section'.tr(),
-          style: TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: formBgGrey,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
                   Expanded(
                     child: _buildInputField(
                       'annual_leaves_days'.tr(),
                       'hint_annual_leaves'.tr(),
                       controller: widget.annualLeavesController,
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: _buildDropdownField(
-                      label: 'leave_policy_label'.tr(),
-                      selectedValue: widget.leavePolicyController.text,
-                      hint: 'enter_leave_policy'.tr(),
-                      items: const ['Standard', 'Sick/Casual Only'],
-                      itemLabelBuilder: (val) => _localizeLeavePolicy(val),
-                      onChanged: (val) {
-                        if (val != null) {
-                          widget.leavePolicyController.text = val;
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInputField(
-                      'sick_leaves_days'.tr(),
-                      'hint_sick_leaves'.tr(),
-                      controller: widget.sickLeavesController,
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: _buildInputField(
-                      'casual_leaves_days'.tr(),
-                      'hint_casual_leaves'.tr(),
-                      controller: widget.casualLeavesController,
                     ),
                   ),
                 ],
