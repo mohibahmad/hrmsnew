@@ -11,7 +11,11 @@ import '../services/dummy_data.dart';
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
   final ValueChanged<String>? onNotificationTap;
-  const NotificationSidebar({super.key, required this.onClose, this.onNotificationTap});
+  const NotificationSidebar({
+    super.key,
+    required this.onClose,
+    this.onNotificationTap,
+  });
 
   @override
   State<NotificationSidebar> createState() => _NotificationSidebarState();
@@ -93,10 +97,13 @@ class _NotificationSidebarState extends State<NotificationSidebar>
       final now = DateTime.now();
       final diff = now.difference(created);
       if (diff.inMinutes < 1) return 'just_now'.tr();
-      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-      if (diff.inHours < 24) return '${diff.inHours}h ago';
-      if (diff.inDays < 7) return '${diff.inDays}d ago';
-      return DateFormat('dd MMM').format(created);
+      if (diff.inMinutes < 60)
+        return 'time_ago_minutes'.tr(namedArgs: {'count': '${diff.inMinutes}'});
+      if (diff.inHours < 24)
+        return 'time_ago_hours'.tr(namedArgs: {'count': '${diff.inHours}'});
+      if (diff.inDays < 7)
+        return 'time_ago_days'.tr(namedArgs: {'count': '${diff.inDays}'});
+      return DateFormat('time_ago_date'.tr()).format(created);
     } catch (_) {
       return '';
     }
@@ -289,7 +296,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () async {
-                      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+                      final isGuest =
+                          AuthService().currentUser?.isAnonymous ?? false;
                       if (!isGuest) {
                         await FirestoreService().clearAllNotifications();
                       }
@@ -436,171 +444,178 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           gradient: const LinearGradient(
             colors: [Color(0xFF4C84E0), Color(0xFF0247C4)],
             begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4C84E0).withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4C84E0).withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Decorative circles
-          Positioned(
-            top: -20,
-            right: -20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+        child: Stack(
+          children: [
+            // Decorative circles
+            Positioned(
+              top: -20,
+              right: -20,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-          ),
-          Positioned(
-            bottom: -15,
-            left: 60,
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                shape: BoxShape.circle,
+            Positioned(
+              bottom: -15,
+              left: 60,
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SvgPicture.asset(
-                        'assets/app_icon.svg',
-                        width: 20,
-                        height: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'notif_welcome'.tr(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFFFFFFF),
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFFFFFFF),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      timeAgo,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontFamily: 'SF Pro Display',
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () async {
-                        if (notificationId.isNotEmpty) {
-                          await FirestoreService().deleteNotification(notificationId);
-                          setState(() {
-                            _notifications.removeWhere((n) => n['id'] == notificationId);
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          'mark_read'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                        child: SvgPicture.asset(
+                          'assets/app_icon.svg',
+                          width: 20,
+                          height: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'notif_welcome'.tr(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFFFFFFF),
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFFFFFFF),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        timeAgo,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () async {
+                          if (notificationId.isNotEmpty) {
+                            await FirestoreService().deleteNotification(
+                              notificationId,
+                            );
+                            setState(() {
+                              _notifications.removeWhere(
+                                (n) => n['id'] == notificationId,
+                              );
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'mark_read'.tr(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -636,10 +651,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               widget.onNotificationTap?.call(type);
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -763,29 +775,27 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             right: 8,
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () async {
-                          if (notificationId.isNotEmpty) {
-                            await FirestoreService().deleteNotification(notificationId);
-                            setState(() {
-                              _notifications.removeWhere((n) => n['id'] == notificationId);
-                            });
-                          }
-                        },
+              child: GestureDetector(
+                onTap: () async {
+                  if (notificationId.isNotEmpty) {
+                    await FirestoreService().deleteNotification(notificationId);
+                    setState(() {
+                      _notifications.removeWhere(
+                        (n) => n['id'] == notificationId,
+                      );
+                    });
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.grey[800]
-                        : Colors.grey[200],
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.close,
                     size: 14,
-                    color: isDark
-                        ? Colors.grey[400]
-                        : Colors.grey[600],
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
               ),

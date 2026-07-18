@@ -10,6 +10,7 @@ import '../utils/snackbar_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/notification_bell.dart';
+import '../utils/leave_balance_helper.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -404,6 +405,84 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   Widget _buildMainCard() {
+    final bool isExhausted = _selectedWorker != null && LeaveBalanceHelper.allLeavesExhausted(_selectedWorker!);
+
+    if (isExhausted) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_busy_rounded,
+                size: 64,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'all_leaves_utilized'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please add more leaves to assign a new time off request for this worker.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0247C4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  elevation: 0,
+                ),
+                onPressed: () => _showAddAnnualLeavesDialog(),
+                icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                label: Text(
+                  'add_more_annual_leaves'.tr(),
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -900,6 +979,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   }
                   _hasEndSelection = true;
                 }
+
+                if (_hasStartSelection && _hasEndSelection) {
+                  if (_requestedDays > _availableDays) {
+                    FlashySnackBar.show(
+                      context,
+                      message: 'requested_leaves_exceed_available'.tr(),
+                      isError: true,
+                    );
+                    _hasStartSelection = false;
+                    _hasEndSelection = false;
+                    _startDate = DateTime.now();
+                    _endDate = DateTime.now();
+                  }
+                }
               });
             }
           },
@@ -1109,6 +1202,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
+    if (_requestedDays > _availableDays) {
+      FlashySnackBar.show(
+        context,
+        message: 'requested_leaves_exceed_available'.tr(),
+        isError: true,
+      );
+      setState(() {
+        _hasStartSelection = false;
+        _hasEndSelection = false;
+        _startDate = DateTime.now();
+        _endDate = DateTime.now();
+      });
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -1158,10 +1266,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       // 🔥 ADD THIS AFTER SAVE: Update payroll with remaining leaves
       if (mounted) {
         final remainingLeaves = _availableDays - _requestedDays;
-        final payrollUpdate = {
-          'annualLeaves': remainingLeaves.toString(),
-          'leavesUsed': (_alreadyUsedDays + _requestedDays).toString(),
-        };
+        final Map<String, dynamic> payrollUpdate = {};
+
+        if (_timeOffType == 'Annual Leave') {
+          payrollUpdate['availableAnnualLeaves'] = remainingLeaves.toString();
+          payrollUpdate['leavesUsed'] = (_alreadyUsedDays + _requestedDays).toString();
+        } else if (_timeOffType == 'Sick Leave') {
+          payrollUpdate['availableSickLeaves'] = remainingLeaves.toString();
+        } else if (_timeOffType == 'Casual Leave') {
+          payrollUpdate['availableCasualLeaves'] = remainingLeaves.toString();
+        }
 
         if (isGuest) {
           // Update dummy data
@@ -1169,16 +1283,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             (w) => w['email'] == _selectedWorker!['email'],
           );
           if (workerIdx != -1) {
-            DummyData.workers[workerIdx]['annualLeaves'] = remainingLeaves
-                .toString();
-            DummyData.workers[workerIdx]['leavesUsed'] =
-                (_alreadyUsedDays + _requestedDays).toString();
+            if (_timeOffType == 'Annual Leave') {
+              DummyData.workers[workerIdx]['availableAnnualLeaves'] = remainingLeaves.toString();
+              DummyData.workers[workerIdx]['leavesUsed'] = (_alreadyUsedDays + _requestedDays).toString();
+            } else if (_timeOffType == 'Sick Leave') {
+              DummyData.workers[workerIdx]['availableSickLeaves'] = remainingLeaves.toString();
+            } else if (_timeOffType == 'Casual Leave') {
+              DummyData.workers[workerIdx]['availableCasualLeaves'] = remainingLeaves.toString();
+            }
             await DummyData.saveToPrefs();
           }
         } else {
           // Use updateWorkerLeaves to avoid validateWorker requiring name/email
           final workerId = (_selectedWorker!['id'] ?? '').toString();
-          if (workerId.isNotEmpty) {
+          if (workerId.isNotEmpty && payrollUpdate.isNotEmpty) {
             await FirestoreService().updateWorkerLeaves(
               workerId,
               payrollUpdate,
@@ -1196,6 +1314,160 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         FlashySnackBar.show(
           context,
           message: 'assign_time_off_failed'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showAddAnnualLeavesDialog() {
+    final TextEditingController amountController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Text(
+            'add_leaves_title'.tr(),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'enter_leaves_to_add'.tr(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  style: const TextStyle(fontFamily: 'SF Pro Display'),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. 5',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'please_enter_amount'.tr();
+                    }
+                    final parsed = int.tryParse(val.trim());
+                    if (parsed == null || parsed <= 0) {
+                      return 'invalid_number'.tr();
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                'cancel'.tr(),
+                style: const TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display'),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0247C4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                elevation: 0,
+              ),
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  final addedAmount = int.parse(amountController.text.trim());
+                  Navigator.of(ctx).pop();
+                  await _addAnnualLeaves(addedAmount);
+                }
+              },
+              child: Text(
+                'add_btn'.tr(),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'SF Pro Display'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addAnnualLeaves(int amount) async {
+    if (_selectedWorker == null) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final workerId = (_selectedWorker!['id'] ?? '').toString();
+      final currentAnnual = int.tryParse(_selectedWorker!['annualLeaves']?.toString() ?? '12') ?? 12;
+      final currentAvailable = int.tryParse(_selectedWorker!['availableAnnualLeaves']?.toString() ?? '0') ?? 0;
+      final newAnnual = currentAnnual + amount;
+      final newAvailable = currentAvailable + amount;
+
+      if (isGuest) {
+        final workerIdx = DummyData.workers.indexWhere(
+          (w) => w['email'] == _selectedWorker!['email'],
+        );
+        if (workerIdx != -1) {
+          DummyData.workers[workerIdx]['annualLeaves'] = newAnnual.toString();
+          DummyData.workers[workerIdx]['availableAnnualLeaves'] = newAvailable.toString();
+          await DummyData.saveToPrefs();
+          
+          setState(() {
+            _selectedWorker = Map<String, dynamic>.from(DummyData.workers[workerIdx]);
+          });
+        }
+      } else {
+        if (workerId.isNotEmpty) {
+          await FirestoreService().updateWorkerLeaves(workerId, {
+            'annualLeaves': newAnnual.toString(),
+            'availableAnnualLeaves': newAvailable.toString(),
+          });
+          
+          setState(() {
+            _selectedWorker = {
+              ..._selectedWorker!,
+              'annualLeaves': newAnnual.toString(),
+              'availableAnnualLeaves': newAvailable.toString(),
+            };
+          });
+        }
+      }
+
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'add_leaves_success'.tr(namedArgs: {'count': amount.toString()}),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'add_leaves_failed'.tr(),
           isError: true,
         );
       }

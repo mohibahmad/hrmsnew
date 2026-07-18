@@ -1048,7 +1048,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   ),
                 ),
                 Container(
-                  color: const Color(0xFF0247C4),
+                  color: const Color(0xFFFFFFFF),
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -1059,7 +1059,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Color(0xFFFFFFFF),
+                            color: const Color(0xFF0A51D0),
                             width: 2,
                           ),
                           image: DecorationImage(
@@ -1081,7 +1081,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             Text(
                               name,
                               style: const TextStyle(
-                                color: Color(0xFFFFFFFF),
+                                color: Color(0xFF333333),
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'SF Pro Display',
@@ -1093,7 +1093,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               children: [
                                 const Icon(
                                   Icons.mail_outline,
-                                  color: Color(0xFFFFFFFF),
+                                  color: Color(0xFF666666),
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
@@ -1101,7 +1101,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   child: Text(
                                     email,
                                     style: const TextStyle(
-                                      color: Color(0xFFFFFFFF),
+                                      color: Color(0xFF666666),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',
@@ -1119,7 +1119,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   padding: EdgeInsets.only(top: 2),
                                   child: Icon(
                                     Icons.phone,
-                                    color: Color(0xFFFFFFFF),
+                                    color: Color(0xFF666666),
                                     size: 18,
                                   ),
                                 ),
@@ -1128,7 +1128,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                   child: Text(
                                     contact,
                                     style: const TextStyle(
-                                      color: Color(0xFFFFFFFF),
+                                      color: Color(0xFF666666),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'SF Pro Display',

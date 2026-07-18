@@ -30,7 +30,6 @@ class ProfileInlineHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       height: 94,
       padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -147,14 +146,14 @@ class _ProfileBodyState extends State<ProfileBody> {
         setState(() {
           _businessNameController.text =
               _guestProfileCache?['businessName'] ?? 'Guest Company Ltd.';
-          _companyIdController.text =
-              _guestProfileCache?['companyId'] ?? '';
+          _companyIdController.text = _guestProfileCache?['companyId'] ?? '';
           _emailController.text =
               _guestProfileCache?['email'] ?? 'guest@example.com';
           _currencyController.text = _guestProfileCache?['currency'] ?? 'USD';
           _contact1Controller.text =
               _guestProfileCache?['contact1'] ?? '+1 415-555-0198';
-          _contact2Controller.text = _guestProfileCache?['contact2'] ?? '+1 415-555-0299';
+          _contact2Controller.text =
+              _guestProfileCache?['contact2'] ?? '+1 415-555-0299';
           _addressController.text =
               _guestProfileCache?['address'] ?? '123 Demo Street, Test City';
           _profilePicUrl = AuthService.profilePicNotifier.value;
@@ -240,7 +239,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'please_enter_business_name'.tr(),
+          message: 'please_enter_company_name'.tr(),
           isError: true,
         );
       }
@@ -494,7 +493,7 @@ class _ProfileBodyState extends State<ProfileBody> {
             children: [
               _buildFormRow(
                 _buildInputField(
-                  'business_name'.tr(),
+                  'company_name'.tr(),
                   _businessNameController,
                   readOnly: !_isEditing,
                 ),
@@ -521,20 +520,10 @@ class _ProfileBodyState extends State<ProfileBody> {
                   readOnly: !_isEditing,
                 ),
                 _buildInputField(
-                  'secondary_contact'.tr(),
-                  _contact2Controller,
-                  readOnly: !_isEditing,
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildFormRow(
-                _buildInputField(
                   'address'.tr(),
                   _addressController,
-                  maxLines: 2,
                   readOnly: !_isEditing,
                 ),
-                const SizedBox(),
               ),
             ],
           ),
@@ -681,7 +670,7 @@ class _ProfileBodyState extends State<ProfileBody> {
   }) {
     final bool isEmailField = label == 'company_email'.tr();
     final bool isCompanyId = label == 'company_id_no'.tr();
-    final bool isBusinessName = label == 'business_name'.tr();
+    final bool isBusinessName = label == 'company_name'.tr();
     final bool isContact =
         label.toLowerCase().contains('contact') ||
         label.toLowerCase().contains('phone');
@@ -736,9 +725,16 @@ class _ProfileBodyState extends State<ProfileBody> {
                   controller: controller,
                   maxLines: maxLines,
                   readOnly: readOnly,
-                  inputFormatters: isCompanyId || isContact || isBusinessName || isAddress
+                  inputFormatters:
+                      isCompanyId || isContact || isBusinessName || isAddress
                       ? [
-                          LengthLimitingTextInputFormatter(isBusinessName ? 30 : isAddress ? 100 : 15),
+                          LengthLimitingTextInputFormatter(
+                            isBusinessName
+                                ? 30
+                                : isAddress
+                                ? 100
+                                : 15,
+                          ),
                           if (isContact)
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[0-9+\-\s()]'),
@@ -754,14 +750,14 @@ class _ProfileBodyState extends State<ProfileBody> {
                     hintText: isEmailField
                         ? 'example@company.com'
                         : isCompanyId
-                            ? 'e.g. 12345678'
-                            : isBusinessName
-                                ? 'e.g. ABC Corporation'
-                                : isContact
-                                    ? '+1 415-555-0198'
-                                    : isAddress
-                                        ? 'e.g. 123 Main St, City'
-                                        : '',
+                        ? 'e.g. 12345678'
+                        : isBusinessName
+                        ? 'e.g. ABC Corporation'
+                        : isContact
+                        ? '+1 415-555-0198'
+                        : isAddress
+                        ? 'e.g. 123 Main St, City'
+                        : '',
                     hintStyle: const TextStyle(
                       color: Color(0xFF9CA3AF),
                       fontSize: 15,
@@ -858,7 +854,11 @@ class _ProfileBodyState extends State<ProfileBody> {
               items: currencies.map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
-                  child: Text(localize(value), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    localize(value),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               }).toList(),
             ),
@@ -1025,7 +1025,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _buildPreviewCard(
-                            'business_name'.tr(),
+                            'company_name'.tr(),
                             businessName,
                             'assets/preview_profile.svg',
                           ),
