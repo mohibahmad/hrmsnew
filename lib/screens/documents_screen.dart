@@ -547,6 +547,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         } else {
           updates[field] = url;
         }
+        updates['name'] = _workerName;
         await FirestoreService().updateWorker(_workerId, updates);
         updates.forEach((key, value) {
           widget.worker[key] = value;
