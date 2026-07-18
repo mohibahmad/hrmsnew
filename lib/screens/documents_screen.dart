@@ -1312,39 +1312,41 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                   ? InteractiveViewer(
                       minScale: 0.5,
                       maxScale: 4.0,
-                      child: Center(
-                        child: widget.url.startsWith('data:')
-                            ? Image.memory(
-                                _base64ToBytes(widget.url),
-                                fit: BoxFit.contain,
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: widget.url,
-                                fit: BoxFit.contain,
-                                placeholder: (c, u) => const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFF0247C4),
-                                  ),
-                                ),
-                                errorWidget: (c, u, e) => const Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.broken_image,
-                                      size: 48,
-                                      color: Color(0xFF9E9E9E),
-                                    ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'Failed to load',
-                                      style: TextStyle(
-                                        color: Color(0xFF9E9E9E),
-                                      ),
-                                    ),
-                                  ],
+                      child: widget.url.startsWith('data:')
+                          ? Image.memory(
+                              _base64ToBytes(widget.url),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: widget.url,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              placeholder: (c, u) => const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF0247C4),
                                 ),
                               ),
-                      ),
+                              errorWidget: (c, u, e) => const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image,
+                                    size: 48,
+                                    color: Color(0xFF9E9E9E),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Failed to load',
+                                    style: TextStyle(
+                                      color: Color(0xFF9E9E9E),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                     )
                   : Center(
                       child: Column(
