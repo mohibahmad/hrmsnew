@@ -15,6 +15,7 @@ import '../utils/premium_gate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
+import '../utils/rate_us_helper.dart';
 import 'login_screen.dart';
 
 class AssetsScreen extends StatefulWidget {
@@ -36,9 +37,6 @@ class AssetsScreen extends StatefulWidget {
 class _AssetsScreenState extends State<AssetsScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  int _currentPage = 1;
-  static const int _itemsPerPage = 8;
-
   List<AssetData> _assets = [];
   bool _isLoading = false;
   StreamSubscription? _assetsSub;
@@ -187,6 +185,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   void _showAddAssetModal(BuildContext context) {
+    final parentContext = context;
     String? selectedWorkerName;
     final typeController = TextEditingController();
     final positionController = TextEditingController();
@@ -351,6 +350,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   namedArgs: {'name': selectedWorkerName!},
                                 ),
                               );
+                              if (parentContext.mounted) {
+                                tryShowFirstMilestoneRateUs(
+                                  parentContext,
+                                  'asset',
+                                );
+                              }
                             }
                           },
                           child: Text(
@@ -946,7 +951,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
-                        _currentPage = 1;
                       });
                     },
                     decoration: InputDecoration(
@@ -966,7 +970,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       _searchController.clear();
                       setState(() {
                         _searchQuery = '';
-                        _currentPage = 1;
                       });
                     },
                     child: Padding(
@@ -1047,21 +1050,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
   // ================= DATA TABLE (FILLED STATE) =================
 
   Widget _buildDataTable(List<AssetData> assets) {
-    final totalPages = (assets.isEmpty)
-        ? 1
-        : (assets.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= assets.length
-        ? 0
-        : (_currentPage - 1) * _itemsPerPage;
-    final paginatedAssets = assets.isEmpty
-        ? <AssetData>[]
-        : assets.sublist(
-            safeStartIndex,
-            (safeStartIndex + _itemsPerPage) > assets.length
-                ? assets.length
-                : (safeStartIndex + _itemsPerPage),
-          );
-
     final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
       495.0,
       1200.0,
@@ -1125,64 +1113,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: paginatedAssets.length,
+              itemCount: assets.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return _buildDataRow(paginatedAssets[index], index);
+                return _buildDataRow(assets[index], index);
               },
-            ),
-          ),
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: _currentPage > 1
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: _currentPage > 1
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$_currentPage',
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _currentPage < totalPages
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_right,
-                    color: _currentPage < totalPages
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-              ],
             ),
           ),
         ],

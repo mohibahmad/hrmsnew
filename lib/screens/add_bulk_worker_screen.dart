@@ -13,8 +13,8 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
-import '../utils/date_utils.dart';
 import '../utils/rate_us_helper.dart';
+import '../utils/date_utils.dart';
 import '../widgets/amount_text.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
@@ -652,8 +652,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             namedArgs: {'count': _validWorkers.length.toString()},
           ),
         );
-        tryShowFirstMilestoneRateUs(context, 'bulk_worker');
-
+        final dialogShown = await tryShowFirstMilestoneRateUs(context, 'bulk_worker');
         if (isGuest) {
           setState(() {
             _validWorkers = [];
@@ -672,7 +671,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           });
         }
 
-        widget.onBack?.call();
+        if (!dialogShown && mounted) {
+          widget.onBack?.call();
+        }
       }
     } catch (e) {
       if (mounted) Navigator.of(context).pop();
@@ -837,7 +838,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             ),
           ),
 
-          // Main Content
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),

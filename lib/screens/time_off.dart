@@ -57,8 +57,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
-  int _currentPage = 1;
-  static const int _itemsPerPage = 8;
+
   static const _defaultFilters = [
     'All',
     'Designer',
@@ -433,7 +432,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 10),
+
+                  const SizedBox(height: 10),
+                  _buildFilterTabs(),
+                  const SizedBox(height: 10),
                   Text(
                     'time_off_list'.tr(),
                     style: TextStyle(
@@ -443,9 +446,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildFilterTabs(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 15),
+
                   _isLoading
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 80),
@@ -530,7 +532,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               onChanged: (val) {
                 setState(() {
                   _searchQuery = val;
-                  _currentPage = 1;
                 });
               },
               decoration: InputDecoration(
@@ -551,7 +552,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 _searchController.clear();
                 setState(() {
                   _searchQuery = '';
-                  _currentPage = 1;
                 });
               },
               child: Padding(
@@ -611,7 +611,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       onTap: () {
         setState(() {
           _selectedTab = filterKey;
-          _currentPage = 1;
         });
       },
       child: Container(
@@ -640,21 +639,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> workers) {
-    final totalPages = (workers.isEmpty)
-        ? 1
-        : (workers.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= workers.length
-        ? 0
-        : (_currentPage - 1) * _itemsPerPage;
-    final paginatedWorkers = workers.isEmpty
-        ? <Map<String, dynamic>>[]
-        : workers.sublist(
-            safeStartIndex,
-            (safeStartIndex + _itemsPerPage) > workers.length
-                ? workers.length
-                : (safeStartIndex + _itemsPerPage),
-          );
-
     final double tableHeight = (MediaQuery.of(context).size.height - 339).clamp(
       495.0,
       1200.0,
@@ -741,10 +725,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: paginatedWorkers.length,
+              itemCount: workers.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final doc = paginatedWorkers[index];
+                final doc = workers[index];
                 final name = (doc['name'] ?? '').toString();
                 final email = (doc['email'] ?? '').toString();
                 final position = (doc['position'] ?? '').toString();
@@ -953,57 +937,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               },
             ),
           ),
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: _currentPage > 1
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: _currentPage > 1
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$_currentPage',
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _currentPage < totalPages
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_right,
-                    color: _currentPage < totalPages
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1017,12 +950,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
     final String contact = (data['contact'] ?? data['phone'] ?? '').toString();
-    final String status = (data['status'] ?? 'Active').toString();
     final String action = (data['action'] ?? '').toString();
     final String startDate = (data['startDate'] ?? '').toString();
     final String endDate = (data['endDate'] ?? '').toString();
     final String notes = (data['notes'] ?? '').toString();
-    final String requestedDays = (data['requestedDays'] ?? '0').toString();
     final String remainingLeaves = (data['remainingLeaves'] ?? '0').toString();
 
     String localizedAction = action;
@@ -1161,38 +1092,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Color(0xFFFFFFFF),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.circle,
-                                    color: Color(0xFF00FF00),
-                                    size: 10,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    status,
-                                    style: const TextStyle(
-                                      color: Color(0xFF0247C4),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -1316,12 +1215,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               Expanded(
                                 child: _buildTimeOffMetricCard(
                                   icon: const Icon(
-                                    Icons.event_available,
+                                    Icons.beach_access,
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'requested_days'.tr(),
-                                  value: requestedDays,
+                                  title: 'remaining_days'.tr(),
+                                  value: remainingLeaves,
                                 ),
                               ),
                             ],
@@ -1332,24 +1231,24 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               Expanded(
                                 child: _buildTimeOffMetricCard(
                                   icon: const Icon(
-                                    Icons.beach_access,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'remaining_days'.tr(),
-                                  value: remainingLeaves,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildTimeOffMetricCard(
-                                  icon: const Icon(
                                     Icons.notes,
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
                                   title: 'notes_label'.tr(),
                                   value: notes.isNotEmpty ? notes : '-',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTimeOffMetricCard(
+                                  icon: const Icon(
+                                    Icons.event_available,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
+                                  title: 'annual_leaves'.tr(),
+                                  value: remainingLeaves,
                                 ),
                               ),
                             ],

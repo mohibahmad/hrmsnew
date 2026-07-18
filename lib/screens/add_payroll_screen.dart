@@ -68,11 +68,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         final absentDays = int.tryParse(_absentsCtrl.text.trim()) ?? 0;
         final leaveDays = int.tryParse(_leavesCtrl.text.trim()) ?? 0;
         final hasLeaveDeduction = _leaveDeductionCtrl.text.trim().isNotEmpty;
-        final effectiveWorkedDays = totalDays - absentDays - (hasLeaveDeduction ? leaveDays : 0);
+        final effectiveWorkedDays =
+            totalDays - absentDays - (hasLeaveDeduction ? leaveDays : 0);
         _calcResult = PayrollService.calculatePayroll(
           salary: _salaryStr,
           totalWorkDays: _workDaysCtrl.text,
-          daysWorked: effectiveWorkedDays > 0 ? effectiveWorkedDays.toString() : '0',
+          daysWorked: effectiveWorkedDays > 0
+              ? effectiveWorkedDays.toString()
+              : '0',
           absents: _absentsCtrl.text,
           leaves: _leavesCtrl.text,
           overtimeAmount: _overtimeAmountCtrl.text,
@@ -106,7 +109,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     super.initState();
     _salaryCtrl.text = _salaryStr;
 
-    // 🔥 FIX: Worker ke annualLeaves se remaining leaves calculate karo
     final annualLeaves = widget.workerData['annualLeaves']?.toString() ?? '0';
     final leavesUsed = widget.workerData['leavesUsed']?.toString() ?? '0';
     int remaining =
@@ -119,7 +121,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
-      _overtimeAmountCtrl.text = (widget.workerData['overtimeAmount'] ?? '').toString();
+      _overtimeAmountCtrl.text = (widget.workerData['overtimeAmount'] ?? '')
+          .toString();
       _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '')
           .toString();
       _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '')
@@ -128,7 +131,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
     if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
     if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
-    
+
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _fetchMonthlyAttendance(),
     );
@@ -237,7 +240,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         }
       }
 
-      // Auto-create expense entry for salary payment
       final netAmount = PayrollService.extractSalary(_calculatedNet);
       if (netAmount > 0) {
         final now = DateTime.now();
@@ -1028,7 +1030,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(
-          'salary_after_deduction'.tr(),
+            'salary_after_deduction'.tr(),
             (cr['formattedNet'] ?? '').toString(),
             null,
             isTotal: true,

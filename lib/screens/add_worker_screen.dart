@@ -30,7 +30,6 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   final Color textDark = const Color(0xFF000000);
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
-  // Controllers
   final TextEditingController nameController = TextEditingController();
   final TextEditingController fatherNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -40,10 +39,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   final TextEditingController dobController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
 
-   bool isMarried = true;
+  bool isMarried = true;
   bool isLoading = false; // Loading state for Firebase operation
 
-  // Profile image state
   Uint8List? _profileImageBytes;
   String? _profileImageName;
   String selectedGender = 'Male';
@@ -61,7 +59,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     super.dispose();
   }
 
-   Future<void> _pickProfileImage() async {
+  Future<void> _pickProfileImage() async {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.image,
@@ -115,8 +113,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     }
   }
 
-   Future<void> _handleSave() async {
-     if (nameController.text.isEmpty || contactController.text.isEmpty) {
+  Future<void> _handleSave() async {
+    if (nameController.text.isEmpty || contactController.text.isEmpty) {
       FlashySnackBar.show(
         context,
         message: 'please_fill_name_contact'.tr(),
@@ -152,7 +150,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     });
 
     try {
-       String? profileImageUrl;
+      String? profileImageUrl;
       if (_profileImageBytes != null) {
         final isGuest = AuthService().currentUser?.isAnonymous ?? false;
         if (isGuest) {
@@ -182,7 +180,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               );
             }
           }
-           profileImageUrl ??=
+          profileImageUrl ??=
               'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
         }
       }
@@ -228,16 +226,15 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         });
       }
 
-      // Show Success Message
       if (mounted) {
         FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
-        _clearForm(); // Clear the form after saving
+        _clearForm();
       }
-      if (mounted) {
+      if (context.mounted) {
         tryShowFirstMilestoneRateUs(context, 'worker');
       }
     } catch (e) {
-       if (mounted) {
+      if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'error_saving_data'.tr(namedArgs: {'error': e.toString()}),
@@ -282,7 +279,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       backgroundColor: const Color(0xFFF7F8FA),
       body: Row(
         children: [
-           SidebarWidget(
+          SidebarWidget(
             key: ValueKey('sidebar_${context.locale.languageCode}'),
             selectedIndex: 1,
             isGuest: AuthService().currentUser?.isAnonymous ?? false,
@@ -306,11 +303,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             },
           ),
 
-           Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                 Container(
+                Container(
                   height: 94,
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   decoration: const BoxDecoration(
@@ -369,7 +366,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           ),
                         ],
                       ),
-                       InkWell(
+                      InkWell(
                         onTap: isLoading ? null : _handleSave,
                         borderRadius: BorderRadius.circular(6),
                         child: Container(
@@ -408,7 +405,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                   ),
                 ),
 
-                 Expanded(
+                Expanded(
                   child: Scrollbar(
                     thumbVisibility: true,
                     child: SingleChildScrollView(
@@ -427,7 +424,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Color(0xFF000000).withValues(alpha: 0.02),
+                                  color: Color(
+                                    0xFF000000,
+                                  ).withValues(alpha: 0.02),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -452,7 +451,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           ),
                           const SizedBox(height: 32),
 
-                           Row(
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
@@ -636,165 +635,182 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'worker_profile'.tr(),
-                                      style: TextStyle(
-                                        color: Color(0xFF000000),
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
+                                        style: TextStyle(
+                                          color: Color(0xFF000000),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    GestureDetector(
-                                      onTap: _pickProfileImage,
-                                      child: MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: Container(
-                                          height: 240,
-                                          width: double.infinity,
-                                          decoration: BoxDecoration(
-                                            color: Color(0xFFFFFFFF),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Color(
-                                                  0xFF000000,
-                                                ).withValues(alpha: 0.01),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 5),
-                                              ),
-                                            ],
-                                          ),
-                                          child: _profileImageBytes != null
-                                              ? Stack(
-                                                  children: [
-                                                    ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            16,
-                                                          ),
-                                                      child: Image.memory(
-                                                        _profileImageBytes!,
-                                                        height: 240,
-                                                        width: double.infinity,
-                                                        fit: BoxFit.cover,
-                                                      ),
-                                                    ),
-                                                    // Cross/close icon (top-right)
-                                                    Positioned(
-                                                      top: 8,
-                                                      right: 8,
-                                                      child: GestureDetector(
-                                                        onTap: () => _removeProfileImage(),
-                                                        child: Container(
-                                                          padding: const EdgeInsets.all(6),
-                                                          decoration: BoxDecoration(
-                                                            color: Colors.black.withValues(alpha: 0.6),
-                                                            shape: BoxShape.circle,
-                                                          ),
-                                                          child: const Icon(
-                                                            Icons.close,
-                                                            color: Colors.white,
-                                                            size: 18,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                )
-                                              : Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Image.asset(
-                                                      'assets/profileimage.png',
-                                                      height: 64,
-                                                      width: 64,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder:
-                                                          (
-                                                            context,
-                                                            error,
-                                                            stackTrace,
-                                                          ) => const Icon(
-                                                            Icons.person,
-                                                            size: 64,
-                                                            color: Colors.grey,
-                                                          ),
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    Text(
-                                                      'upload_profile'.tr(),
-                                                      style: TextStyle(
-                                                        color: Color(
-                                                          0xFF000000,
-                                                        ),
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        fontSize: 14,
-                                                        fontFamily:
-                                                            'SF Pro Display',
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    Text(
-                                                      'upload_profile_hint'
-                                                          .tr(),
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                        color: Colors.black,
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontFamily:
-                                                            'SF Pro Display',
-                                                      ),
-                                                    ),
-                                                  ],
+                                      const SizedBox(height: 16),
+                                      GestureDetector(
+                                        onTap: _pickProfileImage,
+                                        child: MouseRegion(
+                                          cursor: SystemMouseCursors.click,
+                                          child: Container(
+                                            height: 240,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFFFFFFFF),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Color(
+                                                    0xFF000000,
+                                                  ).withValues(alpha: 0.01),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 5),
                                                 ),
+                                              ],
+                                            ),
+                                            child: _profileImageBytes != null
+                                                ? Stack(
+                                                    children: [
+                                                      ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                        child: Image.memory(
+                                                          _profileImageBytes!,
+                                                          height: 240,
+                                                          width:
+                                                              double.infinity,
+                                                          fit: BoxFit.cover,
+                                                        ),
+                                                      ),
+                                                      // Cross/close icon (top-right)
+                                                      Positioned(
+                                                        top: 8,
+                                                        right: 8,
+                                                        child: GestureDetector(
+                                                          onTap: () =>
+                                                              _removeProfileImage(),
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  6,
+                                                                ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color: Colors
+                                                                      .black
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.6,
+                                                                      ),
+                                                                  shape: BoxShape
+                                                                      .circle,
+                                                                ),
+                                                            child: const Icon(
+                                                              Icons.close,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 18,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  )
+                                                : Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Image.asset(
+                                                        'assets/profileimage.png',
+                                                        height: 64,
+                                                        width: 64,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (
+                                                              context,
+                                                              error,
+                                                              stackTrace,
+                                                            ) => const Icon(
+                                                              Icons.person,
+                                                              size: 64,
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                      Text(
+                                                        'upload_profile'.tr(),
+                                                        style: TextStyle(
+                                                          color: Color(
+                                                            0xFF000000,
+                                                          ),
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 14,
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        'upload_profile_hint'
+                                                            .tr(),
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                          color: Colors.black,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 32),
+                                      const SizedBox(height: 32),
 
-                                    // Relationship Status Section
-                                    Text(
-                                      'relationship_status'.tr(),
-                                      style: TextStyle(
-                                        color: Color(0xFF000000),
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
+                                      // Relationship Status Section
+                                      Text(
+                                        'relationship_status'.tr(),
+                                        style: TextStyle(
+                                          color: Color(0xFF000000),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        _buildCustomRadio(
-                                          label: 'married'.tr(),
-                                          isSelected: isMarried,
-                                          onTap: () {
-                                            setState(() => isMarried = true);
-                                          },
-                                        ),
-                                        const SizedBox(width: 40),
-                                        _buildCustomRadio(
-                                          label: 'single'.tr(),
-                                          isSelected: !isMarried,
-                                          onTap: () {
-                                            setState(() => isMarried = false);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          _buildCustomRadio(
+                                            label: 'married'.tr(),
+                                            isSelected: isMarried,
+                                            onTap: () {
+                                              setState(() => isMarried = true);
+                                            },
+                                          ),
+                                          const SizedBox(width: 40),
+                                          _buildCustomRadio(
+                                            label: 'single'.tr(),
+                                            isSelected: !isMarried,
+                                            onTap: () {
+                                              setState(() => isMarried = false);
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -886,10 +902,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                       LengthLimitingTextInputFormatter(15),
                   ]
                 : isEmailField
-                    ? [LengthLimitingTextInputFormatter(100)]
-                    : isReligion
-                        ? [LengthLimitingTextInputFormatter(30)]
-                        : null,
+                ? [LengthLimitingTextInputFormatter(100)]
+                : isReligion
+                ? [LengthLimitingTextInputFormatter(30)]
+                : null,
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF000000),

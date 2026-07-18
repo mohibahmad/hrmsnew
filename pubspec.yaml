@@ -107,6 +107,7 @@ flutter:
 
     - assets/langauge_icon.png
     - assets/dashbaord_icon_slidebar.svg
+    - assets/Id card.png
     - assets/workers_icon_slidebar.svg
     - assets/workforce_icon_sldiebar.svg
     - assets/expenses_icon_slidebar.svg
@@ -118,7 +119,6 @@ flutter:
     - assets/time_off_icon.svg
     - assets/left_arrow.png
     - assets/notification_icon.svg
-    - assets/right_arrow_icon.svg
     - assets/tick_icon.svg
     - assets/premium_icon.png
     - assets/delete_icon.svg
@@ -127,12 +127,9 @@ flutter:
     - assets/add_worker.svg
     - assets/add_bulk_worker.svg
     - assets/add_expense.svg
-    - assets/add asset.svg
     - assets/assets_icon.svg
     - assets/company_email.svg
     - assets/company_id.svg
-    - assets/cnic_back.svg
-    - assets/cnic_front.svg
     - assets/documents_icon.svg
     - assets/currency_preview.svg
     - assets/location_preview.svg

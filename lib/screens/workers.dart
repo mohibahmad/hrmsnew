@@ -50,7 +50,6 @@ class MainLayoutScreen extends StatefulWidget {
 }
 
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
-  // 0: Dashboard List, 1: Add Worker Form
   int _currentMenuIndex = 1;
   bool _isPremium = false;
 
@@ -83,8 +82,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                         ).withValues(alpha: 0.5),
                         builder: (context) => const SubscriptionDialog(),
                       );
-                      if (result == true) {
-                      }
+                      if (result == true) {}
                     },
                     child: Container(
                       width: 238,
@@ -245,7 +243,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             ),
           ),
 
-          // --- MAIN CONTENT ---
           Expanded(
             child: IndexedStack(
               index: _currentMenuIndex,
@@ -357,7 +354,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   width: 6,
                   decoration: const BoxDecoration(
                     color: Color(0xFFFFFFFF),
-                     borderRadius: BorderRadius.only(
+                    borderRadius: BorderRadius.only(
                       topRight: Radius.circular(4),
                       bottomRight: Radius.circular(4),
                     ),
@@ -470,8 +467,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
-  int _currentPage = 1;
-  static const int _itemsPerPage = 8;
   StreamSubscription? _workersSub;
 
   @override
@@ -598,7 +593,14 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     return pos.contains(f) || f.contains(pos);
   }
 
-  static const _defaultFilters = ['All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+  static const _defaultFilters = [
+    'All',
+    'Designer',
+    'Developer',
+    'Engineering',
+    'Sales',
+    'Management',
+  ];
 
   List<String> get _extraPositions {
     final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
@@ -624,30 +626,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 
       return matchesSearch && matchesFilter;
     }).toList();
-  }
-
-  List<Map<String, dynamic>> get _currentPageItems {
-    final filtered = _filteredWorkers;
-    final total = _totalPages;
-    if (_currentPage > total) {
-      _currentPage = total;
-    }
-    if (_currentPage < 1) {
-      _currentPage = 1;
-    }
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    if (startIndex >= filtered.length) return [];
-    final endIndex = startIndex + _itemsPerPage;
-    return filtered.sublist(
-      startIndex,
-      endIndex > filtered.length ? filtered.length : endIndex,
-    );
-  }
-
-  int get _totalPages {
-    final filtered = _filteredWorkers;
-    if (filtered.isEmpty) return 1;
-    return (filtered.length / _itemsPerPage).ceil();
   }
 
   Future<void> _deleteWorker(String docId) async {
@@ -744,7 +722,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           ),
         ),
 
-        // List Content Area
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
@@ -754,7 +731,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Search and Add Buttons
                 Row(
                   children: [
                     Expanded(
@@ -785,7 +761,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                 onChanged: (val) {
                                   setState(() {
                                     _searchQuery = val;
-                                    _currentPage = 1;
                                   });
                                 },
                                 decoration: InputDecoration(
@@ -806,7 +781,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                                   _searchController.clear();
                                   setState(() {
                                     _searchQuery = '';
-                                    _currentPage = 1;
                                   });
                                 },
                                 child: Padding(
@@ -901,7 +875,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 // Filter Tabs
                 Container(
                   width: 560,
-    
+
                   height: 50,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
@@ -920,7 +894,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         _buildFilterTab('Engineering', 'engineering'.tr()),
                         _buildFilterTab('Sales', 'sales'.tr()),
                         _buildFilterTab('Management', 'management'.tr()),
-                        ..._extraPositions.map((pos) => _buildFilterTab(pos, pos)),
+                        ..._extraPositions.map(
+                          (pos) => _buildFilterTab(pos, pos),
+                        ),
                       ],
                     ),
                   ),
@@ -1065,68 +1041,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           // List Items
           Expanded(
             child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _currentPageItems.length,
+              itemCount: _filteredWorkers.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return _buildListItem(_currentPageItems[index], index);
+                return _buildListItem(_filteredWorkers[index], index);
               },
-            ),
-          ),
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: _currentPage > 1
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.keyboard_arrow_left,
-                    size: 20,
-                    color: _currentPage > 1
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: actionBtnBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$_currentPage',
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _currentPage < _totalPages
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.keyboard_arrow_right,
-                    size: 20,
-                    color: _currentPage < _totalPages
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -1266,9 +1187,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     barrierColor: const Color(
                       0xFF0247C4,
                     ).withValues(alpha: 0.5),
-                    builder: (context) => WorkerProfilePreviewDialog(
-                      worker: worker,
-                    ),
+                    builder: (context) =>
+                        WorkerProfilePreviewDialog(worker: worker),
                   );
                 } else if (value == 'edit') {
                   widget.onEditWorker?.call(worker);
@@ -1378,7 +1298,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           borderRadius: BorderRadius.circular(6),
           onTap: onTap,
           child: Container(
-            height: 48,
+            height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1418,7 +1338,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       onTap: () {
         setState(() {
           _selectedFilter = filterKey;
-          _currentPage = 1;
         });
       },
       child: Container(
@@ -1446,16 +1365,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 }
 
-// ==========================================
-// WORKER PROFILE PREVIEW DIALOG (POPUP)
-// ==========================================
 class WorkerProfilePreviewDialog extends StatelessWidget {
   final Map<String, dynamic> worker;
 
-  const WorkerProfilePreviewDialog({
-    super.key,
-    required this.worker,
-  });
+  const WorkerProfilePreviewDialog({super.key, required this.worker});
 
   final Color primaryBlue = const Color(0xFF0953D4);
   final Color iconLightBlue = const Color(0xFFE5EEFC);
@@ -1475,7 +1388,9 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     final rawSalary = salaryAmount.isNotEmpty
         ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
         : '';
-    final salary = rawSalary.isNotEmpty ? AmountText.formatCompact(rawSalary) : '';
+    final salary = rawSalary.isNotEmpty
+        ? AmountText.formatCompact(rawSalary)
+        : '';
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -1522,7 +1437,11 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           MouseRegion(
                             cursor: SystemMouseCursors.click,
                             child: IconButton(
-                              icon: const Icon(Icons.close, color: Color(0xFFFFFFFF), size: 20),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Color(0xFFFFFFFF),
+                                size: 20,
+                              ),
                               onPressed: () => Navigator.of(context).pop(),
                             ),
                           ),
@@ -1540,7 +1459,10 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                             height: 130,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFFFFFFF), width: 2.0),
+                              border: Border.all(
+                                color: const Color(0xFFFFFFFF),
+                                width: 2.0,
+                              ),
                               image: DecorationImage(
                                 image: getProfileImage(profileImage, email, 0),
                                 fit: BoxFit.cover,
@@ -1566,7 +1488,10 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Color(0xFFFFFFFF),
                                     borderRadius: BorderRadius.circular(20),
@@ -1574,7 +1499,11 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.circle, color: Color(0xFF00FF00), size: 10),
+                                      const Icon(
+                                        Icons.circle,
+                                        color: Color(0xFF00FF00),
+                                        size: 10,
+                                      ),
                                       const SizedBox(width: 6),
                                       Text(
                                         'active'.tr(),
@@ -1594,21 +1523,26 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
-                                      child: Image.asset('assets/email.png', width: 20, height: 20, fit: BoxFit.contain),
+                                      child: Image.asset(
+                                        'assets/email.png',
+                                        width: 20,
+                                        height: 20,
+                                        fit: BoxFit.contain,
+                                      ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                    child: Text(
-                                      email,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
+                                      child: Text(
+                                        email,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFFFFFFFF),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
                                     ),
                                   ],
                                 ),
@@ -1618,21 +1552,26 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
-                                      child: Image.asset('assets/call.png', width: 20, height: 20, fit: BoxFit.contain),
+                                      child: Image.asset(
+                                        'assets/call.png',
+                                        width: 20,
+                                        height: 20,
+                                        fit: BoxFit.contain,
+                                      ),
                                     ),
                                     const SizedBox(width: 10),
                                     Flexible(
-                                    child: Text(
-                                      phone.isNotEmpty ? phone : 'na'.tr(),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'SF Pro Display',
+                                      child: Text(
+                                        phone.isNotEmpty ? phone : 'na'.tr(),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFFFFFFFF),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                    ),
                                     ),
                                   ],
                                 ),
@@ -1652,43 +1591,119 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                   child: Column(
                     children: [
                       _buildRow(
-                        _buildInfoCard(Icons.person, 'father_husband_name'.tr(), _na(_v('fatherName'))),
-                        _buildInfoCard(Icons.business_center, 'postion'.tr(), _v('position')),
+                        _buildInfoCard(
+                          Icons.person,
+                          'father_husband_name'.tr(),
+                          _na(_v('fatherName')),
+                        ),
+                        _buildInfoCard(
+                          Icons.business_center,
+                          'postion'.tr(),
+                          _v('position'),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.badge, 'national_id'.tr(), _na(_v('nationalId'))),
-                        _buildInfoCard(Icons.location_city, 'attendance_type'.tr(), LocalizationHelper.localizeType2(_v('type2'))),
+                        _buildInfoCard(
+                          Icons.badge,
+                          'national_id'.tr(),
+                          _na(_v('nationalId')),
+                        ),
+                        _buildInfoCard(
+                          Icons.location_city,
+                          'attendance_type'.tr(),
+                          LocalizationHelper.localizeType2(_v('type2')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.schedule, 'work_type'.tr(), LocalizationHelper.localizeType1(_v('type1'))),
-                        _buildInfoCard(Icons.show_chart, 'experience_level'.tr(), _na(_v('experienceLevel'))),
+                        _buildInfoCard(
+                          Icons.schedule,
+                          'work_type'.tr(),
+                          LocalizationHelper.localizeType1(_v('type1')),
+                        ),
+                        _buildInfoCard(
+                          Icons.show_chart,
+                          'experience_level'.tr(),
+                          _na(_v('experienceLevel')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.transgender, 'gender'.tr(), _na(_v('gender'))),
-                        _buildInfoCard(Icons.calendar_month, 'joining_date'.tr(), _na(_v('joiningDate'))),
+                        _buildInfoCard(
+                          Icons.transgender,
+                          'gender'.tr(),
+                          _na(_v('gender')),
+                        ),
+                        _buildInfoCard(
+                          Icons.calendar_month,
+                          'joining_date'.tr(),
+                          _na(_v('joiningDate')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.volunteer_activism, 'salary'.tr(), salary.isNotEmpty ? salary : 'na'.tr()),
-                        _buildInfoCard(Icons.school, 'education_title'.tr(), _na(_v('education'))),
+                        _buildInfoCard(
+                          Icons.volunteer_activism,
+                          'salary'.tr(),
+                          salary.isNotEmpty ? salary : 'na'.tr(),
+                        ),
+                        _buildInfoCard(
+                          Icons.school,
+                          'education_title'.tr(),
+                          _na(_v('education')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.money, 'salary_type'.tr(), _na(_v('salaryType'))),
-                        _buildInfoCard(Icons.fingerprint, 'religion_title'.tr(), _na(_v('religion'))),
+                        _buildInfoCard(
+                          Icons.money,
+                          'salary_type'.tr(),
+                          _na(_v('salaryType')),
+                        ),
+                        _buildInfoCard(
+                          Icons.art_track_outlined,
+                          'religion_title'.tr(),
+                          _na(_v('religion')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.cake, 'date_of_birth'.tr(), _na(_v('dob'))),
-                        _buildInfoCard(Icons.favorite, 'relationship_status'.tr(), _na(_v('relationshipStatus'))),
+                        _buildInfoCard(
+                          Icons.cake,
+                          'date_of_birth'.tr(),
+                          _na(_v('dob')),
+                        ),
+                        _buildInfoCard(
+                          Icons.favorite,
+                          'relationship_status'.tr(),
+                          _na(_v('relationshipStatus')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.home, 'address'.tr(), _na(_v('address'))),
-                        _buildInfoCard(Icons.policy, 'leave_policy'.tr(), _na(_v('leavePolicy'))),
+                        _buildInfoCard(
+                          Icons.home,
+                          'address'.tr(),
+                          _na(_v('address')),
+                        ),
+                        _buildInfoCard(
+                          Icons.policy,
+                          'leave_policy'.tr(),
+                          _na(_v('leavePolicy')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.event_note, 'annual_leaves'.tr(), _na(_v('annualLeaves'))),
-                        _buildInfoCard(Icons.medical_services, 'sick_leaves_title'.tr(), _na(_v('sickLeaves'))),
+                        _buildInfoCard(
+                          Icons.event_note,
+                          'annual_leaves'.tr(),
+                          _na(_v('annualLeaves')),
+                        ),
+                        _buildInfoCard(
+                          Icons.medical_services,
+                          'sick_leaves_title'.tr(),
+                          _na(_v('sickLeaves')),
+                        ),
                       ),
                       _buildRow(
-                        _buildInfoCard(Icons.free_breakfast, 'casual_leaves_title'.tr(), _na(_v('casualLeaves'))),
+                        _buildInfoCard(
+                          Icons.sick,
+                          'casual_leaves_title'.tr(),
+                          _na(_v('casualLeaves')),
+                        ),
                         _buildInfoCard(Icons.info, 'Status', _na(_v('status'))),
                       ),
                     ],

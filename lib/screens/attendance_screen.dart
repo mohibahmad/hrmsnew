@@ -114,8 +114,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _presentCount = 0;
   int _absentCount = 0;
   int _leaveCount = 0;
-  int _currentPage = 1;
-  static const int _itemsPerPage = 8;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
 
@@ -400,7 +398,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
-                        _currentPage = 1;
                       });
                     },
                     decoration: InputDecoration(
@@ -423,7 +420,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         _searchController.clear();
                         setState(() {
                           _searchQuery = '';
-                          _currentPage = 1;
                         });
                       },
                       child: Padding(
@@ -614,7 +610,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         onTap: () {
           setState(() {
             _selectedTab = filterKey;
-            _currentPage = 1;
           });
         },
         child: Container(
@@ -733,21 +728,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildAttendanceTable(List<Map<String, dynamic>> records) {
-    final totalPages = (records.isEmpty)
-        ? 1
-        : (records.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= records.length
-        ? 0
-        : (_currentPage - 1) * _itemsPerPage;
-    final paginatedRecords = records.isEmpty
-        ? <Map<String, dynamic>>[]
-        : records.sublist(
-            safeStartIndex,
-            (safeStartIndex + _itemsPerPage) > records.length
-                ? records.length
-                : (safeStartIndex + _itemsPerPage),
-          );
-
     final double tableHeight = (MediaQuery.of(context).size.height - 465).clamp(
       480.0,
       1200.0,
@@ -798,10 +778,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: paginatedRecords.length,
+              itemCount: records.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final doc = paginatedRecords[index];
+                final doc = records[index];
                 final name = (doc['name'] ?? '').toString();
                 final email = (doc['email'] ?? '').toString();
                 final role = (doc['role'] ?? '').toString();
@@ -939,63 +919,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 );
               },
-            ),
-          ),
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: _currentPage > 1
-                        ? () => setState(() => _currentPage--)
-                        : null,
-                    behavior: HitTestBehavior.opaque,
-                    child: Icon(
-                      Icons.chevron_left,
-                      color: _currentPage > 1
-                          ? Colors.black
-                          : Colors.grey.shade400,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: primaryBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$_currentPage',
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: _currentPage < totalPages
-                        ? () => setState(() => _currentPage++)
-                        : null,
-                    behavior: HitTestBehavior.opaque,
-                    child: Icon(
-                      Icons.chevron_right,
-                      color: _currentPage < totalPages
-                          ? Colors.black
-                          : Colors.grey.shade400,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],

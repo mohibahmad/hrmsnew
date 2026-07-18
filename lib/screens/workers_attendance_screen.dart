@@ -49,8 +49,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   String _searchQuery = '';
   String _selectedStatusFilter = 'All';
   String _selectedTimeframe = 'Today';
-  int _currentPage = 1;
-  static const int _itemsPerPage = 10;
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   List<Map<String, dynamic>> _holidays = [];
@@ -415,8 +413,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                     ),
                                               ),
                                               const SizedBox(height: 8),
-                                              if (holiday == null)
-                                                _buildPagination(),
                                             ],
                                           ),
                                         ),
@@ -1337,56 +1333,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     });
   }
 
-  Widget _buildPagination() {
-    final filtered = _filteredWorkers;
-    final totalPages = (filtered.isEmpty)
-        ? 1
-        : (filtered.length / _itemsPerPage).ceil();
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        GestureDetector(
-          onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
-          behavior: HitTestBehavior.opaque,
-          child: Icon(
-            Icons.chevron_left,
-            size: 24,
-            color: _currentPage > 1 ? textDark : Colors.grey.shade400,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: primaryBlue,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            '$_currentPage',
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: _currentPage < totalPages
-              ? () => setState(() => _currentPage++)
-              : null,
-          behavior: HitTestBehavior.opaque,
-          child: Icon(
-            Icons.chevron_right,
-            size: 24,
-            color: _currentPage < totalPages ? textDark : Colors.grey.shade400,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildHolidayBanner(String name) {
     return Container(
       width: double.infinity,
@@ -1499,15 +1445,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         ),
       );
     }
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    final paginatedList = _filteredWorkers
-        .skip(startIndex)
-        .take(_itemsPerPage)
-        .toList();
     final isHoliday = holiday != null;
     return SingleChildScrollView(
       child: Column(
-        children: paginatedList
+        children: _filteredWorkers
             .asMap()
             .entries
             .map(

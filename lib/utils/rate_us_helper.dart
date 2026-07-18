@@ -5,9 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
 
-/// Shows the Rate Us dialog if eligible (never_show is false AND
-/// remind_later hasn't been set or its date has passed).
-/// Returns true if the dialog was shown, false otherwise.
 Future<void> showRateUsDialogNow(BuildContext context) async {
   if (!context.mounted) return;
   _showRateUsDialog(context);
@@ -26,7 +23,10 @@ Future<bool> tryShowRateUsDialog(BuildContext context) async {
   return true;
 }
 
-Future<bool> tryShowFirstMilestoneRateUs(BuildContext context, String milestone) async {
+Future<bool> tryShowFirstMilestoneRateUs(
+  BuildContext context,
+  String milestone,
+) async {
   final neverShow = await PreferencesService.getRateUsNeverShow();
   if (neverShow) return false;
 
@@ -51,6 +51,10 @@ Future<bool> tryShowFirstMilestoneRateUs(BuildContext context, String milestone)
     case 'bulk_worker':
       alreadyTriggered = await PreferencesService.wasFirstBulkWorkerTriggered();
       markTriggered = PreferencesService.markFirstBulkWorkerTriggered;
+      break;
+    case 'asset':
+      alreadyTriggered = await PreferencesService.wasFirstAssetTriggered();
+      markTriggered = PreferencesService.markFirstAssetTriggered;
       break;
     default:
       return false;
@@ -145,10 +149,9 @@ void _showRateUsDialog(BuildContext context) {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    // Stars row
-                    const _StarRating(),
-                    const SizedBox(height: 28),
-                    // Rate Now button
+
+                    const SizedBox(height: 8),
+
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
@@ -231,7 +234,7 @@ void _showRateUsDialog(BuildContext context) {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Never show again text button
+
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
@@ -263,42 +266,4 @@ void _showRateUsDialog(BuildContext context) {
       );
     },
   );
-}
-
-class _StarRating extends StatefulWidget {
-  const _StarRating();
-
-  @override
-  State<_StarRating> createState() => _StarRatingState();
-}
-
-class _StarRatingState extends State<_StarRating> {
-  int _rating = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(5, (index) {
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _rating = index + 1;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Icon(
-                index < _rating ? Icons.star : Icons.star_border,
-                color: const Color(0xFF0247C4),
-                size: 40,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
 }

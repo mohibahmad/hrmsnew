@@ -16,6 +16,7 @@ import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/delete_dialog.dart';
 import '../widgets/notification_bell.dart';
+import 'add_worker_flow.dart' show PdfPagePreview;
 
 class DocumentsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -395,15 +396,56 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   String? _cvName;
   bool _isCvUploaded = false;
 
-  String? get _existingFrontId => widget.worker['frontId']?.toString();
-  String? get _existingBackId => widget.worker['backId']?.toString();
-  String? get _existingCv => widget.worker['cv']?.toString();
+  String? _firstNonEmpty(List<String?> values) {
+    for (final v in values) {
+      final s = v?.toString();
+      if (s != null && s.isNotEmpty && s != 'null') return s;
+    }
+    return null;
+  }
+
+  String? get _existingFrontId => _firstNonEmpty([
+    widget.worker['frontId']?.toString(),
+    widget.worker['front_id']?.toString(),
+    widget.worker['idFront']?.toString(),
+    widget.worker['frontID']?.toString(),
+    widget.worker['id_front']?.toString(),
+  ]);
+
+  String? get _existingBackId => _firstNonEmpty([
+    widget.worker['backId']?.toString(),
+    widget.worker['back_id']?.toString(),
+    widget.worker['idBack']?.toString(),
+    widget.worker['backID']?.toString(),
+    widget.worker['id_back']?.toString(),
+  ]);
+
+  String? get _existingCv => _firstNonEmpty([
+    widget.worker['cv']?.toString(),
+    widget.worker['cvUrl']?.toString(),
+    widget.worker['cv_url']?.toString(),
+  ]);
+
   String get _workerId => widget.worker['id'] ?? '';
   String get _workerName => (widget.worker['name'] ?? 'Unknown').toString();
+
+  String _cleanFileName(String url) {
+    try {
+      final name = url.split('/').last.split('?').first;
+      return name.isNotEmpty ? name : 'cv';
+    } catch (_) {
+      return 'cv';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    final existingCv = _existingCv;
+    if (existingCv != null && existingCv.isNotEmpty) {
+      _isCvUploaded = true;
+      _cvName = _cleanFileName(existingCv);
+    }
   }
 
   Future<void> _pickFile(String field) async {
@@ -432,6 +474,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         _isCvUploaded = true;
       }
     });
+
+    await _uploadAndSave(field);
   }
 
   Future<void> _uploadAndSave(String field) async {
@@ -489,8 +533,24 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       }
 
       if (url != null && url.isNotEmpty) {
-        await FirestoreService().updateWorker(_workerId, {field: url});
-        widget.worker[field] = url;
+        final updates = <String, dynamic>{};
+        if (field == 'frontId') {
+          updates['frontId'] = url;
+          updates['front_id'] = url;
+          updates['idFront'] = url;
+          updates['id_front'] = url;
+        } else if (field == 'backId') {
+          updates['backId'] = url;
+          updates['back_id'] = url;
+          updates['idBack'] = url;
+          updates['id_back'] = url;
+        } else {
+          updates[field] = url;
+        }
+        await FirestoreService().updateWorker(_workerId, updates);
+        updates.forEach((key, value) {
+          widget.worker[key] = value;
+        });
         widget.onDocumentsUpdated();
         if (mounted) {
           FlashySnackBar.show(
@@ -745,43 +805,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            GestureDetector(
-                              onTap: () async {
-                                final confirmed = await DeleteDialog.show(
-                                  context: context,
-                                  title: 'confirm_delete'.tr(),
-                                  content: 'Are you sure you want to delete this CV?',
-                                );
-                                if (confirmed) {
-                                  setState(() {
-                                    _cvBytes = null;
-                                    _cvName = null;
-                                    _isCvUploaded = false;
-                                  });
-                                  if (_workerId.isNotEmpty) {
-                                    FirestoreService().updateWorker(_workerId, {'cv': ''});
-                                    widget.worker['cv'] = '';
-                                    widget.onDocumentsUpdated();
-                                  }
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF000000),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('delete'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'SF Pro Display')),
-                                    const SizedBox(width: 6),
-                                    SvgPicture.asset('assets/delete_icon.svg', height: 14, width: 14),
-                                  ],
-                                ),
-                              ),
-                            ),
                           ],
                         ],
                         ),
@@ -949,10 +972,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.badge,
-          size: 48,
-          color: hasFile ? const Color(0xFF0B50C3) : Colors.grey.shade400,
+        Image.asset(
+          'assets/Id card.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.contain,
         ),
         const SizedBox(height: 12),
         Text(
@@ -1073,14 +1097,20 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   Widget _buildCvPreview() {
     final cvUrl = _existingCv;
     final lowerUrl = cvUrl?.toLowerCase() ?? '';
-    final isPdf = lowerUrl.endsWith('.pdf') ||
+    final cvNameLower = (_cvName ?? '').toLowerCase();
+    final isPdf = cvNameLower.endsWith('.pdf') ||
+        lowerUrl.endsWith('.pdf') ||
         lowerUrl.contains('application/pdf') ||
-        lowerUrl.contains('/cvs/') ||
-        (cvUrl != null && !lowerUrl.endsWith('.png') && !lowerUrl.endsWith('.jpg') && !lowerUrl.endsWith('.jpeg') && !lowerUrl.contains('image/'));
-    final isImage = lowerUrl.endsWith('.png') ||
+        lowerUrl.contains('/cvs/');
+    final isImage = cvNameLower.endsWith('.png') ||
+        cvNameLower.endsWith('.jpg') ||
+        cvNameLower.endsWith('.jpeg') ||
+        lowerUrl.endsWith('.png') ||
         lowerUrl.endsWith('.jpg') ||
         lowerUrl.endsWith('.jpeg') ||
         lowerUrl.contains('image/');
+    final isDoc = cvNameLower.endsWith('.doc') ||
+        cvNameLower.endsWith('.docx');
 
     return Container(
       width: double.infinity,
@@ -1127,14 +1157,21 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                 )
                               : const SizedBox.shrink()))
                   : isPdf
+                  ? PdfPagePreview(
+                      cvBytes: _cvBytes,
+                      existingCvUrl: cvUrl,
+                    )
+                  : isDoc
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.picture_as_pdf,
-                            color: Color(0xFFE53935),
+                          Icon(
+                            cvNameLower.endsWith('.docx')
+                                ? Icons.article_outlined
+                                : Icons.description_outlined,
                             size: 48,
+                            color: const Color(0xFF0247C4),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -1159,7 +1196,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'CV/Resume',
+                            _cvName ?? 'CV/Resume',
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 13,

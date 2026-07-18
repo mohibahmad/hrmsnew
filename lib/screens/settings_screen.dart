@@ -4,6 +4,7 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -119,7 +120,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF000000).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF000000,
+                          ).withValues(alpha: 0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
@@ -432,7 +435,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSimpleSettingItem(
                     'assets/rating.png',
                     'rate_us'.tr(),
-                    onTap: () => showRateUsDialogNow(context),
+                    onTap: () async {
+                      final inAppReview = InAppReview.instance;
+                      if (await inAppReview.isAvailable()) {
+                        await inAppReview.requestReview();
+                      } else {
+                        await launchUrl(
+                          Uri.parse(
+                            'https://apps.apple.com/app/hrms-workforce-manager/id6743024022',
+                          ),
+                        );
+                      }
+                    },
                   ),
                   _buildSimpleSettingItem(
                     'assets/share.svg',

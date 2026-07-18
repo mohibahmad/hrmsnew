@@ -11,6 +11,7 @@ class PreferencesService {
   static const String _rateUsFirstWorkerKey = 'rate_us_first_worker';
   static const String _rateUsFirstHolidayKey = 'rate_us_first_holiday';
   static const String _rateUsFirstBulkWorkerKey = 'rate_us_first_bulk_worker';
+  static const String _rateUsFirstAssetKey = 'rate_us_first_asset';
 
   /// Synchronous cache of the profile pic URL so it's available on the first
   /// frame (no async delay). Populated the first time [getProfilePicUrl] is
@@ -129,6 +130,11 @@ class PreferencesService {
   static Future<void> markFirstBulkWorkerTriggered() =>
       _setBool(_rateUsFirstBulkWorkerKey, true);
 
+  static Future<bool> wasFirstAssetTriggered() =>
+      _getBool(_rateUsFirstAssetKey);
+  static Future<void> markFirstAssetTriggered() =>
+      _setBool(_rateUsFirstAssetKey, true);
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_loggedInKey);
@@ -141,6 +147,7 @@ class PreferencesService {
     await prefs.remove(_rateUsFirstWorkerKey);
     await prefs.remove(_rateUsFirstHolidayKey);
     await prefs.remove(_rateUsFirstBulkWorkerKey);
+    await prefs.remove(_rateUsFirstAssetKey);
     _cachedProfilePicUrl = null;
   }
 }

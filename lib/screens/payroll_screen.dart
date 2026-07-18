@@ -39,9 +39,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
   List<Map<String, dynamic>> _workersList = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
   bool _isLoading = true;
-  int _currentPage = 1;
-  static const int _itemsPerPage = 8;
-  static const _defaultFilters = ['All', 'Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+
+  static const _defaultFilters = [
+    'All',
+    'Designer',
+    'Developer',
+    'Engineering',
+    'Sales',
+    'Management',
+  ];
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
 
@@ -62,7 +68,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     // 🔥 ADD THIS: Fix unpaid workers
     for (var doc in _payrollDocs) {
-      if (doc['totalWorkDays'] == null || doc['totalWorkDays'].toString().isEmpty) {
+      if (doc['totalWorkDays'] == null ||
+          doc['totalWorkDays'].toString().isEmpty) {
         doc['status'] = 'Unpaid';
         doc['totalWorkDays'] = '0';
         doc['absents'] = '0';
@@ -148,7 +155,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 10),
+
+                  const SizedBox(height: 10),
+                  _buildFilterTabs(),
+                  const SizedBox(height: 10),
                   Text(
                     'pay_roll_list'.tr(),
                     style: TextStyle(
@@ -158,9 +169,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildFilterTabs(),
                   const SizedBox(height: 24),
+
                   _isLoading
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 80),
@@ -247,7 +257,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
               onChanged: (val) {
                 setState(() {
                   _searchQuery = val;
-                  _currentPage = 1;
                 });
               },
               decoration: InputDecoration(
@@ -270,7 +279,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   _searchController.clear();
                   setState(() {
                     _searchQuery = '';
-                    _currentPage = 1;
                   });
                 },
                 child: Padding(
@@ -374,23 +382,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return filtered;
   }
 
-  List<Map<String, dynamic>> get _currentPageItems {
-    final filtered = _filteredEmployees;
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    if (startIndex >= filtered.length) return [];
-    final endIndex = startIndex + _itemsPerPage;
-    return filtered.sublist(
-      startIndex,
-      endIndex > filtered.length ? filtered.length : endIndex,
-    );
-  }
-
-  int get _totalPages {
-    final filtered = _filteredEmployees;
-    if (filtered.isEmpty) return 1;
-    return (filtered.length / _itemsPerPage).ceil();
-  }
-
   List<String> get _extraPositions {
     final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
     final extras = <String>{};
@@ -426,46 +417,47 @@ class _PayrollScreenState extends State<PayrollScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: filters.map((filter) {
-          final isSelected = _selectedFilter == filter['key'];
-          return MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => setState(() {
-                _selectedFilter = filter['key']!;
-                _currentPage = 1;
-              }),
-              child: Container(
-              margin: const EdgeInsets.only(right: 4),
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 12 : 16,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF0D4CC6)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                filter['label']!,
-                style: TextStyle(
-                  color: isSelected
-                      ? Color(0xFFFFFFFF)
-                      : const Color(0xFF000000),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: 14,
-                  fontFamily: 'SF Pro Display',
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: filters.map((filter) {
+            final isSelected = _selectedFilter == filter['key'];
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => setState(() {
+                  _selectedFilter = filter['key']!;
+                }),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSelected ? 12 : 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF0D4CC6)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    filter['label']!,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Color(0xFFFFFFFF)
+                          : const Color(0xFF000000),
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      fontSize: 14,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
               ),
-            ),
-          ),
-          );
-        }).toList(),
-      ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -565,15 +557,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: _currentPageItems.length,
+              itemCount: _filteredEmployees.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) =>
-                  _buildEmployeeRow(_currentPageItems[index], index),
+                  _buildEmployeeRow(_filteredEmployees[index], index),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: _buildPagination(),
           ),
         ],
       ),
@@ -686,10 +674,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       .isNotEmpty;
                   return InkWell(
                     onTap: () {
-                      final isGuest = AuthService()
-                              .currentUser
-                              ?.isAnonymous ??
-                          false;
+                      final isGuest =
+                          AuthService().currentUser?.isAnonymous ?? false;
                       if (isGuest) {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -757,7 +743,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String absents = (data['absents'] ?? '').toString();
     final String leaves = (data['leaves'] ?? '').toString();
     final String overtimeAmount = (data['overtimeAmount'] ?? '').toString();
-    final String salary = AmountText.formatCompact((data['salary'] ?? '').toString());
+    final String salary = AmountText.formatCompact(
+      (data['salary'] ?? '').toString(),
+    );
     String salaryAfterDeductionStr =
         (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
     if (salaryAfterDeductionStr.isEmpty && salary.isNotEmpty) {
@@ -1228,54 +1216,4 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  Widget _buildPagination() {
-    final total = _totalPages;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
-            behavior: HitTestBehavior.opaque,
-            child: Icon(
-              Icons.chevron_left,
-              color: _currentPage > 1 ? Colors.black : Colors.grey.shade400,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: const Color(0xFF0247C4),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            '$_currentPage',
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _currentPage < total
-                ? () => setState(() => _currentPage++)
-                : null,
-            behavior: HitTestBehavior.opaque,
-            child: Icon(
-              Icons.chevron_right,
-              color: _currentPage < total ? Colors.black : Colors.grey.shade400,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }

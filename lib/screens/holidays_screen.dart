@@ -116,7 +116,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     }
   }
 
-  void _showAddHolidayModal(BuildContext context) {
+  void _showAddHolidayModal(BuildContext parentContext) {
     final holidayNameController = TextEditingController();
     int? selectedDay;
     DateTime calendarDate = DateTime.now();
@@ -145,7 +145,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     ];
 
     showDialog(
-      context: context,
+      context: parentContext,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext context) {
         return StatefulBuilder(
@@ -200,44 +200,47 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             ),
                             minimumSize: const Size(0, 32),
                           ),
-                            onPressed: () async {
-                              if (selectedDay == null) {
+                          onPressed: () async {
+                            if (selectedDay == null) {
+                              if (!context.mounted) return;
+                              FlashySnackBar.show(
+                                context,
+                                message: 'Please select a day',
+                                isError: true,
+                              );
+                              return;
+                            }
+                            if (holidayNameController.text.isNotEmpty) {
+                              final dateObj = DateTime(
+                                calendarDate.year,
+                                calendarDate.month,
+                                selectedDay!,
+                              );
+                              final dayOfWeekName =
+                                  weekdays[dateObj.weekday - 1];
+                              final remainingDaysVal = dateObj
+                                  .difference(DateTime.now())
+                                  .inDays;
+                              final remainingDaysStr = remainingDaysVal > 0
+                                  ? remainingDaysVal.toString().padLeft(2, '0')
+                                  : '00';
+
+                              final existingInMonth =
+                                  _holidaysByMonth[selectedMonthName] ?? [];
+                              final alreadyExists = existingInMonth.any(
+                                (h) => h.day == selectedDay,
+                              );
+                              if (alreadyExists) {
                                 if (!context.mounted) return;
                                 FlashySnackBar.show(
                                   context,
-                                  message: 'Please select a day',
+                                  message: 'holiday_already_exists'.tr(),
                                   isError: true,
                                 );
                                 return;
                               }
-                              if (holidayNameController.text.isNotEmpty) {
-                                final dateObj = DateTime(
-                                  calendarDate.year,
-                                  calendarDate.month,
-                                  selectedDay!,
-                                );
-                               final dayOfWeekName =
-                                   weekdays[dateObj.weekday - 1];
-                               final remainingDaysVal = dateObj
-                                   .difference(DateTime.now())
-                                   .inDays;
-                               final remainingDaysStr = remainingDaysVal > 0
-                                   ? remainingDaysVal.toString().padLeft(2, '0')
-                                   : '00';
 
-                               final existingInMonth = _holidaysByMonth[selectedMonthName] ?? [];
-                               final alreadyExists = existingInMonth.any((h) => h.day == selectedDay);
-                               if (alreadyExists) {
-                                 if (!context.mounted) return;
-                                 FlashySnackBar.show(
-                                   context,
-                                   message: 'holiday_already_exists'.tr(),
-                                   isError: true,
-                                 );
-                                 return;
-                               }
-
-                               final holidayMap = {
+                              final holidayMap = {
                                 'day': selectedDay,
                                 'month': selectedMonthName,
                                 'remainingDays': remainingDaysStr,
@@ -289,14 +292,16 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               if (!context.mounted) return;
                               Navigator.of(context).pop();
                               FlashySnackBar.show(
-                                context,
+                                parentContext,
                                 message: 'successfully_added_holiday'.tr(
                                   namedArgs: {
                                     'name': holidayNameController.text,
                                   },
                                 ),
                               );
-                              tryShowFirstMilestoneRateUs(context, 'holiday');
+                              if (parentContext.mounted) {
+                                tryShowFirstMilestoneRateUs(parentContext, 'holiday');
+                              }
                             } else {
                               if (!context.mounted) return;
                               FlashySnackBar.show(
@@ -306,15 +311,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               );
                             }
                           },
-                           child: Text(
-                              'save'.tr(),
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
-                              ),
+                          child: Text(
+                            'save'.tr(),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
                             ),
+                          ),
                         ),
                       ],
                     ),
@@ -520,8 +525,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           rowChildren.add(_buildDayCell('', false, null, null));
         } else if (currentDay <= daysInMonth) {
           final int tapDay = currentDay;
-          final bool isSelected = selectedDay != null && (currentDay == selectedDay);
-          final cellDate = DateTime(calendarDate.year, calendarDate.month, currentDay);
+          final bool isSelected =
+              selectedDay != null && (currentDay == selectedDay);
+          final cellDate = DateTime(
+            calendarDate.year,
+            calendarDate.month,
+            currentDay,
+          );
           rowChildren.add(
             _buildDayCell('$currentDay', isSelected, () {
               onDaySelected(tapDay);
@@ -540,7 +550,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(String day, bool isSelected, VoidCallback? onTap, DateTime? date) {
+  Widget _buildDayCell(
+    String day,
+    bool isSelected,
+    VoidCallback? onTap,
+    DateTime? date,
+  ) {
     if (day.isEmpty) {
       return const Expanded(
         child: AspectRatio(aspectRatio: 1, child: SizedBox()),
@@ -551,7 +566,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     final dayColor = isSunday
         ? const Color(0xFFFF0004)
         : (isFriday ? const Color(0xFF4AC000) : Colors.black);
-    final selectedBg = isFriday ? const Color(0xFF4AC000) : const Color(0xFFFF0004);
+    final selectedBg = isFriday
+        ? const Color(0xFF4AC000)
+        : const Color(0xFFFF0004);
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
@@ -565,10 +582,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 color: isSelected
                     ? selectedBg
                     : (isSunday
-                        ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                        : (isFriday
-                            ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                            : Colors.grey.shade300)),
+                          ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                          : (isFriday
+                                ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                                : Colors.grey.shade300)),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -676,66 +693,64 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         MouseRegion(
           cursor: SystemMouseCursors.click,
           child: ElevatedButton.icon(
-          onPressed: () async {
-            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-            if (isGuest) {
-              if (!mounted) return;
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const LoginScreen(),
-                ),
-              );
-              return;
-            }
-            final isPremium = await PreferencesService.isPremium();
-            if (!mounted) return;
-            if (!PremiumGate.canAddEntry(
-              currentEntryCount: _holidaysByMonth.values.fold<int>(
-                0,
-                (sum, list) => sum + list.length,
-              ),
-              isPremium: isPremium,
-              isGuest: isGuest,
-            )) {
-              final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                context,
-              );
-              if (upgraded == true && mounted) {
-                _showAddHolidayModal(context);
+            onPressed: () async {
+              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                if (!mounted) return;
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+                return;
               }
-              return;
-            }
-            if (!mounted) return;
-            _showAddHolidayModal(context);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0247C4),
-            minimumSize: const Size(32, 50),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+              final isPremium = await PreferencesService.isPremium();
+              if (!mounted) return;
+              if (!PremiumGate.canAddEntry(
+                currentEntryCount: _holidaysByMonth.values.fold<int>(
+                  0,
+                  (sum, list) => sum + list.length,
+                ),
+                isPremium: isPremium,
+                isGuest: isGuest,
+              )) {
+                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
+                  context,
+                );
+                if (upgraded == true && mounted) {
+                  _showAddHolidayModal(context);
+                }
+                return;
+              }
+              if (!mounted) return;
+              _showAddHolidayModal(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0247C4),
+              minimumSize: const Size(32, 50),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
             ),
-            elevation: 0,
-          ),
-          icon: SvgPicture.asset(
-            'assets/holidays_icon.svg',
-            width: 22,
-            height: 22,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFFFFFFFF),
-              BlendMode.srcIn,
+            icon: SvgPicture.asset(
+              'assets/holidays_icon.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFFFFFFF),
+                BlendMode.srcIn,
+              ),
+            ),
+            label: Text(
+              'add_holiday'.tr(),
+              style: TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
-          label: Text(
-            'add_holiday'.tr(),
-            style: TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        ),
         ),
       ],
     );

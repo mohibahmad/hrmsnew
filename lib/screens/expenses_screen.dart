@@ -42,8 +42,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
   String _selectedPeriod = 'Yearly';
-  int _currentPage = 1;
-  static const int _itemsPerPage = 8;
   StreamSubscription? _expensesSub;
   StreamSubscription? _workersSub;
 
@@ -471,7 +469,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  void _showAddExpenseModal(BuildContext context) {
+  void _showAddExpenseModal(BuildContext parentContext) {
     final categoryController = TextEditingController();
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -479,7 +477,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     DateTime calendarDate = DateTime.now();
 
     showDialog(
-      context: context,
+      context: parentContext,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext context) {
         return StatefulBuilder(
@@ -583,12 +581,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             }
                             Navigator.of(context).pop();
                             FlashySnackBar.show(
-                              context,
+                              parentContext,
                               message: 'successfully_added_expense'.tr(
                                 namedArgs: {'name': categoryController.text},
                               ),
                             );
-                            tryShowFirstMilestoneRateUs(context, 'expense');
+                            if (parentContext.mounted) {
+                              tryShowFirstMilestoneRateUs(parentContext, 'expense');
+                            }
                           },
                           child: Text(
                             'save'.tr(),
@@ -1130,7 +1130,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     onChanged: (val) {
                       setState(() {
                         _searchQuery = val;
-                        _currentPage = 1;
                       });
                     },
                     decoration: InputDecoration(
@@ -1151,7 +1150,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       _searchController.clear();
                       setState(() {
                         _searchQuery = '';
-                        _currentPage = 1;
                       });
                     },
                     child: Padding(
@@ -1343,7 +1341,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       onChanged: (value) {
         setState(() {
           _selectedPeriod = value;
-          _currentPage = 1;
           final isGuest = AuthService().currentUser?.isAnonymous ?? false;
           if (isGuest) {
             _adjustDummyDatesForPeriod(value);
@@ -1356,21 +1353,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   // ================= FILLED STATE (LIST) =================
 
   Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
-    final totalPages = (expenses.isEmpty)
-        ? 1
-        : (expenses.length / _itemsPerPage).ceil();
-    final safeStartIndex = (_currentPage - 1) * _itemsPerPage >= expenses.length
-        ? 0
-        : (_currentPage - 1) * _itemsPerPage;
-    final paginatedExpenses = expenses.isEmpty
-        ? <Map<String, dynamic>>[]
-        : expenses.sublist(
-            safeStartIndex,
-            (safeStartIndex + _itemsPerPage) > expenses.length
-                ? expenses.length
-                : (safeStartIndex + _itemsPerPage),
-          );
-
     final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(
       495.0,
       1200.0,
@@ -1430,64 +1412,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: paginatedExpenses.length,
+              itemCount: expenses.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return _buildDataRow(paginatedExpenses[index], index);
+                return _buildDataRow(expenses[index], index);
               },
-            ),
-          ),
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: _currentPage > 1
-                      ? () => setState(() => _currentPage--)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_left,
-                    color: _currentPage > 1
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 28,
-                  height: 28,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0247C4),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '$_currentPage',
-                    style: const TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _currentPage < totalPages
-                      ? () => setState(() => _currentPage++)
-                      : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
-                    Icons.chevron_right,
-                    color: _currentPage < totalPages
-                        ? Colors.black
-                        : Colors.grey.shade400,
-                  ),
-                ),
-              ],
             ),
           ),
         ],

@@ -70,9 +70,6 @@ String _localizedMonth(int month) {
   }
 }
 
-// ==========================================
-// ADD NEW WORKER FLOW (EXPERIENCE & DOCS)
-// ==========================================
 class AddNewWorkerFlow extends StatefulWidget {
   final VoidCallback? onBack;
   final Map<String, dynamic>? workerToEdit;
@@ -855,7 +852,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'frontId': frontIdUrl,
         'backId': backIdUrl,
 
-        // Legacy keys (older docs / other screens might use these):
         'front_id': frontIdUrl,
         'back_id': backIdUrl,
         'idFront': frontIdUrl,
@@ -913,10 +909,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       });
       if (!context.mounted) return;
       FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
-      if (mounted) {
-        tryShowFirstMilestoneRateUs(context, 'worker');
+      final dialogShown = await tryShowFirstMilestoneRateUs(context, 'worker');
+      if (!dialogShown && context.mounted) {
+        widget.onBack?.call();
       }
-      widget.onBack?.call();
     } on ValidationException catch (e) {
       if (mounted) {
         setState(() {
@@ -3245,74 +3241,74 @@ class DocumentationSection extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                      if (isCvUploaded) ...[
-                        GestureDetector(
-                          onTap: onUploadCvTap,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF000000),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                            'edit'.tr(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                              fontFamily: 'SF Pro Display',
+                        if (isCvUploaded) ...[
+                          GestureDetector(
+                            onTap: onUploadCvTap,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF000000),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'edit'.tr(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                SvgPicture.asset(
-                                  'assets/edit_icon.svg',
-                                  height: 14,
-                                  width: 14,
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  SvgPicture.asset(
+                                    'assets/edit_icon.svg',
+                                    height: 14,
+                                    width: 14,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: onDeleteCvTap,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF000000),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Delete'.tr(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    fontFamily: 'SF Pro Display',
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: onDeleteCvTap,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF000000),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Delete'.tr(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                SvgPicture.asset(
-                                  'assets/delete_icon.svg',
-                                  height: 14,
-                                  width: 14,
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  SvgPicture.asset(
+                                    'assets/delete_icon.svg',
+                                    height: 14,
+                                    width: 14,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
                         ],
                       ],
                     ),
@@ -3452,10 +3448,11 @@ class DocumentationSection extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.badge,
-          size: 48,
-          color: hasFile ? const Color(0xFF0B50C3) : Colors.grey.shade400,
+        Image.asset(
+          'assets/Id card.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.contain,
         ),
         const SizedBox(height: 12),
         Text(
@@ -4062,7 +4059,6 @@ Widget _buildDropdownField({
   );
 }
 
-// Stateful widget that renders the first page of the PDF CV file
 class PdfPagePreview extends StatefulWidget {
   final Uint8List? cvBytes;
   final String? existingCvUrl;
