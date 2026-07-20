@@ -476,6 +476,7 @@
   "notif_welcome": "Welcome",
   "saving_bulk_workers": "Saving bulk workers...",
   "please_enter_notes": "Please enter your notes",
+  "please_select_dates": "Please select both start and end dates",
   "available_annual_leave": "Available Annual Leave Days",
   "assign_time_off_success": "Successfully assigned time off",
   "assign_time_off_failed": "Failed to assign time off",

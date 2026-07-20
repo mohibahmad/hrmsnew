@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/time_off_service.dart';
 import '../services/preferences_service.dart';
 import '../widgets/sidebar_widget.dart';
 import '../utils/snackbar_utils.dart';
@@ -52,6 +53,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   List<Map<String, dynamic>> _holidays = [];
+  List<Map<String, dynamic>> _timeOffRecords = [];
   bool _isLoading = true;
   bool _workersLoaded = false;
   bool _attendanceLoaded = false;
@@ -63,12 +65,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   StreamSubscription? _workersSub;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _holidaysSub;
+  StreamSubscription? _timeOffSub;
+  bool _leaveNoticeShown = false;
 
   @override
   void dispose() {
     _workersSub?.cancel();
     _attendanceSub?.cancel();
     _holidaysSub?.cancel();
+    _timeOffSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -105,8 +110,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             .expand((l) => l)
             .cast<Map<String, dynamic>>()
             .toList();
+        _timeOffRecords = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _isLoading = false;
       });
+      _showActiveLeaveNotice();
       return;
     }
 
@@ -139,6 +146,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             _workersLoaded = true;
             if (_workersLoaded && _attendanceLoaded) _isLoading = false;
           });
+          _showActiveLeaveNotice();
         }
       },
       onError: (e) {
@@ -199,6 +207,43 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         });
       }
     }, onError: (_) {});
+
+    _timeOffSub = _firestore.timeoffStream.listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        _timeOffRecords = snapshot.docs
+            .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .toList();
+      });
+      _showActiveLeaveNotice();
+    }, onError: (_) {});
+  }
+
+  void _showActiveLeaveNotice() {
+    if (_leaveNoticeShown || !mounted) return;
+    final active = <Map<String, dynamic>>[];
+    for (final worker in _workers) {
+      final leave = TimeOffService.activeLeaveForWorker(
+        worker,
+        _timeOffRecords,
+      );
+      if (leave != null) active.add({...leave, 'workerName': worker['name']});
+    }
+    if (active.isEmpty) return;
+    _leaveNoticeShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final leave = active.first;
+      final extra = active.length > 1 ? ' (+${active.length - 1} more)' : '';
+      final leaveType = (leave['action'] ?? leave['type'] ?? 'Leave')
+          .toString();
+      FlashySnackBar.show(
+        context,
+        title: '$leaveType • ${leave['workerName']}',
+        message:
+            'This worker is on leave from ${leave['startDate']} to ${leave['endDate']}$extra',
+      );
+    });
   }
 
   String _getWorkerStatus(Map<String, dynamic> worker) {
@@ -277,6 +322,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   List<Map<String, dynamic>> get _filteredWorkers {
     return _workers.where((worker) {
+      if (TimeOffService.isWorkerOnLeave(worker, _timeOffRecords)) {
+        return false;
+      }
       final name = (worker["name"] ?? "").toString().toLowerCase();
       final role = (worker["position"] ?? worker["role"] ?? "")
           .toString()

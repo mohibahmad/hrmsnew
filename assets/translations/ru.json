@@ -476,6 +476,7 @@
   "notif_welcome": "Добро пожаловать",
   "saving_bulk_workers": "Сохранение массовых сотрудников...",
   "please_enter_notes": "Пожалуйста, введите ваши заметки",
+  "please_select_dates": "Выберите даты начала и окончания",
   "available_annual_leave": "Доступные дни ежегодного отпуска",
   "assign_time_off_success": "Отпуск успешно назначен",
   "assign_time_off_failed": "Не удалось назначить отпуск",

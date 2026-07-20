@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
-import 'package:flutter/cupertino.dart' hide GestureDetector;
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -226,10 +225,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return '$day/$month/$year';
   }
 
-  int get _requestedDays {
+  int get _selectedRangeDays {
     if (!_hasStartSelection || !_hasEndSelection) return 0;
     return _endDate.difference(_startDate).inDays + 1;
   }
+
+  bool get _requestedDaysExceedAvailable => _selectedRangeDays > _availableDays;
+
+  // An invalid request must never appear as a negative leave balance. Reset
+  // the displayed/requested value to zero until a valid range is selected.
+  int get _requestedDays =>
+      _requestedDaysExceedAvailable ? 0 : _selectedRangeDays;
 
   int get _alreadyUsedDays {
     if (_selectedWorker == null) return 0;
@@ -251,8 +257,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
     int used = 0;
     for (final record in _timeoffRecords) {
-      if (_editingId != null && record['id']?.toString() == _editingId)
+      if (_editingId != null && record['id']?.toString() == _editingId) {
         continue;
+      }
       final recordEmail = (record['email'] ?? '').toString().toLowerCase();
       if (recordEmail != workerEmail) continue;
       final action = (record['action'] ?? record['type'] ?? '').toString();
@@ -893,13 +900,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           final bool isStartDateCell = cellDate.isAtSameMomentAs(startStart);
           final bool isEndDateCell = cellDate.isAtSameMomentAs(endStart);
 
-          // Per calendar clamping:
-          // - Start calendar: show start..end (inclusive)
-          // - End calendar: show end..start (inclusive)
-          // This ensures one side doesn't show the other endpoint.
-          bool isSelected =
-              ((isStartCalendar && _hasStartSelection && isStartDateCell) ||
-              (!isStartCalendar && _hasEndSelection && isEndDateCell));
+          // Both endpoints can be selected and remain visibly selected in
+          // either calendar, including when both dates are in the first month.
+          final bool isSelected =
+              (_hasStartSelection && isStartDateCell) ||
+              (_hasEndSelection && isEndDateCell);
 
           // inRange: start..end inclusive highlight range.
           // Only show range when end date is selected.
@@ -996,7 +1001,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                 }
 
                 if (_hasStartSelection && _hasEndSelection) {
-                  if (_requestedDays > _availableDays) {
+                  if (_requestedDaysExceedAvailable) {
                     FlashySnackBar.show(
                       context,
                       message: 'requested_leaves_exceed_available'.tr(),
@@ -1213,7 +1218,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-    if (_requestedDays > _availableDays) {
+    if (_requestedDaysExceedAvailable) {
       FlashySnackBar.show(
         context,
         message: 'requested_leaves_exceed_available'.tr(),

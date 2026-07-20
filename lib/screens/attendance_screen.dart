@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/attendance_service.dart';
+import '../services/time_off_service.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import 'workers_attendance_screen.dart';
@@ -107,6 +108,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>> _attendanceDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   List<Map<String, dynamic>> _rawAttendanceDocs = [];
+  List<Map<String, dynamic>> _timeOffRecords = [];
   bool _isLoading = true;
   bool _workersLoaded = false;
   bool _attendanceLoaded = false;
@@ -116,20 +118,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _leaveCount = 0;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
+  StreamSubscription? _timeOffSub;
 
   @override
   void dispose() {
     _attendanceSub?.cancel();
     _workersSub?.cancel();
+    _timeOffSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _combineAttendance() {
-    _attendanceDocs = AttendanceService.combineAttendance(
-      workersList: _workersList,
-      rawAttendanceDocs: _rawAttendanceDocs,
-    );
+    _attendanceDocs =
+        AttendanceService.combineAttendance(
+          workersList: _workersList,
+          rawAttendanceDocs: _rawAttendanceDocs,
+        ).where((record) {
+          return !TimeOffService.isWorkerOnLeave(record, _timeOffRecords);
+        }).toList();
     if (_workersLoaded && _attendanceLoaded) {
       _isLoading = false;
     }
@@ -197,11 +204,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
       );
+      _timeOffSub = FirestoreService().timeoffStream.listen((snapshot) {
+        if (!mounted) return;
+        setState(() {
+          _timeOffRecords = snapshot.docs
+              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+              .toList();
+          _combineAttendance();
+        });
+      }, onError: (_) {});
     } else {
       _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
       _rawAttendanceDocs = List<Map<String, dynamic>>.from(
         DummyData.attendance,
       );
+      _timeOffRecords = List<Map<String, dynamic>>.from(DummyData.timeoff);
       _workersLoaded = true;
       _attendanceLoaded = true;
       _combineAttendance();
@@ -1158,12 +1175,7 @@ class _WorkerAttendancePreviewCardState
                         _selectedPeriod = value;
                       });
                     },
-                    options: const [
-                      'All',
-                      'Monthly',
-                      '3 Month',
-                      'Yearly',
-                    ],
+                    options: const ['All', 'Monthly', '3 Month', 'Yearly'],
                   ),
                 ),
               ),

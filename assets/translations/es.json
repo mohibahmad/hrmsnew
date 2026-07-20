@@ -476,6 +476,7 @@
   "notif_welcome": "Bienvenido",
   "saving_bulk_workers": "Guardando trabajadores en masa...",
   "please_enter_notes": "Por favor ingresa tus notas",
+  "please_select_dates": "Selecciona las fechas de inicio y fin",
   "available_annual_leave": "Días de Permiso Anual Disponibles",
   "assign_time_off_success": "Tiempo libre asignado exitosamente",
   "assign_time_off_failed": "Error al asignar tiempo libre",
