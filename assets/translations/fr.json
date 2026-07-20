@@ -690,6 +690,7 @@
   "delete_cv_confirmation": "Êtes-vous sûr de vouloir supprimer ce CV ? Cette action est irréversible.",
   "delete_profile_confirmation": "Êtes-vous sûr de vouloir supprimer cette image de profil ? Cette action est irréversible.",
   "notifications": "Notifications",
+  "settings": "Paramètres",
   "no_notifications_yet": "Aucune notification",
   "just_now": "À l'instant",
   "welcome_to_team": "Bienvenue {name} dans l'équipe !",

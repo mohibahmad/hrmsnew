@@ -700,6 +700,7 @@
   "delete_cv_confirmation": "Are you sure you want to delete this CV? This action cannot be undone.",
   "delete_profile_confirmation": "Are you sure you want to delete this profile image? This action cannot be undone.",
   "notifications": "Notifications",
+  "settings": "Settings",
   "no_notifications_yet": "No notifications yet",
   "just_now": "Just now",
   "welcome_to_team": "Welcome {name} to the team!",

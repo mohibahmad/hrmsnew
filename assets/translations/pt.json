@@ -699,6 +699,7 @@
   "delete_cv_confirmation": "Tem certeza de que deseja excluir este CV? Esta ação não pode ser desfeita.",
   "delete_profile_confirmation": "Tem certeza de que deseja excluir esta imagem de perfil? Esta ação não pode ser desfeita.",
   "notifications": "Notificações",
+  "settings": "Configurações",
   "no_notifications_yet": "Sem notificações",
   "just_now": "Agora mesmo",
   "welcome_to_team": "Bem-vindo {name} à equipe!",
