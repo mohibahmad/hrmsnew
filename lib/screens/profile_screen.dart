@@ -833,6 +833,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   ? _currencyController.text
                   : 'USD',
               isExpanded: true,
+              dropdownColor: Colors.white,
               icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
               style: const TextStyle(
                 fontSize: 15,
