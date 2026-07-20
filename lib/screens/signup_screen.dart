@@ -242,9 +242,9 @@ class _SignupScreenState extends State<SignupScreen> {
       final userName = _usernameController.text.trim();
       await FirestoreService().addNotification({
         'type': 'welcome',
-        'title': 'Welcome $userName!',
-        'message':
-            'Your HRMS account has been created successfully. Welcome aboard!',
+        'title': 'notif_title_welcome'.tr(namedArgs: {'name': userName}),
+        'message': 'notif_msg_welcome'.tr(),
+        'data': {'name': userName},
       });
 
       if (mounted) {

@@ -594,13 +594,48 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           children: [
             _buildTabItem('All', 'all_filter'.tr()),
             if (_workersList.isEmpty) ...[
+              Container(
+                width: 1,
+                height: 38,
+                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+              ),
               _buildTabItem('Designer', 'designer'.tr()),
+              Container(
+                width: 1,
+                height: 38,
+                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+              ),
               _buildTabItem('Developer', 'developer'.tr()),
+              Container(
+                width: 1,
+                height: 38,
+                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+              ),
               _buildTabItem('Engineering', 'engineering'.tr()),
+              Container(
+                width: 1,
+                height: 38,
+                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+              ),
               _buildTabItem('Sales', 'sales'.tr()),
+              Container(
+                width: 1,
+                height: 38,
+                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+              ),
               _buildTabItem('Management', 'management'.tr()),
             ] else ...[
-              ..._extraPositions.map((pos) => _buildTabItem(pos, pos)),
+              ..._extraPositions.asMap().entries.expand(
+                (entry) => [
+                  if (entry.key > 0)
+                    Container(
+                      width: 1,
+                      height: 38,
+                      color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                    ),
+                  _buildTabItem(entry.value, entry.value),
+                ],
+              ),
             ],
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../utils/date_utils.dart';
 import '../utils/validators.dart';
 import 'auth_service.dart';
@@ -18,11 +19,6 @@ class FirestoreService {
   String get _userKey {
     final user = AuthService().currentUser;
     if (user == null) return '';
-
-    final email = user.email?.trim().toLowerCase();
-    if (email != null && email.isNotEmpty) {
-      return email.replaceAll('.', '_');
-    }
 
     final uid = user.uid;
     if (uid.isNotEmpty && uid != 'guest_uid' && !uid.startsWith('guest_')) {
@@ -59,8 +55,7 @@ class FirestoreService {
     final user = AuthService().currentUser;
     if (user == null) return;
 
-    final emailKey = email.trim().toLowerCase().replaceAll('.', '_');
-    final doc = _db.collection('hrms_user').doc(emailKey);
+    final doc = _db.collection('hrms_user').doc(user.uid);
 
     await doc.set({
       'username': username,
@@ -131,12 +126,13 @@ class FirestoreService {
 
   Future<bool> isEmailDeleted(String email) async {
     if (email.trim().isEmpty) return false;
-    final doc = await _db
+    final snapshot = await _db
         .collection('hrms_user')
-        .doc(email.trim().toLowerCase())
+        .where('email', isEqualTo: email.trim().toLowerCase())
+        .limit(1)
         .get();
-    if (!doc.exists) return false;
-    return doc.data()?['isDeleted'] == true;
+    if (snapshot.docs.isEmpty) return false;
+    return snapshot.docs.first.data()['isDeleted'] == true;
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {
@@ -168,13 +164,14 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (worker['name'] ?? '').toString();
-    if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'worker_added',
-        'title': 'Welcome $name, to the Team!',
-        'message': '$name has been successfully added as a new team member.',
-      });
-    }
+      if (name.isNotEmpty) {
+        await addNotification({
+          'type': 'worker_added',
+          'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      }
     return docRef.id;
   }
 
@@ -212,13 +209,16 @@ class FirestoreService {
       await batch.commit();
     }
 
-    if (count > 0) {
-      await addNotification({
-        'type': 'worker_added',
-        'title': 'Bulk Workers Added',
-        'message': '$count workers have been successfully added via CSV import.',
-      });
-    }
+      if (count > 0) {
+        await addNotification({
+          'type': 'worker_added',
+          'title': 'notif_title_bulk_workers'.tr(),
+          'message': 'notif_msg_bulk_workers'.tr(
+            namedArgs: {'count': '$count'},
+          ),
+          'data': {'count': '$count'},
+        });
+      }
 
     return BulkWorkerResult(imported: count, skipped: skipped);
   }
@@ -269,11 +269,15 @@ class FirestoreService {
     await addNotification({
       'type': 'expense_added',
       'title': category.isNotEmpty
-          ? 'New expense: $category'
-          : 'New expense added',
+          ? 'notif_title_expense_category'.tr(namedArgs: {'category': category})
+          : 'notif_title_expense'.tr(),
       'message': amount.isNotEmpty
-          ? 'An expense of \$$amount has been recorded.'
-          : 'A new expense has been recorded.',
+          ? 'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$$amount'})
+          : 'notif_msg_expense'.tr(),
+      'data': {
+        'category': category,
+        'amount': amount.isNotEmpty ? '\$$amount' : '',
+      },
     });
     return docRef.id;
   }
@@ -306,13 +310,14 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
-    if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'attendance_marked',
-        'title': 'Attendance marked for $name',
-        'message': 'Attendance has been recorded for $name.',
-      });
-    }
+      if (name.isNotEmpty) {
+        await addNotification({
+          'type': 'attendance_marked',
+          'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      }
     return docRef.id;
   }
 
@@ -408,15 +413,21 @@ class FirestoreService {
     });
     final name = (record['name'] ?? '').toString();
     final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
-    if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'payroll_added',
-        'title': 'Payroll processed for $name',
-        'message': amount.isNotEmpty
-            ? 'Salary of \$$amount has been processed for $name.'
-            : 'Payroll has been recorded for $name.',
-      });
-    }
+      if (name.isNotEmpty) {
+        await addNotification({
+          'type': 'payroll_added',
+          'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
+          'message': amount.isNotEmpty
+              ? 'notif_msg_payroll_amount'.tr(
+                  namedArgs: {'amount': '\$$amount', 'name': name},
+                )
+              : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
+          'data': {
+            'name': name,
+            'amount': amount.isNotEmpty ? '\$$amount' : '',
+          },
+        });
+      }
     return docRef.id;
   }
 
@@ -448,13 +459,16 @@ class FirestoreService {
     });
     final name = (record['workerName'] ?? record['name'] ?? '').toString();
     final type = (record['type'] ?? record['leaveType'] ?? 'Leave').toString();
-    if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'time_off_added',
-        'title': 'Time Off assigned to $name',
-        'message': '$type has been assigned to $name.',
-      });
-    }
+      if (name.isNotEmpty) {
+        await addNotification({
+          'type': 'time_off_added',
+          'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_time_off'.tr(
+            namedArgs: {'type': type, 'name': name},
+          ),
+          'data': {'name': name, 'type': type},
+        });
+      }
     return docRef.id;
   }
 
@@ -487,17 +501,20 @@ class FirestoreService {
     });
     final workerName = (asset['name'] ?? asset['assetName'] ?? '').toString();
     final assetType = (asset['type'] ?? asset['assetType'] ?? '').toString();
-    if (workerName.isNotEmpty) {
-      await addNotification({
-        'type': 'asset_added',
-        'title': assetType.isNotEmpty
-            ? 'Asset assigned: $assetType'
-            : 'Asset assigned',
-        'message': assetType.isNotEmpty
-            ? '$assetType has been assigned to $workerName.'
-            : 'An asset has been assigned to $workerName.',
-      });
-    }
+      if (workerName.isNotEmpty) {
+        await addNotification({
+          'type': 'asset_added',
+          'title': assetType.isNotEmpty
+              ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType})
+              : 'notif_title_asset'.tr(),
+          'message': assetType.isNotEmpty
+              ? 'notif_msg_asset_type'.tr(
+                  namedArgs: {'type': assetType, 'name': workerName},
+                )
+              : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
+          'data': {'name': workerName, 'type': assetType},
+        });
+      }
     return docRef.id;
   }
 
@@ -530,13 +547,14 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (holiday['name'] ?? '').toString();
-    if (name.isNotEmpty) {
-      await addNotification({
-        'type': 'holiday_added',
-        'title': 'Holiday "$name" has been added',
-        'message': '$name has been added to the holiday calendar.',
-      });
-    }
+      if (name.isNotEmpty) {
+        await addNotification({
+          'type': 'holiday_added',
+          'title': 'notif_title_holiday'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_holiday'.tr(namedArgs: {'name': name}),
+          'data': {'name': name},
+        });
+      }
     return docRef.id;
   }
 
@@ -565,8 +583,7 @@ class FirestoreService {
     required String email,
     bool force = false,
   }) async {
-    final emailKey = email.trim().toLowerCase().replaceAll('.', '_');
-    final docRef = _db.collection('hrms_user').doc(emailKey);
+    final docRef = _db.collection('hrms_user').doc(uid);
     final userSnap = await docRef.get();
 
     if (!force && userSnap.exists) {

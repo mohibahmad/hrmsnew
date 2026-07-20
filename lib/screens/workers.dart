@@ -19,6 +19,7 @@ import '../utils/image_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/amount_text.dart';
+import 'package:share_plus/share_plus.dart';
 
 void main() {
   runApp(const WorkerManagementApp());
@@ -890,14 +891,49 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       children: [
                         _buildFilterTab('All', 'all_filter'.tr()),
                         if (_allWorkers.isEmpty) ...[
+                          Container(
+                            width: 1,
+                            height: 38,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
                           _buildFilterTab('Designer', 'designer'.tr()),
+                          Container(
+                            width: 1,
+                            height: 38,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
                           _buildFilterTab('Developer', 'developer'.tr()),
+                          Container(
+                            width: 1,
+                            height: 38,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
                           _buildFilterTab('Engineering', 'engineering'.tr()),
+                          Container(
+                            width: 1,
+                            height: 38,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
                           _buildFilterTab('Sales', 'sales'.tr()),
+                          Container(
+                            width: 1,
+                            height: 38,
+                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                          ),
                           _buildFilterTab('Management', 'management'.tr()),
                         ] else ...[
-                          ..._extraPositions.map(
-                            (pos) => _buildFilterTab(pos, pos),
+                          ..._extraPositions.asMap().entries.expand(
+                            (entry) => [
+                              if (entry.key > 0)
+                                Container(
+                                  width: 1,
+                                  height: 38,
+                                  color: Color(
+                                    0xFFE0E0E0,
+                                  ).withValues(alpha: 0.5),
+                                ),
+                              _buildFilterTab(entry.value, entry.value),
+                            ],
                           ),
                         ],
                       ],
@@ -1424,10 +1460,9 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                       height: 44,
                       decoration: const BoxDecoration(color: Color(0xFF004FDE)),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          const SizedBox(width: 40),
                           Text(
                             'worker_profile_preview'.tr(),
                             style: const TextStyle(
@@ -1437,15 +1472,50 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
-                          MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: Color(0xFFFFFFFF),
-                                size: 20,
+                           Align(
+                            alignment: Alignment.centerLeft,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Color(0xFFFFFFFF),
+                                  size: 24,
+                                ),
+                                onPressed: () => Navigator.of(context).pop(),
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
                               ),
-                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: IconButton(
+                                icon: SvgPicture.asset(
+                                  'assets/share1.svg',
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    Colors.white,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  final shareText = [
+                                    if (name.isNotEmpty) name,
+                                    if (email.isNotEmpty) email,
+                                    if (phone.isNotEmpty) phone,
+                                    if (salary.isNotEmpty) salary,
+                                  ].join('\n');
+                                  SharePlus.instance.share(
+                                    ShareParams(text: shareText),
+                                  );
+                                },
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                              ),
                             ),
                           ),
                         ],
@@ -1612,7 +1682,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           _na(_v('nationalId')),
                         ),
                         _buildInfoCard(
-                          Icons.location_city,
+                          Icons.location_on_outlined,
                           'attendance_type'.tr(),
                           LocalizationHelper.localizeType2(_v('type2')),
                         ),
@@ -1663,6 +1733,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           Icons.art_track_outlined,
                           'religion_title'.tr(),
                           _na(_v('religion')),
+                          assetImage: 'assets/religion.png',
                         ),
                       ),
                       _buildRow(
@@ -1733,7 +1804,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String title, String value) {
+  Widget _buildInfoCard(IconData icon, String title, String value, {String? assetImage}) {
     return Container(
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1752,7 +1823,11 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
               color: iconLightBlue,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Center(child: Icon(icon, color: primaryBlue, size: 18)),
+            child: Center(
+              child: assetImage != null
+                  ? Image.asset(assetImage, width: 18, height: 18, fit: BoxFit.contain, color: primaryBlue, colorBlendMode: BlendMode.srcIn)
+                  : Icon(icon, color: primaryBlue, size: 18),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(

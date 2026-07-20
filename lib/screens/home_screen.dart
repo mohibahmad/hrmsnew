@@ -796,6 +796,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           NotificationSidebar(
+                            key: ValueKey('notif_sidebar_${context.locale.languageCode}'),
                             onClose: _toggleNotifications,
                             onNotificationTap: _handleNotificationNavigation,
                           ),

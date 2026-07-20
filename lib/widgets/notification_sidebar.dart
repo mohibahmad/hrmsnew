@@ -84,6 +84,110 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     });
   }
 
+  String _localizedTitle(Map<String, dynamic> notif) {
+    final type = (notif['type'] ?? '').toString();
+    final data = notif['data'] is Map ? notif['data'] as Map : {};
+    final args = <String, String>{
+      for (final e in data.entries)
+        if (e.value != null) e.key.toString(): e.value.toString(),
+    };
+    switch (type) {
+      case 'welcome':
+        return args.containsKey('name')
+            ? 'notif_title_welcome'.tr(namedArgs: args)
+            : (notif['title'] ?? 'notif_title_welcome').toString();
+      case 'worker_added':
+        return args.containsKey('count')
+            ? 'notif_title_bulk_workers'.tr(namedArgs: args)
+            : (args.containsKey('name')
+                ? 'notif_title_new_member'.tr(namedArgs: args)
+                : (notif['title'] ?? 'notif_title_new_member').toString());
+      case 'attendance_marked':
+        return args.containsKey('name')
+            ? 'notif_title_attendance'.tr(namedArgs: args)
+            : (notif['title'] ?? 'notif_title_attendance').toString();
+      case 'payroll_added':
+        return args.containsKey('name')
+            ? 'notif_title_payroll'.tr(namedArgs: args)
+            : (notif['title'] ?? 'notif_title_payroll').toString();
+      case 'time_off_added':
+        return args.containsKey('name')
+            ? 'notif_title_time_off'.tr(namedArgs: args)
+            : (notif['title'] ?? 'notif_title_time_off').toString();
+      case 'holiday_added':
+        return args.containsKey('name')
+            ? 'notif_title_holiday'.tr(namedArgs: args)
+            : (notif['title'] ?? 'notif_title_holiday').toString();
+      case 'expense_added':
+        if (args.containsKey('category') && (args['category'] ?? '').isNotEmpty) {
+          return 'notif_title_expense_category'.tr(namedArgs: args);
+        }
+        if (args.containsKey('amount') && (args['amount'] ?? '').isNotEmpty) {
+          return 'notif_title_expense'.tr();
+        }
+        return (notif['title'] ?? 'notif_title_expense').toString();
+      case 'asset_added':
+        if (args.containsKey('type') && (args['type'] ?? '').isNotEmpty) {
+          return 'notif_title_asset_type'.tr(namedArgs: args);
+        }
+        return (notif['title'] ?? 'notif_title_asset').toString();
+      default:
+        return (notif['title'] ?? '').toString();
+    }
+  }
+
+  String _localizedMessage(Map<String, dynamic> notif) {
+    final type = (notif['type'] ?? '').toString();
+    final data = notif['data'] is Map ? notif['data'] as Map : {};
+    final args = <String, String>{
+      for (final e in data.entries)
+        if (e.value != null) e.key.toString(): e.value.toString(),
+    };
+    switch (type) {
+      case 'welcome':
+        return 'notif_msg_welcome'.tr();
+      case 'worker_added':
+        return args.containsKey('count')
+            ? 'notif_msg_bulk_workers'.tr(namedArgs: args)
+            : (args.containsKey('name')
+                ? 'notif_msg_new_member'.tr(namedArgs: args)
+                : (notif['message'] ?? 'notif_msg_new_member').toString());
+      case 'attendance_marked':
+        return args.containsKey('name')
+            ? 'notif_msg_attendance'.tr(namedArgs: args)
+            : (notif['message'] ?? 'notif_msg_attendance').toString();
+      case 'payroll_added':
+        if (args.containsKey('amount') && (args['amount'] ?? '').isNotEmpty) {
+          return 'notif_msg_payroll_amount'.tr(namedArgs: args);
+        }
+        return args.containsKey('name')
+            ? 'notif_msg_payroll'.tr(namedArgs: args)
+            : (notif['message'] ?? 'notif_msg_payroll').toString();
+      case 'time_off_added':
+        return args.containsKey('name')
+            ? 'notif_msg_time_off'.tr(namedArgs: args)
+            : (notif['message'] ?? 'notif_msg_time_off').toString();
+      case 'holiday_added':
+        return args.containsKey('name')
+            ? 'notif_msg_holiday'.tr(namedArgs: args)
+            : (notif['message'] ?? 'notif_msg_holiday').toString();
+      case 'expense_added':
+        if (args.containsKey('amount') && (args['amount'] ?? '').isNotEmpty) {
+          return 'notif_msg_expense_amount'.tr(namedArgs: args);
+        }
+        return 'notif_msg_expense'.tr();
+      case 'asset_added':
+        if (args.containsKey('type') && (args['type'] ?? '').isNotEmpty) {
+          return 'notif_msg_asset_type'.tr(namedArgs: args);
+        }
+        return args.containsKey('name')
+            ? 'notif_msg_asset'.tr(namedArgs: args)
+            : (notif['message'] ?? 'notif_msg_asset').toString();
+      default:
+        return (notif['message'] ?? '').toString();
+    }
+  }
+
   String _getTimeAgo(dynamic createdAt) {
     try {
       DateTime created;
@@ -395,8 +499,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
       itemBuilder: (context, index) {
         final notif = _notifications[index];
         final type = (notif['type'] ?? '').toString();
-        final title = (notif['title'] ?? '').toString();
-        final message = (notif['message'] ?? '').toString();
+        final title = _localizedTitle(notif);
+        final message = _localizedMessage(notif);
         final createdAt = notif['createdAt'];
         final style = _getStyle(type);
 

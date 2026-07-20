@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
@@ -1322,8 +1323,9 @@ class DummyData {
     {
       'id': 'dummy_n1',
       'type': 'welcome',
-      'title': 'Welcome to HRMS!',
-      'message': 'Your account is ready. Explore all features in guest mode.',
+      'title': 'notif_title_welcome'.tr(namedArgs: {'name': 'to HRMS'}),
+      'message': 'notif_msg_welcome'.tr(),
+      'data': {'name': 'to HRMS'},
       'isRead': false,
       'createdAt': DateTime.now()
           .subtract(const Duration(minutes: 5))
@@ -1332,8 +1334,9 @@ class DummyData {
     {
       'id': 'dummy_n2',
       'type': 'attendance_marked',
-      'title': 'Attendance Marked',
-      'message': 'Daily attendance has been recorded for 15 employees.',
+      'title': 'notif_title_attendance'.tr(namedArgs: {'name': '15 employees'}),
+      'message': 'notif_msg_attendance'.tr(namedArgs: {'name': '15 employees'}),
+      'data': {'name': '15 employees'},
       'isRead': false,
       'createdAt': DateTime.now()
           .subtract(const Duration(hours: 2))
@@ -1342,8 +1345,11 @@ class DummyData {
     {
       'id': 'dummy_n3',
       'type': 'time_off_added',
-      'title': 'Time Off Request',
-      'message': 'Michael Johnson requested sick leave for July 12-13.',
+      'title': 'notif_title_time_off'.tr(namedArgs: {'name': 'Michael Johnson'}),
+      'message': 'notif_msg_time_off'.tr(
+        namedArgs: {'type': 'Sick Leave', 'name': 'Michael Johnson'},
+      ),
+      'data': {'type': 'Sick Leave', 'name': 'Michael Johnson'},
       'isRead': false,
       'createdAt': DateTime.now()
           .subtract(const Duration(hours: 5))
@@ -1352,8 +1358,9 @@ class DummyData {
     {
       'id': 'dummy_n4',
       'type': 'payroll_added',
-      'title': 'Payroll Processed',
-      'message': 'June 2026 payroll has been successfully processed.',
+      'title': 'notif_title_payroll'.tr(namedArgs: {'name': 'June 2026'}),
+      'message': 'notif_msg_payroll'.tr(namedArgs: {'name': 'June 2026'}),
+      'data': {'name': 'June 2026'},
       'isRead': true,
       'createdAt': DateTime.now()
           .subtract(const Duration(days: 1))
@@ -1362,8 +1369,10 @@ class DummyData {
     {
       'id': 'dummy_n5',
       'type': 'holiday_added',
-      'title': 'Holiday Upcoming',
-      'message': 'Independence Day on July 4th - office will be closed.',
+      'title': 'notif_title_holiday'.tr(namedArgs: {'name': 'Independence Day'}),
+      'message':
+          'notif_msg_holiday'.tr(namedArgs: {'name': 'Independence Day'}),
+      'data': {'name': 'Independence Day'},
       'isRead': true,
       'createdAt': DateTime.now()
           .subtract(const Duration(days: 2))
@@ -1372,8 +1381,10 @@ class DummyData {
     {
       'id': 'dummy_n6',
       'type': 'expense_added',
-      'title': 'New Expense Submitted',
-      'message': 'Robert Wilson submitted a travel expense of \$475.00.',
+      'title': 'notif_title_expense'.tr(),
+      'message':
+          'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$475.00'}),
+      'data': {'amount': '\$475.00', 'category': ''},
       'isRead': false,
       'createdAt': DateTime.now()
           .subtract(const Duration(hours: 8))
@@ -1382,8 +1393,10 @@ class DummyData {
     {
       'id': 'dummy_n7',
       'type': 'expense_added',
-      'title': 'Expense Recorded',
-      'message': 'Client Dinner with Acme Corp - \$124.50 submitted.',
+      'title': 'notif_title_expense'.tr(),
+      'message':
+          'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$124.50'}),
+      'data': {'amount': '\$124.50', 'category': ''},
       'isRead': true,
       'createdAt': DateTime.now()
           .subtract(const Duration(days: 3))
@@ -1392,8 +1405,11 @@ class DummyData {
     {
       'id': 'dummy_n8',
       'type': 'asset_added',
-      'title': 'Asset Assigned',
-      'message': 'MacBook Pro assigned to Sophia Martinez.',
+      'title': 'notif_title_asset_type'.tr(namedArgs: {'type': 'MacBook Pro'}),
+      'message': 'notif_msg_asset_type'.tr(
+        namedArgs: {'type': 'MacBook Pro', 'name': 'Sophia Martinez'},
+      ),
+      'data': {'type': 'MacBook Pro', 'name': 'Sophia Martinez'},
       'isRead': true,
       'createdAt': DateTime.now()
           .subtract(const Duration(days: 4))

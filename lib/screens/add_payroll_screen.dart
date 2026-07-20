@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
@@ -383,7 +384,15 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                           }
                         }
                       },
-                      icon: const Icon(Icons.share, size: 16),
+                      icon: SvgPicture.asset(
+                        'assets/share1.svg',
+                        width: 16,
+                        height: 16,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                       label: Text(
                         'share'.tr(),
                         style: const TextStyle(
