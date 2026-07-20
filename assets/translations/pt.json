@@ -770,5 +770,14 @@
   "time_ago_minutes": "Há {count} min",
   "time_ago_hours": "Há {count} h",
   "time_ago_days": "Há {count} d",
-  "time_ago_date": "dd MMM"
+  "time_ago_date": "dd MMM",
+  "search_workers_hint": "Buscar trabalhadores...",
+  "edit_documents": "Editar documentos",
+  "cnic_front_updated": "CNIC frontal de {name} atualizado",
+  "cnic_back_updated": "CNIC traseiro de {name} atualizado",
+  "cv_updated": "CV de {name} atualizado",
+  "upload_failed": "Falha no upload: {error}",
+  "cv_resume": "CV/Currículo",
+  "failed_to_load": "Falha ao carregar",
+  "close": "Fechar"
 }

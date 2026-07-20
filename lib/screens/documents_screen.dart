@@ -121,7 +121,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   Text(
                     _editingWorker != null
                         ? (_editingWorker!['name'] ?? 'Unknown').toString()
-                        : 'Workforce',
+                        : 'workforce'.tr(),
                     style: TextStyle(
                       color: const Color(0xFF000000),
                       fontSize: 28,
@@ -198,7 +198,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                             setState(() => _searchQuery = val);
                           },
                           decoration: InputDecoration(
-                            hintText: 'Search workers...',
+                            hintText: 'search_workers_hint'.tr(),
                             hintStyle: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 14,
@@ -335,7 +335,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Edit Documents',
+                      'edit_documents'.tr(),
                       style: const TextStyle(
                         color: Color(0xFF0247C4),
                         fontSize: 13,
@@ -545,20 +545,19 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         if (mounted) {
           FlashySnackBar.show(
             context,
-            message:
-                '$_workerName ${field == 'frontId'
-                    ? "CNIC Front"
-                    : field == 'backId'
-                    ? "CNIC Back"
-                    : "CV"} updated',
+            message: field == 'frontId'
+                ? 'cnic_front_updated'.tr(namedArgs: {'name': _workerName})
+                : field == 'backId'
+                ? 'cnic_back_updated'.tr(namedArgs: {'name': _workerName})
+                : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        FlashySnackBar.show(
+          FlashySnackBar.show(
           context,
-          message: 'Upload failed: $e',
+          message: 'upload_failed'.tr(namedArgs: {'error': '$e'}),
           isError: true,
         );
       }
@@ -1217,7 +1216,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _cvName ?? 'CV/Resume',
+                            _cvName ?? 'cv_resume'.tr(),
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 13,
@@ -1238,7 +1237,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _cvName ?? 'CV/Resume',
+                            _cvName ?? 'cv_resume'.tr(),
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 13,
@@ -1370,7 +1369,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                                   color: Color(0xFF0247C4),
                                 ),
                               ),
-                              errorWidget: (c, u, e) => const Column(
+                              errorWidget: (c, u, e) => Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   SizedBox(height: 250),
@@ -1381,7 +1380,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'Failed to load',
+                                    'failed_to_load'.tr(),
                                     style: TextStyle(color: Color(0xFF9E9E9E)),
                                   ),
                                 ],
@@ -1424,8 +1423,8 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                                 color: const Color(0xFF0247C4),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Text(
-                                'Close',
+                              child: Text(
+                                'close'.tr(),
                                 style: TextStyle(
                                   color: Color(0xFFFFFFFF),
                                   fontSize: 14,

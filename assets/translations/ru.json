@@ -770,5 +770,14 @@
   "time_ago_minutes": "{count} мин. назад",
   "time_ago_hours": "{count} ч. назад",
   "time_ago_days": "{count} д. назад",
-  "time_ago_date": "dd MMM"
+  "time_ago_date": "dd MMM",
+  "search_workers_hint": "Поиск работников...",
+  "edit_documents": "Редактировать документы",
+  "cnic_front_updated": "CNIC前方 {name} обновлён",
+  "cnic_back_updated": "CNIC задний {name} обновлён",
+  "cv_updated": "Резюме {name} обновлено",
+  "upload_failed": "Ошибка загрузки: {error}",
+  "cv_resume": "Резюме",
+  "failed_to_load": "Не удалось загрузить",
+  "close": "Закрыть"
 }

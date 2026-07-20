@@ -769,5 +769,14 @@
   "time_ago_minutes": "{count}m ago",
   "time_ago_hours": "{count}h ago",
   "time_ago_days": "{count}d ago",
-  "time_ago_date": "dd MMM"
+  "time_ago_date": "dd MMM",
+  "search_workers_hint": "Search workers...",
+  "edit_documents": "Edit Documents",
+  "cnic_front_updated": "{name} CNIC Front updated",
+  "cnic_back_updated": "{name} CNIC Back updated",
+  "cv_updated": "{name} CV updated",
+  "upload_failed": "Upload failed: {error}",
+  "cv_resume": "CV/Resume",
+  "failed_to_load": "Failed to load",
+  "close": "Close"
 }

@@ -762,5 +762,14 @@
   "time_ago_minutes": "Il y a {count} min",
   "time_ago_hours": "Il y a {count} h",
   "time_ago_days": "Il y a {count} j",
-  "time_ago_date": "dd MMM"
+  "time_ago_date": "dd MMM",
+  "search_workers_hint": "Rechercher des travailleurs...",
+  "edit_documents": "Modifier les documents",
+  "cnic_front_updated": "CNIC frontal de {name} mis à jour",
+  "cnic_back_updated": "CNIC arrière de {name} mis à jour",
+  "cv_updated": "CV de {name} mis à jour",
+  "upload_failed": "Échec de l'upload : {error}",
+  "cv_resume": "CV/Curriculum",
+  "failed_to_load": "Échec du chargement",
+  "close": "Fermer"
 }
