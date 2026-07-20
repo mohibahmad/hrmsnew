@@ -593,12 +593,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildTabItem('All', 'all_filter'.tr()),
+            Container(
+              width: 1,
+              height: 38,
+              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+            ),
             if (_workersList.isEmpty) ...[
-              Container(
-                width: 1,
-                height: 38,
-                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-              ),
               _buildTabItem('Designer', 'designer'.tr()),
               Container(
                 width: 1,

@@ -2750,6 +2750,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                   const SizedBox.shrink(),
                                 for (int day = 1; day <= daysInMonth; day++)
                                   GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
                                     onTap: () {
                                       final selected = DateTime(
                                         _calendarMonth.year,

@@ -890,6 +890,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _buildFilterTab('All', 'all_filter'.tr()),
+                        Container(
+                          width: 1,
+                          height: 38,
+                          color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                        ),
                         if (_allWorkers.isEmpty) ...[
                           Container(
                             width: 1,

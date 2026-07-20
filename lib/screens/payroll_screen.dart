@@ -418,45 +418,48 @@ class _PayrollScreenState extends State<PayrollScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: filters.map((filter) {
-            final isSelected = _selectedFilter == filter['key'];
-            return MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => setState(() {
-                  _selectedFilter = filter['key']!;
-                }),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 4),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSelected ? 12 : 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF0D4CC6)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    filter['label']!,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Color(0xFFFFFFFF)
-                          : const Color(0xFF000000),
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      fontSize: 14,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+          children: [
+            for (int i = 0; i < filters.length; i++) ...[
+              if (i > 0)
+                Container(
+                  width: 1,
+                  height: 38,
+                  color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
                 ),
-              ),
-            );
-          }).toList(),
+              _buildFilterTab(filters[i]['key']!, filters[i]['label']!),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterTab(String filterKey, String displayLabel) {
+    final bool isSelected = _selectedFilter == filterKey;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _selectedFilter = filterKey;
+      }),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 16,
+          vertical: 8,
+        ),
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF0D4CC6) : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          displayLabel,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          style: TextStyle(
+            color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+            fontFamily: 'SF Pro Display',
+          ),
         ),
       ),
     );
