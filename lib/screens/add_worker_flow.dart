@@ -737,6 +737,20 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _cvBytes != null ||
         (_existingCvUrl != null && _existingCvUrl!.isNotEmpty);
 
+    final hasProfileImage =
+        _profileImageBytes != null ||
+        (_existingProfileImageUrl != null && _existingProfileImageUrl!.isNotEmpty);
+
+    if (!hasProfileImage) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_upload_profile_image'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     if (!hasFrontId) {
       FlashySnackBar.show(
         context,

@@ -387,6 +387,7 @@
   "in_use": "Используется",
   "returned": "Возвращен",
   "please_enter_job_position": "Пожалуйста, введите должность.",
+  "please_upload_profile_image": "Пожалуйста, загрузите изображение профиля.",
   "please_enter_salary_amount": "Пожалуйста, введите сумму зарплаты.",
   "job_experience_info": "Информация об опыте работы",
   "job_position_label": "Должность:",

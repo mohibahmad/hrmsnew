@@ -159,7 +159,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
                   const SizedBox(height: 10),
                   _buildFilterTabs(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
                   Text(
                     'pay_roll_list'.tr(),
                     style: TextStyle(
@@ -169,7 +169,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
                   _isLoading
                       ? const Padding(

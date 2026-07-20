@@ -436,7 +436,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
                   const SizedBox(height: 10),
                   _buildFilterTabs(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
                   Text(
                     'time_off_list'.tr(),
                     style: TextStyle(
@@ -446,7 +446,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
                   _isLoading
                       ? const Padding(

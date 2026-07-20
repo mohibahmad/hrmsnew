@@ -387,6 +387,7 @@
   "in_use": "En cours",
   "returned": "Retourné",
   "please_enter_job_position": "Veuillez entrer le poste.",
+  "please_upload_profile_image": "Veuillez télécharger une image de profil.",
   "please_enter_salary_amount": "Veuillez entrer le montant du salaire.",
   "job_experience_info": "Informations sur l'expérience professionnelle",
   "job_position_label": "Poste :",

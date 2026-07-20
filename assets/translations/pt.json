@@ -387,6 +387,7 @@
   "in_use": "Em uso",
   "returned": "Devolvido",
   "please_enter_job_position": "Por favor, digite o cargo.",
+  "please_upload_profile_image": "Por favor, faça upload de uma imagem de perfil.",
   "please_enter_salary_amount": "Por favor, digite o valor do salário.",
   "job_experience_info": "Informações de Experiência Profissional",
   "job_position_label": "Cargo:",

@@ -387,6 +387,7 @@
   "in_use": "In use",
   "returned": "Returned",
   "please_enter_job_position": "Please enter job position.",
+  "please_upload_profile_image": "Please upload a profile image.",
   "please_enter_salary_amount": "Please enter salary amount.",
   "job_experience_info": "Job Experience Information",
   "job_position_label": "Job Position:",
