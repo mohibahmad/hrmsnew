@@ -788,12 +788,82 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _isSaving = true;
     });
 
+    // Check for duplicate National ID and Email against existing workers
+    final nationalId = _nationalIdController.text.trim();
+    final emailLower = email.toLowerCase();
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isEditing = widget.workerToEdit != null;
+
+    if (!isEditing) {
+      try {
+        if (isGuest) {
+          for (final w in DummyData.workers) {
+            final existingNid = (w['nationalId'] ?? '').toString().trim();
+            final existingEmail = (w['email'] ?? '').toString().toLowerCase().trim();
+            if (nationalId.isNotEmpty && existingNid == nationalId) {
+              if (mounted) {
+                setState(() => _isSaving = false);
+                FlashySnackBar.show(
+                  context,
+                  message: 'duplicate_national_id'.tr(),
+                  title: 'validation_error'.tr(),
+                  isError: true,
+                );
+              }
+              return;
+            }
+            if (emailLower.isNotEmpty && existingEmail == emailLower) {
+              if (mounted) {
+                setState(() => _isSaving = false);
+                FlashySnackBar.show(
+                  context,
+                  message: 'duplicate_email'.tr(),
+                  title: 'validation_error'.tr(),
+                  isError: true,
+                );
+              }
+              return;
+            }
+          }
+        } else {
+          final snapshot = await FirestoreService().getWorkersOnce();
+          for (final doc in snapshot.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final existingNid = (data['nationalId'] ?? '').toString().trim();
+            final existingEmail = (data['email'] ?? '').toString().toLowerCase().trim();
+            if (nationalId.isNotEmpty && existingNid == nationalId) {
+              if (mounted) {
+                setState(() => _isSaving = false);
+                FlashySnackBar.show(
+                  context,
+                  message: 'duplicate_national_id'.tr(),
+                  title: 'validation_error'.tr(),
+                  isError: true,
+                );
+              }
+              return;
+            }
+            if (emailLower.isNotEmpty && existingEmail == emailLower) {
+              if (mounted) {
+                setState(() => _isSaving = false);
+                FlashySnackBar.show(
+                  context,
+                  message: 'duplicate_email'.tr(),
+                  title: 'validation_error'.tr(),
+                  isError: true,
+                );
+              }
+              return;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
     String? profileImageUrl = _existingProfileImageUrl;
     String? frontIdUrl = _existingFrontIdUrl;
     String? backIdUrl = _existingBackIdUrl;
     String? cvUrl = _existingCvUrl;
-
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
 
     try {
       if (isGuest) {

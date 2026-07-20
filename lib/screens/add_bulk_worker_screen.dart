@@ -295,10 +295,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
-    // Fetch existing names and emails
+    // Fetch existing names, emails, and national IDs
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
     Set<String> existingNames = {};
+    Set<String> existingNationalIds = {};
 
     if (isGuest) {
       existingEmails = DummyData.workers
@@ -307,6 +308,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           .toSet();
       existingNames = DummyData.workers
           .map((w) => w['name']?.toString().toLowerCase().trim() ?? '')
+          .where((n) => n.isNotEmpty)
+          .toSet();
+      existingNationalIds = DummyData.workers
+          .map((w) => w['nationalId']?.toString().trim() ?? '')
           .where((n) => n.isNotEmpty)
           .toSet();
     } else {
@@ -334,6 +339,16 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             )
             .where((n) => n.isNotEmpty)
             .toSet();
+        existingNationalIds = snapshot.docs
+            .map(
+              (d) =>
+                  (d.data() as Map<String, dynamic>)['nationalId']
+                      ?.toString()
+                      .trim() ??
+                  '',
+            )
+            .where((n) => n.isNotEmpty)
+            .toSet();
       } catch (e) {}
     }
 
@@ -342,6 +357,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     List<Map<String, dynamic>> parsedWorkers = [];
     Set<String> csvEmails = {};
     Set<String> csvNames = {};
+    Set<String> csvNationalIds = {};
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -488,15 +504,24 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       final name = workerData['name']?.toString().toLowerCase().trim() ?? '';
+      final nationalId = workerData['nationalId']?.toString().trim() ?? '';
 
       bool isDuplicate = false;
+      String duplicateReason = '';
+
       if (email.isNotEmpty &&
           (existingEmails.contains(email) || csvEmails.contains(email))) {
         isDuplicate = true;
+        duplicateReason = 'email';
+      } else if (nationalId.isNotEmpty &&
+          (existingNationalIds.contains(nationalId) || csvNationalIds.contains(nationalId))) {
+        isDuplicate = true;
+        duplicateReason = 'national_id';
       } else if (email.isEmpty &&
           name.isNotEmpty &&
           (existingNames.contains(name) || csvNames.contains(name))) {
         isDuplicate = true;
+        duplicateReason = 'name';
       }
 
       if (isDuplicate) {
@@ -504,9 +529,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         if (mounted) {
           FlashySnackBar.show(
             context,
-            message: 'duplicate_worker_skipped'.tr(
-              namedArgs: {'name': name.isNotEmpty ? name : email},
-            ),
+            message: duplicateReason == 'national_id'
+                ? 'duplicate_national_id_worker_skipped'.tr(
+                    namedArgs: {'name': name.isNotEmpty ? name : email, 'nationalId': nationalId},
+                  )
+                : 'duplicate_worker_skipped'.tr(
+                    namedArgs: {'name': name.isNotEmpty ? name : email},
+                  ),
             isError: true,
           );
         }
@@ -515,6 +544,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (email.isNotEmpty) csvEmails.add(email);
       if (name.isNotEmpty) csvNames.add(name);
+      if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
 
       workerData['availableAnnualLeaves'] =
           int.tryParse(workerData['annualLeaves']?.toString() ?? '0') ?? 0;
