@@ -750,7 +750,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                     GestureDetector(
                       onTap: () => widget.onBack?.call(),
                       child: const Padding(
-                        padding: EdgeInsets.only(top: 2.0),
+                        padding: EdgeInsets.all(8.0),
                         child: Icon(
                           Icons.arrow_back_ios_new,
                           color: Color(0xFF000000),
@@ -787,6 +787,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                     ),
                   ],
                 ),
+                if (_hasParsedFile)
                 Builder(
                   builder: (context) {
                     final bool isSaveReady = _validWorkers.isNotEmpty;
