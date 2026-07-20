@@ -113,6 +113,7 @@ flutter:
     - assets/expenses_icon_slidebar.svg
     - assets/settings_icon_slidebar.svg
     - assets/total_salary.svg
+    - assets/salary.png
     - assets/total_expense.svg
     - assets/holidays_icon.svg
     - assets/payroll_icon.svg
@@ -168,6 +169,8 @@ flutter:
     - assets/expense.png
     - assets/rating.png
     - assets/religion.png
+    - assets/total_salary.svg
+    - assets/salary.png
 
   #   - images/a_dot_ham.jpeg
 

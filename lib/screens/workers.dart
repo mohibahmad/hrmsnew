@@ -1718,9 +1718,10 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                       ),
                       _buildRow(
                         _buildInfoCard(
-                          Icons.volunteer_activism,
+                          Icons.money,
                           'salary'.tr(),
                           salary.isNotEmpty ? salary : 'na'.tr(),
+                          assetImage: 'assets/salary.png',
                         ),
                         _buildInfoCard(
                           Icons.school,
@@ -1830,7 +1831,9 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
             ),
             child: Center(
               child: assetImage != null
-                  ? Image.asset(assetImage, width: 18, height: 18, fit: BoxFit.contain, color: primaryBlue, colorBlendMode: BlendMode.srcIn)
+                  ? assetImage.endsWith('.svg')
+                      ? SvgPicture.asset(assetImage, width: 18, height: 18, colorFilter: ColorFilter.mode(primaryBlue, BlendMode.srcIn))
+                      : Image.asset(assetImage, width: 18, height: 18, fit: BoxFit.contain, color: primaryBlue, colorBlendMode: BlendMode.srcIn)
                   : Icon(icon, color: primaryBlue, size: 18),
             ),
           ),
