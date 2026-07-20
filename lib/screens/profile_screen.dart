@@ -59,7 +59,10 @@ class ProfileInlineHeader extends StatelessWidget {
           const Spacer(),
           NotificationBell(onTap: onNotificationTap),
           const SizedBox(width: 20),
-          const UserAvatar(),
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: UserAvatar(),
+          ),
         ],
       ),
     );
@@ -508,7 +511,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                 _buildInputField(
                   'company_email'.tr(),
                   _emailController,
-                  readOnly: true,
+                  readOnly: !_isEditing,
                 ),
                 _buildCurrencyField(_isEditing),
               ),
@@ -698,14 +701,6 @@ class _ProfileBodyState extends State<ProfileBody> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-            if (isEmailField) ...[
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.lock_outline,
-                size: 13,
-                color: Color(0xFF9CA3AF),
-              ),
-            ],
           ],
         ),
         const SizedBox(height: 10),
@@ -925,7 +920,7 @@ class ProfilePreviewDialog extends StatelessWidget {
             children: [
               Container(
                 color: const Color(0xFF004FDE),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -939,40 +934,34 @@ class ProfilePreviewDialog extends StatelessWidget {
                     ),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 12),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Color(0xFFFFFFFF),
-                            size: 28,
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.zero,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: Color(0xFFFFFFFF),
+                          size: 28,
                         ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(4),
                       ),
                     ),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: IconButton(
-                          icon: SvgPicture.asset(
-                            'assets/edit_icon.svg',
-                            height: 20,
-                            width: 20,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFFFFFFFF),
-                              BlendMode.srcIn,
-                            ),
+                      child: IconButton(
+                        icon: SvgPicture.asset(
+                          'assets/edit_icon.svg',
+                          height: 20,
+                          width: 20,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFFFFFFFF),
+                            BlendMode.srcIn,
                           ),
-                          onPressed: () {
-                            onEdit?.call();
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: EdgeInsets.zero,
                         ),
+                        onPressed: () {
+                          onEdit?.call();
+                        },
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(4),
                       ),
                     ),
                   ],
@@ -984,7 +973,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(24, 15, 24, 15),
                 child: Row(
                   children: [
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 28),
                     Container(
                       width: 140,
                       height: 140,
