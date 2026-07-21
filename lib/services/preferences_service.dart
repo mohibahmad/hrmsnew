@@ -13,6 +13,7 @@ class PreferencesService {
   static const String _rateUsFirstBulkWorkerKey = 'rate_us_first_bulk_worker';
   static const String _rateUsFirstAssetKey = 'rate_us_first_asset';
   static const String _companyWorkingDaysKey = 'company_working_days';
+  static const String _companySalaryDayKey = 'company_salary_day';
 
   /// Synchronous cache of the profile pic URL so it's available on the first
   /// frame (no async delay). Populated the first time [getProfilePicUrl] is
@@ -82,6 +83,20 @@ class PreferencesService {
       _companyWorkingDaysKey,
       days.map((day) => day.toString()).toList(),
     );
+  }
+
+  static Future<int?> getCompanySalaryDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    final day = prefs.getInt(_companySalaryDayKey);
+    return day != null && day >= 1 && day <= 31 ? day : null;
+  }
+
+  static Future<void> setCompanySalaryDay(int day) async {
+    if (day < 1 || day > 31) {
+      throw ArgumentError.value(day, 'day', 'Salary day must be from 1 to 31');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_companySalaryDayKey, day);
   }
 
   static Future<void> setProfilePicUrl(String? url) async {
@@ -179,6 +194,7 @@ class PreferencesService {
     await prefs.remove(_rateUsFirstBulkWorkerKey);
     await prefs.remove(_rateUsFirstAssetKey);
     await prefs.remove(_companyWorkingDaysKey);
+    await prefs.remove(_companySalaryDayKey);
     _cachedProfilePicUrl = null;
   }
 }

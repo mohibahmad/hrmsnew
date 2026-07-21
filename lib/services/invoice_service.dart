@@ -347,6 +347,7 @@ class InvoiceService {
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: ['pdf'],
+      bytes: bytes,
     );
     if (result != null) {
       final file = File(result);

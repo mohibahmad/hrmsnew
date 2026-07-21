@@ -20,6 +20,7 @@ import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
+import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/localization_helper.dart';
 import '../utils/rate_us_helper.dart';
@@ -220,9 +221,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       if (_salaryTypeController.text.isEmpty)
         _salaryTypeController.text = 'Monthly';
 
-      _currencyController.text = (widget.workerToEdit!['currency'] ?? 'USD')
-          .toString();
-      if (_currencyController.text.isEmpty) _currencyController.text = 'USD';
+      _currencyController.text = CurrencyUtils.normalize(
+        widget.workerToEdit!['currency'],
+      );
 
       _salaryAmountController.text =
           (widget.workerToEdit!['salaryAmount'] ?? '').toString();
@@ -590,8 +591,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     try {
       final profile = await FirestoreService().getUserProfile();
       if (profile != null && profile['currency'] != null) {
-        final currency = profile['currency'].toString();
-        if (currency.isNotEmpty) {
+        final currency = CurrencyUtils.normalize(profile['currency']);
+        if (mounted) {
           setState(() {
             _currencyController.text = currency;
           });
@@ -740,7 +741,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
     final hasProfileImage =
         _profileImageBytes != null ||
-        (_existingProfileImageUrl != null && _existingProfileImageUrl!.isNotEmpty);
+        (_existingProfileImageUrl != null &&
+            _existingProfileImageUrl!.isNotEmpty);
 
     if (!hasProfileImage) {
       FlashySnackBar.show(
@@ -946,7 +948,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'experienceLevel': _experienceLevelController.text.trim(),
         'education': _educationController.text.trim(),
         'salaryType': _salaryTypeController.text.trim(),
-        'currency': _currencyController.text.trim(),
+        'currency': CurrencyUtils.normalize(_currencyController.text),
         'salaryAmount': _salaryAmountController.text.trim(),
         'leavePolicy': _leavePolicyController.text.trim(),
         'annualLeaves': _annualLeavesController.text.trim(),
@@ -2973,16 +2975,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                       label: 'currency_label'.tr(),
                       selectedValue: widget.currencyController.text,
                       hint: 'enter_your_currency'.tr(),
-                      items: const [
-                        'USD',
-                        'EUR',
-                        'GBP',
-                        'JPY',
-                        'INR',
-                        'RUB',
-                        'BRL',
-                        'SAR',
-                      ],
+                      items: CurrencyUtils.supportedCodes,
                       itemLabelBuilder: (val) => _localizeCurrency(val),
                       onChanged: (val) {
                         if (val != null) {

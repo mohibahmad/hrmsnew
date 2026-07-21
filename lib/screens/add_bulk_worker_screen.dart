@@ -14,6 +14,7 @@ import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
+import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/image_utils.dart';
 import '../widgets/amount_text.dart';
@@ -110,15 +111,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   bool _hasWorkerErrors(Map<String, dynamic> worker) =>
       _fieldErrors(worker).isNotEmpty;
 
-  List<Map<String, dynamic>> get _workersReadyToSave => _validWorkers
-      .where((worker) => !_hasWorkerErrors(worker))
-      .map((worker) {
+  List<Map<String, dynamic>> get _workersReadyToSave =>
+      _validWorkers.where((worker) => !_hasWorkerErrors(worker)).map((worker) {
         final cleanWorker = Map<String, dynamic>.from(worker);
         cleanWorker.remove('_fieldErrors');
         cleanWorker.remove('_rowNumber');
         return cleanWorker;
-      })
-      .toList();
+      }).toList();
 
   @override
   void initState() {
@@ -180,6 +179,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         fileName: 'worker_template.csv',
         type: FileType.custom,
         allowedExtensions: ['csv'],
+        bytes: Uint8List.fromList(utf8.encode(templateStr)),
       );
 
       if (outputFile == null) return;
@@ -500,6 +500,15 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
       if (missingForWorker.isNotEmpty) _missingRequiredCount++;
 
+      final currency = (workerData['currency'] ?? '').toString().trim();
+      if (currency.isNotEmpty) {
+        if (!CurrencyUtils.isSupported(currency)) {
+          fieldErrors['currency'] = 'invalid_currency_value'.tr();
+        } else {
+          workerData['currency'] = CurrencyUtils.normalize(currency);
+        }
+      }
+
       // Validate DOB only when it is present; empty DOB is already marked.
       final dobStr = (workerData['dob'] ?? '').toString().trim();
       if (dobStr.isNotEmpty) {
@@ -736,7 +745,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             namedArgs: {'count': importedCount.toString()},
           ),
         );
-        final dialogShown = await tryShowFirstMilestoneRateUs(context, 'bulk_worker');
+        final dialogShown = await tryShowFirstMilestoneRateUs(
+          context,
+          'bulk_worker',
+        );
         if (isGuest) {
           setState(() {
             _validWorkers = [];
@@ -872,51 +884,51 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                   ],
                 ),
                 if (_hasParsedFile)
-                Builder(
-                  builder: (context) {
-                    final bool isSaveReady = _validWorkers.isNotEmpty;
-                    final bool hasValidationErrors = _validWorkers.any(
-                      _hasWorkerErrors,
-                    );
-                    final bool canSave =
-                        isSaveReady && !_isSaving && !hasValidationErrors;
+                  Builder(
+                    builder: (context) {
+                      final bool isSaveReady = _validWorkers.isNotEmpty;
+                      final bool hasValidationErrors = _validWorkers.any(
+                        _hasWorkerErrors,
+                      );
+                      final bool canSave =
+                          isSaveReady && !_isSaving && !hasValidationErrors;
 
-                    return GestureDetector(
-                      onTap: canSave ? _saveBulkWorkers : null,
-                      child: Container(
-                        height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: canSave
-                              ? const Color(0xFF0B50C3)
-                              : const Color(0xFFE6EAEF),
-                          borderRadius: BorderRadius.circular(6),
+                      return GestureDetector(
+                        onTap: canSave ? _saveBulkWorkers : null,
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: canSave
+                                ? const Color(0xFF0B50C3)
+                                : const Color(0xFFE6EAEF),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          alignment: Alignment.center,
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'save_all'.tr(),
+                                  style: TextStyle(
+                                    color: canSave
+                                        ? const Color(0xFFFFFFFF)
+                                        : const Color(0xFF000000),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                         ),
-                        alignment: Alignment.center,
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                'save_all'.tr(),
-                                style: TextStyle(
-                                  color: canSave
-                                      ? const Color(0xFFFFFFFF)
-                                      : const Color(0xFF000000),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -1242,10 +1254,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                       fontWeight:
                                                           FontWeight.bold,
                                                       fontSize: 14,
-                                                      color: _hasFieldError(
-                                                        worker,
-                                                        'name',
-                                                      )
+                                                      color:
+                                                          _hasFieldError(
+                                                            worker,
+                                                            'name',
+                                                          )
                                                           ? const Color(
                                                               0xFFDC2626,
                                                             )
@@ -1293,18 +1306,20 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                     vertical: 4,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: _hasFieldError(
-                                                  worker,
-                                                  'position',
-                                                )
+                                                color:
+                                                    _hasFieldError(
+                                                      worker,
+                                                      'position',
+                                                    )
                                                     ? const Color(0xFFFEE2E2)
                                                     : const Color(0xFFF1F5F9),
                                                 borderRadius:
                                                     BorderRadius.circular(20),
-                                                border: _hasFieldError(
-                                                  worker,
-                                                  'position',
-                                                )
+                                                border:
+                                                    _hasFieldError(
+                                                      worker,
+                                                      'position',
+                                                    )
                                                     ? Border.all(
                                                         color: const Color(
                                                           0xFFEF4444,
@@ -1319,10 +1334,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
-                                                  color: _hasFieldError(
-                                                    worker,
-                                                    'position',
-                                                  )
+                                                  color:
+                                                      _hasFieldError(
+                                                        worker,
+                                                        'position',
+                                                      )
                                                       ? const Color(0xFFDC2626)
                                                       : const Color(0xFF475569),
                                                   fontFamily: 'SF Pro Display',

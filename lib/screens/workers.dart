@@ -16,6 +16,7 @@ import '../utils/delete_dialog.dart';
 import 'login_screen.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
+import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/amount_text.dart';
@@ -1424,7 +1425,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     final email = _v('email');
     final phone = _v('phone');
     final profileImage = worker['profileImage'] as String?;
-    final currency = _v('currency');
+    final currency = CurrencyUtils.normalize(_v('currency'));
     final salaryAmount = _v('salaryAmount');
     final rawSalary = salaryAmount.isNotEmpty
         ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)

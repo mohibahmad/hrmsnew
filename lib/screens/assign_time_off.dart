@@ -4,10 +4,10 @@ import '../widgets/clickable_gesture_detector.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
 
 import 'package:easy_localization/easy_localization.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/leave_balance_helper.dart';
 
@@ -35,8 +35,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime _endDate = DateTime.now();
   DateTime _calendarMonth = DateTime.now();
   DateTime _calendarMonth2 = DateTime.now();
-  bool _hasStartSelection = false;
-  bool _hasEndSelection = false;
+  Set<DateTime> _selectedDates = <DateTime>{};
   final TextEditingController _notesController = TextEditingController();
   String? _editingId;
 
@@ -66,21 +65,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
   }
 
-  DateTime _parseDate(dynamic date) {
-    if (date == null || date.toString().isEmpty) return DateTime.now();
-    if (date is DateTime) return date;
-    if (date is Timestamp) return date.toDate();
-    final parts = date.toString().split('-');
-    if (parts.length == 3) {
-      return DateTime(
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-        int.parse(parts[2]),
-      );
-    }
-    return DateTime.now();
-  }
-
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _resetFormFields() {
@@ -89,17 +73,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         _selectedWorker!['action'].toString().isNotEmpty) {
       _editingId = _selectedWorker!['id']?.toString();
       _timeOffType = _selectedWorker!['action'].toString();
-      _startDate = _parseDate(_selectedWorker!['startDate']);
-      _endDate = _parseDate(_selectedWorker!['endDate']);
-      _hasStartSelection = true;
-      _hasEndSelection = true;
+      _selectedDates = TimeOffService.selectedDatesForRecord(
+        _selectedWorker!,
+      ).toSet();
+      _syncSelectionBounds();
       _notesController.text = _selectedWorker!['notes']?.toString() ?? '';
     } else {
       _editingId = null;
+      _selectedDates = <DateTime>{};
       _startDate = DateTime.now();
       _endDate = DateTime.now();
-      _hasStartSelection = false;
-      _hasEndSelection = false;
       _timeOffType = 'Annual Leave';
       _notesController.clear();
     }
@@ -110,6 +93,20 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _calendarMonth.month + 1,
       1,
     );
+  }
+
+  List<DateTime> get _sortedSelectedDates {
+    final dates = _selectedDates.toList()..sort();
+    return dates;
+  }
+
+  void _syncSelectionBounds() {
+    final dates = _sortedSelectedDates;
+    if (dates.isEmpty) {
+      return;
+    }
+    _startDate = dates.first;
+    _endDate = dates.last;
   }
 
   void _loadWorkers() {
@@ -225,17 +222,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return '$day/$month/$year';
   }
 
-  int get _selectedRangeDays {
-    if (!_hasStartSelection || !_hasEndSelection) return 0;
-    return _endDate.difference(_startDate).inDays + 1;
-  }
+  int get _selectedDaysCount => _selectedDates.length;
 
-  bool get _requestedDaysExceedAvailable => _selectedRangeDays > _availableDays;
+  bool get _requestedDaysExceedAvailable => _selectedDaysCount > _availableDays;
 
   // An invalid request must never appear as a negative leave balance. Reset
-  // the displayed/requested value to zero until a valid range is selected.
+  // the displayed/requested value to zero until a valid selection is made.
   int get _requestedDays =>
-      _requestedDaysExceedAvailable ? 0 : _selectedRangeDays;
+      _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
+
+  String get _selectedDatesSummary {
+    final dates = _sortedSelectedDates;
+    if (dates.isEmpty) return 'select_date'.tr();
+    final visibleDates = dates.take(3).map(_formatDate).join(', ');
+    final remaining = dates.length - 3;
+    return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
+  }
 
   int get _alreadyUsedDays {
     if (_selectedWorker == null) return 0;
@@ -517,7 +519,38 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               _buildCalendar(_calendarMonth2, isStartCalendar: false),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.touch_app_outlined,
+                size: 18,
+                color: Color(0xFF64748B),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'tap_dates_to_select'.tr(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+              if (_selectedDates.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedDates.clear();
+                      _syncSelectionBounds();
+                    });
+                  },
+                  child: Text('clear_selection'.tr()),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
           _buildNotesAndSummary(),
         ],
       ),
@@ -538,18 +571,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         Expanded(
           flex: 3,
           child: _buildLabeledInput(
-            'start_date'.tr(),
-            _hasStartSelection ? _formatDate(_startDate) : 'select_date'.tr(),
-            isStart: true,
+            'selected_dates'.tr(),
+            _selectedDatesSummary,
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           flex: 3,
           child: _buildLabeledInput(
-            'end_date'.tr(),
-            _hasEndSelection ? _formatDate(_endDate) : 'select_date'.tr(),
-            isStart: false,
+            'selected_days'.tr(),
+            '$_selectedDaysCount',
           ),
         ),
         const SizedBox(width: 16),
@@ -675,11 +706,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildLabeledInput(
-    String label,
-    String value, {
-    required bool isStart,
-  }) {
+  Widget _buildLabeledInput(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -704,6 +731,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           ),
           child: Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 14,
               color: Colors.grey,
@@ -819,7 +848,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             const SizedBox(height: 16),
             _buildWeekdayRow(),
             const SizedBox(height: 8),
-            _buildDaysGrid(monthDate, isStartCalendar: isStartCalendar),
+            _buildDaysGrid(monthDate),
           ],
         ),
       ),
@@ -874,7 +903,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  Widget _buildDaysGrid(DateTime monthDate, {required bool isStartCalendar}) {
+  Widget _buildDaysGrid(DateTime monthDate) {
     List<Widget> rows = [];
     int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     int firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
@@ -894,38 +923,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             currentDay,
           );
 
-          final startStart = _dateOnly(_startDate);
-          final endStart = _dateOnly(_endDate);
-
-          final bool isStartDateCell = cellDate.isAtSameMomentAs(startStart);
-          final bool isEndDateCell = cellDate.isAtSameMomentAs(endStart);
-
-          // Both endpoints can be selected and remain visibly selected in
-          // either calendar, including when both dates are in the first month.
-          final bool isSelected =
-              (_hasStartSelection && isStartDateCell) ||
-              (_hasEndSelection && isEndDateCell);
-
-          // inRange: start..end inclusive highlight range.
-          // Only show range when end date is selected.
-          bool inRange = false;
-          if (_hasStartSelection &&
-              _hasEndSelection &&
-              !endStart.isBefore(startStart)) {
-            inRange =
-                (cellDate.isAfter(startStart) ||
-                    cellDate.isAtSameMomentAs(startStart)) &&
-                (cellDate.isBefore(endStart) ||
-                    cellDate.isAtSameMomentAs(endStart));
-          }
+          final bool isSelected = _selectedDates.contains(cellDate);
 
           rowChildren.add(
             _buildDayCell(
               '$currentDay',
               isSelected: isSelected,
-              inRange: inRange,
               date: cellDate,
-              isStartCalendar: isStartCalendar,
             ),
           );
           currentDay++;
@@ -947,13 +951,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(
-    String day, {
-    bool isSelected = false,
-    bool inRange = false,
-    DateTime? date,
-    bool isStartCalendar = true,
-  }) {
+  Widget _buildDayCell(String day, {bool isSelected = false, DateTime? date}) {
     if (day.isEmpty) {
       return const SizedBox(width: 50, height: 50);
     }
@@ -968,9 +966,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final selectedBorder = isFriday
         ? const Color(0xFF4AC000)
         : const Color(0xFFFF0004);
-    final rangeColor = isFriday
-        ? const Color(0xFF4AC000)
-        : const Color(0xFFFF0004);
     return Center(
       child: SizedBox(
         width: 50,
@@ -978,54 +973,34 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         child: GestureDetector(
           onTap: () {
             if (date != null) {
+              final selectedDate = _dateOnly(date);
+              final isRemoving = _selectedDates.contains(selectedDate);
+              if (!isRemoving && _selectedDates.length >= _availableDays) {
+                FlashySnackBar.show(
+                  context,
+                  message: 'requested_leaves_exceed_available'.tr(),
+                  isError: true,
+                );
+                return;
+              }
               setState(() {
-                // First click = start date, second click = end date
-                // regardless of which calendar is clicked
-                if (!_hasStartSelection) {
-                  _startDate = _dateOnly(date);
-                  _hasStartSelection = true;
-                  _hasEndSelection = false;
-                } else if (!_hasEndSelection) {
-                  _endDate = _dateOnly(date);
-                  if (_endDate.isBefore(_startDate)) {
-                    final tmp = _startDate;
-                    _startDate = _endDate;
-                    _endDate = tmp;
-                  }
-                  _hasEndSelection = true;
+                if (isRemoving) {
+                  _selectedDates.remove(selectedDate);
                 } else {
-                  // Both already selected: start new selection
-                  _startDate = _dateOnly(date);
-                  _hasStartSelection = true;
-                  _hasEndSelection = false;
+                  _selectedDates.add(selectedDate);
                 }
-
-                if (_hasStartSelection && _hasEndSelection) {
-                  if (_requestedDaysExceedAvailable) {
-                    FlashySnackBar.show(
-                      context,
-                      message: 'requested_leaves_exceed_available'.tr(),
-                      isError: true,
-                    );
-                  }
-                }
+                _syncSelectionBounds();
               });
             }
           },
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isSelected
-                  ? selectedBg
-                  : (inRange
-                        ? rangeColor.withValues(alpha: 0.1)
-                        : Colors.transparent),
+              color: isSelected ? selectedBg : Colors.transparent,
               border: Border.all(
                 color: isSelected
                     ? selectedBorder
-                    : (inRange
-                          ? rangeColor.withValues(alpha: 0.3)
-                          : isSunday
+                    : (isSunday
                           ? const Color(0xFFFF0004).withValues(alpha: 0.4)
                           : (isFriday
                                 ? const Color(0xFF4AC000).withValues(alpha: 0.4)
@@ -1037,9 +1012,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             child: Text(
               day,
               style: TextStyle(
-                color: isSelected
-                    ? const Color(0xFFFFFFFF)
-                    : (inRange ? rangeColor : dayColor),
+                color: isSelected ? const Color(0xFFFFFFFF) : dayColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
@@ -1209,7 +1182,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-    if (!_hasStartSelection || !_hasEndSelection) {
+    if (_selectedDates.isEmpty) {
       FlashySnackBar.show(
         context,
         message: 'please_select_dates'.tr(),
@@ -1242,6 +1215,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
         'endDate':
             '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}',
+        'selectedDates': _sortedSelectedDates
+            .map(
+              (date) =>
+                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+            )
+            .toList(),
         'notes': _notesController.text.trim(),
         'requestedDays': _requestedDays,
         'status': 'Approved',

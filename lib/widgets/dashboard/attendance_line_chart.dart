@@ -91,7 +91,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                 touchTooltipData: LineTouchTooltipData(
                                   getTooltipColor: (spot) =>
                                       const Color(0xFF2C3E50),
-                                  tooltipRoundedRadius: 8,
+                                  tooltipBorderRadius: const BorderRadius.all(Radius.circular(8)),
                                   getTooltipItems: (spots) {
                                     return spots.map((spot) {
                                       return LineTooltipItem(

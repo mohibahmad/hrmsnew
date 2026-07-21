@@ -264,11 +264,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       final extra = active.length > 1 ? ' (+${active.length - 1} more)' : '';
       final leaveType = (leave['action'] ?? leave['type'] ?? 'Leave')
           .toString();
+      final selectedDays = TimeOffService.selectedDatesForRecord(leave).length;
       FlashySnackBar.show(
         context,
         title: '$leaveType • ${leave['workerName']}',
-        message:
-            'This worker is on leave from ${leave['startDate']} to ${leave['endDate']}$extra',
+        message: selectedDays > 1
+            ? 'This worker is on leave today ($selectedDays selected days)$extra'
+            : 'This worker is on leave today$extra',
       );
     });
   }

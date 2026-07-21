@@ -7,7 +7,9 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
+import '../services/preferences_service.dart';
 import '../utils/image_utils.dart';
+import '../utils/snackbar_utils.dart';
 import 'add_payroll_screen.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/amount_text.dart';
@@ -39,6 +41,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
   List<Map<String, dynamic>> _workersList = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
   bool _isLoading = true;
+  bool _isSalaryDaySaving = false;
+  int? _salaryPaymentDay;
 
   static const _defaultFilters = [
     'All',
@@ -87,6 +91,178 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _isLoading = false;
   }
 
+  Future<void> _loadCompanySalaryDay() async {
+    int? salaryDay;
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      salaryDay = await PreferencesService.getCompanySalaryDay();
+    } else {
+      final profile = await FirestoreService().getUserProfile();
+      final rawDay = profile?['salaryPaymentDay'];
+      salaryDay = rawDay is num
+          ? rawDay.toInt()
+          : int.tryParse(rawDay?.toString() ?? '');
+      if (salaryDay != null && (salaryDay < 1 || salaryDay > 31)) {
+        salaryDay = null;
+      }
+    }
+    if (mounted) setState(() => _salaryPaymentDay = salaryDay);
+  }
+
+  Future<void> _saveCompanySalaryDay(int day) async {
+    if (_isSalaryDaySaving) return;
+    setState(() => _isSalaryDaySaving = true);
+    try {
+      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        await PreferencesService.setCompanySalaryDay(day);
+      } else {
+        await FirestoreService().updateUserProfile({'salaryPaymentDay': day});
+      }
+      if (!mounted) return;
+      setState(() => _salaryPaymentDay = day);
+      FlashySnackBar.show(context, message: 'salary_day_saved'.tr());
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSalaryDaySaving = false);
+    }
+  }
+
+  Future<void> _showSalaryDayDialog() async {
+    var selectedDay = _salaryPaymentDay ?? 1;
+    final result = await showDialog<int>(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0247C4).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: Color(0xFF0247C4),
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'set_salary_day'.tr(),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'salary_day_help'.tr(),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 14,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+                const SizedBox(height: 20),
+                DropdownButtonFormField<int>(
+                  initialValue: selectedDay,
+                  dropdownColor: Colors.white,
+                  decoration: InputDecoration(
+                    labelText: 'salary_day_of_month'.tr(),
+                    prefixIcon: const Icon(
+                      Icons.payments_rounded,
+                      color: Color(0xFF0247C4),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  items: List.generate(
+                    31,
+                    (index) => DropdownMenuItem<int>(
+                      value: index + 1,
+                      child: Text('${index + 1}'),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedDay = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'salary_day_schedule'.tr(
+                      namedArgs: {'day': '$selectedDay'},
+                    ),
+                    style: const TextStyle(
+                      color: Color(0xFF334155),
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('cancel'.tr()),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0247C4),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(7),
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(selectedDay),
+              child: Text('save'.tr()),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null && mounted) await _saveCompanySalaryDay(result);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +270,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _workersList = [];
     _rawPayrollDocs = [];
     _isLoading = true;
+    _loadCompanySalaryDay();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _workersSub = FirestoreService().workersStream.listen((snapshot) {
@@ -165,14 +342,62 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   const SizedBox(height: 10),
                   _buildFilterTabs(),
                   const SizedBox(height: 20),
-                  Text(
-                    'pay_roll_list'.tr(),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF000000),
-                      fontFamily: 'SF Pro Display',
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'pay_roll_list'.tr(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _isSalaryDaySaving
+                            ? null
+                            : _showSalaryDayDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0247C4),
+                          foregroundColor: const Color(0xFFFFFFFF),
+                          minimumSize: const Size(32, 50),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          elevation: 0,
+                        ),
+                        icon: _isSalaryDaySaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFFFFFFF),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.calendar_month_rounded,
+                                size: 22,
+                                color: Color(0xFFFFFFFF),
+                              ),
+                        label: Text(
+                          _salaryPaymentDay == null
+                              ? 'set_salary_day'.tr()
+                              : 'salary_day_value'.tr(
+                                  namedArgs: {'day': '$_salaryPaymentDay'},
+                                ),
+                          style: const TextStyle(
+                            color: Color(0xFFFFFFFF),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
 
@@ -727,8 +952,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
   ) async {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
-    final String contact = (data['contact'] ?? '').toString();
-    final String status = (data['status'] ?? 'Active').toString();
     final String totalWorkDays = (data['totalWorkDays'] ?? '').toString();
     final String absents = (data['absents'] ?? '').toString();
     final String leaves = (data['leaves'] ?? '').toString();
@@ -831,125 +1054,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  color: const Color(0xFF0247C4),
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      WorkerAvatar(
-                        imageUrl: data['profileImage']?.toString(),
-                        name: name,
-                        size: 140,
-                        border: Border.all(
-                          color: const Color(0xFFFFFFFF),
-                          width: 2,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                color: Color(0xFFFFFFFF),
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Color(0xFFFFFFFF),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.circle,
-                                    color: Color(0xFF00FF00),
-                                    size: 10,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    status,
-                                    style: const TextStyle(
-                                      color: Color(0xFF0247C4),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.mail_outline,
-                                  color: Color(0xFFFFFFFF),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    email,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 2),
-                                  child: Icon(
-                                    Icons.phone,
-                                    color: Color(0xFFFFFFFF),
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    contact,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    softWrap: true,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                _buildWorkerPreviewHeader(
+                  name: name,
+                  email: email,
+                  imageUrl: data['profileImage']?.toString(),
                 ),
                 Expanded(
                   child: Container(
@@ -981,7 +1089,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: absents,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: _buildLeavesIcon(),
@@ -989,7 +1097,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: leaves,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: const Icon(
@@ -1001,7 +1113,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                   value: salary,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: _buildMetricCard(
                                   icon: const Icon(
@@ -1047,13 +1159,87 @@ class _PayrollScreenState extends State<PayrollScreen> {
     }
   }
 
+  Widget _buildWorkerPreviewHeader({
+    required String name,
+    required String email,
+    String? imageUrl,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        border: Border(bottom: BorderSide(color: Color(0xFFE8E8E8), width: 1)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          WorkerAvatar(
+            imageUrl: imageUrl,
+            name: name,
+            size: 60,
+            border: Border.all(color: const Color(0xFF0A51D0), width: 2),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Color(0xFF333333),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/email.svg',
+                      height: 12,
+                      width: 12,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF666666),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        email,
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMetricCard({
     required Widget icon,
     required String title,
     required String value,
   }) {
     return Container(
-      height: 70,
+      height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),

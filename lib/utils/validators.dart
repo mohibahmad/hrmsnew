@@ -7,6 +7,7 @@
 library;
 
 import 'package:easy_localization/easy_localization.dart';
+import 'currency_utils.dart';
 import 'date_utils.dart';
 
 /// Thrown when a record fails validation before being written to Firestore.
@@ -92,6 +93,14 @@ class Validators {
         gender != 'other' &&
         gender != 'others') {
       throw ValidationException('invalid_gender_value'.tr(), field: 'gender');
+    }
+
+    final currency = _str(w, 'currency');
+    if (currency.isNotEmpty && !CurrencyUtils.isSupported(currency)) {
+      throw ValidationException(
+        'invalid_currency_value'.tr(),
+        field: 'currency',
+      );
     }
   }
 

@@ -17,6 +17,33 @@ class TimeOffService {
         : DateTime(parsed.year, parsed.month, parsed.day);
   }
 
+  /// Returns the exact leave dates for a record. New records persist an
+  /// explicit `selectedDates` list; legacy records are expanded from their
+  /// inclusive start/end range.
+  static List<DateTime> selectedDatesForRecord(Map<String, dynamic> record) {
+    final explicitDates = record['selectedDates'];
+    if (explicitDates is Iterable) {
+      final dates =
+          explicitDates.map(parseDate).whereType<DateTime>().toSet().toList()
+            ..sort();
+      if (dates.isNotEmpty) return dates;
+    }
+
+    final start = parseDate(record['startDate']);
+    final end = parseDate(record['endDate']);
+    if (start == null || end == null || end.isBefore(start)) return const [];
+
+    final dates = <DateTime>[];
+    for (
+      var date = start;
+      !date.isAfter(end);
+      date = date.add(const Duration(days: 1))
+    ) {
+      dates.add(date);
+    }
+    return dates;
+  }
+
   static Map<String, dynamic>? activeLeaveForWorker(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
@@ -44,10 +71,8 @@ class TimeOffService {
           : workerName.isNotEmpty && workerName == leaveName;
       if (!sameWorker) continue;
 
-      final start = parseDate(leave['startDate']);
-      final end = parseDate(leave['endDate']);
-      if (start == null || end == null) continue;
-      if (!target.isBefore(start) && !target.isAfter(end)) return leave;
+      final leaveDates = selectedDatesForRecord(leave);
+      if (leaveDates.contains(target)) return leave;
     }
     return null;
   }

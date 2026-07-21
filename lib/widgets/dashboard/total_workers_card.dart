@@ -87,78 +87,90 @@ class TotalWorkersCard extends StatelessWidget {
                         final chartSize = constraints.maxHeight
                             .clamp(96.0, 122.0)
                             .toDouble();
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox.square(
-                              dimension: chartSize,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  RoundedDonutChart(
-                                    malePercent: malePercent,
-                                    femalePercent: femalePercent,
-                                    otherPercent: otherPercent,
-                                    size: chartSize,
-                                    strokeWidth: 20,
-                                  ),
-                                  MediaQuery(
-                                    data: MediaQuery.of(context).copyWith(
-                                      textScaler: const TextScaler.linear(1),
+                        final availableLegendWidth =
+                            constraints.maxWidth - chartSize - 14;
+                        final legendWidth = availableLegendWidth
+                            .clamp(0.0, 168.0)
+                            .toDouble();
+                        return Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox.square(
+                                dimension: chartSize,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    RoundedDonutChart(
+                                      malePercent: malePercent,
+                                      femalePercent: femalePercent,
+                                      otherPercent: otherPercent,
+                                      size: chartSize,
+                                      strokeWidth: 20,
                                     ),
-                                    child: Text(
-                                      '$count',
-                                      style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF0F172A),
-                                        fontFamily: 'SF Pro Display',
+                                    MediaQuery(
+                                      data: MediaQuery.of(context).copyWith(
+                                        textScaler: const TextScaler.linear(1),
+                                      ),
+                                      child: Text(
+                                        'gender'.tr(),
+                                        maxLines: 1,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF0F172A),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  buildLegendItem(
-                                    const Color(0xFF155ED5),
-                                    'male'.tr(),
-                                    malePercentStr,
-                                    'workers_count'.tr(
-                                      namedArgs: {
-                                        'count': maleCount.toString(),
-                                      },
+                              const SizedBox(width: 14),
+                              SizedBox(
+                                width: legendWidth,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    buildLegendItem(
+                                      const Color(0xFF155ED5),
+                                      'male'.tr(),
+                                      malePercentStr,
+                                      'workers_count'.tr(
+                                        namedArgs: {
+                                          'count': maleCount.toString(),
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                  buildLegendItem(
-                                    const Color(0xFFFF2D2D),
-                                    'female'.tr(),
-                                    femalePercentStr,
-                                    'workers_count'.tr(
-                                      namedArgs: {
-                                        'count': femaleCount.toString(),
-                                      },
+                                    const SizedBox(height: 8),
+                                    buildLegendItem(
+                                      const Color(0xFFFF2D2D),
+                                      'female'.tr(),
+                                      femalePercentStr,
+                                      'workers_count'.tr(
+                                        namedArgs: {
+                                          'count': femaleCount.toString(),
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                  buildLegendItem(
-                                    const Color(0xFF8B5CF6),
-                                    'other'.tr(),
-                                    otherPercentStr,
-                                    'workers_count'.tr(
-                                      namedArgs: {
-                                        'count': otherCount.toString(),
-                                      },
+                                    const SizedBox(height: 8),
+                                    buildLegendItem(
+                                      const Color(0xFF8B5CF6),
+                                      'other'.tr(),
+                                      otherPercentStr,
+                                      'workers_count'.tr(
+                                        namedArgs: {
+                                          'count': otherCount.toString(),
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         );
                       },
                     ),

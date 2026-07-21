@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../utils/date_utils.dart';
+import '../utils/currency_utils.dart';
 import '../utils/validators.dart';
 import '../utils/worker_identity.dart';
 import 'auth_service.dart';
@@ -16,6 +17,14 @@ class FirestoreService {
   static bool isTesting = false;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  Map<String, dynamic> _withNormalizedCurrency(Map<String, dynamic> data) {
+    final normalized = Map<String, dynamic>.from(data);
+    if (normalized.containsKey('currency')) {
+      normalized['currency'] = CurrencyUtils.normalize(normalized['currency']);
+    }
+    return normalized;
+  }
 
   String get _userKey {
     final user = AuthService().currentUser;
@@ -72,7 +81,7 @@ class FirestoreService {
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
     final doc = _userDoc;
     if (doc == null) return;
-    await doc.set(data, SetOptions(merge: true));
+    await doc.set(_withNormalizedCurrency(data), SetOptions(merge: true));
   }
 
   Future<void> deleteUserData() async {
@@ -172,7 +181,7 @@ class FirestoreService {
       throw DuplicateWorkerException(duplicateField);
     }
     final docRef = await coll.add({
-      ...worker,
+      ..._withNormalizedCurrency(worker),
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (worker['name'] ?? '').toString();
@@ -215,7 +224,7 @@ class FirestoreService {
         }
         final docRef = coll.doc();
         batch.set(docRef, {
-          ...worker,
+          ..._withNormalizedCurrency(worker),
           'createdAt': FieldValue.serverTimestamp(),
         });
         acceptedWorkers.add(worker);
@@ -251,7 +260,7 @@ class FirestoreService {
     Validators.validateWorker(data);
     final coll = _workers;
     if (coll == null) return;
-    await coll.doc(id).update(data);
+    await coll.doc(id).update(_withNormalizedCurrency(data));
   }
 
   /// Directly updates leave-related fields on a worker document

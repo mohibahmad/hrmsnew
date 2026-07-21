@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:csv/csv.dart';
@@ -1560,6 +1562,7 @@ class _WorkerAttendancePreviewCardState
         fileName: '${widget.record.name.replaceAll(' ', '_')}_attendance.csv',
         type: FileType.custom,
         allowedExtensions: ['csv'],
+        bytes: Uint8List.fromList(utf8.encode(csvString)),
       );
 
       if (outputFile == null) return;

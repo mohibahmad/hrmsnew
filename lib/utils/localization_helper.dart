@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'currency_utils.dart';
 
 class LocalizationHelper {
   LocalizationHelper._();
@@ -91,7 +92,7 @@ class LocalizationHelper {
   }
 
   static String localizeCurrency(String value) {
-    switch (value) {
+    switch (CurrencyUtils.normalize(value)) {
       case 'USD':
         return 'usd_desc'.tr();
       case 'EUR':
@@ -102,6 +103,8 @@ class LocalizationHelper {
         return 'jpy_desc'.tr();
       case 'INR':
         return 'inr_desc'.tr();
+      case 'PKR':
+        return 'pkr_desc'.tr();
       case 'RUB':
         return 'rub_desc'.tr();
       case 'BRL':

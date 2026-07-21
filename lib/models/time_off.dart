@@ -8,6 +8,7 @@ class TimeOff {
   final String type;
   final String startDate;
   final String endDate;
+  final List<String> selectedDates;
   final int requestedDays;
   final String notes;
   final String status;
@@ -24,12 +25,18 @@ class TimeOff {
     this.type = '',
     required this.startDate,
     required this.endDate,
+    this.selectedDates = const [],
     this.requestedDays = 0,
     this.notes = '',
     this.status = 'Approved',
     this.workerAvatar,
     this.createdAt,
   });
+
+  static List<String> _parseSelectedDates(dynamic value) {
+    if (value is! Iterable) return const [];
+    return value.map((date) => date.toString()).toList();
+  }
 
   factory TimeOff.fromMap(Map<String, dynamic> data, {String? id}) {
     return TimeOff(
@@ -42,6 +49,7 @@ class TimeOff {
       type: data['type'] ?? '',
       startDate: data['startDate'] ?? '',
       endDate: data['endDate'] ?? '',
+      selectedDates: _parseSelectedDates(data['selectedDates']),
       requestedDays: data['requestedDays'] ?? 0,
       notes: data['notes'] ?? '',
       status: data['status'] ?? 'Approved',
@@ -61,6 +69,7 @@ class TimeOff {
       'type': type,
       'startDate': startDate,
       'endDate': endDate,
+      'selectedDates': selectedDates,
       'requestedDays': requestedDays,
       'notes': notes,
       'status': status,

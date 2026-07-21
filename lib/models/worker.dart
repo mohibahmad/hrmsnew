@@ -1,3 +1,5 @@
+import '../utils/currency_utils.dart';
+
 class Worker {
   final String? id;
   final String name;
@@ -82,7 +84,7 @@ class Worker {
       experienceLevel: data['experienceLevel'] ?? 'Mid-Level',
       education: data['education'] ?? "Bachelor's",
       salaryType: data['salaryType'] ?? 'Monthly',
-      currency: data['currency'] ?? 'USD',
+      currency: CurrencyUtils.normalize(data['currency']),
       salaryAmount: data['salaryAmount'] ?? '',
       leavePolicy: data['leavePolicy'] ?? 'Standard',
       annualLeaves: data['annualLeaves'] ?? '',
@@ -117,7 +119,7 @@ class Worker {
       'experienceLevel': experienceLevel,
       'education': education,
       'salaryType': salaryType,
-      'currency': currency,
+      'currency': CurrencyUtils.normalize(currency),
       'salaryAmount': salaryAmount,
       'leavePolicy': leavePolicy,
       'annualLeaves': annualLeaves,

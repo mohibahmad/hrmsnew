@@ -153,7 +153,10 @@ class SparklineCard extends StatelessWidget {
                           maxY: highestValue > 0 ? highestValue * 1.25 : 1,
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
-                              tooltipRoundedRadius: 8,
+                              tooltipBorderRadius: const BorderRadius.all(Radius.circular(8)),
+                              fitInsideHorizontally: true,
+                              fitInsideVertically: true,
+                              maxContentWidth: 180,
                               tooltipPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 10,

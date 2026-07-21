@@ -50,4 +50,53 @@ void main() {
       isFalse,
     );
   });
+
+  test('only treats explicitly selected non-contiguous dates as leave', () {
+    final selectedLeave = <Map<String, dynamic>>[
+      {
+        'name': 'Ali Khan',
+        'email': 'ali@example.com',
+        'startDate': '2026-07-15',
+        'endDate': '2026-07-30',
+        'selectedDates': [
+          '2026-07-15',
+          '2026-07-21',
+          '2026-07-25',
+          '2026-07-30',
+        ],
+        'requestedDays': 4,
+        'status': 'Approved',
+      },
+    ];
+
+    for (final day in [15, 21, 25, 30]) {
+      expect(
+        TimeOffService.isWorkerOnLeave(
+          worker,
+          selectedLeave,
+          onDate: DateTime(2026, 7, day),
+        ),
+        isTrue,
+      );
+    }
+
+    for (final day in [16, 20, 22, 29]) {
+      expect(
+        TimeOffService.isWorkerOnLeave(
+          worker,
+          selectedLeave,
+          onDate: DateTime(2026, 7, day),
+        ),
+        isFalse,
+      );
+    }
+  });
+
+  test('expands legacy start and end dates for backward compatibility', () {
+    final dates = TimeOffService.selectedDatesForRecord(leaves.first);
+
+    expect(dates, hasLength(4));
+    expect(dates.first, DateTime(2026, 7, 1));
+    expect(dates.last, DateTime(2026, 7, 4));
+  });
 }

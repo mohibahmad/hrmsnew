@@ -39,4 +39,21 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('company salary day persists for guest users', () async {
+    await PreferencesService.setCompanySalaryDay(25);
+
+    expect(await PreferencesService.getCompanySalaryDay(), 25);
+  });
+
+  test('company salary day must be between 1 and 31', () async {
+    expect(
+      () => PreferencesService.setCompanySalaryDay(0),
+      throwsArgumentError,
+    );
+    expect(
+      () => PreferencesService.setCompanySalaryDay(32),
+      throwsArgumentError,
+    );
+  });
 }

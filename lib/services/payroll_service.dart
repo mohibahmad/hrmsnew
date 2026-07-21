@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/currency_utils.dart';
 
 class PayrollService {
   static final PayrollService _instance = PayrollService._();
@@ -186,23 +187,11 @@ class PayrollService {
     return salaryStr.substring(0, match.start).trim();
   }
 
-  static const Map<String, String> _currencySymbols = {
-    'USD': r'$',
-    'EUR': '€',
-    'GBP': '£',
-    'POUND': '£',
-    'JPY': '¥',
-    'JAPANESE YEN': '¥',
-    'INR': '₹',
-    'RUB': '₽',
-    'BRL': r'R$',
-    'SAR': '﷼',
-    'PKR': 'Rs',
-  };
-
   static String getCurrencySymbol(String currency) {
     final key = currency.trim().toUpperCase();
-    return _currencySymbols[key] ?? currency;
+    if (key == 'POUND') return '£';
+    if (key == 'JAPANESE YEN') return '¥';
+    return CurrencyUtils.symbolFor(key);
   }
 
   static String _fmt(num val, String prefix) {

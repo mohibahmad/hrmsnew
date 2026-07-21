@@ -10,6 +10,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
+import '../utils/currency_utils.dart';
+import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/notification_bell.dart';
@@ -152,7 +154,9 @@ class _ProfileBodyState extends State<ProfileBody> {
           _companyIdController.text = _guestProfileCache?['companyId'] ?? '';
           _emailController.text =
               _guestProfileCache?['email'] ?? 'guest@example.com';
-          _currencyController.text = _guestProfileCache?['currency'] ?? 'USD';
+          _currencyController.text = CurrencyUtils.normalize(
+            _guestProfileCache?['currency'],
+          );
           _contact1Controller.text =
               _guestProfileCache?['contact1'] ?? '+1 415-555-0198';
           _contact2Controller.text =
@@ -168,12 +172,14 @@ class _ProfileBodyState extends State<ProfileBody> {
 
     final profile = await FirestoreService().getUserProfile();
     if (profile != null && mounted) {
+      final storedCurrency = profile['currency'];
+      final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
       setState(() {
         _businessNameController.text = profile['businessName'] ?? '';
         _companyIdController.text = profile['companyId'] ?? '';
         _emailController.text =
             profile['email'] ?? AuthService().currentUser?.email ?? '';
-        _currencyController.text = profile['currency'] ?? 'USD';
+        _currencyController.text = normalizedCurrency;
         _contact1Controller.text = profile['contact1'] ?? '';
         _contact2Controller.text = profile['contact2'] ?? '';
         _addressController.text = profile['address'] ?? '';
@@ -181,6 +187,16 @@ class _ProfileBodyState extends State<ProfileBody> {
         AuthService.profilePicNotifier.value = _profilePicUrl;
         _isLoading = false;
       });
+      if (!CurrencyUtils.isSupported(storedCurrency) ||
+          storedCurrency.toString().trim() != normalizedCurrency) {
+        try {
+          await FirestoreService().updateUserProfile({
+            'currency': normalizedCurrency,
+          });
+        } catch (_) {
+          debugPrint('Unable to persist the normalized profile currency.');
+        }
+      }
     } else if (mounted) {
       setState(() {
         _profilePicUrl = AuthService.profilePicNotifier.value;
@@ -285,6 +301,10 @@ class _ProfileBodyState extends State<ProfileBody> {
     setState(() {
       _isLoading = true;
     });
+    final normalizedCurrency = CurrencyUtils.normalize(
+      _currencyController.text,
+    );
+    _currencyController.text = normalizedCurrency;
 
     try {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
@@ -332,7 +352,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           'businessName': _businessNameController.text,
           'companyId': _companyIdController.text,
           'email': _emailController.text,
-          'currency': _currencyController.text,
+          'currency': normalizedCurrency,
           'contact1': _contact1Controller.text,
           'contact2': _contact2Controller.text,
           'address': _addressController.text,
@@ -359,7 +379,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           'businessName': _businessNameController.text,
           'companyId': _companyIdController.text,
           'email': _emailController.text,
-          'currency': _currencyController.text,
+          'currency': normalizedCurrency,
           'contact1': _contact1Controller.text,
           'contact2': _contact2Controller.text,
           'address': _addressController.text,
@@ -784,29 +804,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       );
     }
 
-    final currencies = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'RUB', 'BRL', 'SAR'];
-    String localize(String val) {
-      switch (val) {
-        case 'USD':
-          return 'usd_desc'.tr();
-        case 'EUR':
-          return 'eur_desc'.tr();
-        case 'GBP':
-          return 'gbp_desc'.tr();
-        case 'JPY':
-          return 'jpy_desc'.tr();
-        case 'INR':
-          return 'inr_desc'.tr();
-        case 'RUB':
-          return 'rub_desc'.tr();
-        case 'BRL':
-          return 'brl_desc'.tr();
-        case 'SAR':
-          return 'sar_desc'.tr();
-        default:
-          return val;
-      }
-    }
+    final currencies = CurrencyUtils.supportedCodes;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -851,7 +849,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                 return DropdownMenuItem<String>(
                   value: value,
                   child: Text(
-                    localize(value),
+                    LocalizationHelper.localizeCurrency(value),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

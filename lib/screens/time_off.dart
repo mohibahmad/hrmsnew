@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
@@ -980,10 +981,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   ) async {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
-    final String contact = (data['contact'] ?? data['phone'] ?? '').toString();
     final String action = (data['action'] ?? '').toString();
-    final String startDate = (data['startDate'] ?? '').toString();
-    final String endDate = (data['endDate'] ?? '').toString();
+    final selectedDates = TimeOffService.selectedDatesForRecord(data);
+    final String selectedDatesText = selectedDates
+        .map((date) => DateFormat('dd/MM/yyyy').format(date))
+        .join(', ');
+    final String selectedDays = (data['requestedDays'] ?? selectedDates.length)
+        .toString();
     final String notes = (data['notes'] ?? '').toString();
     final String remainingLeaves = (data['remainingLeaves'] ?? '0').toString();
 
@@ -1082,93 +1086,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  color: const Color(0xFFFFFFFF),
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      WorkerAvatar(
-                        imageUrl: data['profileImage']?.toString(),
-                        name: name,
-                        size: 140,
-                        border: Border.all(
-                          color: const Color(0xFF0A51D0),
-                          width: 2,
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                color: Color(0xFF333333),
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.mail_outline,
-                                  color: Color(0xFF666666),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    email,
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 2),
-                                  child: Icon(
-                                    Icons.phone,
-                                    color: Color(0xFF666666),
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    contact,
-                                    style: const TextStyle(
-                                      color: Color(0xFF666666),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    softWrap: true,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                _buildWorkerPreviewHeader(
+                  name: name,
+                  email: email,
+                  imageUrl: data['profileImage']?.toString(),
                 ),
                 Expanded(
                   child: Container(
@@ -1208,12 +1129,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                               Expanded(
                                 child: _buildTimeOffMetricCard(
                                   icon: const Icon(
-                                    Icons.calendar_today,
+                                    Icons.event_available,
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'start_date'.tr(),
-                                  value: startDate,
+                                  title: 'selected_days'.tr(),
+                                  value: selectedDays,
                                 ),
                               ),
                             ],
@@ -1228,8 +1149,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'end_date'.tr(),
-                                  value: endDate,
+                                  title: 'selected_dates'.tr(),
+                                  value: selectedDatesText,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -1292,6 +1213,80 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         _workerForTimeOff = data;
       });
     }
+  }
+
+  Widget _buildWorkerPreviewHeader({
+    required String name,
+    required String email,
+    String? imageUrl,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFFFFF),
+        border: Border(bottom: BorderSide(color: Color(0xFFE8E8E8), width: 1)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          WorkerAvatar(
+            imageUrl: imageUrl,
+            name: name,
+            size: 60,
+            border: Border.all(color: const Color(0xFF0A51D0), width: 2),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Color(0xFF333333),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/email.svg',
+                      height: 12,
+                      width: 12,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF666666),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        email,
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTimeOffMetricCard({

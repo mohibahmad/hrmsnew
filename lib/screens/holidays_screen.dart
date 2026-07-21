@@ -152,6 +152,35 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   String _weekdayLabel(int day) => (_weekdayKeys[day] ?? '').tr();
 
+  Widget _buildWorkDaysSectionTitle({
+    required IconData icon,
+    required String title,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 19),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _showCompanyWorkDaysModal() async {
     final selectedDays = Set<int>.from(_companyWorkingDays);
     await showDialog<void>(
@@ -190,12 +219,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'working_days'.tr(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'SF Pro Display',
-                    ),
+                  _buildWorkDaysSectionTitle(
+                    icon: Icons.business_center_rounded,
+                    title: 'working_days'.tr(),
+                    color: const Color(0xFF0247C4),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -227,13 +254,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'company_off_days'.tr(),
-                    style: const TextStyle(
-                      color: Color(0xFFD81B1F),
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'SF Pro Display',
-                    ),
+                  _buildWorkDaysSectionTitle(
+                    icon: Icons.weekend_rounded,
+                    title: 'company_off_days'.tr(),
+                    color: const Color(0xFFD81B1F),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -891,23 +915,29 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             spacing: 12,
             runSpacing: 8,
             children: [
-              OutlinedButton.icon(
+              ElevatedButton.icon(
                 onPressed: _showCompanyWorkDaysModal,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF0247C4),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0247C4),
+                  foregroundColor: const Color(0xFFFFFFFF),
                   minimumSize: const Size(32, 50),
-                  side: const BorderSide(color: Color(0xFF0247C4)),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
+                  elevation: 0,
                 ),
-                icon: const Icon(Icons.calendar_view_week_outlined, size: 21),
+                icon: const Icon(
+                  Icons.edit_calendar_rounded,
+                  size: 22,
+                  color: Color(0xFFFFFFFF),
+                ),
                 label: Text(
                   'add_company_work_days'.tr(),
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                     fontFamily: 'SF Pro Display',
                   ),
                 ),
@@ -998,21 +1028,24 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Wrap(
-        spacing: 36,
-        runSpacing: 12,
+      child: Row(
         children: [
-          _buildDaySummary(
-            Icons.work_outline,
-            'working_days'.tr(),
-            workingDays,
-            const Color(0xFF0247C4),
+          Expanded(
+            child: _buildDaySummary(
+              Icons.business_center_rounded,
+              'working_days'.tr(),
+              workingDays,
+              const Color(0xFF0247C4),
+            ),
           ),
-          _buildDaySummary(
-            Icons.event_busy_outlined,
-            'company_off_days'.tr(),
-            offDays.isEmpty ? 'none'.tr() : offDays,
-            const Color(0xFFD81B1F),
+          const SizedBox(width: 24),
+          Expanded(
+            child: _buildDaySummary(
+              Icons.weekend_rounded,
+              'company_off_days'.tr(),
+              offDays.isEmpty ? 'none'.tr() : offDays,
+              const Color(0xFFD81B1F),
+            ),
           ),
         ],
       ),
@@ -1026,33 +1059,44 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     Color color,
   ) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'SF Pro Display',
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, color: color, size: 21),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              days,
-              style: const TextStyle(
-                color: Color(0xFF334155),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'SF Pro Display',
+              const SizedBox(height: 2),
+              Text(
+                days,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
