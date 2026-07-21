@@ -1246,8 +1246,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'requestedDays': _requestedDays,
         'status': 'Approved',
         'workerName': _selectedWorker!['name'] ?? 'Worker',
-        'workerAvatar':
-            _selectedWorker!['profileImage'] ?? 'assets/profileimage.png',
+        'workerAvatar': _selectedWorker!['profileImage'] ?? '',
       };
 
       if (isGuest) {

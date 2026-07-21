@@ -53,6 +53,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> _workers = [];
   List<Map<String, dynamic>> _todayAttendance = [];
   List<Map<String, dynamic>> _holidays = [];
+  Set<int> _companyWorkingDays = {
+    DateTime.monday,
+    DateTime.tuesday,
+    DateTime.wednesday,
+    DateTime.thursday,
+    DateTime.friday,
+  };
   List<Map<String, dynamic>> _timeOffRecords = [];
   bool _isLoading = true;
   bool _workersLoaded = false;
@@ -101,6 +108,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   Future<void> _loadData() async {
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     if (isGuest) {
+      final companyWorkingDays =
+          await PreferencesService.getCompanyWorkingDays();
+      if (!mounted) return;
       setState(() {
         _workers = List<Map<String, dynamic>>.from(DummyData.workers);
         _todayAttendance = _latestAttendancePerWorker(
@@ -110,6 +120,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             .expand((l) => l)
             .cast<Map<String, dynamic>>()
             .toList();
+        _companyWorkingDays = companyWorkingDays;
         _timeOffRecords = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _isLoading = false;
       });
@@ -200,10 +211,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
     _holidaysSub = _firestore.holidaysStream.listen((snap) {
       if (mounted) {
+        var companyWorkingDays = _companyWorkingDays;
+        final holidays = <Map<String, dynamic>>[];
+        for (final doc in snap.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['type'] == 'company_work_days') {
+            final savedDays = (data['workingDays'] as List<dynamic>? ?? [])
+                .whereType<num>()
+                .map((day) => day.toInt())
+                .where(
+                  (day) => day >= DateTime.monday && day <= DateTime.sunday,
+                )
+                .toSet();
+            if (savedDays.isNotEmpty) companyWorkingDays = savedDays;
+            continue;
+          }
+          holidays.add({...data, 'id': doc.id});
+        }
         setState(() {
-          _holidays = snap.docs
-              .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-              .toList();
+          _holidays = holidays;
+          _companyWorkingDays = companyWorkingDays;
         });
       }
     }, onError: (_) {});
@@ -290,6 +317,19 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return null;
   }
 
+  Map<String, dynamic>? get _todayNonWorkingDay {
+    final holiday = _todayHoliday;
+    if (holiday != null) return holiday;
+    if (!_companyWorkingDays.contains(DateTime.now().weekday)) {
+      return {
+        'name': 'company_off_day'.tr(),
+        'isCompanyOffDay': true,
+        'isEnabled': true,
+      };
+    }
+    return null;
+  }
+
   // Keeps only the most recent attendance record per worker email so that an
   // older "Absent" record can't linger next to a newer "Leave" record.
   List<Map<String, dynamic>> _latestAttendancePerWorker(
@@ -339,7 +379,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final holiday = _todayHoliday;
+    final holiday = _todayNonWorkingDay;
 
     if (_isLoading) {
       return const Scaffold(
@@ -1435,7 +1475,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     );
   }
 
-  Widget _buildHolidayNotice(String name) {
+  Widget _buildHolidayNotice(String name, {bool isCompanyOffDay = false}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1451,9 +1491,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            name.isNotEmpty
-                ? 'Today is $name Holiday'
-                : 'today_is_holiday'.tr(),
+            isCompanyOffDay
+                ? 'company_off_day'.tr()
+                : (name.isNotEmpty
+                      ? 'Today is $name Holiday'
+                      : 'today_is_holiday'.tr()),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1461,6 +1503,18 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               fontFamily: 'SF Pro Display',
             ),
           ),
+          if (isCompanyOffDay) ...[
+            const SizedBox(height: 8),
+            Text(
+              'attendance_disabled_company_off'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: textMuted,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1468,7 +1522,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   Widget _buildWorkerAttendanceBody(Map<String, dynamic>? holiday) {
     if (holiday != null) {
-      return _buildHolidayNotice((holiday['name'] ?? '').toString());
+      return _buildHolidayNotice(
+        (holiday['name'] ?? '').toString(),
+        isCompanyOffDay: holiday['isCompanyOffDay'] == true,
+      );
     }
     if (_filteredWorkers.isEmpty) {
       return Center(
@@ -1531,7 +1588,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   Widget _buildTodayAttendanceBody(Map<String, dynamic>? holiday) {
     if (holiday != null) {
-      return _buildHolidayNotice((holiday['name'] ?? '').toString());
+      return _buildHolidayNotice(
+        (holiday['name'] ?? '').toString(),
+        isCompanyOffDay: holiday['isCompanyOffDay'] == true,
+      );
     }
     if (_todayAttendance.isEmpty) {
       return Center(
@@ -1658,15 +1718,12 @@ class WorkerListItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundImage: _getProfileImage(
-              data['profileImage'] is String
-                  ? data['profileImage'] as String
-                  : null,
-              data['email']?.toString(),
-              index,
-            ),
+          WorkerAvatar(
+            imageUrl: data['profileImage'] is String
+                ? data['profileImage'] as String
+                : null,
+            name: (data['name'] ?? '').toString(),
+            size: 44,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -1869,15 +1926,12 @@ class TodayAttendanceItem extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundImage: _getProfileImage(
-                  data['profileImage'] is String
-                      ? data['profileImage'] as String
-                      : null,
-                  data['email']?.toString(),
-                  index,
-                ),
+              WorkerAvatar(
+                imageUrl: data['profileImage'] is String
+                    ? data['profileImage'] as String
+                    : null,
+                name: (data['name'] ?? '').toString(),
+                size: 44,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1990,8 +2044,4 @@ class StatusPill extends StatelessWidget {
       ),
     );
   }
-}
-
-ImageProvider _getProfileImage(String? url, String? email, int index) {
-  return getProfileImage(url, email, index);
 }

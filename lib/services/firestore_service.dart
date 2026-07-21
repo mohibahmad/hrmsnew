@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../utils/date_utils.dart';
 import '../utils/validators.dart';
+import '../utils/worker_identity.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
 
@@ -159,19 +160,30 @@ class FirestoreService {
     Validators.validateWorker(worker);
     final coll = _workers;
     if (coll == null) throw StateError('No authenticated user');
+    final existingSnapshot = await coll.get();
+    final existingWorkers = existingSnapshot.docs.map(
+      (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+    );
+    final duplicateField = WorkerIdentity.duplicateField(
+      worker,
+      existingWorkers,
+    );
+    if (duplicateField != null) {
+      throw DuplicateWorkerException(duplicateField);
+    }
     final docRef = await coll.add({
       ...worker,
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (worker['name'] ?? '').toString();
-      if (name.isNotEmpty) {
-        await addNotification({
-          'type': 'worker_added',
-          'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
-          'data': {'name': name},
-        });
-      }
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'worker_added',
+        'title': 'notif_title_new_member'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_new_member'.tr(namedArgs: {'name': name}),
+        'data': {'name': name},
+      });
+    }
     return docRef.id;
   }
 
@@ -184,15 +196,29 @@ class FirestoreService {
     var batch = _db.batch();
     int count = 0;
     int skipped = 0;
+    final existingSnapshot = await coll.get();
+    final existingWorkers = existingSnapshot.docs
+        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+        .toList();
+    final acceptedWorkers = <Map<String, dynamic>>[];
 
     for (var worker in workersList) {
       try {
         Validators.validateWorker(worker);
+        final duplicateField = WorkerIdentity.duplicateField(worker, [
+          ...existingWorkers,
+          ...acceptedWorkers,
+        ]);
+        if (duplicateField != null) {
+          skipped++;
+          continue;
+        }
         final docRef = coll.doc();
         batch.set(docRef, {
           ...worker,
           'createdAt': FieldValue.serverTimestamp(),
         });
+        acceptedWorkers.add(worker);
         count++;
 
         if (count % 500 == 0) {
@@ -209,16 +235,14 @@ class FirestoreService {
       await batch.commit();
     }
 
-      if (count > 0) {
-        await addNotification({
-          'type': 'worker_added',
-          'title': 'notif_title_bulk_workers'.tr(),
-          'message': 'notif_msg_bulk_workers'.tr(
-            namedArgs: {'count': '$count'},
-          ),
-          'data': {'count': '$count'},
-        });
-      }
+    if (count > 0) {
+      await addNotification({
+        'type': 'worker_added',
+        'title': 'notif_title_bulk_workers'.tr(),
+        'message': 'notif_msg_bulk_workers'.tr(namedArgs: {'count': '$count'}),
+        'data': {'count': '$count'},
+      });
+    }
 
     return BulkWorkerResult(imported: count, skipped: skipped);
   }
@@ -232,7 +256,10 @@ class FirestoreService {
 
   /// Directly updates leave-related fields on a worker document
   /// without running full validation (which requires name & email).
-  Future<void> updateWorkerLeaves(String id, Map<String, dynamic> leaveData) async {
+  Future<void> updateWorkerLeaves(
+    String id,
+    Map<String, dynamic> leaveData,
+  ) async {
     final coll = _workers;
     if (coll == null || id.isEmpty) return;
     await coll.doc(id).update(leaveData);
@@ -310,14 +337,14 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
-      if (name.isNotEmpty) {
-        await addNotification({
-          'type': 'attendance_marked',
-          'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
-          'data': {'name': name},
-        });
-      }
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'attendance_marked',
+        'title': 'notif_title_attendance'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_attendance'.tr(namedArgs: {'name': name}),
+        'data': {'name': name},
+      });
+    }
     return docRef.id;
   }
 
@@ -413,21 +440,18 @@ class FirestoreService {
     });
     final name = (record['name'] ?? '').toString();
     final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
-      if (name.isNotEmpty) {
-        await addNotification({
-          'type': 'payroll_added',
-          'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
-          'message': amount.isNotEmpty
-              ? 'notif_msg_payroll_amount'.tr(
-                  namedArgs: {'amount': '\$$amount', 'name': name},
-                )
-              : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
-          'data': {
-            'name': name,
-            'amount': amount.isNotEmpty ? '\$$amount' : '',
-          },
-        });
-      }
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'payroll_added',
+        'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
+        'message': amount.isNotEmpty
+            ? 'notif_msg_payroll_amount'.tr(
+                namedArgs: {'amount': '\$$amount', 'name': name},
+              )
+            : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
+        'data': {'name': name, 'amount': amount.isNotEmpty ? '\$$amount' : ''},
+      });
+    }
     return docRef.id;
   }
 
@@ -459,16 +483,16 @@ class FirestoreService {
     });
     final name = (record['workerName'] ?? record['name'] ?? '').toString();
     final type = (record['type'] ?? record['leaveType'] ?? 'Leave').toString();
-      if (name.isNotEmpty) {
-        await addNotification({
-          'type': 'time_off_added',
-          'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_time_off'.tr(
-            namedArgs: {'type': type, 'name': name},
-          ),
-          'data': {'name': name, 'type': type},
-        });
-      }
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'time_off_added',
+        'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_time_off'.tr(
+          namedArgs: {'type': type, 'name': name},
+        ),
+        'data': {'name': name, 'type': type},
+      });
+    }
     return docRef.id;
   }
 
@@ -501,20 +525,20 @@ class FirestoreService {
     });
     final workerName = (asset['name'] ?? asset['assetName'] ?? '').toString();
     final assetType = (asset['type'] ?? asset['assetType'] ?? '').toString();
-      if (workerName.isNotEmpty) {
-        await addNotification({
-          'type': 'asset_added',
-          'title': assetType.isNotEmpty
-              ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType})
-              : 'notif_title_asset'.tr(),
-          'message': assetType.isNotEmpty
-              ? 'notif_msg_asset_type'.tr(
-                  namedArgs: {'type': assetType, 'name': workerName},
-                )
-              : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
-          'data': {'name': workerName, 'type': assetType},
-        });
-      }
+    if (workerName.isNotEmpty) {
+      await addNotification({
+        'type': 'asset_added',
+        'title': assetType.isNotEmpty
+            ? 'notif_title_asset_type'.tr(namedArgs: {'type': assetType})
+            : 'notif_title_asset'.tr(),
+        'message': assetType.isNotEmpty
+            ? 'notif_msg_asset_type'.tr(
+                namedArgs: {'type': assetType, 'name': workerName},
+              )
+            : 'notif_msg_asset'.tr(namedArgs: {'name': workerName}),
+        'data': {'name': workerName, 'type': assetType},
+      });
+    }
     return docRef.id;
   }
 
@@ -547,14 +571,14 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (holiday['name'] ?? '').toString();
-      if (name.isNotEmpty) {
-        await addNotification({
-          'type': 'holiday_added',
-          'title': 'notif_title_holiday'.tr(namedArgs: {'name': name}),
-          'message': 'notif_msg_holiday'.tr(namedArgs: {'name': name}),
-          'data': {'name': name},
-        });
-      }
+    if (name.isNotEmpty) {
+      await addNotification({
+        'type': 'holiday_added',
+        'title': 'notif_title_holiday'.tr(namedArgs: {'name': name}),
+        'message': 'notif_msg_holiday'.tr(namedArgs: {'name': name}),
+        'data': {'name': name},
+      });
+    }
     return docRef.id;
   }
 
@@ -575,6 +599,26 @@ class FirestoreService {
     final coll = _holidays;
     if (coll == null) return const Stream.empty();
     return coll.orderBy('createdAt', descending: true).snapshots();
+  }
+
+  Future<void> setCompanyWorkingDays(Iterable<int> weekdays) async {
+    final coll = _holidays;
+    if (coll == null) throw StateError('No authenticated user');
+    final normalized =
+        weekdays
+            .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
+            .toSet()
+            .toList()
+          ..sort();
+    if (normalized.isEmpty) {
+      throw ArgumentError('At least one company working day is required');
+    }
+    await coll.doc('company_work_days').set({
+      'type': 'company_work_days',
+      'workingDays': normalized,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> seedDummyDataForUser({

@@ -7,7 +7,6 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import 'package:open_file_plus/open_file_plus.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -15,6 +14,8 @@ import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
+import '../utils/worker_identity.dart';
+import '../utils/image_utils.dart';
 import '../widgets/amount_text.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
@@ -27,6 +28,65 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
+  static const List<String> _requiredFields = [
+    'name',
+    'phone',
+    'email',
+    'fatherName',
+    'nationalId',
+    'religion',
+    'dob',
+    'gender',
+    'address',
+    'relationshipStatus',
+    'position',
+    'type1',
+    'type2',
+    'experienceLevel',
+    'education',
+    'salaryType',
+    'currency',
+    'salaryAmount',
+    'leavePolicy',
+    'annualLeaves',
+    'sickLeaves',
+    'casualLeaves',
+    'joiningDate',
+    'frontId',
+    'backId',
+    'cv',
+  ];
+
+  static const Map<String, String> _fieldLabels = {
+    'name': 'Full Name',
+    'phone': 'Contact Number',
+    'email': 'Email Address',
+    'fatherName': 'Father Name',
+    'nationalId': 'National ID',
+    'religion': 'Religion',
+    'dob': 'Date of Birth',
+    'gender': 'Gender',
+    'address': 'Address',
+    'relationshipStatus': 'Relationship Status',
+    'position': 'Job Position',
+    'type1': 'Employee Type',
+    'type2': 'Work Model',
+    'experienceLevel': 'Experience Level',
+    'education': 'Education',
+    'salaryType': 'Salary Type',
+    'currency': 'Currency',
+    'salaryAmount': 'Salary Amount',
+    'leavePolicy': 'Leave Policy',
+    'annualLeaves': 'Annual Leaves',
+    'sickLeaves': 'Sick Leaves',
+    'casualLeaves': 'Casual Leaves',
+    'joiningDate': 'Joining Date',
+    'profileImage': 'Profile Image URL',
+    'frontId': 'Front ID Image URL',
+    'backId': 'Back ID Image URL',
+    'cv': 'CV URL',
+  };
+
   bool _isSaving = false;
   List<Map<String, dynamic>> _validWorkers = [];
   bool _hasParsedFile = false;
@@ -35,6 +95,30 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   int _missingRequiredCount = 0;
   int _duplicateCount = 0;
   String? _lastFileHash;
+
+  Map<String, String> _fieldErrors(Map<String, dynamic> worker) {
+    final errors = worker['_fieldErrors'];
+    if (errors is Map) {
+      return errors.map((key, value) => MapEntry('$key', '$value'));
+    }
+    return const {};
+  }
+
+  bool _hasFieldError(Map<String, dynamic> worker, String field) =>
+      _fieldErrors(worker).containsKey(field);
+
+  bool _hasWorkerErrors(Map<String, dynamic> worker) =>
+      _fieldErrors(worker).isNotEmpty;
+
+  List<Map<String, dynamic>> get _workersReadyToSave => _validWorkers
+      .where((worker) => !_hasWorkerErrors(worker))
+      .map((worker) {
+        final cleanWorker = Map<String, dynamic>.from(worker);
+        cleanWorker.remove('_fieldErrors');
+        cleanWorker.remove('_rowNumber');
+        return cleanWorker;
+      })
+      .toList();
 
   @override
   void initState() {
@@ -247,109 +331,100 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'currency': 'currency',
     };
 
-    // Check ALL required columns
-    final requiredFields = [
-      'name',
-      'phone',
-      'email',
-      'fatherName',
-      'nationalId',
-      'religion',
-      'dob',
-      'gender',
-      'address',
-      'relationshipStatus',
-      'position',
-      'type1',
-      'type2',
-      'experienceLevel',
-      'education',
-      'salaryType',
-      'currency',
-      'salaryAmount',
-      'leavePolicy',
-      'annualLeaves',
-      'sickLeaves',
-      'casualLeaves',
-      'joiningDate',
-      'profileImage',
-      'frontId',
-      'backId',
-      'cv',
-    ];
+    // Check all required columns, but continue parsing so every CSV row and
+    // every missing cell can still be shown in the preview.
     Set<String> foundFields = {};
     for (var h in headers) {
       final m = headerMap[h] ?? h;
-      if (requiredFields.contains(m)) foundFields.add(m);
+      if (_requiredFields.contains(m)) foundFields.add(m);
     }
 
-    final missingFields = requiredFields
+    final missingFields = _requiredFields
         .where((f) => !foundFields.contains(f))
         .toList();
-    if (missingFields.isNotEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'csv_required_columns_error'.tr(),
-        isError: true,
-      );
-      return;
-    }
 
     // Fetch existing names, emails, and national IDs
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
     Set<String> existingNames = {};
     Set<String> existingNationalIds = {};
+    Set<String> existingFrontIds = {};
+    Set<String> existingBackIds = {};
 
     if (isGuest) {
       existingEmails = DummyData.workers
-          .map((w) => w['email']?.toString().toLowerCase().trim() ?? '')
+          .map((w) => WorkerIdentity.normalizeEmail(w['email']))
           .where((e) => e.isNotEmpty)
           .toSet();
       existingNames = DummyData.workers
-          .map((w) => w['name']?.toString().toLowerCase().trim() ?? '')
+          .map((w) => WorkerIdentity.normalizeName(w['name']))
           .where((n) => n.isNotEmpty)
           .toSet();
       existingNationalIds = DummyData.workers
-          .map((w) => w['nationalId']?.toString().trim() ?? '')
+          .map((w) => WorkerIdentity.normalizeNationalId(w['nationalId']))
           .where((n) => n.isNotEmpty)
+          .toSet();
+      existingFrontIds = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['frontId']))
+          .where((url) => url.isNotEmpty)
+          .toSet();
+      existingBackIds = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['backId']))
+          .where((url) => url.isNotEmpty)
           .toSet();
     } else {
       try {
         final snapshot = await FirestoreService().getWorkersOnce();
         existingEmails = snapshot.docs
             .map(
-              (d) =>
-                  (d.data() as Map<String, dynamic>)['email']
-                      ?.toString()
-                      .toLowerCase()
-                      .trim() ??
-                  '',
+              (d) => WorkerIdentity.normalizeEmail(
+                (d.data() as Map<String, dynamic>)['email'],
+              ),
             )
             .where((e) => e.isNotEmpty)
             .toSet();
         existingNames = snapshot.docs
             .map(
-              (d) =>
-                  (d.data() as Map<String, dynamic>)['name']
-                      ?.toString()
-                      .toLowerCase()
-                      .trim() ??
-                  '',
+              (d) => WorkerIdentity.normalizeName(
+                (d.data() as Map<String, dynamic>)['name'],
+              ),
             )
             .where((n) => n.isNotEmpty)
             .toSet();
         existingNationalIds = snapshot.docs
             .map(
-              (d) =>
-                  (d.data() as Map<String, dynamic>)['nationalId']
-                      ?.toString()
-                      .trim() ??
-                  '',
+              (d) => WorkerIdentity.normalizeNationalId(
+                (d.data() as Map<String, dynamic>)['nationalId'],
+              ),
             )
             .where((n) => n.isNotEmpty)
             .toSet();
-      } catch (e) {}
+        existingFrontIds = snapshot.docs
+            .map(
+              (d) => WorkerIdentity.normalizeDocumentUrl(
+                (d.data() as Map<String, dynamic>)['frontId'],
+              ),
+            )
+            .where((url) => url.isNotEmpty)
+            .toSet();
+        existingBackIds = snapshot.docs
+            .map(
+              (d) => WorkerIdentity.normalizeDocumentUrl(
+                (d.data() as Map<String, dynamic>)['backId'],
+              ),
+            )
+            .where((url) => url.isNotEmpty)
+            .toSet();
+      } catch (_) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'could_not_validate_csv_duplicates'.tr(),
+            isError: true,
+          );
+        }
+        return;
+      }
     }
 
     if (!mounted) return;
@@ -358,12 +433,16 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     Set<String> csvEmails = {};
     Set<String> csvNames = {};
     Set<String> csvNationalIds = {};
+    Set<String> csvFrontIds = {};
+    Set<String> csvBackIds = {};
+    final issueLines = <String>[];
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
       if (row.isEmpty ||
-          row.every((element) => element.toString().trim().isEmpty))
+          row.every((element) => element.toString().trim().isEmpty)) {
         continue;
+      }
 
       Map<String, dynamic> workerData = {
         'name': '',
@@ -373,23 +452,22 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'nationalId': '',
         'religion': '',
         'dob': '',
-        'gender': 'Male',
+        'gender': '',
         'address': '',
-        'relationshipStatus': 'Single',
-        'type1': 'Full-Time',
-        'position': 'Employee',
-        'type2': 'On-Site',
-        'experienceLevel': 'Mid-Level',
-        'education': 'Bachelor\'s',
-        'salaryType': 'Monthly',
-        'currency': 'USD',
+        'relationshipStatus': '',
+        'type1': '',
+        'position': '',
+        'type2': '',
+        'experienceLevel': '',
+        'education': '',
+        'salaryType': '',
+        'currency': '',
         'salaryAmount': '',
-        'leavePolicy': 'Standard',
+        'leavePolicy': '',
         'annualLeaves': '',
         'sickLeaves': '',
         'casualLeaves': '',
-        'joiningDate':
-            '${DateTime.now().month}/${DateTime.now().day}/${DateTime.now().year}',
+        'joiningDate': '',
         'profileImage': '',
         'frontId': '',
         'backId': '',
@@ -412,139 +490,102 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // Ensure ALL required fields are filled
-      bool hasEmptyRequired = false;
-      String emptyFieldName = '';
-      for (var field in requiredFields) {
-        if (workerData[field] == null ||
-            workerData[field].toString().trim().isEmpty) {
-          hasEmptyRequired = true;
-          emptyFieldName = field;
-          break;
-        }
+      final fieldErrors = <String, String>{};
+      final missingForWorker = _requiredFields.where((field) {
+        return workerData[field] == null ||
+            workerData[field].toString().trim().isEmpty;
+      }).toList();
+      for (final field in missingForWorker) {
+        fieldErrors[field] = 'Required';
       }
-      if (hasEmptyRequired) {
-        _missingRequiredCount++;
-        final workerName =
-            workerData['name']?.toString().trim() ?? 'Row ${i + 1}';
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'field_missing_for_worker'.tr(
-              namedArgs: {'field': emptyFieldName, 'name': workerName},
-            ),
-            isError: true,
-          );
-        }
-        continue;
-      }
+      if (missingForWorker.isNotEmpty) _missingRequiredCount++;
 
-      // Validate DOB - must be 18+
+      // Validate DOB only when it is present; empty DOB is already marked.
       final dobStr = (workerData['dob'] ?? '').toString().trim();
-      final dob = AppDateUtils.parseDateString(dobStr);
-      final workerName =
-          workerData['name']?.toString().trim() ?? 'Row ${i + 1}';
-      if (dob == null) {
-        _invalidDobCount++;
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'invalid_dob_for_worker'.tr(
-              namedArgs: {'name': workerName, 'value': dobStr},
-            ),
-            isError: true,
+      if (dobStr.isNotEmpty) {
+        final dob = AppDateUtils.parseDateString(dobStr);
+        if (dob == null) {
+          fieldErrors['dob'] = 'Invalid date';
+          _invalidDobCount++;
+        } else {
+          final cutoff = DateTime.now().subtract(
+            const Duration(days: 365 * 18),
           );
+          if (dob.isAfter(cutoff)) {
+            fieldErrors['dob'] = 'Worker must be at least 18';
+            _invalidDobCount++;
+          }
         }
-        continue;
-      }
-      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
-      if (dob.isAfter(cutoff)) {
-        _invalidDobCount++;
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'worker_too_young'.tr(namedArgs: {'name': workerName}),
-            isError: true,
-          );
-        }
-        continue;
       }
 
-      // Validate gender - only Male or Female allowed
+      // Validate gender only when present.
       final gender = workerData['gender']?.toString().trim() ?? '';
-      if (!gender.toLowerCase().contains('male') &&
-          !gender.toLowerCase().contains('female')) {
+      final normalizedGender = gender.toLowerCase();
+      if (gender.isNotEmpty &&
+          normalizedGender != 'male' &&
+          normalizedGender != 'female' &&
+          normalizedGender != 'other' &&
+          normalizedGender != 'others') {
+        fieldErrors['gender'] = 'Only Male, Female, or Other is allowed';
         _invalidGenderCount++;
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'invalid_gender_for_worker'.tr(
-              namedArgs: {'name': workerName, 'value': gender},
-            ),
-            isError: true,
-          );
-        }
-        continue;
+      } else if (normalizedGender == 'others') {
+        workerData['gender'] = 'Other';
       }
 
-      // Validate email format
-      final email = workerData['email']?.toString().toLowerCase().trim() ?? '';
-      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-        _missingRequiredCount++;
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'invalid_email_for_worker'.tr(
-              namedArgs: {'name': workerName, 'email': email},
-            ),
-            isError: true,
-          );
-        }
-        continue;
+      // Validate email only when present.
+      final email = WorkerIdentity.normalizeEmail(workerData['email']);
+      if (email.isNotEmpty &&
+          !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+        fieldErrors['email'] = 'Invalid email address';
       }
 
-      final name = workerData['name']?.toString().toLowerCase().trim() ?? '';
-      final nationalId = workerData['nationalId']?.toString().trim() ?? '';
+      final name = WorkerIdentity.normalizeName(workerData['name']);
+      final nationalId = WorkerIdentity.normalizeNationalId(
+        workerData['nationalId'],
+      );
+      final frontId = WorkerIdentity.normalizeDocumentUrl(
+        workerData['frontId'],
+      );
+      final backId = WorkerIdentity.normalizeDocumentUrl(workerData['backId']);
 
-      bool isDuplicate = false;
-      String duplicateReason = '';
-
+      if (name.isNotEmpty &&
+          (existingNames.contains(name) || csvNames.contains(name))) {
+        fieldErrors['name'] = 'Duplicate worker name';
+      }
       if (email.isNotEmpty &&
           (existingEmails.contains(email) || csvEmails.contains(email))) {
-        isDuplicate = true;
-        duplicateReason = 'email';
-      } else if (nationalId.isNotEmpty &&
-          (existingNationalIds.contains(nationalId) || csvNationalIds.contains(nationalId))) {
-        isDuplicate = true;
-        duplicateReason = 'national_id';
-      } else if (email.isEmpty &&
-          name.isNotEmpty &&
-          (existingNames.contains(name) || csvNames.contains(name))) {
-        isDuplicate = true;
-        duplicateReason = 'name';
+        fieldErrors['email'] = 'Duplicate email address';
+      }
+      if (nationalId.isNotEmpty &&
+          (existingNationalIds.contains(nationalId) ||
+              csvNationalIds.contains(nationalId))) {
+        fieldErrors['nationalId'] = 'Duplicate National ID';
+      }
+      if (frontId.isNotEmpty &&
+          (existingFrontIds.contains(frontId) ||
+              existingBackIds.contains(frontId) ||
+              csvFrontIds.contains(frontId) ||
+              csvBackIds.contains(frontId))) {
+        fieldErrors['frontId'] = 'Duplicate front ID card image';
+      }
+      if (backId.isNotEmpty &&
+          (backId == frontId ||
+              existingFrontIds.contains(backId) ||
+              existingBackIds.contains(backId) ||
+              csvFrontIds.contains(backId) ||
+              csvBackIds.contains(backId))) {
+        fieldErrors['backId'] = 'Duplicate back ID card image';
       }
 
-      if (isDuplicate) {
+      if (fieldErrors.values.any((reason) => reason.startsWith('Duplicate'))) {
         _duplicateCount++;
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: duplicateReason == 'national_id'
-                ? 'duplicate_national_id_worker_skipped'.tr(
-                    namedArgs: {'name': name.isNotEmpty ? name : email, 'nationalId': nationalId},
-                  )
-                : 'duplicate_worker_skipped'.tr(
-                    namedArgs: {'name': name.isNotEmpty ? name : email},
-                  ),
-            isError: true,
-          );
-        }
-        continue;
       }
 
       if (email.isNotEmpty) csvEmails.add(email);
       if (name.isNotEmpty) csvNames.add(name);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
+      if (frontId.isNotEmpty) csvFrontIds.add(frontId);
+      if (backId.isNotEmpty) csvBackIds.add(backId);
 
       workerData['availableAnnualLeaves'] =
           int.tryParse(workerData['annualLeaves']?.toString() ?? '0') ?? 0;
@@ -553,46 +594,58 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       workerData['availableSickLeaves'] =
           int.tryParse(workerData['sickLeaves']?.toString() ?? '0') ?? 0;
 
-      parsedWorkers.add(workerData);
-    }
+      workerData['_rowNumber'] = i + 1;
+      workerData['_fieldErrors'] = fieldErrors;
 
-    if (_duplicateCount > 0 && mounted) {
-      FlashySnackBar.show(
-        context,
-        message: 'skipped_duplicates_message'.tr(
-          namedArgs: {'count': _duplicateCount.toString()},
-        ),
-      );
-    }
-    if (_invalidDobCount > 0 && mounted) {
-      FlashySnackBar.show(
-        context,
-        message: 'skipped_invalid_dob_message'.tr(
-          namedArgs: {'count': _invalidDobCount.toString()},
-        ),
-      );
-    }
-    if (_invalidGenderCount > 0 && mounted) {
-      FlashySnackBar.show(
-        context,
-        message: 'skipped_invalid_gender_message'.tr(
-          namedArgs: {'count': _invalidGenderCount.toString()},
-        ),
-      );
-    }
-    if (_missingRequiredCount > 0 && mounted) {
-      FlashySnackBar.show(
-        context,
-        message: 'skipped_missing_required_message'.tr(
-          namedArgs: {'count': _missingRequiredCount.toString()},
-        ),
-      );
+      if (fieldErrors.isNotEmpty) {
+        final workerName = workerData['name']?.toString().trim();
+        final workerLabel = workerName != null && workerName.isNotEmpty
+            ? workerName
+            : 'Row ${i + 1}';
+        final details = fieldErrors.entries
+            .map(
+              (entry) =>
+                  '${_fieldLabels[entry.key] ?? entry.key} (${entry.value})',
+            )
+            .join(', ');
+        issueLines.add('$workerLabel: $details');
+      }
+
+      parsedWorkers.add(workerData);
     }
 
     setState(() {
       _validWorkers = parsedWorkers;
       _hasParsedFile = true;
     });
+
+    if (!mounted) return;
+    if (issueLines.isNotEmpty || missingFields.isNotEmpty) {
+      final missingColumnsLine = missingFields.isEmpty
+          ? null
+          : 'Missing columns: ${missingFields.map((field) => _fieldLabels[field] ?? field).join(', ')}';
+      final detailLines = List<String>.from(issueLines);
+      if (missingColumnsLine != null) {
+        detailLines.insert(0, missingColumnsLine);
+      }
+      final details = detailLines.join('\n');
+      FlashySnackBar.show(
+        context,
+        title: 'csv_uploaded_with_issues_title'.tr(),
+        message: details,
+        isError: true,
+        maxLines: null,
+        displayDuration: const Duration(seconds: 12),
+      );
+    } else {
+      FlashySnackBar.show(
+        context,
+        title: 'csv_uploaded_title'.tr(),
+        message: 'csv_all_workers_ready'.tr(
+          namedArgs: {'count': parsedWorkers.length.toString()},
+        ),
+      );
+    }
   }
 
   Future<void> _saveBulkWorkers() async {
@@ -605,11 +658,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
-    final hasValidationErrors =
-        _missingRequiredCount > 0 ||
-        _invalidDobCount > 0 ||
-        _invalidGenderCount > 0 ||
-        _duplicateCount > 0;
+    final hasValidationErrors = _validWorkers.any(_hasWorkerErrors);
 
     if (hasValidationErrors) {
       final parts = <String>[];
@@ -641,7 +690,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           ),
         );
       }
-
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -663,15 +711,21 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     _showBulkProgressDialog();
 
     try {
+      final workersToSave = _workersReadyToSave;
+      var importedCount = workersToSave.length;
       if (isGuest) {
-        for (var i = 0; i < _validWorkers.length; i++) {
-          final data = _validWorkers[i];
+        for (var i = 0; i < workersToSave.length; i++) {
+          final data = workersToSave[i];
           final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
           DummyData.workers.insert(0, {...data, 'id': newId});
         }
         await DummyData.saveToPrefs();
       } else {
-        await FirestoreService().addBulkWorkers(_validWorkers);
+        final result = await FirestoreService().addBulkWorkers(workersToSave);
+        importedCount = result.imported;
+        if (result.skipped > 0) {
+          _duplicateCount += result.skipped;
+        }
       }
 
       if (mounted) {
@@ -679,7 +733,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         FlashySnackBar.show(
           context,
           message: 'workers_added_successfully'.tr(
-            namedArgs: {'count': _validWorkers.length.toString()},
+            namedArgs: {'count': importedCount.toString()},
           ),
         );
         final dialogShown = await tryShowFirstMilestoneRateUs(context, 'bulk_worker');
@@ -821,11 +875,9 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 Builder(
                   builder: (context) {
                     final bool isSaveReady = _validWorkers.isNotEmpty;
-                    final bool hasValidationErrors =
-                        _missingRequiredCount > 0 ||
-                        _invalidDobCount > 0 ||
-                        _invalidGenderCount > 0 ||
-                        _duplicateCount > 0;
+                    final bool hasValidationErrors = _validWorkers.any(
+                      _hasWorkerErrors,
+                    );
                     final bool canSave =
                         isSaveReady && !_isSaving && !hasValidationErrors;
 
@@ -835,7 +887,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         height: 44,
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         decoration: BoxDecoration(
-                          color: isSaveReady
+                          color: canSave
                               ? const Color(0xFF0B50C3)
                               : const Color(0xFFE6EAEF),
                           borderRadius: BorderRadius.circular(6),
@@ -853,7 +905,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             : Text(
                                 'save_all'.tr(),
                                 style: TextStyle(
-                                  color: isSaveReady
+                                  color: canSave
                                       ? const Color(0xFFFFFFFF)
                                       : const Color(0xFF000000),
                                   fontWeight: FontWeight.w600,
@@ -951,14 +1003,20 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF34D399,
-                              ).withValues(alpha: 0.15),
+                              color:
+                                  (_validWorkers.any(_hasWorkerErrors)
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF34D399))
+                                      .withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.check_circle_rounded,
-                              color: Color(0xFF059669),
+                            child: Icon(
+                              _validWorkers.any(_hasWorkerErrors)
+                                  ? Icons.error_outline_rounded
+                                  : Icons.check_circle_rounded,
+                              color: _validWorkers.any(_hasWorkerErrors)
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFF059669),
                               size: 28,
                             ),
                           ),
@@ -967,9 +1025,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'preview_valid_workers_found'.tr(
+                                'preview_csv_workers_found'.tr(
                                   namedArgs: {
                                     'count': _validWorkers.length.toString(),
+                                    'errors': _validWorkers
+                                        .where(_hasWorkerErrors)
+                                        .length
+                                        .toString(),
                                   },
                                 ),
                                 style: const TextStyle(
@@ -981,7 +1043,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'review_details_save_all'.tr(),
+                                (_validWorkers.any(_hasWorkerErrors)
+                                        ? 'fix_red_fields_upload_again'
+                                        : 'review_details_save_all')
+                                    .tr(),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF64748B),
@@ -1138,33 +1203,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   final profileImageUrl =
                                       worker['profileImage']?.toString() ?? '';
 
-                                  // Generate clean initials for Avatar
-                                  String initials = '';
-                                  if (name.isNotEmpty) {
-                                    final parts = name.split(' ');
-                                    if (parts.isNotEmpty) {
-                                      initials = parts.first[0].toUpperCase();
-                                      if (parts.length > 1) {
-                                        initials += parts[1][0].toUpperCase();
-                                      }
-                                    }
-                                  }
-
-                                  // Soft colors for initials background
-                                  final List<Color> bgColors = [
-                                    const Color(0xFFEFF6FF),
-                                    const Color(0xFFECFDF5),
-                                    const Color(0xFFFDF2F8),
-                                    const Color(0xFFFFF7ED),
-                                  ];
-                                  final List<Color> textColors = [
-                                    const Color(0xFF1D4ED8),
-                                    const Color(0xFF047857),
-                                    const Color(0xFFBE185D),
-                                    const Color(0xFFC2410C),
-                                  ];
-                                  final colorIdx = index % bgColors.length;
-
                                   final rowWidget = Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 24,
@@ -1177,59 +1215,72 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           width: 200,
                                           child: Row(
                                             children: [
-                                              CircleAvatar(
-                                                radius: 18,
-                                                backgroundColor:
-                                                    bgColors[colorIdx],
-                                                backgroundImage:
-                                                    profileImageUrl
-                                                            .isNotEmpty &&
-                                                        profileImageUrl
-                                                            .startsWith('http')
-                                                    ? NetworkImage(
-                                                        profileImageUrl,
-                                                      )
-                                                    : null,
-                                                child:
-                                                    profileImageUrl.isEmpty ||
-                                                        !profileImageUrl
-                                                            .startsWith('http')
-                                                    ? Text(
-                                                        initials,
-                                                        style: TextStyle(
-                                                          color:
-                                                              textColors[colorIdx],
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 13,
-                                                          fontFamily:
-                                                              'SF Pro Display',
-                                                        ),
-                                                      )
-                                                    : null,
+                                              WorkerAvatar(
+                                                imageUrl: profileImageUrl,
+                                                name: name,
+                                                size: 36,
                                               ),
                                               const SizedBox(width: 12),
                                               Expanded(
-                                                child: Text(
-                                                  name,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                    color: Color(0xFF0F172A),
-                                                    fontFamily:
-                                                        'SF Pro Display',
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 5,
+                                                      ),
+                                                  decoration: _fieldDecoration(
+                                                    _hasFieldError(
+                                                      worker,
+                                                      'name',
+                                                    ),
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  child: Text(
+                                                    name.isEmpty
+                                                        ? 'required_field'.tr()
+                                                        : name,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                      color: _hasFieldError(
+                                                        worker,
+                                                        'name',
+                                                      )
+                                                          ? const Color(
+                                                              0xFFDC2626,
+                                                            )
+                                                          : const Color(
+                                                              0xFF0F172A,
+                                                            ),
+                                                      fontFamily:
+                                                          'SF Pro Display',
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
                                         // Phone
-                                        _buildDataCell(phone, 120),
+                                        _buildDataCell(
+                                          phone,
+                                          120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'phone',
+                                          ),
+                                        ),
                                         // Email
-                                        _buildDataCell(email, 200),
+                                        _buildDataCell(
+                                          email,
+                                          200,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'email',
+                                          ),
+                                        ),
                                         // Position Chip
                                         SizedBox(
                                           width: 150,
@@ -1242,19 +1293,38 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                     vertical: 4,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFFF1F5F9),
+                                                color: _hasFieldError(
+                                                  worker,
+                                                  'position',
+                                                )
+                                                    ? const Color(0xFFFEE2E2)
+                                                    : const Color(0xFFF1F5F9),
                                                 borderRadius:
                                                     BorderRadius.circular(20),
+                                                border: _hasFieldError(
+                                                  worker,
+                                                  'position',
+                                                )
+                                                    ? Border.all(
+                                                        color: const Color(
+                                                          0xFFEF4444,
+                                                        ),
+                                                      )
+                                                    : null,
                                               ),
                                               child: Text(
                                                 position.isEmpty
-                                                    ? 'employee_default_chip'
-                                                          .tr()
+                                                    ? 'required_field'.tr()
                                                     : position,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF475569),
+                                                  color: _hasFieldError(
+                                                    worker,
+                                                    'position',
+                                                  )
+                                                      ? const Color(0xFFDC2626)
+                                                      : const Color(0xFF475569),
                                                   fontFamily: 'SF Pro Display',
                                                 ),
                                               ),
@@ -1266,103 +1336,183 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           worker['salaryType']?.toString() ??
                                               '',
                                           120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'salaryType',
+                                          ),
                                         ),
                                         // Currency
                                         _buildDataCell(
                                           worker['currency']?.toString() ?? '',
                                           100,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'currency',
+                                          ),
                                         ),
                                         // Salary Amount
                                         _buildDataCell(
                                           salary.isEmpty ? '-' : salary,
                                           120,
                                           isBold: true,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'salaryAmount',
+                                          ),
                                         ),
                                         // Additional fields
                                         _buildDataCell(
                                           worker['fatherName']?.toString() ??
                                               '',
                                           150,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'fatherName',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['nationalId']?.toString() ??
                                               '',
                                           150,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'nationalId',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['religion']?.toString() ?? '',
                                           120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'religion',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['dob']?.toString() ?? '',
                                           120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'dob',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['gender']?.toString() ?? '',
                                           100,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'gender',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['address']?.toString() ?? '',
                                           250,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'address',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['relationshipStatus']
                                                   ?.toString() ??
                                               '',
                                           140,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'relationshipStatus',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           LocalizationHelper.localizeType1(
                                             worker['type1']?.toString() ?? '',
                                           ),
                                           120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'type1',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           LocalizationHelper.localizeType2(
                                             worker['type2']?.toString() ?? '',
                                           ),
                                           120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'type2',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['experienceLevel']
                                                   ?.toString() ??
                                               '',
                                           130,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'experienceLevel',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['education']?.toString() ?? '',
                                           150,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'education',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['leavePolicy']?.toString() ??
                                               '',
                                           120,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'leavePolicy',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['annualLeaves']?.toString() ??
                                               '',
                                           100,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'annualLeaves',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['sickLeaves']?.toString() ??
                                               '',
                                           100,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'sickLeaves',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['casualLeaves']?.toString() ??
                                               '',
                                           100,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'casualLeaves',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['joiningDate']?.toString() ??
                                               '',
                                           150,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'joiningDate',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           profileImageUrl.isEmpty
                                               ? '-'
                                               : profileImageUrl,
                                           200,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'profileImage',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['frontId']
@@ -1373,6 +1523,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               : worker['frontId']?.toString() ??
                                                     '-',
                                           200,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'frontId',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['backId']
@@ -1383,6 +1537,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               : worker['backId']?.toString() ??
                                                     '-',
                                           200,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'backId',
+                                          ),
                                         ),
                                         _buildDataCell(
                                           worker['cv']?.toString().isEmpty ==
@@ -1390,6 +1548,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               ? '-'
                                               : worker['cv']?.toString() ?? '-',
                                           200,
+                                          hasError: _hasFieldError(
+                                            worker,
+                                            'cv',
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -1440,17 +1602,40 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  Widget _buildDataCell(String text, double width, {bool isBold = false}) {
-    return SizedBox(
+  BoxDecoration? _fieldDecoration(bool hasError) => hasError
+      ? BoxDecoration(
+          color: const Color(0xFFFEE2E2),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFEF4444)),
+        )
+      : null;
+
+  Widget _buildDataCell(
+    String text,
+    double width, {
+    bool isBold = false,
+    bool hasError = false,
+  }) {
+    final displayText = hasError && (text.isEmpty || text == '-')
+        ? 'required_field'.tr()
+        : (text.isEmpty ? '-' : text);
+    return Container(
       width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: _fieldDecoration(hasError),
       child: Text(
-        text.isEmpty ? '-' : text,
+        displayText,
         style: TextStyle(
           fontSize: 14,
           fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-          color: isBold ? const Color(0xFF0F172A) : const Color(0xFF334155),
+          color: hasError
+              ? const Color(0xFFDC2626)
+              : isBold
+              ? const Color(0xFF0F172A)
+              : const Color(0xFF334155),
           fontFamily: 'SF Pro Display',
         ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

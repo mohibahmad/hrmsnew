@@ -86,7 +86,11 @@ class Validators {
     }
 
     final gender = _str(w, 'gender').toLowerCase();
-    if (gender.isNotEmpty && gender != 'male' && gender != 'female') {
+    if (gender.isNotEmpty &&
+        gender != 'male' &&
+        gender != 'female' &&
+        gender != 'other' &&
+        gender != 'others') {
       throw ValidationException('invalid_gender_value'.tr(), field: 'gender');
     }
   }

@@ -1125,13 +1125,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               padding: const EdgeInsets.only(right: 24.0),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundImage: getProfileImage(
-                      profileImage,
-                      email,
-                      index,
-                    ),
+                  WorkerAvatar(
+                    imageUrl: profileImage,
+                    name: name,
+                    size: 40,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1533,17 +1530,13 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         children: [
                           Container(
                             margin: const EdgeInsets.only(left: 12),
-                            width: 130,
-                            height: 130,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
+                            child: WorkerAvatar(
+                              imageUrl: profileImage,
+                              name: name,
+                              size: 130,
                               border: Border.all(
                                 color: const Color(0xFFFFFFFF),
-                                width: 2.0,
-                              ),
-                              image: DecorationImage(
-                                image: getProfileImage(profileImage, email, 0),
-                                fit: BoxFit.cover,
+                                width: 2,
                               ),
                             ),
                           ),
@@ -1562,37 +1555,6 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFFFFFFF),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.circle,
-                                        color: Color(0xFF00FF00),
-                                        size: 10,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'active'.tr(),
-                                        style: TextStyle(
-                                          color: primaryBlue,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -1708,7 +1670,9 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(_v('gender')),
+                          _na(
+                            LocalizationHelper.localizeGender(_v('gender')),
+                          ),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,

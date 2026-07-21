@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class PayrollService {
   static final PayrollService _instance = PayrollService._();
   factory PayrollService() => _instance;
@@ -5,16 +7,26 @@ class PayrollService {
 
   static List<Map<String, dynamic>> combinePayroll(
     List<Map<String, dynamic>> workersList,
-    List<Map<String, dynamic>> rawPayrollDocs,
-  ) {
-    if (workersList.isEmpty) return rawPayrollDocs;
+    List<Map<String, dynamic>> rawPayrollDocs, {
+    DateTime? month,
+    bool allowUndatedRecords = false,
+  }) {
+    final targetMonth = month ?? DateTime.now();
+    final monthlyPayrollDocs = rawPayrollDocs.where((record) {
+      return isRecordInMonth(
+        record,
+        targetMonth,
+        allowUndated: allowUndatedRecords,
+      );
+    }).toList();
+    if (workersList.isEmpty) return monthlyPayrollDocs;
 
     final combined = <Map<String, dynamic>>[];
     for (var worker in workersList) {
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-      final payrollRecord = rawPayrollDocs.firstWhere((p) {
+      final payrollRecord = monthlyPayrollDocs.firstWhere((p) {
         final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
         final pName = (p['name'] ?? '').toString().trim().toLowerCase();
         return (email.isNotEmpty && pEmail == email) ||
@@ -53,6 +65,59 @@ class PayrollService {
     return combined;
   }
 
+  static bool isRecordInMonth(
+    Map<String, dynamic> record,
+    DateTime month, {
+    bool allowUndated = false,
+  }) {
+    final date = payrollRecordDate(record);
+    if (date == null) return allowUndated;
+    return date.year == month.year && date.month == month.month;
+  }
+
+  static DateTime? payrollRecordDate(Map<String, dynamic> record) {
+    for (final key in [
+      'createdAt',
+      'timestamp',
+      'payrollDate',
+      'date',
+      'lastModified',
+    ]) {
+      final parsed = _parseDate(record[key]);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate().toLocal();
+    if (value is DateTime) return value.toLocal();
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
+    }
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    final isoDate = DateTime.tryParse(text);
+    if (isoDate != null) return isoDate.toLocal();
+
+    final parts = text.split(RegExp(r'[/\-]'));
+    if (parts.length != 3) return null;
+    final first = int.tryParse(parts[0]);
+    final second = int.tryParse(parts[1]);
+    final third = int.tryParse(parts[2]);
+    if (first == null || second == null || third == null) return null;
+    final year = parts[0].length == 4 ? first : third;
+    final month = second;
+    final day = parts[0].length == 4 ? third : first;
+    final date = DateTime(year, month, day);
+    if (date.year != year || date.month != month || date.day != day) {
+      return null;
+    }
+    return date;
+  }
+
   static double extractSalary(String salaryStr) {
     if (salaryStr.isEmpty) return 0;
     String cleaned = salaryStr.replaceAll(RegExp(r'[^0-9.,]'), '');
@@ -66,7 +131,7 @@ class PayrollService {
       isEuropean = true;
     } else if (lastDot > lastComma &&
         cleaned.length - lastDot == 4 &&
-        cleaned.indexOf(',') >= 0) {
+        cleaned.contains(',')) {
       isEuropean = true;
     }
     if (isEuropean) {
@@ -80,6 +145,20 @@ class PayrollService {
   static int parseIntSafe(String value) {
     if (value.isEmpty) return 0;
     return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
+  /// Payroll absences and leaves are attendance counts, not leave allowance.
+  /// A new worker may have `annualLeaves: 100`, but until attendance is marked
+  /// their payroll leave count must still be zero.
+  static Map<String, int> attendanceCounts(
+    Map<String, dynamic> payrollOrWorkerData,
+  ) {
+    return {
+      'absents': parseIntSafe(
+        (payrollOrWorkerData['absents'] ?? '').toString(),
+      ),
+      'leaves': parseIntSafe((payrollOrWorkerData['leaves'] ?? '').toString()),
+    };
   }
 
   static String formatNumber(num number) {

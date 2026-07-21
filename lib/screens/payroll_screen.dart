@@ -64,7 +64,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   void _combinePayroll() {
     // 🔥 FIX: Ensure every worker has payroll data
-    _payrollDocs = PayrollService.combinePayroll(_workersList, _rawPayrollDocs);
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    _payrollDocs = PayrollService.combinePayroll(
+      _workersList,
+      _rawPayrollDocs,
+      allowUndatedRecords: isGuest,
+    );
 
     // 🔥 ADD THIS: Fix unpaid workers
     for (var doc in _payrollDocs) {
@@ -595,14 +600,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
               padding: const EdgeInsets.only(right: 24.0),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.transparent,
-                    backgroundImage: getProfileImage(
-                      doc['profileImage']?.toString(),
-                      doc['email']?.toString(),
-                      index,
-                    ),
+                  WorkerAvatar(
+                    imageUrl: doc['profileImage']?.toString(),
+                    name: (doc['name'] ?? '').toString(),
+                    size: 40,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -836,23 +837,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Color(0xFFFFFFFF),
-                            width: 2,
-                          ),
-                          image: DecorationImage(
-                            image: getProfileImage(
-                              data['profileImage']?.toString(),
-                              data['email']?.toString(),
-                              index,
-                            ),
-                            fit: BoxFit.cover,
-                          ),
+                      WorkerAvatar(
+                        imageUrl: data['profileImage']?.toString(),
+                        name: name,
+                        size: 140,
+                        border: Border.all(
+                          color: const Color(0xFFFFFFFF),
+                          width: 2,
                         ),
                       ),
                       const SizedBox(width: 20),

@@ -692,17 +692,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
-    final email = (doc['email'] ?? '').toString().trim().toLowerCase();
-    final name = (doc['name'] ?? '').toString().trim().toLowerCase();
-
-    final workerRecords = _rawAttendanceDocs.where((att) {
-      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
-      if (email.isNotEmpty) {
-        return attEmail == email && attName == name;
-      }
-      return name.isNotEmpty && attName == name;
-    }).toList();
+    final workerRecords = AttendanceService.recordsForWorker(
+      worker: doc,
+      attendanceRecords: _rawAttendanceDocs,
+    );
 
     int totalWorkingDays = workerRecords.length;
     int absents = workerRecords.where((d) => d['status'] == 'Absent').length;
@@ -824,13 +817,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           padding: const EdgeInsets.only(right: 24.0),
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundImage: getProfileImage(
-                                  doc['profileImage']?.toString(),
-                                  email,
-                                  index,
-                                ),
+                              WorkerAvatar(
+                                imageUrl: doc['profileImage']?.toString(),
+                                name: name,
+                                size: 40,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -1100,20 +1090,13 @@ class _WorkerAttendancePreviewCardState
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Color(0xFF0A51D0), width: 2),
-                  image: DecorationImage(
-                    image: getProfileImage(
-                      widget.record.profileImage,
-                      widget.record.email,
-                      0,
-                    ),
-                    fit: BoxFit.cover,
-                  ),
+              WorkerAvatar(
+                imageUrl: widget.record.profileImage,
+                name: widget.record.name,
+                size: 60,
+                border: Border.all(
+                  color: const Color(0xFF0A51D0),
+                  width: 2,
                 ),
               ),
               const SizedBox(width: 16),

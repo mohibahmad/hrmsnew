@@ -10,6 +10,7 @@ class LocalizationHelper {
       case 'Female':
         return 'female'.tr();
       case 'Other':
+      case 'Others':
         return 'other'.tr();
       default:
         return value;

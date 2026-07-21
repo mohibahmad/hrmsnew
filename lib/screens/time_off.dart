@@ -797,13 +797,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             padding: const EdgeInsets.only(right: 24.0),
                             child: Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundImage: getProfileImage(
-                                    doc['profileImage']?.toString(),
-                                    doc['email']?.toString(),
-                                    index,
-                                  ),
+                                WorkerAvatar(
+                                  imageUrl: doc['profileImage']?.toString(),
+                                  name: name,
+                                  size: 40,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -1091,23 +1088,13 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF0A51D0),
-                            width: 2,
-                          ),
-                          image: DecorationImage(
-                            image: getProfileImage(
-                              data['profileImage']?.toString(),
-                              data['email']?.toString(),
-                              index,
-                            ),
-                            fit: BoxFit.cover,
-                          ),
+                      WorkerAvatar(
+                        imageUrl: data['profileImage']?.toString(),
+                        name: name,
+                        size: 140,
+                        border: Border.all(
+                          color: const Color(0xFF0A51D0),
+                          width: 2,
                         ),
                       ),
                       const SizedBox(width: 20),

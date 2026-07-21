@@ -20,6 +20,7 @@ import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
+import '../utils/worker_identity.dart';
 import '../utils/localization_helper.dart';
 import '../utils/rate_us_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -788,74 +789,42 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _isSaving = true;
     });
 
-    // Check for duplicate National ID and Email against existing workers
+    // Do not allow duplicate name, email, or National ID.
     final nationalId = _nationalIdController.text.trim();
-    final emailLower = email.toLowerCase();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
     if (!isEditing) {
       try {
-        if (isGuest) {
-          for (final w in DummyData.workers) {
-            final existingNid = (w['nationalId'] ?? '').toString().trim();
-            final existingEmail = (w['email'] ?? '').toString().toLowerCase().trim();
-            if (nationalId.isNotEmpty && existingNid == nationalId) {
-              if (mounted) {
-                setState(() => _isSaving = false);
-                FlashySnackBar.show(
-                  context,
-                  message: 'duplicate_national_id'.tr(),
-                  title: 'validation_error'.tr(),
-                  isError: true,
-                );
-              }
-              return;
-            }
-            if (emailLower.isNotEmpty && existingEmail == emailLower) {
-              if (mounted) {
-                setState(() => _isSaving = false);
-                FlashySnackBar.show(
-                  context,
-                  message: 'duplicate_email'.tr(),
-                  title: 'validation_error'.tr(),
-                  isError: true,
-                );
-              }
-              return;
-            }
-          }
-        } else {
+        Iterable<Map<String, dynamic>> existingWorkers = DummyData.workers;
+        if (!isGuest) {
           final snapshot = await FirestoreService().getWorkersOnce();
-          for (final doc in snapshot.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final existingNid = (data['nationalId'] ?? '').toString().trim();
-            final existingEmail = (data['email'] ?? '').toString().toLowerCase().trim();
-            if (nationalId.isNotEmpty && existingNid == nationalId) {
-              if (mounted) {
-                setState(() => _isSaving = false);
-                FlashySnackBar.show(
-                  context,
-                  message: 'duplicate_national_id'.tr(),
-                  title: 'validation_error'.tr(),
-                  isError: true,
-                );
-              }
-              return;
-            }
-            if (emailLower.isNotEmpty && existingEmail == emailLower) {
-              if (mounted) {
-                setState(() => _isSaving = false);
-                FlashySnackBar.show(
-                  context,
-                  message: 'duplicate_email'.tr(),
-                  title: 'validation_error'.tr(),
-                  isError: true,
-                );
-              }
-              return;
-            }
-          }
+          existingWorkers = snapshot.docs.map(
+            (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+          );
+        }
+
+        final duplicateField = WorkerIdentity.duplicateField({
+          'name': name,
+          'email': email,
+          'nationalId': nationalId,
+        }, existingWorkers);
+        if (duplicateField != null && mounted) {
+          setState(() => _isSaving = false);
+          final messageKey = switch (duplicateField) {
+            DuplicateWorkerField.name => 'duplicate_name',
+            DuplicateWorkerField.email => 'duplicate_email',
+            DuplicateWorkerField.nationalId => 'duplicate_national_id',
+            DuplicateWorkerField.frontId => 'duplicate_front_id',
+            DuplicateWorkerField.backId => 'duplicate_back_id',
+          };
+          FlashySnackBar.show(
+            context,
+            message: messageKey.tr(),
+            title: 'validation_error'.tr(),
+            isError: true,
+          );
+          return;
         }
       } catch (_) {}
     }
@@ -1050,6 +1019,25 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       final dialogShown = await tryShowFirstMilestoneRateUs(context, 'worker');
       if (!dialogShown && context.mounted) {
         widget.onBack?.call();
+      }
+    } on DuplicateWorkerException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        final messageKey = switch (e.field) {
+          DuplicateWorkerField.name => 'duplicate_name',
+          DuplicateWorkerField.email => 'duplicate_email',
+          DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          DuplicateWorkerField.frontId => 'duplicate_front_id',
+          DuplicateWorkerField.backId => 'duplicate_back_id',
+        };
+        FlashySnackBar.show(
+          context,
+          message: messageKey.tr(),
+          title: 'validation_error'.tr(),
+          isError: true,
+        );
       }
     } on ValidationException catch (e) {
       if (mounted) {
@@ -1984,7 +1972,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             label: 'gender_label'.tr(),
                             selectedValue: genderController.text,
                             hint: 'enter_gender'.tr(),
-                            items: const ['Male', 'Female'],
+                            items: const ['Male', 'Female', 'Other'],
                             itemLabelBuilder: (val) => _localizeGender(val),
                             onChanged: (val) {
                               if (val != null) {

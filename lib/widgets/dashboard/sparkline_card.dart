@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:intl/intl.dart';
 import '../custom_timeframe_dropdown.dart';
+import '../../services/dashboard_chart_service.dart';
 
 class SparklineCard extends StatelessWidget {
   final String title;
   final String amount;
   final double rawValue;
+  final List<DashboardChartPoint> points;
   final String period;
   final Color lineColor;
 
@@ -17,13 +18,14 @@ class SparklineCard extends StatelessWidget {
     required this.title,
     required this.amount,
     required this.rawValue,
+    required this.points,
     required this.period,
     required this.lineColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool isEmpty = amount == '\$0';
+    final bool isEmpty = rawValue <= 0 || points.isEmpty;
     return Card(
       elevation: 0,
       color: Color(0xFFFFFFFF),
@@ -91,15 +93,15 @@ class SparklineCard extends StatelessWidget {
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerRight,
-                                child: Text(
-                                  amount,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              child: Text(
+                                amount,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             Text(
@@ -136,36 +138,27 @@ class SparklineCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 650),
                     curve: Curves.easeOutQuart,
                     builder: (context, animValue, child) {
-                      final double m = period == 'Week'
-                          ? 0.3
-                          : period == 'Month'
-                          ? 0.6
-                          : period == '6 Month'
-                          ? 0.9
-                          : 1.0;
-                      final double scaleFactor =
-                          (rawValue > 0 ? rawValue : 1.0) / 7.0;
-                      final spots = [
-                        FlSpot(0, 3 * m * scaleFactor),
-                        FlSpot(1, 6 * m * scaleFactor),
-                        FlSpot(2, 4 * m * scaleFactor),
-                        FlSpot(3, 4 * m * scaleFactor),
-                        FlSpot(4, 7 * m * scaleFactor),
-                        FlSpot(5, 5 * m * scaleFactor),
-                        FlSpot(6, 6 * m * scaleFactor),
-                        FlSpot(7, 2 * m * scaleFactor),
-                        FlSpot(8, 7 * m * scaleFactor),
-                      ];
+                      final spots = points.asMap().entries.map((entry) {
+                        return FlSpot(entry.key.toDouble(), entry.value.value);
+                      }).toList();
+                      final highestValue = points.fold<double>(0, (highest, p) {
+                        return p.value > highest ? p.value : highest;
+                      });
 
                       return LineChart(
                         LineChartData(
                           minX: -0.5,
                           maxX: (spots.length - 1).toDouble() + 0.5,
                           minY: 0,
-                          maxY: 13 * scaleFactor,
+                          maxY: highestValue > 0 ? highestValue * 1.25 : 1,
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
                               tooltipRoundedRadius: 8,
+                              tooltipPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              tooltipMargin: 10,
                               getTooltipItems: (tSpots) {
                                 if (tSpots.isEmpty) return <LineTooltipItem>[];
                                 final seenX = <double>{};
@@ -176,7 +169,17 @@ class SparklineCard extends StatelessWidget {
                                 );
                                 return tSpots.map((tSpot) {
                                   if (seenX.add(tSpot.x)) {
-                                    final label = nf.format(tSpot.y);
+                                    final pointIndex = tSpot.x
+                                        .round()
+                                        .clamp(0, points.length - 1)
+                                        .toInt();
+                                    final point = points[pointIndex];
+                                    final dateLabel = _dateLabel(
+                                      context,
+                                      point.date,
+                                    );
+                                    final label =
+                                        '$dateLabel\n$title: ${nf.format(point.value)}';
                                     return LineTooltipItem(
                                       label,
                                       const TextStyle(
@@ -296,5 +299,19 @@ class SparklineCard extends StatelessWidget {
               ),
             ),
     );
+  }
+
+  String _dateLabel(BuildContext context, DateTime date) {
+    final locale = context.locale.toString();
+    if (period == 'Today') {
+      return DateFormat('MMM d • h a', locale).format(date);
+    }
+    if (period == 'Week') {
+      return DateFormat('EEE, MMM d', locale).format(date);
+    }
+    if (period == 'Month') {
+      return DateFormat('MMM d', locale).format(date);
+    }
+    return DateFormat('MMMM yyyy', locale).format(date);
   }
 }

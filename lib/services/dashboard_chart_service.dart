@@ -1,0 +1,124 @@
+import 'payroll_service.dart';
+
+class DashboardChartPoint {
+  final DateTime date;
+  final double value;
+
+  const DashboardChartPoint({required this.date, required this.value});
+}
+
+class DashboardChartSeries {
+  final List<DashboardChartPoint> points;
+  final double total;
+
+  const DashboardChartSeries({required this.points, required this.total});
+}
+
+class DashboardChartService {
+  DashboardChartService._();
+
+  static DashboardChartSeries buildSeries({
+    required List<Map<String, dynamic>> records,
+    required double Function(Map<String, dynamic> record) valueOf,
+    required String period,
+    DateTime? Function(Map<String, dynamic> record)? dateOf,
+    DateTime? now,
+    bool placeUndatedInCurrentPeriod = false,
+  }) {
+    final current = now ?? DateTime.now();
+    final datedValues = <({DateTime date, double value})>[];
+    for (final record in records) {
+      final value = valueOf(record);
+      if (!value.isFinite || value == 0) continue;
+      final date = (dateOf ?? PayrollService.payrollRecordDate)(record);
+      if (date != null) {
+        datedValues.add((date: date, value: value));
+      } else if (placeUndatedInCurrentPeriod) {
+        datedValues.add((date: current, value: value));
+      }
+    }
+
+    if (period == 'Today') {
+      final day = DateTime(current.year, current.month, current.day);
+      final points = List.generate(6, (index) {
+        final startHour = index * 4;
+        final value = datedValues
+            .where(
+              (item) =>
+                  _sameDay(item.date, day) &&
+                  item.date.hour >= startHour &&
+                  item.date.hour < startHour + 4,
+            )
+            .fold<double>(0, (sum, item) => sum + item.value);
+        return DashboardChartPoint(
+          date: day.add(Duration(hours: startHour)),
+          value: value,
+        );
+      });
+      return DashboardChartSeries(points: points, total: _sum(points));
+    }
+
+    if (period == 'Week') {
+      final today = DateTime(current.year, current.month, current.day);
+      final start = today.subtract(const Duration(days: 6));
+      final points = List.generate(7, (index) {
+        final day = start.add(Duration(days: index));
+        return DashboardChartPoint(
+          date: day,
+          value: datedValues
+              .where((item) => _sameDay(item.date, day))
+              .fold<double>(0, (sum, item) => sum + item.value),
+        );
+      });
+      return DashboardChartSeries(points: points, total: _sum(points));
+    }
+
+    if (period == 'Month') {
+      final start = DateTime(current.year, current.month, 1);
+      final dayCount = current.day;
+      double runningTotal = 0;
+      final points = List.generate(dayCount, (index) {
+        final day = start.add(Duration(days: index));
+        runningTotal += datedValues
+            .where((item) => _sameDay(item.date, day))
+            .fold<double>(0, (sum, item) => sum + item.value);
+        return DashboardChartPoint(date: day, value: runningTotal);
+      });
+      return DashboardChartSeries(points: points, total: runningTotal);
+    }
+
+    final monthCount = period == '6 Month' ? 6 : 12;
+    final firstMonth = period == '6 Month'
+        ? DateTime(current.year, current.month - 5, 1)
+        : DateTime(current.year, 1, 1);
+    final points = List.generate(monthCount, (index) {
+      final month = DateTime(firstMonth.year, firstMonth.month + index, 1);
+      return DashboardChartPoint(
+        date: month,
+        value: datedValues
+            .where(
+              (item) =>
+                  item.date.year == month.year &&
+                  item.date.month == month.month,
+            )
+            .fold<double>(0, (sum, item) => sum + item.value),
+      );
+    });
+    return DashboardChartSeries(points: points, total: _sum(points));
+  }
+
+  static bool _sameDay(DateTime first, DateTime second) =>
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+
+  static DateTime? expenseRecordDate(Map<String, dynamic> record) {
+    final enteredDate = PayrollService.payrollRecordDate({
+      'date': record['date'],
+    });
+    return enteredDate ?? PayrollService.payrollRecordDate(record);
+  }
+
+  static double _sum(List<DashboardChartPoint> points) =>
+      points.fold<double>(0, (sum, point) => sum + point.value);
+}

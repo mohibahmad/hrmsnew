@@ -35,6 +35,13 @@ class HolidaysScreen extends StatefulWidget {
 
 class _HolidaysScreenState extends State<HolidaysScreen> {
   Map<String, List<HolidayItem>> _holidaysByMonth = {};
+  Set<int> _companyWorkingDays = {
+    DateTime.monday,
+    DateTime.tuesday,
+    DateTime.wednesday,
+    DateTime.thursday,
+    DateTime.friday,
+  };
   bool _isLoading = false;
   StreamSubscription? _holidaysSub;
 
@@ -64,6 +71,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               .toList(),
         );
       });
+      PreferencesService.getCompanyWorkingDays().then((days) {
+        if (mounted) setState(() => _companyWorkingDays = days);
+      });
     } else {
       _isLoading = true;
       _holidaysSub = FirestoreService().holidaysStream.listen(
@@ -84,8 +94,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               }
               return 0;
             });
+            var workingDays = _companyWorkingDays;
             for (final doc in sortedDocs) {
               final data = doc.data() as Map<String, dynamic>;
+              if (data['type'] == 'company_work_days') {
+                final savedDays = (data['workingDays'] as List<dynamic>? ?? [])
+                    .whereType<num>()
+                    .map((day) => day.toInt())
+                    .where(
+                      (day) => day >= DateTime.monday && day <= DateTime.sunday,
+                    )
+                    .toSet();
+                if (savedDays.isNotEmpty) workingDays = savedDays;
+                continue;
+              }
               final month = (data['month'] ?? 'May').toString();
               final day = (data['day'] as num?)?.toInt() ?? 1;
               final name = (data['name'] ?? '').toString();
@@ -102,6 +124,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             }
             setState(() {
               _holidaysByMonth = tempMap;
+              _companyWorkingDays = workingDays;
               _isLoading = false;
             });
           }
@@ -115,6 +138,172 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         },
       );
     }
+  }
+
+  static const Map<int, String> _weekdayKeys = {
+    DateTime.monday: 'weekday_monday',
+    DateTime.tuesday: 'weekday_tuesday',
+    DateTime.wednesday: 'weekday_wednesday',
+    DateTime.thursday: 'weekday_thursday',
+    DateTime.friday: 'weekday_friday',
+    DateTime.saturday: 'weekday_saturday',
+    DateTime.sunday: 'weekday_sunday',
+  };
+
+  String _weekdayLabel(int day) => (_weekdayKeys[day] ?? '').tr();
+
+  Future<void> _showCompanyWorkDaysModal() async {
+    final selectedDays = Set<int>.from(_companyWorkingDays);
+    await showDialog<void>(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final offDays = _weekdayKeys.keys
+              .where((day) => !selectedDays.contains(day))
+              .toList();
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            title: Text(
+              'company_work_days'.tr(),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'company_work_days_help'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 14,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'working_days'.tr(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _weekdayKeys.keys.map((day) {
+                      final selected = selectedDays.contains(day);
+                      return FilterChip(
+                        selected: selected,
+                        showCheckmark: true,
+                        selectedColor: const Color(0xFFDCE8FF),
+                        checkmarkColor: const Color(0xFF0247C4),
+                        side: BorderSide(
+                          color: selected
+                              ? const Color(0xFF0247C4)
+                              : const Color(0xFFCBD5E1),
+                        ),
+                        label: Text(_weekdayLabel(day)),
+                        onSelected: (value) {
+                          setModalState(() {
+                            if (value) {
+                              selectedDays.add(day);
+                            } else {
+                              selectedDays.remove(day);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'company_off_days'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFFD81B1F),
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    offDays.isEmpty
+                        ? 'none'.tr()
+                        : offDays.map(_weekdayLabel).join(', '),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text('cancel'.tr()),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0247C4),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () async {
+                  if (selectedDays.isEmpty) {
+                    FlashySnackBar.show(
+                      context,
+                      message: 'select_at_least_one_work_day'.tr(),
+                      isError: true,
+                    );
+                    return;
+                  }
+                  try {
+                    final isGuest =
+                        AuthService().currentUser?.isAnonymous ?? false;
+                    if (isGuest) {
+                      await PreferencesService.setCompanyWorkingDays(
+                        selectedDays,
+                      );
+                    } else {
+                      await FirestoreService().setCompanyWorkingDays(
+                        selectedDays,
+                      );
+                    }
+                    if (!mounted || !dialogContext.mounted) return;
+                    setState(() {
+                      _companyWorkingDays = Set<int>.from(selectedDays);
+                    });
+                    Navigator.of(dialogContext).pop();
+                    FlashySnackBar.show(
+                      this.context,
+                      message: 'company_work_days_saved'.tr(),
+                    );
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    FlashySnackBar.show(
+                      context,
+                      message: error.toString(),
+                      isError: true,
+                    );
+                  }
+                },
+                child: Text('save'.tr()),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   void _showAddHolidayModal(BuildContext parentContext) {
@@ -623,6 +812,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTopActionRow(context),
+                  const SizedBox(height: 16),
+                  _buildCompanyWorkDaysSummary(),
                   const SizedBox(height: 24),
                   _isLoading
                       ? const Padding(
@@ -694,67 +885,174 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             fontFamily: 'SF Pro Display',
           ),
         ),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-              if (isGuest) {
-                if (!mounted) return;
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-                return;
-              }
-              final isPremium = await PreferencesService.isPremium();
-              if (!mounted) return;
-              if (!PremiumGate.canAddEntry(
-                currentEntryCount: _holidaysByMonth.values.fold<int>(
-                  0,
-                  (sum, list) => sum + list.length,
+        Flexible(
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _showCompanyWorkDaysModal,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF0247C4),
+                  minimumSize: const Size(32, 50),
+                  side: const BorderSide(color: Color(0xFF0247C4)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
-                isPremium: isPremium,
-                isGuest: isGuest,
-              )) {
-                final upgraded = await PremiumGate.shouldShowUpgradeDialog(
-                  context,
-                );
-                if (upgraded == true && mounted) {
-                  _showAddHolidayModal(context);
-                }
-                return;
-              }
-              if (!mounted) return;
-              _showAddHolidayModal(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0247C4),
-              minimumSize: const Size(32, 50),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
+                icon: const Icon(Icons.calendar_view_week_outlined, size: 21),
+                label: Text(
+                  'add_company_work_days'.tr(),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
               ),
-              elevation: 0,
-            ),
-            icon: SvgPicture.asset(
-              'assets/holidays_icon.svg',
-              width: 22,
-              height: 22,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFFFFFFF),
-                BlendMode.srcIn,
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final isGuest =
+                        AuthService().currentUser?.isAnonymous ?? false;
+                    if (isGuest) {
+                      if (!mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                      return;
+                    }
+                    final isPremium = await PreferencesService.isPremium();
+                    if (!mounted) return;
+                    if (!PremiumGate.canAddEntry(
+                      currentEntryCount: _holidaysByMonth.values.fold<int>(
+                        0,
+                        (sum, list) => sum + list.length,
+                      ),
+                      isPremium: isPremium,
+                      isGuest: isGuest,
+                    )) {
+                      final upgraded =
+                          await PremiumGate.shouldShowUpgradeDialog(context);
+                      if (upgraded == true && mounted) {
+                        _showAddHolidayModal(context);
+                      }
+                      return;
+                    }
+                    if (!mounted) return;
+                    _showAddHolidayModal(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0247C4),
+                    minimumSize: const Size(32, 50),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: SvgPicture.asset(
+                    'assets/holidays_icon.svg',
+                    width: 22,
+                    height: 22,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFFFFFFF),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  label: Text(
+                    'add_holiday'.tr(),
+                    style: TextStyle(
+                      color: Color(0xFFFFFFFF),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                ),
               ),
-            ),
-            label: Text(
-              'add_holiday'.tr(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompanyWorkDaysSummary() {
+    final workingDays = _weekdayKeys.keys
+        .where(_companyWorkingDays.contains)
+        .map(_weekdayLabel)
+        .join(', ');
+    final offDays = _weekdayKeys.keys
+        .where((day) => !_companyWorkingDays.contains(day))
+        .map(_weekdayLabel)
+        .join(', ');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Wrap(
+        spacing: 36,
+        runSpacing: 12,
+        children: [
+          _buildDaySummary(
+            Icons.work_outline,
+            'working_days'.tr(),
+            workingDays,
+            const Color(0xFF0247C4),
+          ),
+          _buildDaySummary(
+            Icons.event_busy_outlined,
+            'company_off_days'.tr(),
+            offDays.isEmpty ? 'none'.tr() : offDays,
+            const Color(0xFFD81B1F),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDaySummary(
+    IconData icon,
+    String title,
+    String days,
+    Color color,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
               style: TextStyle(
-                color: Color(0xFFFFFFFF),
-                fontSize: 16,
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              days,
+              style: const TextStyle(
+                color: Color(0xFF334155),
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
               ),
             ),
-          ),
+          ],
         ),
       ],
     );
@@ -933,8 +1231,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     for (var h in monthList) {
                                       if (h['day'] == item.day &&
                                           h['name'] == item.name) {
-                                        h['name'] =
-                                            holidayNameController.text.trim();
+                                        h['name'] = holidayNameController.text
+                                            .trim();
                                         h['day'] = selectedDay;
                                         h['month'] = selectedMonthName;
                                         break;
@@ -963,13 +1261,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                 });
                               } else {
                                 if (item.id != null) {
-                                  await FirestoreService()
-                                      .updateHoliday(item.id!, {
-                                        'name':
-                                            holidayNameController.text.trim(),
-                                        'day': selectedDay,
-                                        'month': selectedMonthName,
-                                      });
+                                  await FirestoreService().updateHoliday(
+                                    item.id!,
+                                    {
+                                      'name': holidayNameController.text.trim(),
+                                      'day': selectedDay,
+                                      'month': selectedMonthName,
+                                    },
+                                  );
                                 }
                               }
                               if (!context.mounted) return;
@@ -1022,9 +1321,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextField(
                         controller: holidayNameController,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(50),
-                        ],
+                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
                         decoration: InputDecoration.collapsed(
                           hintText: 'enter_holiday_name'.tr(),
                           hintStyle: TextStyle(

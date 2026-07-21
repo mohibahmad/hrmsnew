@@ -110,15 +110,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     super.initState();
     _salaryCtrl.text = _salaryStr;
 
-    final annualLeaves = widget.workerData['annualLeaves']?.toString() ?? '0';
-    final leavesUsed = widget.workerData['leavesUsed']?.toString() ?? '0';
-    int remaining =
-        (int.tryParse(annualLeaves) ?? 0) - (int.tryParse(leavesUsed) ?? 0);
-    if (remaining < 0) remaining = 0;
-
-    _leavesCtrl.text = remaining.toString(); // Show remaining leaves in payroll
-
-    _absentsCtrl.text = (widget.workerData['absents'] ?? '').toString();
+    // Payroll fields represent days actually absent/on leave. Never initialize
+    // them from the worker's configured leave allowance.
+    final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
+    _absentsCtrl.text = attendanceCounts['absents'].toString();
+    _leavesCtrl.text = attendanceCounts['leaves'].toString();
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
@@ -144,6 +140,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       final attendance = await FirestoreService().getWorkerMonthlyAttendance(
         _email,
       );
+      if (!mounted) return;
       setState(() {
         _absentsCtrl.text = (attendance['absents'] ?? 0).toString();
         _leavesCtrl.text = (attendance['leaves'] ?? 0).toString();
@@ -608,14 +605,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              ClipRRect(
+              WorkerAvatar(
+                imageUrl: _profileImage,
+                name: _name,
+                size: 80,
+                shape: BoxShape.rectangle,
                 borderRadius: BorderRadius.circular(12),
-                child: Image(
-                  image: getProfileImage(_profileImage, _email, 0),
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                ),
               ),
               Positioned(
                 bottom: -8,

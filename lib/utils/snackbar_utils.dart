@@ -13,6 +13,8 @@ class FlashySnackBar {
     required String message,
     String? title,
     bool isError = false,
+    int? maxLines = 3,
+    Duration displayDuration = const Duration(seconds: 4),
   }) {
     if (!context.mounted) return;
 
@@ -44,6 +46,7 @@ class FlashySnackBar {
         message: message,
         title: title,
         isError: isError,
+        maxLines: maxLines,
         onDismiss: () {
           if (entry.mounted) {
             _currentEntry = null;
@@ -56,7 +59,7 @@ class FlashySnackBar {
     _currentEntry = entry;
     overlay.insert(entry);
 
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(displayDuration, () {
       if (entry.mounted) {
         if (_currentEntry == entry) _currentEntry = null;
         entry.remove();
@@ -69,12 +72,14 @@ class _FlashySnackBarBody extends StatefulWidget {
   final String message;
   final String? title;
   final bool isError;
+  final int? maxLines;
   final VoidCallback onDismiss;
 
   const _FlashySnackBarBody({
     required this.message,
     this.title,
     required this.isError,
+    required this.maxLines,
     required this.onDismiss,
   });
 
@@ -184,37 +189,46 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                     ),
                     const SizedBox(width: 14),
                     Flexible(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.title ??
-                                (widget.isError ? 'error_title'.tr() : 'success'.tr()),
-                            softWrap: true,
-                            maxLines: 2,
-                            overflow: TextOverflow.visible,
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'SF Pro Display',
-                            ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.sizeOf(context).height * 0.55,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.title ??
+                                    (widget.isError
+                                        ? 'error_title'.tr()
+                                        : 'success'.tr()),
+                                softWrap: true,
+                                maxLines: 2,
+                                overflow: TextOverflow.visible,
+                                style: const TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                widget.message,
+                                softWrap: true,
+                                maxLines: widget.maxLines,
+                                overflow: TextOverflow.visible,
+                                style: const TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.message,
-                            softWrap: true,
-                            maxLines: 3,
-                            overflow: TextOverflow.visible,
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

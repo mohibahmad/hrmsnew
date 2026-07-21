@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -24,6 +23,7 @@ import '../utils/logout_dialog.dart';
 import '../widgets/notification_sidebar.dart';
 import 'login_screen.dart';
 import '../services/payroll_service.dart';
+import '../services/dashboard_chart_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/date_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
@@ -170,10 +170,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int _totalWorkersCount = 0;
   int _maleWorkersCount = 0;
   int _femaleWorkersCount = 0;
+  int _otherWorkersCount = 0;
   double _totalExpensesSum = 0.0;
   double _totalSalarySum = 0.0;
   List<Map<String, dynamic>> _rawExpensesDocs = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
+  List<DashboardChartPoint> _salaryChartPoints = [];
+  List<DashboardChartPoint> _expenseChartPoints = [];
   List<Map<String, dynamic>> _holidays = [];
   StreamSubscription? _holidaysSub;
   StreamSubscription? _workersSub;
@@ -325,16 +328,20 @@ class _HomeScreenState extends State<HomeScreen> {
         _totalWorkersCount = workersList.length;
         int mCount = 0;
         int fCount = 0;
+        int oCount = 0;
         for (final w in workersList) {
           final genderStr = (w['gender'] ?? '').toString().trim().toLowerCase();
           if (genderStr == 'female') {
             fCount++;
           } else if (genderStr == 'male') {
             mCount++;
+          } else if (genderStr == 'other' || genderStr == 'others') {
+            oCount++;
           }
         }
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
+        _otherWorkersCount = oCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
 
         // Guest: use all dummy attendance data (dummy data has no createdAt)
@@ -349,7 +356,9 @@ class _HomeScreenState extends State<HomeScreen> {
             .cast<Map<String, dynamic>>()
             .toList();
 
-        _unreadNotifCount = DummyData.notifications.where((n) => n['isRead'] != true).length;
+        _unreadNotifCount = DummyData.notifications
+            .where((n) => n['isRead'] != true)
+            .length;
       });
     } else {
       final firestore = FirestoreService();
@@ -361,9 +370,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _holidaysSub = firestore.holidaysStream.listen((snap) {
         if (mounted) {
           setState(() {
-            _holidays = snap.docs.map((d) {
-              return {...d.data() as Map<String, dynamic>, 'id': d.id};
-            }).toList();
+            _holidays = snap.docs
+                .map((d) {
+                  return {...d.data() as Map<String, dynamic>, 'id': d.id};
+                })
+                .where((holiday) => holiday['type'] != 'company_work_days')
+                .toList();
           });
         }
       });
@@ -372,6 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           int mCount = 0;
           int fCount = 0;
+          int oCount = 0;
           final list = <Map<String, dynamic>>[];
           for (final doc in snap.docs) {
             final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -384,6 +397,8 @@ class _HomeScreenState extends State<HomeScreen> {
               fCount++;
             } else if (genderStr == 'male') {
               mCount++;
+            } else if (genderStr == 'other' || genderStr == 'others') {
+              oCount++;
             }
           }
           setState(() {
@@ -391,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _totalWorkersCount = snap.docs.length;
             _maleWorkersCount = mCount;
             _femaleWorkersCount = fCount;
+            _otherWorkersCount = oCount;
           });
         }
       });
@@ -402,21 +418,22 @@ class _HomeScreenState extends State<HomeScreen> {
             _attendanceDocs = snap.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .where((att) {
-              final createdAt = att['createdAt'];
-              if (createdAt == null) return false;
-              DateTime? dt;
-              if (createdAt is DateTime) {
-                dt = createdAt;
-              } else if (createdAt is String) {
-                dt = DateTime.tryParse(createdAt);
-              } else if (createdAt is Timestamp) {
-                dt = createdAt.toDate();
-              }
-              return dt != null &&
-                  dt.year == today.year &&
-                  dt.month == today.month &&
-                  dt.day == today.day;
-            }).toList();
+                  final createdAt = att['createdAt'];
+                  if (createdAt == null) return false;
+                  DateTime? dt;
+                  if (createdAt is DateTime) {
+                    dt = createdAt;
+                  } else if (createdAt is String) {
+                    dt = DateTime.tryParse(createdAt);
+                  } else if (createdAt is Timestamp) {
+                    dt = createdAt.toDate();
+                  }
+                  return dt != null &&
+                      dt.year == today.year &&
+                      dt.month == today.month &&
+                      dt.day == today.day;
+                })
+                .toList();
             _totalAttendanceCount = _attendanceDocs.length;
           });
         }
@@ -439,9 +456,9 @@ class _HomeScreenState extends State<HomeScreen> {
             _rawExpensesDocs = snap.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>?;
               return {
+                ...?data,
                 'id': doc.id,
                 'amount': (data?['amount'] ?? 0.0) as num,
-                'date': (data?['date'] ?? '') as String,
               };
             }).toList();
             _recalculateSumsForPeriod(_selectedPeriod);
@@ -463,9 +480,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 salaryType: (data?['salaryType'] ?? 'Monthly').toString(),
               );
               return {
+                ...?data,
                 'id': doc.id,
                 'netSalary': result['netSalary'] as double,
-                'date': (data?['date'] ?? '') as String,
               };
             }).toList();
             _recalculateSumsForPeriod(_selectedPeriod);
@@ -499,102 +516,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _recalculateSumsForPeriod(String period) {
-    final now = DateTime.now();
-    DateTime? dateLimit;
-    if (period == 'Today') {
-      dateLimit = DateTime(now.year, now.month, now.day);
-    } else if (period == 'Week') {
-      dateLimit = now.subtract(const Duration(days: 7));
-    } else if (period == 'Month') {
-      dateLimit = now.subtract(const Duration(days: 30));
-    } else if (period == '6 Month') {
-      dateLimit = now.subtract(const Duration(days: 180));
-    } else if (period == 'Yearly') {
-      dateLimit = now.subtract(const Duration(days: 365));
-    }
+    final expenseSeries = DashboardChartService.buildSeries(
+      records: _rawExpensesDocs,
+      valueOf: (record) => ((record['amount'] ?? 0) as num).toDouble(),
+      period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
+    );
+    final salarySeries = DashboardChartService.buildSeries(
+      records: _rawPayrollDocs,
+      valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
+      period: period,
+    );
 
-    _totalExpensesSum = 0.0;
-    for (final doc in _rawExpensesDocs) {
-      if (dateLimit != null) {
-        final dateStr = (doc['date'] ?? '').toString();
-        final parts = dateStr.split('/');
-        if (parts.length == 3) {
-          final docDate = DateTime(
-            int.tryParse(parts[2]) ?? 0,
-            int.tryParse(parts[1]) ?? 0,
-            int.tryParse(parts[0]) ?? 0,
-          );
-          if (docDate.isBefore(dateLimit)) {
-            continue;
-          }
-        }
-      }
-      _totalExpensesSum += (doc['amount'] as num).toDouble();
-    }
-
-    _totalSalarySum = 0.0;
-
-    // Collect emails that already have payroll records
-    final Set<String> payrollEmails = {};
-    for (final doc in _rawPayrollDocs) {
-      final email = (doc['email'] ?? '').toString().trim().toLowerCase();
-      if (email.isNotEmpty) payrollEmails.add(email);
-    }
-
-    // Add salary from payroll records
-    for (final doc in _rawPayrollDocs) {
-      if (dateLimit != null) {
-        final dateStr = (doc['date'] ?? '').toString();
-        final parts = dateStr.split('/');
-        if (parts.length == 3) {
-          final docDate = DateTime(
-            int.tryParse(parts[2]) ?? 0,
-            int.tryParse(parts[1]) ?? 0,
-            int.tryParse(parts[0]) ?? 0,
-          );
-          if (docDate.isBefore(dateLimit)) {
-            continue;
-          }
-        }
-      }
-      _totalSalarySum += doc['netSalary'] as double;
-    }
-
-
+    _expenseChartPoints = expenseSeries.points;
+    _salaryChartPoints = salarySeries.points;
+    _totalExpensesSum = expenseSeries.total;
+    _totalSalarySum = salarySeries.total;
   }
 
   void _recalculateDummyTotals(String period) {
-    double scale = 1.0;
-    if (period == 'Today')
-      scale = 0.02;
-    else if (period == 'Week')
-      scale = 0.05;
-    else if (period == 'Month')
-      scale = 0.2;
-    else if (period == '6 Month')
-      scale = 0.75;
-    else if (period == 'Yearly')
-      scale = 1.0;
+    final expenseSeries = DashboardChartService.buildSeries(
+      records: DummyData.expenses,
+      valueOf: (record) => ((record['amount'] ?? 0) as num).toDouble(),
+      period: period,
+      dateOf: DashboardChartService.expenseRecordDate,
+      placeUndatedInCurrentPeriod: true,
+    );
+    final payrollRecords = DummyData.payroll.map((item) {
+      final result = PayrollService.calculatePayroll(
+        salary: (item['salary'] ?? '').toString(),
+        totalWorkDays: (item['totalWorkDays'] ?? '').toString(),
+        absents: (item['absents'] ?? '').toString(),
+        leaves: (item['leaves'] ?? '').toString(),
+        overtimeAmount: (item['overtimeAmount'] ?? '').toString(),
+        salaryType: (item['salaryType'] ?? 'Monthly').toString(),
+      );
+      return {...item, 'netSalary': result['netSalary'] as double};
+    }).toList();
+    final salarySeries = DashboardChartService.buildSeries(
+      records: payrollRecords,
+      valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
+      period: period,
+      placeUndatedInCurrentPeriod: true,
+    );
 
-    _totalExpensesSum =
-        DummyData.expenses.fold(0.0, (sum, item) {
-          return sum + ((item['amount'] ?? 0.0) as num).toDouble();
-        }) *
-        scale;
-
-    _totalSalarySum =
-        DummyData.payroll.fold(0.0, (sum, item) {
-          final result = PayrollService.calculatePayroll(
-            salary: (item['salary'] ?? '').toString(),
-            totalWorkDays: (item['totalWorkDays'] ?? '').toString(),
-            absents: (item['absents'] ?? '').toString(),
-            leaves: (item['leaves'] ?? '').toString(),
-            overtimeAmount: (item['overtimeAmount'] ?? '').toString(),
-            salaryType: (item['salaryType'] ?? 'Monthly').toString(),
-          );
-          return sum + (result['netSalary'] as double);
-        }) *
-        scale;
+    _expenseChartPoints = expenseSeries.points;
+    _salaryChartPoints = salarySeries.points;
+    _totalExpensesSum = expenseSeries.total;
+    _totalSalarySum = salarySeries.total;
   }
 
   void _handleLogout() {
@@ -617,7 +586,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _showNotifications = false;
     });
   }
-
 
   void _toggleNotifications() {
     final willShow = !_showNotifications;
@@ -714,43 +682,47 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // 0: Dashboard View
                                 _activatedScreens[0]
                                     ? (_dashboardReady
-                                        ? TweenAnimationBuilder<double>(
-                                            key: ValueKey(stackIndex == 0),
-                                            tween: Tween<double>(begin: 0, end: 1),
-                                            duration: const Duration(
-                                              milliseconds: 650,
-                                            ),
-                                            curve: Curves.easeOutQuart,
-                                            builder: (context, value, child) {
-                                              return Opacity(
-                                                opacity: value,
-                                                child: Transform.translate(
-                                                  offset: Offset(
-                                                    0,
-                                                    15 * (1 - value),
+                                          ? TweenAnimationBuilder<double>(
+                                              key: ValueKey(stackIndex == 0),
+                                              tween: Tween<double>(
+                                                begin: 0,
+                                                end: 1,
+                                              ),
+                                              duration: const Duration(
+                                                milliseconds: 650,
+                                              ),
+                                              curve: Curves.easeOutQuart,
+                                              builder: (context, value, child) {
+                                                return Opacity(
+                                                  opacity: value,
+                                                  child: Transform.translate(
+                                                    offset: Offset(
+                                                      0,
+                                                      15 * (1 - value),
+                                                    ),
+                                                    child: child,
                                                   ),
-                                                  child: child,
+                                                );
+                                              },
+                                              child: _buildDashboardView(),
+                                            )
+                                          : Column(
+                                              children: [
+                                                TopHeader(
+                                                  onProfileTap: _openProfile,
+                                                  onNotificationTap:
+                                                      _toggleNotifications,
+                                                  unreadCount:
+                                                      _unreadNotifCount,
                                                 ),
-                                              );
-                                            },
-                                            child: _buildDashboardView(),
-                                          )
-                                        : Column(
-                                            children: [
-                                              TopHeader(
-                                                onProfileTap: _openProfile,
-                                                onNotificationTap:
-                                                    _toggleNotifications,
-                                                unreadCount: _unreadNotifCount,
-                                              ),
-                                              const Expanded(
-                                                child: Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
+                                                const Expanded(
+                                                  child: Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
-                                          ))
+                                              ],
+                                            ))
                                     : const SizedBox.shrink(),
                                 // 1: Workers Screen
                                 _getScreen(1),
@@ -796,7 +768,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           NotificationSidebar(
-                            key: ValueKey('notif_sidebar_${context.locale.languageCode}'),
+                            key: ValueKey(
+                              'notif_sidebar_${context.locale.languageCode}',
+                            ),
                             onClose: _toggleNotifications,
                             onNotificationTap: _handleNotificationNavigation,
                           ),
@@ -850,6 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           count: _totalWorkersCount,
                           maleCount: _maleWorkersCount,
                           femaleCount: _femaleWorkersCount,
+                          otherCount: _otherWorkersCount,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -859,6 +834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           amount:
                               '\$${NumberFormat.compact(locale: 'en_US').format(_totalSalarySum.clamp(0, double.infinity))}',
                           rawValue: _totalSalarySum,
+                          points: _salaryChartPoints,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF4C84E0),
                         ),
@@ -870,6 +846,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           amount:
                               '\$${NumberFormat.compact(locale: 'en_US').format(_totalExpensesSum)}',
                           rawValue: _totalExpensesSum,
+                          points: _expenseChartPoints,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF0EA5E9),
                         ),

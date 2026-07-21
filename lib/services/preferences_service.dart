@@ -12,6 +12,7 @@ class PreferencesService {
   static const String _rateUsFirstHolidayKey = 'rate_us_first_holiday';
   static const String _rateUsFirstBulkWorkerKey = 'rate_us_first_bulk_worker';
   static const String _rateUsFirstAssetKey = 'rate_us_first_asset';
+  static const String _companyWorkingDaysKey = 'company_working_days';
 
   /// Synchronous cache of the profile pic URL so it's available on the first
   /// frame (no async delay). Populated the first time [getProfilePicUrl] is
@@ -52,6 +53,35 @@ class PreferencesService {
   static Future<bool> isPremium() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_premiumKey) ?? false;
+  }
+
+  static Future<Set<int>> getCompanyWorkingDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_companyWorkingDaysKey);
+    if (saved == null) return {1, 2, 3, 4, 5};
+    final days = saved
+        .map(int.tryParse)
+        .whereType<int>()
+        .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
+        .toSet();
+    return days.isEmpty ? {1, 2, 3, 4, 5} : days;
+  }
+
+  static Future<void> setCompanyWorkingDays(Iterable<int> weekdays) async {
+    final days =
+        weekdays
+            .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
+            .toSet()
+            .toList()
+          ..sort();
+    if (days.isEmpty) {
+      throw ArgumentError('At least one company working day is required');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _companyWorkingDaysKey,
+      days.map((day) => day.toString()).toList(),
+    );
   }
 
   static Future<void> setProfilePicUrl(String? url) async {
@@ -148,6 +178,7 @@ class PreferencesService {
     await prefs.remove(_rateUsFirstHolidayKey);
     await prefs.remove(_rateUsFirstBulkWorkerKey);
     await prefs.remove(_rateUsFirstAssetKey);
+    await prefs.remove(_companyWorkingDaysKey);
     _cachedProfilePicUrl = null;
   }
 }

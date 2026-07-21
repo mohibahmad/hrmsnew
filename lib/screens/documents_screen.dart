@@ -40,7 +40,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   List<Map<String, dynamic>> _workers = [];
   bool _isLoading = false;
   StreamSubscription? _workersSub;
-  int _index = 0;
   Map<String, dynamic>? _editingWorker;
 
   @override
@@ -240,7 +239,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   Widget _buildWorkerCard(Map<String, dynamic> worker) {
     final name = (worker['name'] ?? 'Unknown').toString();
     final position = (worker['position'] ?? '').toString();
-    final email = (worker['email'] ?? '').toString();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -260,19 +258,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            ClipOval(
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: Image(
-                  image: getProfileImage(
-                    worker['profileImage']?.toString(),
-                    email,
-                    _index++,
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
+            WorkerAvatar(
+              imageUrl: worker['profileImage']?.toString(),
+              name: name,
+              size: 48,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1285,6 +1274,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final previewSize = (size.width * 0.4).clamp(280.0, 520.0);
+    final failedToLoadText = 'failed_to_load'.tr();
 
     final content = Container(
       width: previewSize,
@@ -1380,7 +1370,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'failed_to_load'.tr(),
+                                    failedToLoadText,
                                     style: TextStyle(color: Color(0xFF9E9E9E)),
                                   ),
                                 ],

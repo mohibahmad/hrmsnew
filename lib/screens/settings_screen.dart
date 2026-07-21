@@ -12,6 +12,7 @@ import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
+import 'forgot_password_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
 
@@ -45,26 +46,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _resetPassword(BuildContext context) async {
     final email = AuthService().currentUser?.email;
     if (email != null && email.isNotEmpty) {
-      try {
-        await AuthService().resetPassword(email);
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'password_reset_email_sent'.tr(
-              namedArgs: {'email': email},
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'failed_to_send_reset_email'.tr(
-              namedArgs: {'error': e.toString()},
-            ),
-            isError: true,
-          );
-        }
+      final passwordWasReset = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => ForgotPasswordScreen(initialEmail: email),
+        ),
+      );
+      if (passwordWasReset == true) {
+        await AuthService().signOut();
+        if (mounted) widget.onLogout();
       }
     } else {
       if (context.mounted) {

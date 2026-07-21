@@ -1,7 +1,37 @@
+import '../utils/worker_identity.dart';
+
 class AttendanceService {
   static final AttendanceService _instance = AttendanceService._();
   factory AttendanceService() => _instance;
   AttendanceService._();
+
+  /// Returns only this worker's attendance records. Email is the primary
+  /// identity; name is used for legacy records without a usable email.
+  static List<Map<String, dynamic>> recordsForWorker({
+    required Map<String, dynamic> worker,
+    required List<Map<String, dynamic>> attendanceRecords,
+  }) {
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
+    final workerName = WorkerIdentity.normalizeName(worker['name']);
+
+    return attendanceRecords.where((record) {
+      final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+      if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
+        return recordWorkerId == workerId;
+      }
+
+      final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
+      if (workerEmail.isNotEmpty && recordEmail.isNotEmpty) {
+        return recordEmail == workerEmail;
+      }
+
+      final recordName = WorkerIdentity.normalizeName(record['name']);
+      return workerName.isNotEmpty && recordName == workerName;
+    }).toList();
+  }
 
   static List<Map<String, dynamic>> combineAttendance({
     required List<Map<String, dynamic>> workersList,
@@ -18,9 +48,9 @@ class AttendanceService {
     final nameMap = <String, Map<String, dynamic>>{};
 
     for (var att in rawAttendanceDocs) {
-      final attId = (att['id'] ?? att['workerId'] ?? '').toString().trim().toLowerCase();
-      final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
-      final attName = (att['name'] ?? '').toString().trim().toLowerCase();
+      final attId = (att['workerId'] ?? '').toString().trim().toLowerCase();
+      final attEmail = WorkerIdentity.normalizeEmail(att['email']);
+      final attName = WorkerIdentity.normalizeName(att['name']);
       if (attId.isNotEmpty) {
         idMap.putIfAbsent(attId, () => att);
       }
@@ -34,8 +64,8 @@ class AttendanceService {
 
     for (var worker in workersList) {
       final wId = (worker['id'] ?? '').toString().trim().toLowerCase();
-      final wEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final wName = (worker['name'] ?? '').toString().trim().toLowerCase();
+      final wEmail = WorkerIdentity.normalizeEmail(worker['email']);
+      final wName = WorkerIdentity.normalizeName(worker['name']);
 
       final matched = <String, dynamic>{};
       if (wId.isNotEmpty && idMap.containsKey(wId)) {
@@ -49,6 +79,7 @@ class AttendanceService {
       if (matched.isNotEmpty) {
         combined.add({
           ...matched,
+          'workerId': worker['id'] ?? matched['workerId'],
           'name': worker['name'] ?? matched['name'],
           'role': worker['position'] ?? matched['role'] ?? '',
           'profileImage': worker['profileImage'],
@@ -57,6 +88,7 @@ class AttendanceService {
       } else {
         combined.add({
           'id': 'norecord_${worker['id'] ?? wEmail}',
+          'workerId': worker['id'],
           'name': worker['name'] ?? 'Worker',
           'email': worker['email'] ?? '',
           'role': worker['position'] ?? '',

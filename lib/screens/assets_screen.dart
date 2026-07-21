@@ -1168,13 +1168,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
               padding: const EdgeInsets.only(right: 16.0),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundImage: getProfileImage(
-                      profileImage,
-                      email,
-                      index,
-                    ),
+                  WorkerAvatar(
+                    imageUrl: profileImage,
+                    name: data.name,
+                    size: 40,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
