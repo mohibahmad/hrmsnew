@@ -67,8 +67,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                         );
                         final double rawMaxY = chartData.values.isEmpty
                             ? 1.0
-                            : chartData.values
-                                .reduce((a, b) => a > b ? a : b);
+                            : chartData.values.reduce((a, b) => a > b ? a : b);
                         final range = getNiceRange(rawMaxY);
                         final spots = List.generate(
                           chartData.values.length,
@@ -91,7 +90,9 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                 touchTooltipData: LineTouchTooltipData(
                                   getTooltipColor: (spot) =>
                                       const Color(0xFF2C3E50),
-                                  tooltipBorderRadius: const BorderRadius.all(Radius.circular(8)),
+                                  tooltipBorderRadius: const BorderRadius.all(
+                                    Radius.circular(8),
+                                  ),
                                   getTooltipItems: (spots) {
                                     return spots.map((spot) {
                                       return LineTooltipItem(
@@ -144,26 +145,13 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                       }
                                       return SideTitleWidget(
                                         meta: meta,
-                                        space: 0,
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.end,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              value.toInt().toString(),
-                                              style: style,
-                                              textAlign: TextAlign.right,
-                                              maxLines: 1,
-                                              softWrap: false,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              width: 8,
-                                              height: 2,
-                                              color: const Color(0xFF939393),
-                                            ),
-                                          ],
+                                        space: 8,
+                                        child: Text(
+                                          value.toInt().toString(),
+                                          style: style,
+                                          textAlign: TextAlign.right,
+                                          maxLines: 1,
+                                          softWrap: false,
                                         ),
                                       );
                                     },
@@ -229,8 +217,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                               lineBarsData: [
                                 LineChartBarData(
                                   spots: spots
-                                      .map(
-                                          (s) => FlSpot(s.x, s.y * animValue))
+                                      .map((s) => FlSpot(s.x, s.y * animValue))
                                       .toList(),
                                   isCurved: false,
                                   color: const Color(0xFF21367E),
@@ -239,12 +226,12 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                                     show: true,
                                     getDotPainter:
                                         (spot, percent, barData, index) {
-                                      return FlDotCirclePainter(
-                                        radius: 4,
-                                        color: const Color(0xFF21367E),
-                                        strokeWidth: 0,
-                                      );
-                                    },
+                                          return FlDotCirclePainter(
+                                            radius: 4,
+                                            color: const Color(0xFF21367E),
+                                            strokeWidth: 0,
+                                          );
+                                        },
                                   ),
                                   belowBarData: BarAreaData(
                                     show: true,

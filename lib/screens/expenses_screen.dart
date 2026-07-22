@@ -329,6 +329,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     'id': docId,
                                   };
                               });
+                              await DummyData.saveToPrefs();
                             } else {
                               await FirestoreService().updateExpense(
                                 docId,
@@ -587,7 +588,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               ),
                             );
                             if (parentContext.mounted) {
-                              tryShowFirstMilestoneRateUs(parentContext, 'expense');
+                              tryShowFirstMilestoneRateUs(
+                                parentContext,
+                                'expense',
+                              );
                             }
                           },
                           child: Text(

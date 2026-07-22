@@ -99,4 +99,29 @@ void main() {
     expect(dates.first, DateTime(2026, 7, 1));
     expect(dates.last, DateTime(2026, 7, 4));
   });
+
+  test('builds an inclusive forward range for swipe selection', () {
+    final dates = TimeOffService.inclusiveDateRange(
+      DateTime(2026, 7, 10),
+      DateTime(2026, 7, 14),
+    );
+
+    expect(dates, hasLength(5));
+    expect(dates.first, DateTime(2026, 7, 10));
+    expect(dates.last, DateTime(2026, 7, 14));
+  });
+
+  test('builds an inclusive reverse range for backward swipe selection', () {
+    final dates = TimeOffService.inclusiveDateRange(
+      DateTime(2026, 8, 2),
+      DateTime(2026, 7, 30),
+    );
+
+    expect(dates, [
+      DateTime(2026, 8, 2),
+      DateTime(2026, 8, 1),
+      DateTime(2026, 7, 31),
+      DateTime(2026, 7, 30),
+    ]);
+  });
 }

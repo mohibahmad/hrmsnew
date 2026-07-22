@@ -14,7 +14,6 @@ import '../services/dummy_data.dart';
 import '../services/upload_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
-import '../utils/delete_dialog.dart';
 import '../widgets/notification_bell.dart';
 import 'add_worker_flow.dart' show PdfPagePreview;
 
@@ -526,7 +525,27 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           updates[field] = url;
         }
         updates['name'] = _workerName;
-        await FirestoreService().updateWorker(_workerId, updates);
+        if (isGuest) {
+          final workerIndex = DummyData.workers.indexWhere((worker) {
+            final workerId = (worker['id'] ?? '').toString();
+            final workerEmail = (worker['email'] ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
+            final targetEmail = (widget.worker['email'] ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
+            return (workerId.isNotEmpty && workerId == _workerId) ||
+                (workerEmail.isNotEmpty && workerEmail == targetEmail);
+          });
+          if (workerIndex != -1) {
+            DummyData.workers[workerIndex].addAll(updates);
+            await DummyData.saveToPrefs();
+          }
+        } else {
+          await FirestoreService().updateWorker(_workerId, updates);
+        }
         updates.forEach((key, value) {
           widget.worker[key] = value;
         });
@@ -544,7 +563,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       }
     } catch (e) {
       if (mounted) {
-          FlashySnackBar.show(
+        FlashySnackBar.show(
           context,
           message: 'upload_failed'.tr(namedArgs: {'error': '$e'}),
           isError: true,

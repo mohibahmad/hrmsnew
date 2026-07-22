@@ -31,11 +31,13 @@ const Color pillGray = Color(0xFFE2E5EA);
 
 class WorkersAttendanceScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
+  final VoidCallback? onProfileTap;
   final bool hideSidebar;
   final VoidCallback? onBack;
   const WorkersAttendanceScreen({
     super.key,
     this.onNotificationTap,
+    this.onProfileTap,
     this.hideSidebar = false,
     this.onBack,
   });
@@ -627,7 +629,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          const UserAvatar(),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: UserAvatar(),
+            ),
+          ),
         ],
       ),
     );
@@ -1156,7 +1165,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   DummyData.attendance.add(
                                                     newRecord,
                                                   );
-                                                  DummyData.saveToPrefs();
                                                 }
                                                 if (mounted) {
                                                   setState(() {
@@ -1332,6 +1340,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                       .toString(),
                                                   1,
                                                 );
+                                              }
+
+                                              if (isGuest) {
+                                                await DummyData.saveToPrefs();
                                               }
 
                                               if (!context.mounted) {

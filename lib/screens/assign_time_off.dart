@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import '../services/auth_service.dart';
@@ -36,6 +37,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   DateTime _calendarMonth = DateTime.now();
   DateTime _calendarMonth2 = DateTime.now();
   Set<DateTime> _selectedDates = <DateTime>{};
+  DateTime? _dragAnchorDate;
+  DateTime? _lastDragDate;
+  Set<DateTime> _selectionBeforeDrag = <DateTime>{};
+  bool _dragExceededAvailableDays = false;
   final TextEditingController _notesController = TextEditingController();
   String? _editingId;
 
@@ -421,7 +426,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Widget _buildMainCard() {
     final bool isExhausted =
         _selectedWorker != null &&
-        LeaveBalanceHelper.allLeavesExhausted(_selectedWorker!);
+        LeaveBalanceHelper.shouldBlockTimeOffForm(
+          _selectedWorker!,
+          isEditing: _editingId != null,
+        );
 
     if (isExhausted) {
       return Container(
@@ -600,7 +608,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   ? null
                   : () => _handleSave(),
               child: Text(
-                'assign'.tr(),
+                (_editingId == null ? 'assign' : 'save').tr(),
                 style: const TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontSize: 15,
@@ -948,7 +956,93 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         rows.add(const SizedBox(height: 4)); // Space between rows
       }
     }
-    return Column(children: rows);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      dragStartBehavior: DragStartBehavior.down,
+      onPanDown: (details) {
+        _dragAnchorDate = _dateAtGridPosition(monthDate, details.localPosition);
+        _lastDragDate = null;
+        _selectionBeforeDrag = Set<DateTime>.from(_selectedDates);
+        _dragExceededAvailableDays = false;
+      },
+      onPanUpdate: (details) {
+        final anchor = _dragAnchorDate;
+        final current = _dateAtGridPosition(monthDate, details.localPosition);
+        if (anchor == null || current == null || current == _lastDragDate) {
+          return;
+        }
+        _lastDragDate = current;
+
+        final candidate = Set<DateTime>.from(_selectionBeforeDrag);
+        var exceededAvailableDays = false;
+        for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
+          if (candidate.contains(date)) continue;
+          if (candidate.length >= _availableDays) {
+            exceededAvailableDays = true;
+            break;
+          }
+          candidate.add(date);
+        }
+
+        setState(() {
+          _selectedDates = candidate;
+          _dragExceededAvailableDays = exceededAvailableDays;
+          _syncSelectionBounds();
+        });
+      },
+      onPanEnd: (_) => _finishDateDrag(),
+      onPanCancel: _finishDateDrag,
+      child: Column(children: rows),
+    );
+  }
+
+  DateTime? _dateAtGridPosition(DateTime monthDate, Offset position) {
+    const cellExtent = 54.0; // 50px date cell + 4px spacing.
+    final column = (position.dx / cellExtent).floor();
+    final row = (position.dy / cellExtent).floor();
+    if (column < 0 || column > 6 || row < 0 || row > 5) return null;
+
+    final firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
+    final startIndex = firstWeekday == 7 ? 0 : firstWeekday;
+    final day = (row * 7) + column - startIndex + 1;
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    if (day < 1 || day > daysInMonth) return null;
+    return DateTime(monthDate.year, monthDate.month, day);
+  }
+
+  void _finishDateDrag() {
+    if (_dragExceededAvailableDays) {
+      FlashySnackBar.show(
+        context,
+        message: 'requested_leaves_exceed_available'.tr(),
+        isError: true,
+      );
+    }
+    _dragAnchorDate = null;
+    _lastDragDate = null;
+    _selectionBeforeDrag = <DateTime>{};
+    _dragExceededAvailableDays = false;
+  }
+
+  void _toggleDate(DateTime date) {
+    final selectedDate = _dateOnly(date);
+    final isRemoving = _selectedDates.contains(selectedDate);
+    if (!isRemoving && _selectedDates.length >= _availableDays) {
+      FlashySnackBar.show(
+        context,
+        message: 'requested_leaves_exceed_available'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    setState(() {
+      if (isRemoving) {
+        _selectedDates.remove(selectedDate);
+      } else {
+        _selectedDates.add(selectedDate);
+      }
+      _syncSelectionBounds();
+    });
   }
 
   Widget _buildDayCell(String day, {bool isSelected = false, DateTime? date}) {
@@ -971,28 +1065,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         width: 50,
         height: 50,
         child: GestureDetector(
-          onTap: () {
-            if (date != null) {
-              final selectedDate = _dateOnly(date);
-              final isRemoving = _selectedDates.contains(selectedDate);
-              if (!isRemoving && _selectedDates.length >= _availableDays) {
-                FlashySnackBar.show(
-                  context,
-                  message: 'requested_leaves_exceed_available'.tr(),
-                  isError: true,
-                );
-                return;
-              }
-              setState(() {
-                if (isRemoving) {
-                  _selectedDates.remove(selectedDate);
-                } else {
-                  _selectedDates.add(selectedDate);
-                }
-                _syncSelectionBounds();
-              });
-            }
-          },
+          onTap: date == null ? null : () => _toggleDate(date),
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -1200,6 +1273,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
+    // Capture balances before inserting/updating the request. Guest data uses
+    // a shared list and Firestore streams can emit during the save; reading
+    // these getters afterwards would include the just-saved request twice.
+    final availableDaysBeforeSave = _availableDays;
+    final usedDaysBeforeSave = _alreadyUsedDays;
+    final requestedDaysAtSave = _requestedDays;
+
     setState(() => _isLoading = true);
 
     try {
@@ -1253,13 +1333,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
       // 🔥 ADD THIS AFTER SAVE: Update payroll with remaining leaves
       if (mounted) {
-        final remainingLeaves = _availableDays - _requestedDays;
+        final updatedBalance = LeaveBalanceHelper.balanceAfterRequest(
+          availableBeforeSave: availableDaysBeforeSave,
+          usedBeforeSave: usedDaysBeforeSave,
+          requestedDays: requestedDaysAtSave,
+        );
+        final remainingLeaves = updatedBalance.remaining;
         final Map<String, dynamic> payrollUpdate = {};
 
         if (_timeOffType == 'Annual Leave') {
           payrollUpdate['availableAnnualLeaves'] = remainingLeaves.toString();
-          payrollUpdate['leavesUsed'] = (_alreadyUsedDays + _requestedDays)
-              .toString();
+          payrollUpdate['leavesUsed'] = updatedBalance.used.toString();
         } else if (_timeOffType == 'Sick Leave') {
           payrollUpdate['availableSickLeaves'] = remainingLeaves.toString();
         } else if (_timeOffType == 'Casual Leave') {
@@ -1275,8 +1359,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             if (_timeOffType == 'Annual Leave') {
               DummyData.workers[workerIdx]['availableAnnualLeaves'] =
                   remainingLeaves.toString();
-              DummyData.workers[workerIdx]['leavesUsed'] =
-                  (_alreadyUsedDays + _requestedDays).toString();
+              DummyData.workers[workerIdx]['leavesUsed'] = updatedBalance.used
+                  .toString();
             } else if (_timeOffType == 'Sick Leave') {
               DummyData.workers[workerIdx]['availableSickLeaves'] =
                   remainingLeaves.toString();
@@ -1299,7 +1383,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       }
 
       if (mounted) {
-        FlashySnackBar.show(context, message: 'assign_time_off_success'.tr());
+        FlashySnackBar.show(
+          context,
+          message:
+              (_editingId == null
+                      ? 'assign_time_off_success'
+                      : 'update_time_off_success')
+                  .tr(),
+        );
         widget.onBack();
       }
     } catch (e) {

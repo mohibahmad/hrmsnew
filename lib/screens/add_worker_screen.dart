@@ -207,6 +207,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           'id': 'dummy_${DateTime.now().millisecondsSinceEpoch}',
         };
         DummyData.workers.add(newWorker);
+        await DummyData.saveToPrefs();
       } else {
         await FirestoreService().addWorker({
           'name': nameController.text.trim(),

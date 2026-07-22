@@ -571,7 +571,11 @@ class _ProfileBodyState extends State<ProfileBody> {
     }
 
     Widget _buildFallbackIcon() {
-      return Icon(Icons.person, size: 40, color: Colors.grey.shade400);
+      return const Icon(
+        Icons.business_rounded,
+        size: 40,
+        color: Color(0xFF0247C4),
+      );
     }
 
     Widget childWidget;
@@ -623,7 +627,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       }
     } else {
       childWidget = Image.asset(
-        'assets/profile_placeholder.png',
+        'assets/company_profile_placeholder.png',
         width: 90,
         height: 90,
         fit: BoxFit.cover,
@@ -919,7 +923,10 @@ class ProfilePreviewDialog extends StatelessWidget {
             children: [
               Container(
                 color: const Color(0xFF004FDE),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [

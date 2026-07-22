@@ -583,7 +583,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openProfile() {
     setState(() {
       _showProfile = true;
+      _showWorkersAttendance = false;
+      _showAssignTimeOff = false;
       _showNotifications = false;
+      _selectedTimeOffWorker = null;
     });
   }
 
@@ -747,6 +750,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // 11: Workers Attendance Screen
                                 WorkersAttendanceScreen(
                                   hideSidebar: true,
+                                  onProfileTap: _openProfile,
                                   onBack: () {
                                     setState(() {
                                       _showWorkersAttendance = false;

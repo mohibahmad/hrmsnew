@@ -304,7 +304,6 @@ exports.confirmPasswordResetOtp = onCall(
       }
       transaction.update(documentRef, {
         consumedAt: FieldValue.serverTimestamp(),
-        resetTokenHash: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       });
       return {allowed: true, uid: data.uid};
@@ -313,12 +312,33 @@ exports.confirmPasswordResetOtp = onCall(
     if (!result.allowed || !result.uid) throw invalidOtpError();
     try {
       await getAuth().updateUser(result.uid, {password: newPassword});
-      await getAuth().revokeRefreshTokens(result.uid);
-      await documentRef.delete();
     } catch (error) {
       logger.error("Failed to update password after OTP verification", error);
+      await documentRef.update({
+        consumedAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }).catch((releaseError) => {
+        logger.error("Failed to release password reset token", releaseError);
+      });
+      if (error?.code === "auth/invalid-password") {
+        throw new HttpsError(
+          "failed-precondition",
+          "The new password does not meet the password requirements.",
+          {reason: "weak-password"},
+        );
+      }
       throw new HttpsError("internal", "Unable to reset the password.");
     }
+
+    // The password is already changed at this point. Revocation and reset
+    // document cleanup are best-effort housekeeping and must not turn a
+    // successful password change into a false failure shown to the user.
+    await getAuth().revokeRefreshTokens(result.uid).catch((error) => {
+      logger.warn("Password changed but token revocation failed", error);
+    });
+    await documentRef.delete().catch((error) => {
+      logger.warn("Password changed but reset document cleanup failed", error);
+    });
 
     return {reset: true};
   },

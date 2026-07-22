@@ -323,15 +323,15 @@ class UserAvatar extends StatelessWidget {
       height: size,
       color: Colors.white,
       child: Image.asset(
-        'assets/profile_placeholder.png',
+        'assets/company_profile_placeholder.png',
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           return Container(
             color: const Color(0xFFE2E8F0),
             child: Icon(
-              Icons.person,
+              Icons.business_rounded,
               size: size * 0.6,
-              color: const Color(0xFF64748B),
+              color: const Color(0xFF0247C4),
             ),
           );
         },

@@ -1515,6 +1515,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   if (dummyIdx != -1)
                                     DummyData.assets[dummyIdx] = assetMap;
                                 });
+                                await DummyData.saveToPrefs();
                               } else {
                                 if (data.id != null) {
                                   await FirestoreService().updateAsset(

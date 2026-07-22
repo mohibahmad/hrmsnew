@@ -7,9 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
-import '../utils/rate_us_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'forgot_password_screen.dart';
@@ -47,9 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final email = AuthService().currentUser?.email;
     if (email != null && email.isNotEmpty) {
       final passwordWasReset = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (_) => ForgotPasswordScreen(initialEmail: email),
-        ),
+        MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
       );
       if (passwordWasReset == true) {
         await AuthService().signOut();
@@ -272,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final String appLink =
         'https://apps.apple.com/app/hrms-workforce-manager/id6743024022';
     final String text = 'share_app_text'.tr(namedArgs: {'link': appLink});
-    Share.share(text);
+    SharePlus.instance.share(ShareParams(text: text));
   }
 
   void _showLanguageModal(BuildContext context) {

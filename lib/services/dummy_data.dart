@@ -12,11 +12,9 @@ class DummyData {
         if (workersJson != null && workersJson.isNotEmpty) {
           final list = (jsonDecode(workersJson) as List)
               .cast<Map<String, dynamic>>();
-          if (list.isNotEmpty) {
-            workers
-              ..clear()
-              ..addAll(list);
-          }
+          workers
+            ..clear()
+            ..addAll(list);
         }
       } catch (e) {}
 
@@ -52,7 +50,7 @@ class DummyData {
                 name == 'Scarlett Johansson' ||
                 name == 'Robert Downey';
           });
-          if (list.isNotEmpty && !hasOldWorkerNames) {
+          if (!hasOldWorkerNames) {
             expenses
               ..clear()
               ..addAll(list);
@@ -67,11 +65,9 @@ class DummyData {
         if (attendanceJson != null && attendanceJson.isNotEmpty) {
           final list = (jsonDecode(attendanceJson) as List)
               .cast<Map<String, dynamic>>();
-          if (list.isNotEmpty) {
-            attendance
-              ..clear()
-              ..addAll(list);
-          }
+          attendance
+            ..clear()
+            ..addAll(list);
         }
       } catch (e) {
         // ignore
@@ -82,11 +78,9 @@ class DummyData {
         if (payrollJson != null && payrollJson.isNotEmpty) {
           final list = (jsonDecode(payrollJson) as List)
               .cast<Map<String, dynamic>>();
-          if (list.isNotEmpty) {
-            payroll
-              ..clear()
-              ..addAll(list);
-          }
+          payroll
+            ..clear()
+            ..addAll(list);
         }
       } catch (e) {
         // ignore
@@ -97,11 +91,9 @@ class DummyData {
         if (timeoffJson != null && timeoffJson.isNotEmpty) {
           final list = (jsonDecode(timeoffJson) as List)
               .cast<Map<String, dynamic>>();
-          if (list.isNotEmpty) {
-            timeoff
-              ..clear()
-              ..addAll(list);
-          }
+          timeoff
+            ..clear()
+            ..addAll(list);
         }
       } catch (e) {
         // ignore
@@ -112,10 +104,24 @@ class DummyData {
         if (assetsJson != null && assetsJson.isNotEmpty) {
           final list = (jsonDecode(assetsJson) as List)
               .cast<Map<String, dynamic>>();
-          if (list.isNotEmpty) {
-            assets
-              ..clear()
-              ..addAll(list);
+          assets
+            ..clear()
+            ..addAll(list);
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        final holidaysJson = prefs.getString('dummy_holidays');
+        if (holidaysJson != null && holidaysJson.isNotEmpty) {
+          final decoded = jsonDecode(holidaysJson) as Map<String, dynamic>;
+          holidays.clear();
+          for (final entry in decoded.entries) {
+            final list = (entry.value as List)
+                .map((item) => Map<String, dynamic>.from(item as Map))
+                .toList();
+            holidays[entry.key] = list;
           }
         }
       } catch (e) {
@@ -155,6 +161,7 @@ class DummyData {
       await prefs.setString('dummy_payroll', jsonEncode(payroll));
       await prefs.setString('dummy_timeoff', jsonEncode(timeoff));
       await prefs.setString('dummy_assets', jsonEncode(assets));
+      await prefs.setString('dummy_holidays', jsonEncode(holidays));
     } catch (_) {
       // Ignore save errors
     }
@@ -1345,7 +1352,9 @@ class DummyData {
     {
       'id': 'dummy_n3',
       'type': 'time_off_added',
-      'title': 'notif_title_time_off'.tr(namedArgs: {'name': 'Michael Johnson'}),
+      'title': 'notif_title_time_off'.tr(
+        namedArgs: {'name': 'Michael Johnson'},
+      ),
       'message': 'notif_msg_time_off'.tr(
         namedArgs: {'type': 'Sick Leave', 'name': 'Michael Johnson'},
       ),
@@ -1369,9 +1378,12 @@ class DummyData {
     {
       'id': 'dummy_n5',
       'type': 'holiday_added',
-      'title': 'notif_title_holiday'.tr(namedArgs: {'name': 'Independence Day'}),
-      'message':
-          'notif_msg_holiday'.tr(namedArgs: {'name': 'Independence Day'}),
+      'title': 'notif_title_holiday'.tr(
+        namedArgs: {'name': 'Independence Day'},
+      ),
+      'message': 'notif_msg_holiday'.tr(
+        namedArgs: {'name': 'Independence Day'},
+      ),
       'data': {'name': 'Independence Day'},
       'isRead': true,
       'createdAt': DateTime.now()
@@ -1382,8 +1394,9 @@ class DummyData {
       'id': 'dummy_n6',
       'type': 'expense_added',
       'title': 'notif_title_expense'.tr(),
-      'message':
-          'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$475.00'}),
+      'message': 'notif_msg_expense_amount'.tr(
+        namedArgs: {'amount': '\$475.00'},
+      ),
       'data': {'amount': '\$475.00', 'category': ''},
       'isRead': false,
       'createdAt': DateTime.now()
@@ -1394,8 +1407,9 @@ class DummyData {
       'id': 'dummy_n7',
       'type': 'expense_added',
       'title': 'notif_title_expense'.tr(),
-      'message':
-          'notif_msg_expense_amount'.tr(namedArgs: {'amount': '\$124.50'}),
+      'message': 'notif_msg_expense_amount'.tr(
+        namedArgs: {'amount': '\$124.50'},
+      ),
       'data': {'amount': '\$124.50', 'category': ''},
       'isRead': true,
       'createdAt': DateTime.now()

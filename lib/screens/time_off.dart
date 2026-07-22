@@ -55,6 +55,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
+  // Keep persisted time-off records separate from the worker rows rendered in
+  // the table. Reusing one list for both caused worker-stream refreshes to
+  // overwrite the saved assignment state and show "Assign" again.
+  List<Map<String, dynamic>> _rawTimeoffDocs = [];
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
@@ -93,7 +97,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
 
-      final timeoffRecord = _timeoffDocs.firstWhere((t) {
+      final timeoffRecord = _rawTimeoffDocs.firstWhere((t) {
         final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
         final tName = (t['name'] ?? '').toString().trim().toLowerCase();
         return (email.isNotEmpty && tEmail == email) ||
@@ -141,7 +145,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       setState(() {
         _isLoading = true;
         _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-        _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
+        _rawTimeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _combineTimeOff();
       });
     } else {
@@ -152,6 +156,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   @override
   void initState() {
     super.initState();
+    _rawTimeoffDocs = [];
     _timeoffDocs = [];
     _workersList = [];
     _isLoading = true;
@@ -185,7 +190,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 }
                 return 0;
               });
-              _timeoffDocs = sortedList;
+              _rawTimeoffDocs = sortedList;
               _combineTimeOff();
             });
           }
@@ -200,7 +205,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       );
     } else {
       _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-      _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
+      _rawTimeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
       _combineTimeOff();
     }
   }
@@ -372,7 +377,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 e['action'] == doc['action'],
           );
           DummyData.saveToPrefs();
-          _timeoffDocs.removeWhere(
+          _rawTimeoffDocs.removeWhere(
             (e) =>
                 e['id'] == doc['id'] &&
                 e['name'] == doc['name'] &&
@@ -412,6 +417,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             _isAssigningTimeOff = false;
             _workerForTimeOff = null;
           });
+          _refreshGuestData();
         },
         initialWorker: _workerForTimeOff,
         onNotificationTap: widget.onNotificationTap,

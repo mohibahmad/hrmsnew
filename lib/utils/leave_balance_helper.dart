@@ -59,6 +59,30 @@ class LeaveBalanceHelper {
         remainingForType(worker, 'Annual Leave') <= 0;
   }
 
+  /// The exhausted state only blocks creating another request. An existing
+  /// request must remain editable because its own days are released from the
+  /// availability calculation while it is being changed.
+  static bool shouldBlockTimeOffForm(
+    Map<String, dynamic> worker, {
+    required bool isEditing,
+  }) {
+    return !isEditing && allLeavesExhausted(worker);
+  }
+
+  /// Calculates the counters to persist from the values captured before the
+  /// request is written. This avoids counting the newly-created record twice
+  /// when a local list or Firestore stream updates during the save.
+  static ({int remaining, int used}) balanceAfterRequest({
+    required int availableBeforeSave,
+    required int usedBeforeSave,
+    required int requestedDays,
+  }) {
+    return (
+      remaining: (availableBeforeSave - requestedDays).clamp(0, 999999),
+      used: usedBeforeSave + requestedDays,
+    );
+  }
+
   static Future<int> getAvailableLeaveBalance(
     String email,
     FirestoreService firestore,
@@ -68,30 +92,48 @@ class LeaveBalanceHelper {
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       if (isGuest) {
         final worker = DummyData.workers.firstWhere(
-          (w) => (w['email']?.toString() ?? '').toLowerCase() == email.toLowerCase(),
+          (w) =>
+              (w['email']?.toString() ?? '').toLowerCase() ==
+              email.toLowerCase(),
           orElse: () => {},
         );
         if (worker.isEmpty) return 0;
-        final annual = int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        final casual = int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
+        final annual =
+            int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
+        final casual =
+            int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
         final sick = int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
-        final usedLeaves = DummyData.attendance.where((att) =>
-            (att['email']?.toString() ?? '').toLowerCase() == email.toLowerCase() &&
-            att['status'] == 'Leave').length;
+        final usedLeaves = DummyData.attendance
+            .where(
+              (att) =>
+                  (att['email']?.toString() ?? '').toLowerCase() ==
+                      email.toLowerCase() &&
+                  att['status'] == 'Leave',
+            )
+            .length;
         final totalBalance = annual + casual + sick;
         return (totalBalance - usedLeaves).clamp(0, totalBalance);
       } else {
         final snapshot = await firestore.getWorkersOnce();
         final worker = snapshot.docs.firstWhere(
-          (doc) => (doc['email'] ?? '').toString().toLowerCase() == email.toLowerCase(),
+          (doc) =>
+              (doc['email'] ?? '').toString().toLowerCase() ==
+              email.toLowerCase(),
           orElse: () => throw Exception('Worker not found'),
         );
-        final annual = int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        final casual = int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
+        final annual =
+            int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
+        final casual =
+            int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
         final sick = int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
-        final usedLeaves = todayAttendance.where((att) =>
-            (att['email']?.toString() ?? '').toLowerCase() == email.toLowerCase() &&
-            att['status'] == 'Leave').length;
+        final usedLeaves = todayAttendance
+            .where(
+              (att) =>
+                  (att['email']?.toString() ?? '').toLowerCase() ==
+                      email.toLowerCase() &&
+                  att['status'] == 'Leave',
+            )
+            .length;
         final totalBalance = annual + casual + sick;
         return (totalBalance - usedLeaves).clamp(0, totalBalance);
       }

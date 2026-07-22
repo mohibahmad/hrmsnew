@@ -14,9 +14,7 @@ import '../utils/snackbar_utils.dart';
 enum _PasswordResetStep { email, otp, password }
 
 class ForgotPasswordScreen extends StatefulWidget {
-  final String? initialEmail;
-
-  const ForgotPasswordScreen({super.key, this.initialEmail});
+  const ForgotPasswordScreen({super.key});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -42,7 +40,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = widget.initialEmail?.trim() ?? '';
   }
 
   @override
@@ -172,6 +169,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       'invalid-argument' when _step == _PasswordResetStep.email =>
         'invalid_email_address_short'.tr(),
       'invalid-argument' => 'invalid_or_expired_otp'.tr(),
+      'failed-precondition' => 'password_requirements_not_met'.tr(),
       'deadline-exceeded' || 'unavailable' => 'network_error_short'.tr(),
       _ => 'password_reset_failed'.tr(),
     };
@@ -206,9 +204,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   String get _title => switch (_step) {
-    _PasswordResetStep.email => 'forgot_password'.tr(),
+    _PasswordResetStep.email => 'reset_password'.tr(),
     _PasswordResetStep.otp => 'verify_otp'.tr(),
-    _PasswordResetStep.password => 'create_new_password'.tr(),
+    _PasswordResetStep.password => 'reset_password'.tr(),
   };
 
   String get _subtitle => switch (_step) {
@@ -456,7 +454,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _emailController,
-              enabled: !_isLoading && widget.initialEmail == null,
+              enabled: !_isLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _handlePrimaryAction(),

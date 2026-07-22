@@ -17,6 +17,21 @@ class TimeOffService {
         : DateTime(parsed.year, parsed.month, parsed.day);
   }
 
+  /// Returns every date touched from [start] through [end], including both
+  /// endpoints. The returned order follows the drag direction.
+  static List<DateTime> inclusiveDateRange(DateTime start, DateTime end) {
+    final normalizedStart = DateTime(start.year, start.month, start.day);
+    final normalizedEnd = DateTime(end.year, end.month, end.day);
+    final step = normalizedEnd.isBefore(normalizedStart) ? -1 : 1;
+    final dates = <DateTime>[];
+
+    for (var date = normalizedStart; ; date = date.add(Duration(days: step))) {
+      dates.add(date);
+      if (date == normalizedEnd) break;
+    }
+    return dates;
+  }
+
   /// Returns the exact leave dates for a record. New records persist an
   /// explicit `selectedDates` list; legacy records are expanded from their
   /// inclusive start/end range.

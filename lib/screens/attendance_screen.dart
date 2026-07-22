@@ -467,6 +467,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   PageRouteBuilder(
                     pageBuilder: (_, __, ___) => WorkersAttendanceScreen(
                       onNotificationTap: widget.onNotificationTap,
+                      onProfileTap: widget.onProfileTap,
                     ),
                     transitionsBuilder: (_, __, ___, child) => child,
                     transitionDuration: Duration.zero,
@@ -1096,10 +1097,7 @@ class _WorkerAttendancePreviewCardState
                 imageUrl: widget.record.profileImage,
                 name: widget.record.name,
                 size: 60,
-                border: Border.all(
-                  color: const Color(0xFF0A51D0),
-                  width: 2,
-                ),
+                border: Border.all(color: const Color(0xFF0A51D0), width: 2),
               ),
               const SizedBox(width: 16),
 
