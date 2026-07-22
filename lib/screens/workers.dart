@@ -283,12 +283,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             text,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
-            ),
+                                       style: const TextStyle(
+                                          color: Color(0xFFFFFFFF),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
           ),
         ],
       ),
@@ -604,6 +604,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     'Management',
   ];
 
+  // Real worker positions (not in default list)
   List<String> get _extraPositions {
     final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
     final extras = <String>{};
@@ -615,6 +616,24 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     }
     final sorted = extras.toList()..sort();
     return sorted;
+  }
+
+  // Real worker positions that exist in default list
+  List<String> get _workerPositionsInDefaults {
+    final workerPositions = _allWorkers
+        .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
+        .where((p) => p.isNotEmpty)
+        .toSet();
+    return workerPositions.toList();
+  }
+
+  // Default positions not covered by any real worker
+  List<String> get _remainingDefaultPositions {
+    final workerPosLower = _workerPositionsInDefaults.toSet();
+    return _defaultFilters
+        .skip(1)
+        .where((d) => !workerPosLower.contains(d.toLowerCase()))
+        .toList();
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
@@ -896,52 +915,51 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           height: 38,
                           color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
                         ),
-                        if (_allWorkers.isEmpty) ...[
-                          Container(
-                            width: 1,
-                            height: 38,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                          ),
-                          _buildFilterTab('Designer', 'designer'.tr()),
-                          Container(
-                            width: 1,
-                            height: 38,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                          ),
-                          _buildFilterTab('Developer', 'developer'.tr()),
-                          Container(
-                            width: 1,
-                            height: 38,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                          ),
-                          _buildFilterTab('Engineering', 'engineering'.tr()),
-                          Container(
-                            width: 1,
-                            height: 38,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                          ),
-                          _buildFilterTab('Sales', 'sales'.tr()),
-                          Container(
-                            width: 1,
-                            height: 38,
-                            color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                          ),
-                          _buildFilterTab('Management', 'management'.tr()),
-                        ] else ...[
-                          ..._extraPositions.asMap().entries.expand(
-                            (entry) => [
-                              if (entry.key > 0)
-                                Container(
-                                  width: 1,
-                                  height: 38,
-                                  color: Color(
-                                    0xFFE0E0E0,
-                                  ).withValues(alpha: 0.5),
-                                ),
-                              _buildFilterTab(entry.value, entry.value),
+                        // 1) Real worker positions (not in default list)
+                        ..._extraPositions.asMap().entries.expand(
+                          (entry) => [
+                            Container(
+                              width: 1,
+                              height: 38,
+                              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                            ),
+                            _buildFilterTab(entry.value, entry.value),
+                          ],
+                        ),
+                        // 2) Real worker positions that ARE in default list
+                        ...() {
+                          final workerPosLower =
+                              _workerPositionsInDefaults.toSet();
+                          final workerDefaultPositions = _defaultFilters
+                              .skip(1)
+                              .where(
+                                (d) => workerPosLower.contains(d.toLowerCase()),
+                              )
+                              .toList();
+                          return workerDefaultPositions.expand(
+                            (pos) => [
+                              Container(
+                                width: 1,
+                                height: 38,
+                                color: Color(
+                                  0xFFE0E0E0,
+                                ).withValues(alpha: 0.5),
+                              ),
+                              _buildFilterTab(pos, pos),
                             ],
-                          ),
-                        ],
+                          );
+                        }(),
+                        // 3) Remaining defaults (no worker has this position)
+                        ..._remainingDefaultPositions.expand(
+                          (pos) => [
+                            Container(
+                              width: 1,
+                              height: 38,
+                              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                            ),
+                            _buildFilterTab(pos, pos),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -1126,11 +1144,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
               padding: const EdgeInsets.only(right: 24.0),
               child: Row(
                 children: [
-                  WorkerAvatar(
-                    imageUrl: profileImage,
-                    name: name,
-                    size: 40,
-                  ),
+                  WorkerAvatar(imageUrl: profileImage, name: name, size: 40),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1475,7 +1489,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
-                           Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
@@ -1579,7 +1593,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFFFFFFFF),
-                                          fontSize: 14,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                           fontFamily: 'SF Pro Display',
                                         ),
@@ -1608,7 +1622,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFFFFFFFF),
-                                          fontSize: 14,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                           fontFamily: 'SF Pro Display',
                                         ),
@@ -1671,9 +1685,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(
-                            LocalizationHelper.localizeGender(_v('gender')),
-                          ),
+                          _na(LocalizationHelper.localizeGender(_v('gender'))),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
@@ -1725,31 +1737,7 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                           'address'.tr(),
                           _na(_v('address')),
                         ),
-                        _buildInfoCard(
-                          Icons.policy,
-                          'leave_policy'.tr(),
-                          _na(_v('leavePolicy')),
-                        ),
-                      ),
-                      _buildRow(
-                        _buildInfoCard(
-                          Icons.event_note,
-                          'annual_leaves'.tr(),
-                          _na(_v('annualLeaves')),
-                        ),
-                        _buildInfoCard(
-                          Icons.medical_services,
-                          'sick_leaves_title'.tr(),
-                          _na(_v('sickLeaves')),
-                        ),
-                      ),
-                      _buildRow(
-                        _buildInfoCard(
-                          Icons.sick,
-                          'casual_leaves_title'.tr(),
-                          _na(_v('casualLeaves')),
-                        ),
-                        _buildInfoCard(Icons.info, 'Status', _na(_v('status'))),
+                        const SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -1775,7 +1763,12 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String title, String value, {String? assetImage}) {
+  Widget _buildInfoCard(
+    IconData icon,
+    String title,
+    String value, {
+    String? assetImage,
+  }) {
     return Container(
       height: 68,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1797,8 +1790,23 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
             child: Center(
               child: assetImage != null
                   ? assetImage.endsWith('.svg')
-                      ? SvgPicture.asset(assetImage, width: 18, height: 18, colorFilter: ColorFilter.mode(primaryBlue, BlendMode.srcIn))
-                      : Image.asset(assetImage, width: 18, height: 18, fit: BoxFit.contain, color: primaryBlue, colorBlendMode: BlendMode.srcIn)
+                        ? SvgPicture.asset(
+                            assetImage,
+                            width: 18,
+                            height: 18,
+                            colorFilter: ColorFilter.mode(
+                              primaryBlue,
+                              BlendMode.srcIn,
+                            ),
+                          )
+                        : Image.asset(
+                            assetImage,
+                            width: 18,
+                            height: 18,
+                            fit: BoxFit.contain,
+                            color: primaryBlue,
+                            colorBlendMode: BlendMode.srcIn,
+                          )
                   : Icon(icon, color: primaryBlue, size: 18),
             ),
           ),

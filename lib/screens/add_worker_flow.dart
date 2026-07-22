@@ -1146,8 +1146,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       });
       if (!context.mounted) return;
       FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
-      final dialogShown = await tryShowFirstMilestoneRateUs(context, 'worker');
-      if (!dialogShown && context.mounted) {
+      await tryShowFirstMilestoneRateUs(context, 'worker');
+      if (context.mounted) {
         widget.onBack?.call();
       }
     } on DuplicateWorkerException catch (e) {
@@ -1302,6 +1302,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_salary_amount'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (_annualLeavesController.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_annual_leaves'.tr(),
         title: 'validation_error'.tr(),
         isError: true,
       );
@@ -3112,7 +3122,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             ),
           ],
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 16),
 
         // Salary Section
         Text(
@@ -3124,7 +3134,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             fontFamily: 'SF Pro Display',
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(

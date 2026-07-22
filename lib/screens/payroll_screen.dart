@@ -622,16 +622,28 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildFilterTabs() {
+    // Positions actually used by workers (in default list)
+    final workerPosLower = _workersList
+        .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
+        .where((p) => p.isNotEmpty)
+        .toSet();
+
+    final defaultKeys = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      if (_workersList.isEmpty) ...[
-        {'key': 'Designer', 'label': 'designer'.tr()},
-        {'key': 'Developer', 'label': 'developer'.tr()},
-        {'key': 'Engineering', 'label': 'engineering'.tr()},
-        {'key': 'Sales', 'label': 'sales'.tr()},
-        {'key': 'Management', 'label': 'management'.tr()},
-      ] else
-        ..._extraPositions.map((pos) => {'key': pos, 'label': pos}),
+      // 1) Real positions not in default list (e.g. "Manager", "Chef")
+      ..._extraPositions
+          .where((pos) => !defaultKeys.map((d) => d.toLowerCase()).contains(pos.toLowerCase()))
+          .map((pos) => {'key': pos, 'label': pos}),
+      // 2) Real positions that ARE in default list (in default order)
+      ...defaultKeys
+          .where((d) => workerPosLower.contains(d.toLowerCase()))
+          .map((d) => {'key': d, 'label': d}),
+      // 3) Remaining defaults (no worker has this position)
+      ...defaultKeys
+          .where((d) => !workerPosLower.contains(d.toLowerCase()))
+          .map((d) => {'key': d, 'label': d}),
     ];
     return Container(
       width: 550,

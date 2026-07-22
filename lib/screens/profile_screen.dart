@@ -911,10 +911,6 @@ class _ProfileBodyState extends State<ProfileBody> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfilePreviewDialog
-// ─────────────────────────────────────────────────────────────────────────────
-
 class ProfilePreviewDialog extends StatelessWidget {
   final String businessName;
   final String companyId;

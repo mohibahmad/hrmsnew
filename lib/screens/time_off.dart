@@ -571,6 +571,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
+  // Real worker positions (not in default list)
   List<String> get _extraPositions {
     final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
     final extras = <String>{};
@@ -582,6 +583,25 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     }
     final sorted = extras.toList()..sort();
     return sorted;
+  }
+
+  // Real worker positions (in default list too — to avoid duplicate defaults)
+  List<String> get _workerPositionsInDefaults {
+    final workerPositions = _workersList
+        .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
+        .where((p) => p.isNotEmpty)
+        .toSet();
+    return workerPositions.toList();
+  }
+
+  // Default positions excluding ones already shown via real workers
+  List<String> get _remainingDefaultPositions {
+    final workerPosLower = _workerPositionsInDefaults.toSet();
+    // Skip 'All' (index 0), only position names
+    return _defaultFilters
+        .skip(1)
+        .where((d) => !workerPosLower.contains(d.toLowerCase()))
+        .toList();
   }
 
   Widget _buildFilterTabs() {
@@ -605,45 +625,46 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               height: 38,
               color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
             ),
-            if (_workersList.isEmpty) ...[
-              _buildTabItem('Designer', 'designer'.tr()),
-              Container(
-                width: 1,
-                height: 38,
-                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-              ),
-              _buildTabItem('Developer', 'developer'.tr()),
-              Container(
-                width: 1,
-                height: 38,
-                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-              ),
-              _buildTabItem('Engineering', 'engineering'.tr()),
-              Container(
-                width: 1,
-                height: 38,
-                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-              ),
-              _buildTabItem('Sales', 'sales'.tr()),
-              Container(
-                width: 1,
-                height: 38,
-                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-              ),
-              _buildTabItem('Management', 'management'.tr()),
-            ] else ...[
-              ..._extraPositions.asMap().entries.expand(
-                (entry) => [
-                  if (entry.key > 0)
-                    Container(
-                      width: 1,
-                      height: 38,
-                      color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                    ),
-                  _buildTabItem(entry.value, entry.value),
+            // 1) Real worker positions (not in default list)
+            ..._extraPositions.asMap().entries.expand(
+              (entry) => [
+                Container(
+                  width: 1,
+                  height: 38,
+                  color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                ),
+                _buildTabItem(entry.value, entry.value),
+              ],
+            ),
+            // 2) Real worker positions that ARE in default list
+            ...() {
+              final workerPosLower = _workerPositionsInDefaults.toSet();
+              final workerDefaultPositions = _defaultFilters
+                  .skip(1)
+                  .where((d) => workerPosLower.contains(d.toLowerCase()))
+                  .toList();
+              return workerDefaultPositions.expand(
+                (pos) => [
+                  Container(
+                    width: 1,
+                    height: 38,
+                    color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                  ),
+                  _buildTabItem(pos, pos),
                 ],
-              ),
-            ],
+              );
+            }(),
+            // 3) Remaining default positions (not used by any worker)
+            ..._remainingDefaultPositions.expand(
+              (pos) => [
+                Container(
+                  width: 1,
+                  height: 38,
+                  color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+                ),
+                _buildTabItem(pos, pos),
+              ],
+            ),
           ],
         ),
       ),
