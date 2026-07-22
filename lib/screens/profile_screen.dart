@@ -19,25 +19,18 @@ import '../widgets/notification_bell.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
-// Helper function to compress image bytes in an isolate to avoid blocking UI
 Uint8List? _compressImageBytes(Uint8List rawBytes) {
   try {
     final decoded = img.decodeImage(rawBytes);
     if (decoded == null) return null;
-    
-    // Resize the image to have a maximum width of 500px, keeping aspect ratio
+
     final resized = img.copyResize(decoded, width: 500);
-    
-    // Encode as JPG with 80% quality for optimal compression
+
     return Uint8List.fromList(img.encodeJpg(resized, quality: 80));
   } catch (_) {
     return null;
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfileInlineHeader — used inside HomeScreen's profile view
-// ─────────────────────────────────────────────────────────────────────────────
 
 class ProfileInlineHeader extends StatelessWidget {
   final VoidCallback onLogout;
@@ -53,7 +46,7 @@ class ProfileInlineHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 94,
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: const EdgeInsets.only(left: 44, right: 36),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
@@ -81,7 +74,7 @@ class ProfileInlineHeader extends StatelessWidget {
           NotificationBell(onTap: onNotificationTap),
           const SizedBox(width: 20),
           const Padding(
-            padding: EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(left: 14, right: 8),
             child: UserAvatar(),
           ),
         ],
@@ -89,10 +82,6 @@ class ProfileInlineHeader extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfileBody
-// ─────────────────────────────────────────────────────────────────────────────
 
 class ProfileBody extends StatefulWidget {
   final bool isActive;
@@ -288,7 +277,9 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'field_is_required'.tr(namedArgs: {'field': 'company_id_no'.tr()}),
+          message: 'field_is_required'.tr(
+            namedArgs: {'field': 'company_id_no'.tr()},
+          ),
           isError: true,
         );
       }
@@ -298,11 +289,7 @@ class _ProfileBodyState extends State<ProfileBody> {
     final companyIdError = Validators.companyId(_companyIdController.text);
     if (companyIdError != null) {
       if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: companyIdError,
-          isError: true,
-        );
+        FlashySnackBar.show(context, message: companyIdError, isError: true);
       }
       return false;
     }
@@ -359,7 +346,10 @@ class _ProfileBodyState extends State<ProfileBody> {
             }
 
             if (rawBytes != null) {
-              final compressedBytes = await compute(_compressImageBytes, rawBytes);
+              final compressedBytes = await compute(
+                _compressImageBytes,
+                rawBytes,
+              );
               if (compressedBytes != null) {
                 await ref.putData(
                   compressedBytes,

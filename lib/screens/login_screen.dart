@@ -476,7 +476,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFFFFF),
+                  color: Color(0x99CBCBCB),
                     fontFamily: 'SF Pro Display',
                     height: 1.0,
                   ),
