@@ -684,8 +684,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Widget _buildDataTable(List<Map<String, dynamic>> workers) {
-    final double tableHeight = (MediaQuery.of(context).size.height - 339).clamp(
-      495.0,
+    final double tableHeight = (MediaQuery.of(context).size.height - 329).clamp(
+      440.0,
       1200.0,
     );
     return Container(
@@ -818,7 +818,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       Text(
                                         name,
                                         style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                          fontWeight: FontWeight.w600,
                                           fontSize: 15,
                                           color: Color(0xFF000000),
                                           fontFamily: 'SF Pro Display',
@@ -830,7 +830,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       Text(
                                         email,
                                         style: const TextStyle(
-                                          fontSize: 17,
+                                          fontSize: 14,
                                           color: Colors.black,
                                           fontFamily: 'SF Pro Display',
                                         ),
@@ -951,7 +951,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                       Text(
                                         action,
                                         style: TextStyle(
-                                          fontSize: 17,
+                                          fontSize: 16,
                                           color: hasTimeOff
                                               ? const Color(0xFF4AC000)
                                               : const Color(0xFF0D4CC6),

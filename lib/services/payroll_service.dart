@@ -35,10 +35,20 @@ class PayrollService {
       }, orElse: () => {});
 
       if (payrollRecord.isNotEmpty) {
+        final currentSalary = currentSalaryDisplay(worker);
         combined.add({
           ...worker,
           ...payrollRecord,
           'hasPayrollRecord': true,
+          // Worker compensation is the source of truth for the current
+          // payroll form. The payroll record still keeps its historical
+          // snapshot in [rawPayrollDocs], but must not mask a salary edited
+          // from the Workers screen.
+          'salaryAmount':
+              worker['salaryAmount'] ?? payrollRecord['salaryAmount'],
+          'currency': worker['currency'] ?? payrollRecord['currency'],
+          'salaryType': worker['salaryType'] ?? payrollRecord['salaryType'],
+          if (currentSalary.isNotEmpty) 'salary': currentSalary,
           'profileImage':
               worker['profileImage'] ?? payrollRecord['profileImage'],
           'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
@@ -146,6 +156,19 @@ class PayrollService {
   static int parseIntSafe(String value) {
     if (value.isEmpty) return 0;
     return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
+  /// Returns the worker's current configured salary for payroll editing.
+  /// `salaryAmount` is preferred over a saved payroll snapshot so a salary
+  /// change made on the Workers screen is reflected immediately.
+  static String currentSalaryDisplay(Map<String, dynamic> data) {
+    final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
+    if (salaryAmount.isNotEmpty) {
+      final currency = (data['currency'] ?? 'USD').toString();
+      final symbol = getCurrencySymbol(currency);
+      return symbol.isEmpty ? salaryAmount : '$symbol $salaryAmount';
+    }
+    return (data['salary'] ?? '').toString().trim();
   }
 
   /// Payroll absences and leaves are attendance counts, not leave allowance.

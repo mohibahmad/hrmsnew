@@ -25,6 +25,40 @@ void main() {
     expect(counts['leaves'], 3);
   });
 
+  test('current worker salary overrides an older payroll snapshot', () {
+    final combined = PayrollService.combinePayroll(
+      const [
+        {
+          'id': 'worker-1',
+          'name': 'Ali',
+          'email': 'ali@example.com',
+          'salaryAmount': '125000',
+          'currency': 'PKR',
+        },
+      ],
+      [
+        {
+          'id': 'payroll-july',
+          'name': 'Ali',
+          'email': 'ali@example.com',
+          'salary': r'$ 900',
+          'salaryAmount': '900',
+          'currency': 'USD',
+        },
+      ],
+      month: DateTime(2026, 7, 1),
+      allowUndatedRecords: true,
+    );
+
+    expect(combined.single['salaryAmount'], '125000');
+    expect(combined.single['currency'], 'PKR');
+    expect(combined.single['salary'], 'Rs 125000');
+  });
+
+  test('saved payroll salary is used when worker salary is unavailable', () {
+    expect(PayrollService.currentSalaryDisplay({'salary': r'$ 900'}), r'$ 900');
+  });
+
   test('previous month payroll does not mark current month as paid', () {
     final combined = PayrollService.combinePayroll(
       const [

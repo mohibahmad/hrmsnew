@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
 import '../services/auth_service.dart';
@@ -10,7 +9,6 @@ import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
-import '../utils/date_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
@@ -94,16 +92,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     });
   }
 
-  String get _salaryStr {
-    final s = widget.workerData['salary'] ?? '';
-    if (s.toString().isNotEmpty) return s.toString();
-    // Fallback: try salaryAmount from worker data
-    final salaryAmount = widget.workerData['salaryAmount']?.toString() ?? '';
-    if (salaryAmount.isNotEmpty) {
-      return '$salaryAmount';
-    }
-    return '';
-  }
+  String get _salaryStr =>
+      PayrollService.currentSalaryDisplay(widget.workerData);
 
   @override
   void initState() {

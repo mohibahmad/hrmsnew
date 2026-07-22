@@ -875,7 +875,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       child: _buildToggleChip(
                                         'present'.tr(),
                                         'assets/present_worker.svg',
-                                        const Color(0xFF00C853),
                                         isSelected: selectedStatus == 'Present',
                                       ),
                                     ),
@@ -892,7 +891,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       child: _buildToggleChip(
                                         'absent'.tr(),
                                         'assets/absent.svg',
-                                        const Color(0xFFF44336),
                                         isSelected: selectedStatus == 'Absent',
                                       ),
                                     ),
@@ -909,7 +907,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       child: _buildToggleChip(
                                         'leave'.tr(),
                                         'assets/leave.svg',
-                                        const Color(0xFFFF9800),
                                         isSelected: selectedStatus == 'Leave',
                                       ),
                                     ),
@@ -1657,8 +1654,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   Widget _buildToggleChip(
     String label,
-    String asset,
-    Color iconColor, {
+    String asset, {
     bool isSelected = false,
   }) {
     return Container(
@@ -1674,17 +1670,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           asset.endsWith('.svg')
-              ? SvgPicture.asset(
-                  asset,
-                  height: 20,
-                  width: 20,
-                  colorFilter: isSelected
-                      ? const ColorFilter.mode(
-                          Color(0xFFFFFFFF),
-                          BlendMode.srcIn,
-                        )
-                      : null,
-                )
+              ? SvgPicture.asset(asset, height: 20, width: 20)
               : Image.asset(asset, height: 20, width: 20),
           const SizedBox(width: 6),
           Text(

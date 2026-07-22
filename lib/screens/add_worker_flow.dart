@@ -998,6 +998,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           final index = DummyData.workers.indexWhere((w) => w['id'] == editId);
           if (index != -1) {
             DummyData.workers[index] = {...data, 'id': editId};
+            await DummyData.saveToPrefs();
           }
         } else {
           await FirestoreService().updateWorker(editId, data);

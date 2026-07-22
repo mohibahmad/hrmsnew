@@ -44,14 +44,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isSalaryDaySaving = false;
   int? _salaryPaymentDay;
 
-  static const _defaultFilters = [
-    'All',
-    'Designer',
-    'Developer',
-    'Engineering',
-    'Sales',
-    'Management',
-  ];
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
 
@@ -613,27 +605,29 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   List<String> get _extraPositions {
-    final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
-    final extras = <String>{};
+    final positionsByKey = <String, String>{};
     for (final doc in _workersList) {
       final pos = (doc['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty && !existing.contains(pos.toLowerCase())) {
-        extras.add(pos);
+      if (pos.isNotEmpty) {
+        positionsByKey.putIfAbsent(pos.toLowerCase(), () => pos);
       }
     }
-    final sorted = extras.toList()..sort();
+    final sorted = positionsByKey.values.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return sorted;
   }
 
   Widget _buildFilterTabs() {
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      {'key': 'Designer', 'label': 'designer'.tr()},
-      {'key': 'Developer', 'label': 'developer'.tr()},
-      {'key': 'Engineering', 'label': 'engineering'.tr()},
-      {'key': 'Sales', 'label': 'sales'.tr()},
-      {'key': 'Management', 'label': 'management'.tr()},
-      ..._extraPositions.map((pos) => {'key': pos, 'label': pos}),
+      if (_workersList.isEmpty) ...[
+        {'key': 'Designer', 'label': 'designer'.tr()},
+        {'key': 'Developer', 'label': 'developer'.tr()},
+        {'key': 'Engineering', 'label': 'engineering'.tr()},
+        {'key': 'Sales', 'label': 'sales'.tr()},
+        {'key': 'Management', 'label': 'management'.tr()},
+      ] else
+        ..._extraPositions.map((pos) => {'key': pos, 'label': pos}),
     ];
     return Container(
       width: 550,
@@ -699,7 +693,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
     double dynamicHeight = MediaQuery.of(context).size.height - 450;
     if (dynamicHeight < 300) dynamicHeight = 300;
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: dynamicHeight,
       child: Center(
@@ -955,22 +949,45 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String totalWorkDays = (data['totalWorkDays'] ?? '').toString();
     final String absents = (data['absents'] ?? '').toString();
     final String leaves = (data['leaves'] ?? '').toString();
-    final String overtimeAmount = (data['overtimeAmount'] ?? '').toString();
-    final String salary = AmountText.formatCompact(
-      (data['salary'] ?? '').toString(),
+    final String rawAbsentDeduction = (data['absentDeduction'] ?? '0')
+        .toString();
+    final String rawLeaveDeduction = (data['leaveDeduction'] ?? '0').toString();
+    final String rawOvertimeAmount = (data['overtimeAmount'] ?? '0').toString();
+    final String absentDeductionPerDay = AmountText.formatCompact(
+      rawAbsentDeduction,
     );
-    String salaryAfterDeductionStr =
-        (data['netSalary'] ?? data['salaryAfterDeduction'] ?? '').toString();
-    if (salaryAfterDeductionStr.isEmpty && salary.isNotEmpty) {
-      salaryAfterDeductionStr = PayrollService.getNetSalaryDisplay(
-        salary: (data['salary'] ?? '').toString(),
-        totalWorkDays: totalWorkDays,
-        absents: absents,
-        overtimeAmount: overtimeAmount,
-        salaryType: (data['salaryType'] ?? 'Monthly').toString(),
-      );
-    }
-    salaryAfterDeductionStr = AmountText.formatCompact(salaryAfterDeductionStr);
+    final String overtimeAmount = AmountText.formatCompact(rawOvertimeAmount);
+    final String salary = AmountText.formatCompact(
+      PayrollService.currentSalaryDisplay(data),
+    );
+    final hasLeaveDeduction = rawLeaveDeduction.trim().isNotEmpty;
+    final totalDaysValue = PayrollService.parseIntSafe(totalWorkDays);
+    final effectiveWorkedDays =
+        totalDaysValue -
+        PayrollService.parseIntSafe(absents) -
+        (hasLeaveDeduction ? PayrollService.parseIntSafe(leaves) : 0);
+    final previewCalculation = totalDaysValue > 0
+        ? PayrollService.calculatePayroll(
+            salary: PayrollService.currentSalaryDisplay(data),
+            totalWorkDays: totalWorkDays,
+            daysWorked: effectiveWorkedDays > 0
+                ? effectiveWorkedDays.toString()
+                : '0',
+            absents: absents,
+            leaves: leaves,
+            overtimeAmount: rawOvertimeAmount,
+            absentDeductionPerDay: rawAbsentDeduction,
+            leaveDeductionPerDay: rawLeaveDeduction,
+            salaryType: (data['salaryType'] ?? 'Monthly').toString(),
+          )
+        : const <String, dynamic>{};
+    final String salaryAfterDeduction = AmountText.formatCompact(
+      (previewCalculation['formattedNet'] ??
+              data['netSalary'] ??
+              data['salaryAfterDeduction'] ??
+              '0')
+          .toString(),
+    );
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
@@ -1109,6 +1126,30 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
+                                  title: 'absent_deduction_per_day'.tr(),
+                                  value: absentDeductionPerDay,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildMetricCard(
+                                  icon: _buildOvertimeDaysIcon(),
+                                  title: 'overtime_amount'.tr(),
+                                  value: overtimeAmount,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildMetricCard(
+                                  icon: const Icon(
+                                    Icons.payments,
+                                    color: Color(0xFF004FDE),
+                                    size: 20,
+                                  ),
                                   title: 'salary'.tr(),
                                   value: salary,
                                 ),
@@ -1122,19 +1163,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     size: 20,
                                   ),
                                   title: 'salary_after_deduction'.tr(),
-                                  value: salaryAfterDeductionStr,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: _buildOvertimeDaysIcon(),
-                                  title: 'overtime_amount'.tr(),
-                                  value: overtimeAmount,
+                                  value: salaryAfterDeduction,
                                 ),
                               ),
                             ],
