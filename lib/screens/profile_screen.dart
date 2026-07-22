@@ -15,6 +15,24 @@ import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/notification_bell.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
+
+// Helper function to compress image bytes in an isolate to avoid blocking UI
+Uint8List? _compressImageBytes(Uint8List rawBytes) {
+  try {
+    final decoded = img.decodeImage(rawBytes);
+    if (decoded == null) return null;
+    
+    // Resize the image to have a maximum width of 500px, keeping aspect ratio
+    final resized = img.copyResize(decoded, width: 500);
+    
+    // Encode as JPG with 80% quality for optimal compression
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 80));
+  } catch (_) {
+    return null;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileInlineHeader — used inside HomeScreen's profile view
@@ -313,17 +331,35 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (!isGuest) {
         if (_newProfileImageBytes != null || _newProfileImagePath != null) {
           final fileName =
-              'profile_${AuthService().currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.png';
+              'profile_${AuthService().currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final ref = FirebaseStorage.instance
               .ref()
               .child('profile_pics')
               .child(fileName);
 
           try {
+            Uint8List? rawBytes;
             if (_newProfileImageBytes != null) {
-              await ref.putData(_newProfileImageBytes!);
+              rawBytes = _newProfileImageBytes;
             } else if (_newProfileImagePath != null) {
-              await ref.putFile(File(_newProfileImagePath!));
+              rawBytes = await File(_newProfileImagePath!).readAsBytes();
+            }
+
+            if (rawBytes != null) {
+              final compressedBytes = await compute(_compressImageBytes, rawBytes);
+              if (compressedBytes != null) {
+                await ref.putData(
+                  compressedBytes,
+                  SettableMetadata(contentType: 'image/jpeg'),
+                );
+              } else {
+                await ref.putData(
+                  rawBytes,
+                  SettableMetadata(contentType: 'image/jpeg'),
+                );
+              }
+            } else {
+              throw Exception('Unable to read image bytes');
             }
             downloadUrl = await ref.getDownloadURL();
           } catch (e) {
