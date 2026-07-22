@@ -15,6 +15,7 @@ import '../services/upload_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'add_worker_flow.dart' show PdfPagePreview;
 
 class DocumentsScreen extends StatefulWidget {
@@ -1278,6 +1279,19 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   }
 }
 
+String _cleanDocumentFileName(String rawName) {
+  if (rawName.trim().isEmpty) return 'Document';
+  String name = rawName.split('?').first;
+  try {
+    name = Uri.decodeComponent(name);
+  } catch (_) {}
+  if (name.contains('/')) {
+    name = name.split('/').last;
+  }
+  name = name.replaceFirst(RegExp(r'^\d+_'), '');
+  return name.trim().isNotEmpty ? name.trim() : 'Document';
+}
+
 class _FullScreenDocumentViewer extends StatefulWidget {
   final String url;
   final String label;
@@ -1309,6 +1323,8 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
     final size = MediaQuery.of(context).size;
     final previewWidth = (size.width * 0.85).clamp(450.0, 720.0);
     final failedToLoadText = 'failed_to_load'.tr();
+    final cleanTitle = _cleanDocumentFileName(widget.label);
+    final cleanFileName = _cleanDocumentFileName(widget.url);
 
     final Widget imageContent = widget.url.startsWith('data:')
         ? Image.memory(
@@ -1374,7 +1390,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.label,
+                    cleanTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1423,7 +1439,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                       ),
                     )
                   : SizedBox(
-                      height: size.height * 0.50,
+                      height: 280,
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -1435,41 +1451,94 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                             ),
                             const SizedBox(height: 16),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
                               child: Text(
-                                widget.url.split('/').last,
+                                cleanFileName,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Color(0xFF1A1A1A),
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w600,
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 26),
-                            GestureDetector(
-                              onTap: () => Navigator.of(context).pop(),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 28,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0247C4),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  'close'.tr(),
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (widget.url.startsWith('http') ||
+                                    widget.url.startsWith('file'))
+                                  GestureDetector(
+                                    onTap: () {
+                                      try {
+                                        launchUrl(
+                                          Uri.parse(widget.url),
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      } catch (_) {}
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 11,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0247C4),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.open_in_new,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Open Document',
+                                            style: TextStyle(
+                                              color: Color(0xFFFFFFFF),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                if (widget.url.startsWith('http') ||
+                                    widget.url.startsWith('file'))
+                                  const SizedBox(width: 12),
+                                GestureDetector(
+                                  onTap: () => Navigator.of(context).pop(),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 11,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      'close'.tr(),
+                                      style: const TextStyle(
+                                        color: Color(0xFF334155),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ],
                         ),

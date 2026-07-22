@@ -3763,6 +3763,19 @@ class DocumentationSection extends StatelessWidget {
     );
   }
 
+  String _cleanDocumentFileName(String rawName) {
+    if (rawName.trim().isEmpty) return 'Document';
+    String name = rawName.split('?').first;
+    try {
+      name = Uri.decodeComponent(name);
+    } catch (_) {}
+    if (name.contains('/')) {
+      name = name.split('/').last;
+    }
+    name = name.replaceFirst(RegExp(r'^\d+_'), '');
+    return name.trim().isNotEmpty ? name.trim() : 'Document';
+  }
+
   void _openDocumentPreview(BuildContext context) async {
     final isImage =
         cvName != null &&
@@ -3846,7 +3859,7 @@ class DocumentationSection extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            cvName ?? 'CV',
+                            _cleanDocumentFileName(cvName ?? 'CV'),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
