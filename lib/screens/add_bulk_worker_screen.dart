@@ -435,7 +435,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     Set<String> csvNationalIds = {};
     Set<String> csvFrontIds = {};
     Set<String> csvBackIds = {};
-    final issueLines = <String>[];
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -606,20 +605,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       workerData['_rowNumber'] = i + 1;
       workerData['_fieldErrors'] = fieldErrors;
 
-      if (fieldErrors.isNotEmpty) {
-        final workerName = workerData['name']?.toString().trim();
-        final workerLabel = workerName != null && workerName.isNotEmpty
-            ? workerName
-            : 'Row ${i + 1}';
-        final details = fieldErrors.entries
-            .map(
-              (entry) =>
-                  '${_fieldLabels[entry.key] ?? entry.key} (${entry.value})',
-            )
-            .join(', ');
-        issueLines.add('$workerLabel: $details');
-      }
-
       parsedWorkers.add(workerData);
     }
 
@@ -629,22 +614,65 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     });
 
     if (!mounted) return;
-    if (issueLines.isNotEmpty || missingFields.isNotEmpty) {
-      final missingColumnsLine = missingFields.isEmpty
-          ? null
-          : 'Missing columns: ${missingFields.map((field) => _fieldLabels[field] ?? field).join(', ')}';
-      final detailLines = List<String>.from(issueLines);
-      if (missingColumnsLine != null) {
-        detailLines.insert(0, missingColumnsLine);
+
+    // Collect unique field names that are EMPTY across any worker (only "Required" errors)
+    final Set<String> allMissingFieldNames = {};
+    for (final worker in parsedWorkers) {
+      final errors = _fieldErrors(worker);
+      for (final entry in errors.entries) {
+        if (entry.value == 'Required') {
+          allMissingFieldNames.add(entry.key);
+        }
       }
-      final details = detailLines.join('\n');
+    }
+
+    final int duplicateWorkers = parsedWorkers.where((w) {
+      final errors = _fieldErrors(w);
+      return errors.values.any((r) => r.startsWith('Duplicate'));
+    }).length;
+
+    final bool hasAnyIssue = allMissingFieldNames.isNotEmpty ||
+        missingFields.isNotEmpty ||
+        duplicateWorkers > 0;
+
+    if (hasAnyIssue) {
+      final snackParts = <String>[];
+
+      // Line 1: total workers found
+      snackParts.add(
+        '${parsedWorkers.length} worker(s) found in CSV',
+      );
+
+      // Line 2: entire columns missing from the CSV header
+      if (missingFields.isNotEmpty) {
+        final colNames = missingFields
+            .map((f) => _fieldLabels[f] ?? f)
+            .join(', ');
+        snackParts.add('⚠ Missing columns: $colNames');
+      }
+
+      // Line 3: fields that are empty/blank in some rows (grouped by field name)
+      if (allMissingFieldNames.isNotEmpty) {
+        final fieldNames = allMissingFieldNames
+            .map((f) => _fieldLabels[f] ?? f)
+            .join(', ');
+        snackParts.add('❌ Empty fields found: $fieldNames');
+      }
+
+      // Line 4: duplicate workers
+      if (duplicateWorkers > 0) {
+        snackParts.add(
+          '🔁 $duplicateWorkers duplicate(s) — same Email or National ID already exists',
+        );
+      }
+
       FlashySnackBar.show(
         context,
         title: 'csv_uploaded_with_issues_title'.tr(),
-        message: details,
+        message: snackParts.join('\n'),
         isError: true,
         maxLines: null,
-        displayDuration: const Duration(seconds: 12),
+        displayDuration: const Duration(seconds: 15),
       );
     } else {
       FlashySnackBar.show(
@@ -667,9 +695,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
-    final hasValidationErrors = _validWorkers.any(_hasWorkerErrors);
+    final workersWithErrors = _validWorkers.where(_hasWorkerErrors).toList();
+    final workersReadyToSave = _workersReadyToSave;
 
-    if (hasValidationErrors) {
+    if (workersReadyToSave.isEmpty) {
+      // All workers have errors — nothing to upload
       final parts = <String>[];
       if (_missingRequiredCount > 0) {
         parts.add(
@@ -706,9 +736,26 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             namedArgs: {'errors': parts.join('\n')},
           ),
           isError: true,
+          displayDuration: const Duration(seconds: 10),
         );
       }
       return;
+    }
+
+    // Count how many are skipped due to errors
+    int localDuplicateCount = 0;
+    int localMissingCount = 0;
+    int localInvalidDobCount = 0;
+    int localInvalidGenderCount = 0;
+    for (final w in workersWithErrors) {
+      final errors = _fieldErrors(w);
+      if (errors.values.any((r) => r.startsWith('Duplicate'))) {
+        localDuplicateCount++;
+      } else {
+        if (errors.containsKey('dob')) localInvalidDobCount++;
+        if (errors.containsKey('gender')) localInvalidGenderCount++;
+        localMissingCount++;
+      }
     }
 
     setState(() {
@@ -720,31 +767,84 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     _showBulkProgressDialog();
 
     try {
-      final workersToSave = _workersReadyToSave;
-      var importedCount = workersToSave.length;
+      var importedCount = workersReadyToSave.length;
+      int finalSkippedDuplicates = localDuplicateCount;
       if (isGuest) {
-        for (var i = 0; i < workersToSave.length; i++) {
-          final data = workersToSave[i];
+        for (var i = 0; i < workersReadyToSave.length; i++) {
+          final data = workersReadyToSave[i];
           final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
           DummyData.workers.insert(0, {...data, 'id': newId});
         }
         await DummyData.saveToPrefs();
       } else {
-        final result = await FirestoreService().addBulkWorkers(workersToSave);
+        final result = await FirestoreService().addBulkWorkers(workersReadyToSave);
         importedCount = result.imported;
         if (result.skipped > 0) {
-          _duplicateCount += result.skipped;
+          finalSkippedDuplicates += result.skipped;
         }
       }
 
       if (mounted) {
         Navigator.of(context).pop();
-        FlashySnackBar.show(
-          context,
-          message: 'workers_added_successfully'.tr(
+
+        // Build detailed result message
+        final summaryParts = <String>[];
+        summaryParts.add(
+          'workers_added_successfully'.tr(
             namedArgs: {'count': importedCount.toString()},
           ),
         );
+        if (finalSkippedDuplicates > 0) {
+          summaryParts.add(
+            'skipped_duplicates_message'.tr(
+              namedArgs: {'count': finalSkippedDuplicates.toString()},
+            ),
+          );
+        }
+        if (localMissingCount > 0 || localInvalidDobCount > 0 || localInvalidGenderCount > 0) {
+          final errorParts = <String>[];
+          if (localMissingCount > 0) {
+            errorParts.add(
+              'skipped_missing_required_message'.tr(
+                namedArgs: {'count': localMissingCount.toString()},
+              ),
+            );
+          }
+          if (localInvalidDobCount > 0) {
+            errorParts.add(
+              'skipped_invalid_dob_message'.tr(
+                namedArgs: {'count': localInvalidDobCount.toString()},
+              ),
+            );
+          }
+          if (localInvalidGenderCount > 0) {
+            errorParts.add(
+              'skipped_invalid_gender_message'.tr(
+                namedArgs: {'count': localInvalidGenderCount.toString()},
+              ),
+            );
+          }
+          summaryParts.addAll(errorParts);
+        }
+
+        final hasSkipped = finalSkippedDuplicates > 0 ||
+            localMissingCount > 0 ||
+            localInvalidDobCount > 0 ||
+            localInvalidGenderCount > 0;
+
+        FlashySnackBar.show(
+          context,
+          title: importedCount > 0
+              ? 'csv_uploaded_title'.tr()
+              : 'csv_uploaded_with_issues_title'.tr(),
+          message: summaryParts.join('\n'),
+          isError: hasSkipped && importedCount == 0,
+          maxLines: null,
+          displayDuration: hasSkipped
+              ? const Duration(seconds: 10)
+              : const Duration(seconds: 5),
+        );
+
         final dialogShown = await tryShowFirstMilestoneRateUs(
           context,
           'bulk_worker',
@@ -886,12 +986,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 if (_hasParsedFile)
                   Builder(
                     builder: (context) {
-                      final bool isSaveReady = _validWorkers.isNotEmpty;
-                      final bool hasValidationErrors = _validWorkers.any(
-                        _hasWorkerErrors,
-                      );
+                      // canSave = true when at least one worker has no errors
+                      final bool hasAnyValidWorker =
+                          _validWorkers.any((w) => !_hasWorkerErrors(w));
                       final bool canSave =
-                          isSaveReady && !_isSaving && !hasValidationErrors;
+                          hasAnyValidWorker && !_isSaving;
 
                       return GestureDetector(
                         onTap: canSave ? _saveBulkWorkers : null,
@@ -1072,532 +1171,204 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       ),
                     ),
 
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF000000,
-                            ).withValues(alpha: 0.03),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minWidth: MediaQuery.of(context).size.width - 80,
+                    Builder(
+                      builder: (context) {
+                        // Shared controller so header and rows scroll together horizontally
+                        final hScroll = ScrollController();
+
+                        const double rowH = 65.0;
+                        const double tableContentWidth = 3978;
+                        final int count = _validWorkers.length;
+                        // show at most 600px of rows (≈9 rows); grows up to 70% of screen
+                        final double listH = (rowH * count)
+                            .clamp(0.0, MediaQuery.of(context).size.height * 0.70);
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFE2E8F0),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF000000).withValues(alpha: 0.03),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
-                                ),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    topRight: Radius.circular(12),
-                                  ),
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Color(0xFFE2E8F0),
-                                      width: 1,
+                              // ── Sticky header (synced with body scroll) ──
+                              SingleChildScrollView(
+                                controller: hScroll,
+                                scrollDirection: Axis.horizontal,
+                                physics: const NeverScrollableScrollPhysics(),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minWidth: MediaQuery.of(context).size.width - 80,
+                                      maxWidth: tableContentWidth,
+                                    ),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 16,
+                                      ),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(12),
+                                          topRight: Radius.circular(12),
+                                        ),
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: Color(0xFFE2E8F0),
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          _buildHeaderCell('full_name'.tr(), 200),
+                                        _buildHeaderCell('contact_number'.tr(), 120),
+                                        _buildHeaderCell('email_address'.tr(), 200),
+                                        _buildHeaderCell('job_position'.tr(), 150),
+                                        _buildHeaderCell('salary_type'.tr(), 120),
+                                        _buildHeaderCell('currency_title'.tr(), 100),
+                                        _buildHeaderCell('salary_amount'.tr(), 120),
+                                        _buildHeaderCell('father_name'.tr(), 150),
+                                        _buildHeaderCell('national_id_title'.tr(), 150),
+                                        _buildHeaderCell('religion_title'.tr(), 120),
+                                        _buildHeaderCell('date_of_birth'.tr(), 120),
+                                        _buildHeaderCell('gender_title'.tr(), 100),
+                                        _buildHeaderCell('address_title'.tr(), 250),
+                                        _buildHeaderCell('relationship_status_title'.tr(), 140),
+                                        _buildHeaderCell('employee_type'.tr(), 120),
+                                        _buildHeaderCell('work_model'.tr(), 120),
+                                        _buildHeaderCell('experience_level_title'.tr(), 130),
+                                        _buildHeaderCell('education_title'.tr(), 150),
+                                        _buildHeaderCell('leave_policy'.tr(), 120),
+                                        _buildHeaderCell('annual_leaves_title'.tr(), 100),
+                                        _buildHeaderCell('sick_leaves_title'.tr(), 100),
+                                        _buildHeaderCell('casual_leaves_title'.tr(), 100),
+                                        _buildHeaderCell('joining_date_title'.tr(), 150),
+                                        _buildHeaderCell('profile_image_url'.tr(), 200),
+                                        _buildHeaderCell('front_id_image_url'.tr(), 200),
+                                        _buildHeaderCell('back_id_image_url'.tr(), 200),
+                                        _buildHeaderCell('cv_url'.tr(), 200),
+                                      ],
                                     ),
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    _buildHeaderCell('full_name'.tr(), 200),
-                                    _buildHeaderCell(
-                                      'contact_number'.tr(),
-                                      120,
-                                    ),
-                                    _buildHeaderCell('email_address'.tr(), 200),
-                                    _buildHeaderCell('job_position'.tr(), 150),
-                                    _buildHeaderCell('salary_type'.tr(), 120),
-                                    _buildHeaderCell(
-                                      'currency_title'.tr(),
-                                      100,
-                                    ),
-                                    _buildHeaderCell('salary_amount'.tr(), 120),
-                                    _buildHeaderCell('father_name'.tr(), 150),
-                                    _buildHeaderCell(
-                                      'national_id_title'.tr(),
-                                      150,
-                                    ),
-                                    _buildHeaderCell(
-                                      'religion_title'.tr(),
-                                      120,
-                                    ),
-                                    _buildHeaderCell('date_of_birth'.tr(), 120),
-                                    _buildHeaderCell('gender_title'.tr(), 100),
-                                    _buildHeaderCell('address_title'.tr(), 250),
-                                    _buildHeaderCell(
-                                      'relationship_status_title'.tr(),
-                                      140,
-                                    ),
-                                    _buildHeaderCell('employee_type'.tr(), 120),
-                                    _buildHeaderCell('work_model'.tr(), 120),
-                                    _buildHeaderCell(
-                                      'experience_level_title'.tr(),
-                                      130,
-                                    ),
-                                    _buildHeaderCell(
-                                      'education_title'.tr(),
-                                      150,
-                                    ),
-                                    _buildHeaderCell('leave_policy'.tr(), 120),
-                                    _buildHeaderCell(
-                                      'annual_leaves_title'.tr(),
-                                      100,
-                                    ),
-                                    _buildHeaderCell(
-                                      'sick_leaves_title'.tr(),
-                                      100,
-                                    ),
-                                    _buildHeaderCell(
-                                      'casual_leaves_title'.tr(),
-                                      100,
-                                    ),
-                                    _buildHeaderCell(
-                                      'joining_date_title'.tr(),
-                                      150,
-                                    ),
-                                    _buildHeaderCell(
-                                      'profile_image_url'.tr(),
-                                      200,
-                                    ),
-                                    _buildHeaderCell(
-                                      'front_id_image_url'.tr(),
-                                      200,
-                                    ),
-                                    _buildHeaderCell(
-                                      'back_id_image_url'.tr(),
-                                      200,
-                                    ),
-                                    _buildHeaderCell('cv_url'.tr(), 200),
-                                  ],
                                 ),
                               ),
 
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _validWorkers.asMap().entries.map((
-                                  entry,
-                                ) {
-                                  final index = entry.key;
-                                  final worker = entry.value;
-                                  final name = worker['name']?.toString() ?? '';
-                                  final phone =
-                                      worker['phone']?.toString() ?? '';
-                                  final email =
-                                      worker['email']?.toString() ?? '';
-                                  final position =
-                                      worker['position']?.toString() ?? '';
-                                  final rawSalary =
-                                      worker['salaryAmount']?.toString() ?? '';
-                                  final salary = rawSalary.isNotEmpty
-                                      ? AmountText.formatCompact(rawSalary)
-                                      : '';
-                                  final profileImageUrl =
-                                      worker['profileImage']?.toString() ?? '';
-
-                                  final rowWidget = Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 14,
+                              // ── Virtualized rows ──
+                              SizedBox(
+                                height: listH,
+                                child: Scrollbar(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    controller: hScroll,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minWidth: MediaQuery.of(context).size.width - 80,
+                                        maxWidth: tableContentWidth,
+                                      ),
+                                      child: ListView.builder(
+                                        itemCount: count,
+                                        itemExtent: rowH,
+                                        itemBuilder: (ctx, index) {
+                                          final worker = _validWorkers[index];
+                                          return RepaintBoundary(
+                                            child: _buildWorkerRow(worker, index),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                    child: Row(
-                                      children: [
-
-                                        SizedBox(
-                                          width: 200,
-                                          child: Row(
-                                            children: [
-                                              WorkerAvatar(
-                                                imageUrl: profileImageUrl,
-                                                name: name,
-                                                size: 36,
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 5,
-                                                      ),
-                                                  decoration: _fieldDecoration(
-                                                    _hasFieldError(
-                                                      worker,
-                                                      'name',
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    name.isEmpty
-                                                        ? 'required_field'.tr()
-                                                        : name,
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 14,
-                                                      color:
-                                                          _hasFieldError(
-                                                            worker,
-                                                            'name',
-                                                          )
-                                                          ? const Color(
-                                                              0xFFDC2626,
-                                                            )
-                                                          : const Color(
-                                                              0xFF0F172A,
-                                                            ),
-                                                      fontFamily:
-                                                          'SF Pro Display',
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        _buildDataCell(
-                                          phone,
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'phone',
-                                          ),
-                                        ),
-
-                                        _buildDataCell(
-                                          email,
-                                          200,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'email',
-                                          ),
-                                        ),
-
-                                        SizedBox(
-                                          width: 150,
-                                          child: Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 4,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    _hasFieldError(
-                                                      worker,
-                                                      'position',
-                                                    )
-                                                    ? const Color(0xFFFEE2E2)
-                                                    : const Color(0xFFF1F5F9),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                border:
-                                                    _hasFieldError(
-                                                      worker,
-                                                      'position',
-                                                    )
-                                                    ? Border.all(
-                                                        color: const Color(
-                                                          0xFFEF4444,
-                                                        ),
-                                                      )
-                                                    : null,
-                                              ),
-                                              child: Text(
-                                                position.isEmpty
-                                                    ? 'required_field'.tr()
-                                                    : position,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      _hasFieldError(
-                                                        worker,
-                                                        'position',
-                                                      )
-                                                      ? const Color(0xFFDC2626)
-                                                      : const Color(0xFF475569),
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        _buildDataCell(
-                                          worker['salaryType']?.toString() ??
-                                              '',
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'salaryType',
-                                          ),
-                                        ),
-
-                                        _buildDataCell(
-                                          worker['currency']?.toString() ?? '',
-                                          100,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'currency',
-                                          ),
-                                        ),
-
-                                        _buildDataCell(
-                                          salary.isEmpty ? '-' : salary,
-                                          120,
-                                          isBold: true,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'salaryAmount',
-                                          ),
-                                        ),
-
-                                        _buildDataCell(
-                                          worker['fatherName']?.toString() ??
-                                              '',
-                                          150,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'fatherName',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['nationalId']?.toString() ??
-                                              '',
-                                          150,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'nationalId',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['religion']?.toString() ?? '',
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'religion',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['dob']?.toString() ?? '',
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'dob',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['gender']?.toString() ?? '',
-                                          100,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'gender',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['address']?.toString() ?? '',
-                                          250,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'address',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['relationshipStatus']
-                                                  ?.toString() ??
-                                              '',
-                                          140,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'relationshipStatus',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          LocalizationHelper.localizeType1(
-                                            worker['type1']?.toString() ?? '',
-                                          ),
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'type1',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          LocalizationHelper.localizeType2(
-                                            worker['type2']?.toString() ?? '',
-                                          ),
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'type2',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['experienceLevel']
-                                                  ?.toString() ??
-                                              '',
-                                          130,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'experienceLevel',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['education']?.toString() ?? '',
-                                          150,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'education',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['leavePolicy']?.toString() ??
-                                              '',
-                                          120,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'leavePolicy',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['annualLeaves']?.toString() ??
-                                              '',
-                                          100,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'annualLeaves',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['sickLeaves']?.toString() ??
-                                              '',
-                                          100,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'sickLeaves',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['casualLeaves']?.toString() ??
-                                              '',
-                                          100,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'casualLeaves',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['joiningDate']?.toString() ??
-                                              '',
-                                          150,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'joiningDate',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          profileImageUrl.isEmpty
-                                              ? '-'
-                                              : profileImageUrl,
-                                          200,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'profileImage',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['frontId']
-                                                      ?.toString()
-                                                      .isEmpty ==
-                                                  true
-                                              ? '-'
-                                              : worker['frontId']?.toString() ??
-                                                    '-',
-                                          200,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'frontId',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['backId']
-                                                      ?.toString()
-                                                      .isEmpty ==
-                                                  true
-                                              ? '-'
-                                              : worker['backId']?.toString() ??
-                                                    '-',
-                                          200,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'backId',
-                                          ),
-                                        ),
-                                        _buildDataCell(
-                                          worker['cv']?.toString().isEmpty ==
-                                                  true
-                                              ? '-'
-                                              : worker['cv']?.toString() ?? '-',
-                                          200,
-                                          hasError: _hasFieldError(
-                                            worker,
-                                            'cv',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-
-                                  if (index < _validWorkers.length - 1) {
-                                    return Column(
-                                      children: [
-                                        rowWidget,
-                                        const Divider(
-                                          height: 1,
-                                          color: Color(0xFFF1F5F9),
-                                        ),
-                                      ],
-                                    );
-                                  }
-
-                                  return rowWidget;
-                                }).toList(),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerRow(Map<String, dynamic> worker, int index) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      decoration: index.isEven
+          ? const BoxDecoration(color: Color(0xFFFAFBFC))
+          : null,
+      child: Row(
+        children: [
+          _buildDataCell(worker['name']?.toString() ?? '', 200,
+              hasError: _hasFieldError(worker, 'name'),
+              isBold: true),
+          _buildDataCell(worker['phone']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'phone')),
+          _buildDataCell(worker['email']?.toString() ?? '', 200,
+              hasError: _hasFieldError(worker, 'email')),
+          _buildDataCell(worker['position']?.toString() ?? '', 150,
+              hasError: _hasFieldError(worker, 'position')),
+          _buildDataCell(worker['salaryType']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'salaryType')),
+          _buildDataCell(worker['currency']?.toString() ?? '', 100,
+              hasError: _hasFieldError(worker, 'currency')),
+          _buildDataCell(worker['salaryAmount']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'salaryAmount')),
+          _buildDataCell(worker['fatherName']?.toString() ?? '', 150,
+              hasError: _hasFieldError(worker, 'fatherName')),
+          _buildDataCell(worker['nationalId']?.toString() ?? '', 150,
+              hasError: _hasFieldError(worker, 'nationalId')),
+          _buildDataCell(worker['religion']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'religion')),
+          _buildDataCell(worker['dob']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'dob')),
+          _buildDataCell(worker['gender']?.toString() ?? '', 100,
+              hasError: _hasFieldError(worker, 'gender')),
+          _buildDataCell(worker['address']?.toString() ?? '', 250,
+              hasError: _hasFieldError(worker, 'address')),
+          _buildDataCell(worker['relationshipStatus']?.toString() ?? '', 140,
+              hasError: _hasFieldError(worker, 'relationshipStatus')),
+          _buildDataCell(worker['type1']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'type1')),
+          _buildDataCell(worker['type2']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'type2')),
+          _buildDataCell(worker['experienceLevel']?.toString() ?? '', 130,
+              hasError: _hasFieldError(worker, 'experienceLevel')),
+          _buildDataCell(worker['education']?.toString() ?? '', 150,
+              hasError: _hasFieldError(worker, 'education')),
+          _buildDataCell(worker['leavePolicy']?.toString() ?? '', 120,
+              hasError: _hasFieldError(worker, 'leavePolicy')),
+          _buildDataCell(worker['annualLeaves']?.toString() ?? '', 100,
+              hasError: _hasFieldError(worker, 'annualLeaves')),
+          _buildDataCell(worker['sickLeaves']?.toString() ?? '', 100,
+              hasError: _hasFieldError(worker, 'sickLeaves')),
+          _buildDataCell(worker['casualLeaves']?.toString() ?? '', 100,
+              hasError: _hasFieldError(worker, 'casualLeaves')),
+          _buildDataCell(worker['joiningDate']?.toString() ?? '', 150,
+              hasError: _hasFieldError(worker, 'joiningDate')),
+          _buildDataCell(worker['profileImage']?.toString() ?? '', 200,
+              hasError: _hasFieldError(worker, 'profileImage')),
+          _buildDataCell(worker['frontId']?.toString() ?? '', 200,
+              hasError: _hasFieldError(worker, 'frontId')),
+          _buildDataCell(worker['backId']?.toString() ?? '', 200,
+              hasError: _hasFieldError(worker, 'backId')),
+          _buildDataCell(worker['cv']?.toString() ?? '', 200,
+              hasError: _hasFieldError(worker, 'cv')),
         ],
       ),
     );
