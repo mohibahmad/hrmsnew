@@ -123,6 +123,16 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       return;
     }
 
+    if (_profileImageBytes == null) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_upload_profile_image'.tr(),
+        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     final dobStr = dobController.text.trim();
     if (dobStr.isNotEmpty) {
       final dob = AppDateUtils.parseDateString(dobStr);
