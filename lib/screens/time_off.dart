@@ -1023,7 +1023,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         child: Center(
           child: Container(
             width: dialogWidth,
-            height: 520,
+            height: 430,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
@@ -1360,7 +1360,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   Widget _buildEmptyState() {
     double dynamicHeight = MediaQuery.of(context).size.height - 450;
     if (dynamicHeight < 300) dynamicHeight = 300;
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: dynamicHeight,
       child: Center(

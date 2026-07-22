@@ -765,17 +765,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   focusedBorderColor: _borderLight,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildInput(
-                  'salary'.tr(),
-                  '',
-                  _salaryCtrl,
-                  readOnly: true,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: _buildCalculatedInput(cr)),
             ],
           ),
           const SizedBox(height: 24),
@@ -807,6 +796,21 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   isCurrency: true,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInput(
+                  'salary'.tr(),
+                  '',
+                  _salaryCtrl,
+                  readOnly: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: _buildCalculatedInput(cr)),
             ],
           ),
           const SizedBox(height: 32),

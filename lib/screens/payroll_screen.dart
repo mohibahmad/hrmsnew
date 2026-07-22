@@ -128,7 +128,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Future<void> _showSalaryDayDialog() async {
-    var selectedDay = _salaryPaymentDay ?? 1;
+    final now = DateTime.now();
+    final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
+    var selectedDay = (_salaryPaymentDay ?? 1)
+        .clamp(1, daysInCurrentMonth)
+        .toInt();
     final result = await showDialog<int>(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -195,7 +199,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ),
                   ),
                   items: List.generate(
-                    31,
+                    daysInCurrentMonth,
                     (index) => DropdownMenuItem<int>(
                       value: index + 1,
                       child: Text('${index + 1}'),
@@ -1002,7 +1006,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         child: Center(
           child: Container(
             width: dialogWidth,
-            height: 480,
+            height: 430,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Color(0xFFFFFFFF),
