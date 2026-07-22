@@ -1190,10 +1190,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
   }
 
-  void _validateAndGoToExperience() {
+  Future<void> _validateAndGoToExperience() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
+    final nationalId = _nationalIdController.text.trim();
 
     // Check required fields
     if (name.isEmpty) {
@@ -1241,6 +1242,43 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         isError: true,
       );
       return;
+    }
+
+    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isEditing = widget.workerToEdit != null;
+
+    if (!isEditing) {
+      try {
+        Iterable<Map<String, dynamic>> existingWorkers = DummyData.workers;
+        if (!isGuest) {
+          final snapshot = await FirestoreService().getWorkersOnce();
+          existingWorkers = snapshot.docs.map(
+            (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+          );
+        }
+
+        final duplicateField = WorkerIdentity.duplicateField({
+          'name': name,
+          'email': email,
+          'nationalId': nationalId,
+        }, existingWorkers);
+        if (duplicateField != null && mounted) {
+          final messageKey = switch (duplicateField) {
+            DuplicateWorkerField.name => 'duplicate_name',
+            DuplicateWorkerField.email => 'duplicate_email',
+            DuplicateWorkerField.nationalId => 'duplicate_national_id',
+            DuplicateWorkerField.frontId => 'duplicate_front_id',
+            DuplicateWorkerField.backId => 'duplicate_back_id',
+          };
+          FlashySnackBar.show(
+            context,
+            message: messageKey.tr(),
+            title: 'validation_error'.tr(),
+            isError: true,
+          );
+          return;
+        }
+      } catch (_) {}
     }
 
     setState(() => _activeTabIndex = 1);
@@ -3074,7 +3112,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
             ),
           ],
         ),
-        const SizedBox(height: 0),
+        const SizedBox(height: 32),
 
         // Salary Section
         Text(
@@ -3113,11 +3151,13 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: _buildDropdownField(
-                      label: 'currency_label'.tr(),
-                      selectedValue: widget.currencyController.text,
-                      hint: 'enter_your_currency'.tr(),
-                      items: CurrencyUtils.supportedCodes,
+                     child: _buildDropdownField(
+                       label: 'currency_label'.tr(),
+                       selectedValue: widget.currencyController.text.isEmpty
+                           ? 'USD'
+                           : widget.currencyController.text,
+                       hint: 'enter_your_currency'.tr(),
+                       items: CurrencyUtils.supportedCodes,
                       itemLabelBuilder: (val) => _localizeCurrency(val),
                       onChanged: (val) {
                         if (val != null) {
