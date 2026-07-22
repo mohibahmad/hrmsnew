@@ -761,6 +761,7 @@
   "invalid_date_format": "Invalid date format. Please use DD/MM/YYYY.",
   "invalid_gender_value": "Invalid gender value. Only Male, Female, or Other is allowed.",
   "invalid_currency_value": "Select a valid currency code.",
+  "invalid_company_id_format": "Company ID must contain only uppercase letters and digits (e.g., ABC123).",
   "holiday_already_exists": "Holiday already exists for this day",
   "please_enter_holiday_name": "Please enter a holiday name.",
   "uploading_files": "Uploading {count} file(s)...",

@@ -36,6 +36,21 @@ class Validators {
     return _email.hasMatch(value.trim());
   }
 
+  static final RegExp _companyId = RegExp(r'^[A-Z0-9]+$');
+
+  static bool isValidCompanyId(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return false;
+    return _companyId.hasMatch(trimmed);
+  }
+
+  static String? companyId(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    if (!isValidCompanyId(trimmed)) return 'invalid_company_id_format'.tr();
+    return null;
+  }
+
   /// Returns null when [value] is a non-empty string, otherwise an error
   /// message. Convenient as a `TextFormField.validator`.
   static String? requiredField(String? value, {String? label}) {

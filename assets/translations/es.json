@@ -761,6 +761,7 @@
   "invalid_date_format": "Formato de fecha inválido. Usa DD/MM/AAAA.",
   "invalid_gender_value": "Valor de género inválido. Se permite Masculino, Femenino u Otro.",
   "invalid_currency_value": "Selecciona un código de moneda válido.",
+  "invalid_company_id_format": "El ID de la empresa debe contener solo letras mayúsculas y dígitos (ejemplo: ABC123).",
   "holiday_already_exists": "Ya existe un feriado para este día",
   "please_enter_holiday_name": "Por favor ingresa un nombre para el feriado.",
   "uploading_files": "Subiendo {count} archivo(s)...",

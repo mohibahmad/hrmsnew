@@ -753,6 +753,7 @@
   "invalid_date_format": "Format de date invalide. Veuillez utiliser JJ/MM/AAAA.",
   "invalid_gender_value": "Valeur de genre invalide. Homme, Femme ou Autre est autorisé.",
   "invalid_currency_value": "Sélectionnez un code de devise valide.",
+  "invalid_company_id_format": "L'ID de l'entreprise doit contenir uniquement des lettres majuscules et des chiffres (ex. : ABC123).",
   "holiday_already_exists": "Un jour férié existe déjà pour ce jour",
   "please_enter_holiday_name": "Veuillez entrer un nom de jour férié.",
   "uploading_files": "Téléchargement de {count} fichier(s)...",

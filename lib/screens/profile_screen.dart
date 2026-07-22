@@ -13,6 +13,7 @@ import '../services/preferences_service.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/validators.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/notification_bell.dart';
 import 'package:flutter/foundation.dart';
@@ -287,7 +288,19 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'please_enter_company_number'.tr(),
+          message: 'field_is_required'.tr(namedArgs: {'field': 'company_id_no'.tr()}),
+          isError: true,
+        );
+      }
+      return false;
+    }
+
+    final companyIdError = Validators.companyId(_companyIdController.text);
+    if (companyIdError != null) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: companyIdError,
           isError: true,
         );
       }
@@ -795,7 +808,9 @@ class _ProfileBodyState extends State<ProfileBody> {
                               RegExp(r'[0-9+\-\s()]'),
                             ),
                           if (isCompanyId)
-                            FilteringTextInputFormatter.digitsOnly,
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[A-Z0-9]'),
+                            ),
                         ]
                       : null,
                   decoration: InputDecoration(
@@ -805,7 +820,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                     hintText: isEmailField
                         ? 'example@company.com'
                         : isCompanyId
-                        ? 'e.g. 12345678'
+                        ? 'e.g. ABC123'
                         : isBusinessName
                         ? 'e.g. ABC Corporation'
                         : isContact
