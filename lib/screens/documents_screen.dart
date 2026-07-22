@@ -550,25 +550,29 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           widget.worker[key] = value;
         });
         widget.onDocumentsUpdated();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: field == 'frontId'
+                  ? 'cnic_front_updated'.tr(namedArgs: {'name': _workerName})
+                  : field == 'backId'
+                  ? 'cnic_back_updated'.tr(namedArgs: {'name': _workerName})
+                  : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           FlashySnackBar.show(
             context,
-            message: field == 'frontId'
-                ? 'cnic_front_updated'.tr(namedArgs: {'name': _workerName})
-                : field == 'backId'
-                ? 'cnic_back_updated'.tr(namedArgs: {'name': _workerName})
-                : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
+            message: 'upload_failed'.tr(namedArgs: {'error': '$e'}),
+            isError: true,
           );
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'upload_failed'.tr(namedArgs: {'error': '$e'}),
-          isError: true,
-        );
-      }
+      });
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
@@ -639,7 +643,6 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-
                   Expanded(
                     flex: 1,
                     child: Column(
@@ -916,7 +919,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
             }
           : onTap,
       child: Container(
-        height: 250,
+        height: 320,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -1292,7 +1295,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewSize = (size.width * 0.4).clamp(280.0, 520.0);
+    final previewSize = (size.width * 0.55).clamp(320.0, 600.0);
     final failedToLoadText = 'failed_to_load'.tr();
 
     final content = Container(
