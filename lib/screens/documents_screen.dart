@@ -1295,12 +1295,13 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewSize = (size.width * 0.55).clamp(320.0, 600.0);
+    final previewWidth = (size.width * 0.80).clamp(380.0, 800.0);
+    final previewHeight = previewWidth * 0.62;
     final failedToLoadText = 'failed_to_load'.tr();
 
     final content = Container(
-      width: previewSize,
-      height: previewSize * 1.35,
+      width: previewWidth,
+      height: previewHeight,
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(14),
@@ -1367,13 +1368,13 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                       child: widget.url.startsWith('data:')
                           ? Image.memory(
                               _base64ToBytes(widget.url),
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                               width: double.infinity,
                               height: double.infinity,
                             )
                           : CachedNetworkImage(
                               imageUrl: widget.url,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                               width: double.infinity,
                               height: double.infinity,
                               placeholder: (c, u) => const Center(
