@@ -122,7 +122,7 @@ class _ProfileBodyState extends State<ProfileBody> {
   void didUpdateWidget(ProfileBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.isActive && oldWidget.isActive) {
-      // Screen became inactive, clear unsaved changes
+
       if (mounted) {
         setState(() {
           _isEditing = false;
@@ -146,7 +146,7 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.dispose();
   }
 
-  /// In-memory guest profile cache (persists during session)
+
   static Map<String, String>? _guestProfileCache;
 
   Future<void> _loadProfile() async {
@@ -398,7 +398,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           if (downloadUrl != null) 'profilePic': downloadUrl,
         });
       } else {
-        // Guest user: save temporary preview image link to notifier in-memory.
+
         if (_newProfileImageBytes != null) {
           final base64String = base64Encode(_newProfileImageBytes!);
           downloadUrl = 'data:image/png;base64,$base64String';
@@ -413,7 +413,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newProfileImagePath = null;
         }
 
-        // Cache guest profile data in memory for session persistence
+
         _guestProfileCache = {
           'businessName': _businessNameController.text,
           'companyId': _companyIdController.text,
@@ -1013,7 +1013,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                   ],
                 ),
               ),
-              // Blue banner with logo and company name
+
               Container(
                 color: const Color(0xFF0247C4),
                 padding: const EdgeInsets.fromLTRB(24, 15, 24, 15),
@@ -1047,7 +1047,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                   ],
                 ),
               ),
-              // Body Section (Cards List)
+
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -1055,7 +1055,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Row 1: Business Name + Company ID
+
                     Row(
                       children: [
                         Expanded(
@@ -1076,7 +1076,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Row 2: Company E-mail + Currency
+
                     Row(
                       children: [
                         Expanded(
@@ -1097,7 +1097,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Row 3: Contact No + Address
+
                     Row(
                       children: [
                         Expanded(

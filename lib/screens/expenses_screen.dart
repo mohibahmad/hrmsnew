@@ -496,7 +496,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // === Modal Header ===
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -608,7 +608,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // === Modal Form Rows ===
+
                     Row(
                       children: [
                         Expanded(
@@ -1354,7 +1354,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  // ================= FILLED STATE (LIST) =================
+
 
   Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
     final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(
@@ -1370,7 +1370,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ),
       child: Column(
         children: [
-          // Table Headers
+
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -1406,12 +1406,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(width: 48), // Spacer to match action menu width
+                const SizedBox(width: 48),
               ],
             ),
           ),
           Container(height: 1, color: const Color(0xFFF7F8FC)),
-          // Table Rows
+
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),

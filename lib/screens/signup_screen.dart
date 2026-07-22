@@ -226,7 +226,7 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
       );
 
-      // updateDisplayName is best-effort — don't let it block profile creation
+
       try {
         await credential.user?.updateDisplayName(
           _usernameController.text.trim(),
@@ -488,7 +488,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 12),
 
-      // Continue with Google Button
+
       if (_googleEnabled)
         buildSocialButton(
           context: context,
@@ -502,25 +502,25 @@ class _SignupScreenState extends State<SignupScreen> {
       if (_googleEnabled)
         const SizedBox(height: 8),
 
-      // Continue with Apple Button
-      // buildSocialButton(
-      //   context: context,
-      //   text: 'continue_with_apple'.tr(),
-      //   icon: SvgPicture.asset(
-      //     'assets/apple_icon.svg',
-      //     width: 16,
-      //     height: 16,
-      //     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-      //   ),
-      //   isLoading: _isAppleLoading,
-      //   onPressed: _anyLoading ? null : _handleAppleLogin,
-      //   backgroundColor: const Color(0xFF0F172A),
-      //   textColor: Colors.white,
-      //   border: const BorderSide(color: Color(0xFF0F172A)),
-      // ),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       const SizedBox(height: 8),
 
-      // Continue as Guest Button
+
       buildSocialButton(
         context: context,
         text: 'continue_as_guest'.tr(),

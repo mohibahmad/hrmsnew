@@ -278,9 +278,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       backgroundColor: bgGray,
       body: Column(
         children: [
-          // Top Header Widget
+
           _buildHeader(context),
-          // Main Body Content
+
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
@@ -299,7 +299,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left side: Attendance Table/Empty State
+
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +331,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         ),
                       ),
 
-                      // Right side timeframe dropdown popup (anchored or expanded)
+
                     ],
                   ),
                   const SizedBox(height: 40),
@@ -371,7 +371,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ],
           ),
           const Spacer(),
-          // Notification Bell
+
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           MouseRegion(
@@ -754,7 +754,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       child: Column(
         children: [
-          // Table Header
+
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -786,7 +786,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           ),
           Container(height: 1, color: const Color(0xFFF7F8FC)),
-          // Table Rows
+
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -1484,7 +1484,7 @@ class _WorkerAttendancePreviewCardState
   Future<void> _exportCsv(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
-    // Header section
+
     rows.add(['Worker Attendance Summary']);
     rows.add(['Name', widget.record.name]);
     rows.add(['Email', widget.record.email]);
@@ -1502,7 +1502,7 @@ class _WorkerAttendancePreviewCardState
     ]);
     rows.add([]);
 
-    // Daily Logs header
+
     rows.add(['Daily Attendance Logs']);
     rows.add([
       'Date',
@@ -1512,7 +1512,7 @@ class _WorkerAttendancePreviewCardState
       'Reason/Notes',
     ]);
 
-    // Sort workerRecords by date (newest first)
+
     final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);
     sortedRecords.sort((a, b) {
       final aTime = a['createdAt'];

@@ -256,7 +256,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return;
       }
 
-      // BOM strip + UTF-8 safe + normalize line endings
+
       var csvString = utf8.decode(bytes, allowMalformed: true);
       if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
         csvString = csvString.substring(1);
@@ -331,8 +331,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'currency': 'currency',
     };
 
-    // Check all required columns, but continue parsing so every CSV row and
-    // every missing cell can still be shown in the preview.
+
+
     Set<String> foundFields = {};
     for (var h in headers) {
       final m = headerMap[h] ?? h;
@@ -343,7 +343,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .where((f) => !foundFields.contains(f))
         .toList();
 
-    // Fetch existing names, emails, and national IDs
+
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
     Set<String> existingNames = {};
@@ -509,7 +509,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // Validate DOB only when it is present; empty DOB is already marked.
+
       final dobStr = (workerData['dob'] ?? '').toString().trim();
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
@@ -527,7 +527,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // Validate gender only when present.
+
       final gender = workerData['gender']?.toString().trim() ?? '';
       final normalizedGender = gender.toLowerCase();
       if (gender.isNotEmpty &&
@@ -541,7 +541,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         workerData['gender'] = 'Other';
       }
 
-      // Validate email only when present.
+
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty &&
           !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
@@ -826,7 +826,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Header Area
+
           Container(
             height: 94,
             padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -985,7 +985,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                   ),
                   const SizedBox(height: 32),
                   if (_hasParsedFile) ...[
-                    // Preview Header Card
+
                     Container(
                       padding: const EdgeInsets.all(20),
                       margin: const EdgeInsets.only(bottom: 24),
@@ -1071,7 +1071,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         ],
                       ),
                     ),
-                    // Custom Premium Table
+
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1099,7 +1099,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Table Header
+
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 24,
@@ -1192,7 +1192,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   ],
                                 ),
                               ),
-                              // Table Body
+
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: _validWorkers.asMap().entries.map((
@@ -1222,7 +1222,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     ),
                                     child: Row(
                                       children: [
-                                        // Name with Avatar
+
                                         SizedBox(
                                           width: 200,
                                           child: Row(
@@ -1276,7 +1276,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             ],
                                           ),
                                         ),
-                                        // Phone
+
                                         _buildDataCell(
                                           phone,
                                           120,
@@ -1285,7 +1285,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'phone',
                                           ),
                                         ),
-                                        // Email
+
                                         _buildDataCell(
                                           email,
                                           200,
@@ -1294,7 +1294,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'email',
                                           ),
                                         ),
-                                        // Position Chip
+
                                         SizedBox(
                                           width: 150,
                                           child: Align(
@@ -1347,7 +1347,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             ),
                                           ),
                                         ),
-                                        // Salary Type
+
                                         _buildDataCell(
                                           worker['salaryType']?.toString() ??
                                               '',
@@ -1357,7 +1357,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'salaryType',
                                           ),
                                         ),
-                                        // Currency
+
                                         _buildDataCell(
                                           worker['currency']?.toString() ?? '',
                                           100,
@@ -1366,7 +1366,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'currency',
                                           ),
                                         ),
-                                        // Salary Amount
+
                                         _buildDataCell(
                                           salary.isEmpty ? '-' : salary,
                                           120,
@@ -1376,7 +1376,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'salaryAmount',
                                           ),
                                         ),
-                                        // Additional fields
+
                                         _buildDataCell(
                                           worker['fatherName']?.toString() ??
                                               '',

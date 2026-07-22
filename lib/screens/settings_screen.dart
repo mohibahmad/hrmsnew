@@ -276,7 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       barrierColor: Color(
         0xFF000000,
-      ).withValues(alpha: 0.05), // Very light transparent bg
+      ).withValues(alpha: 0.05),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -471,7 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ================= CONTENT BUILDERS =================
+
 
   Widget _buildHeader(BuildContext context) {
     return Container(

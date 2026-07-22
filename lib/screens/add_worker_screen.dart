@@ -40,7 +40,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   final TextEditingController addressController = TextEditingController();
 
   bool isMarried = true;
-  bool isLoading = false; // Loading state for Firebase operation
+  bool isLoading = false;
 
   Uint8List? _profileImageBytes;
   String? _profileImageName;
@@ -195,10 +195,10 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         }
       }
 
-      // Pushing data via FirestoreService (user-scoped collection)
+
       final isGuest = AuthService().currentUser?.isAnonymous ?? false;
       if (isGuest) {
-        // Guests use local DummyData only — no Firebase
+
         final newWorker = {
           'name': nameController.text.trim(),
           'fatherName': fatherNameController.text.trim(),
@@ -383,7 +383,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                         child: Container(
                           height: 44,
                           width:
-                              100, // Fixed width so it doesn't shrink when loading
+                              100,
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           decoration: BoxDecoration(
                             color: isLoading
@@ -427,7 +427,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // --- Tabs Section ---
+
                           Container(
                             height: 56,
                             decoration: BoxDecoration(
@@ -511,11 +511,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // --- Form Grid & Right Panel ---
+
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // === LEFT: Input Form Area ===
+
                               Expanded(
                                 flex: 2,
                                 child: Container(
@@ -636,7 +636,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                               ),
                               const SizedBox(width: 32),
 
-                              // === RIGHT: Profile Upload & Status ===
+
                               Expanded(
                                 flex: 1,
                                 child: Container(
@@ -696,7 +696,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                                           fit: BoxFit.cover,
                                                         ),
                                                       ),
-                                                      // Cross/close icon (top-right)
+
                                                       Positioned(
                                                         top: 8,
                                                         right: 8,
@@ -790,7 +790,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
                                       ),
                                       const SizedBox(height: 32),
 
-                                      // Relationship Status Section
+
                                       Text(
                                         'relationship_status'.tr(),
                                         style: TextStyle(

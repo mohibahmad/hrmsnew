@@ -378,7 +378,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Modal Header
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -542,7 +542,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Input Field
+
                     Text(
                       'holiday_name'.tr(),
                       style: TextStyle(
@@ -582,7 +582,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Calendar Widget inside Modal
+
                     _buildModalCalendar(
                       calendarDate,
                       selectedDay,
@@ -856,7 +856,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
-  // ================= MAIN CONTENT =================
+
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -1102,7 +1102,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
-  // ================= FILLED STATE (LIST) =================
+
 
   Widget _buildFilledState() {
     final months = _holidaysByMonth.keys
@@ -1226,7 +1226,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Modal Header
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -1344,7 +1344,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Input Field
+
                     Text(
                       'holiday_name'.tr(),
                       style: TextStyle(
@@ -1384,7 +1384,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Calendar Widget inside Modal
+
                     _buildModalCalendar(
                       calendarDate,
                       selectedDay,
@@ -1434,7 +1434,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             height: 36,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
-              color: Color(0xFFF1F5F9), // Light grey circle
+              color: Color(0xFFF1F5F9),
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -1462,7 +1462,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // Custom blue toggle switch
+
           GestureDetector(
             onTap: () async {
               final value = !item.isEnabled;
@@ -1685,7 +1685,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 }
 
-// Data Model for Holiday Items
 class HolidayItem {
   final String? id;
   final String month;

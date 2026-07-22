@@ -639,7 +639,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Left Side: ID Card Upload
+
                   Expanded(
                     flex: 1,
                     child: Column(
@@ -801,7 +801,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Right Side: CV Upload
+
                   Expanded(
                     flex: 1,
                     child: Column(

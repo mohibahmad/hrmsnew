@@ -21,7 +21,7 @@ class Worker {
   final String contact;
   final String action;
   final bool
-  isMaleAvatar; // Used to mock the specific placeholder illustrations
+  isMaleAvatar;
 
   Worker(
     this.name,
@@ -55,9 +55,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
-  // Keep persisted time-off records separate from the worker rows rendered in
-  // the table. Reusing one list for both caused worker-stream refreshes to
-  // overwrite the saved assignment state and show "Assign" again.
+
+
+
   List<Map<String, dynamic>> _rawTimeoffDocs = [];
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
@@ -114,7 +114,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
         });
       } else {
-        // Include workers without timeoff records with default empty values
+
         combined.add({
           ...worker,
           'action': '',
@@ -125,7 +125,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       }
     }
 
-    // 🔥 FIX: Calculate remaining leaves for each worker
+
     for (var doc in combined) {
       final annualLeaves =
           int.tryParse(doc['annualLeaves']?.toString() ?? '0') ?? 0;
@@ -293,7 +293,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return _matchesFilter(position, _selectedTab);
     }).toList();
 
-    // Sort: Workers with assigned time off at top, then without
+
     filtered.sort((a, b) {
       final actionA = (a['action'] ?? '').toString();
       final actionB = (b['action'] ?? '').toString();
@@ -306,7 +306,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Future<void> _handleDelete(Map<String, dynamic> doc) async {
-    // Don't allow deletion of workers without timeoff records
+
     final action = (doc['action'] ?? '').toString();
     if (action.isEmpty) {
       if (mounted) {
@@ -383,7 +383,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 e['name'] == doc['name'] &&
                 e['action'] == doc['action'],
           );
-          // Refresh remaining leaves
+
           _combineTimeOff();
         });
       } else {
@@ -499,7 +499,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             ],
           ),
           const Spacer(),
-          // Notification Bell
+
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
@@ -571,7 +571,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
-  // Real worker positions (not in default list)
+
   List<String> get _extraPositions {
     final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
     final extras = <String>{};
@@ -585,7 +585,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     return sorted;
   }
 
-  // Real worker positions (in default list too — to avoid duplicate defaults)
+
   List<String> get _workerPositionsInDefaults {
     final workerPositions = _workersList
         .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
@@ -594,10 +594,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     return workerPositions.toList();
   }
 
-  // Default positions excluding ones already shown via real workers
+
   List<String> get _remainingDefaultPositions {
     final workerPosLower = _workerPositionsInDefaults.toSet();
-    // Skip 'All' (index 0), only position names
+
     return _defaultFilters
         .skip(1)
         .where((d) => !workerPosLower.contains(d.toLowerCase()))
@@ -625,7 +625,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
               height: 38,
               color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
             ),
-            // 1) Real worker positions (not in default list)
+
             ..._extraPositions.asMap().entries.expand(
               (entry) => [
                 Container(
@@ -636,7 +636,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 _buildTabItem(entry.value, entry.value),
               ],
             ),
-            // 2) Real worker positions that ARE in default list
+
             ...() {
               final workerPosLower = _workerPositionsInDefaults.toSet();
               final workerDefaultPositions = _defaultFilters
@@ -654,7 +654,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 ],
               );
             }(),
-            // 3) Remaining default positions (not used by any worker)
+
             ..._remainingDefaultPositions.expand(
               (pos) => [
                 Container(
@@ -717,7 +717,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       ),
       child: Column(
         children: [
-          // Table Header
+
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -786,7 +786,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
             ),
           ),
           Container(height: 1, color: const Color(0xFFF7F8FC)),
-          // Table Rows
+
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -818,7 +818,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Worker Name with Avatar
+
                         Expanded(
                           flex: 3,
                           child: Padding(
@@ -865,7 +865,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             ),
                           ),
                         ),
-                        // Position
+
                         Expanded(
                           flex: 2,
                           child: Padding(
@@ -882,7 +882,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             ),
                           ),
                         ),
-                        // Contact
+
                         Expanded(
                           flex: 2,
                           child: Padding(
@@ -899,7 +899,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                             ),
                           ),
                         ),
-                        // Time Off Action
+
                         Expanded(
                           flex: 2,
                           child: Align(
@@ -936,7 +936,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                 if (widget.onAssignTimeOff != null) {
                                   widget.onAssignTimeOff!(doc);
                                 } else {
-                                  // Fallback if rendered as standalone
+
                                   Navigator.of(context)
                                       .push(
                                         MaterialPageRoute(

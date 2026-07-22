@@ -216,7 +216,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   ),
                 const SizedBox(height: 16),
 
-                // Navigation Menu
+
                 _buildNavItem(
                   Icons.grid_view_rounded,
                   'sidebar_dashboard'.tr(),
@@ -252,13 +252,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 DashboardWorkerList(
                   onAddWorker: () => setState(() => _currentMenuIndex = 1),
                   onAddBulkWorker: () => setState(() => _currentMenuIndex = 2),
-                ), // Index 0
+                ),
                 AddNewWorkerFlow(
                   onBack: () => setState(() => _currentMenuIndex = 0),
-                ), // Index 1
+                ),
                 AddBulkWorkerScreen(
                   onBack: () => setState(() => _currentMenuIndex = 0),
-                ), // Index 2
+                ),
               ],
             ),
           ),
@@ -283,12 +283,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             text,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
-                                       style: const TextStyle(
-                                          color: Color(0xFFFFFFFF),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'SF Pro Display',
+            ),
           ),
         ],
       ),
@@ -604,7 +604,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     'Management',
   ];
 
-  // Real worker positions (not in default list)
+
   List<String> get _extraPositions {
     final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
     final extras = <String>{};
@@ -618,7 +618,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     return sorted;
   }
 
-  // Real worker positions that exist in default list
+
   List<String> get _workerPositionsInDefaults {
     final workerPositions = _allWorkers
         .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
@@ -627,7 +627,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     return workerPositions.toList();
   }
 
-  // Default positions not covered by any real worker
   List<String> get _remainingDefaultPositions {
     final workerPosLower = _workerPositionsInDefaults.toSet();
     return _defaultFilters
@@ -893,7 +892,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ),
                 const SizedBox(height: 22),
 
-                // Filter Tabs
+
                 Container(
                   width: 560,
 
@@ -915,7 +914,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           height: 38,
                           color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
                         ),
-                        // 1) Real worker positions (not in default list)
+
                         ..._extraPositions.asMap().entries.expand(
                           (entry) => [
                             Container(
@@ -926,10 +925,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             _buildFilterTab(entry.value, entry.value),
                           ],
                         ),
-                        // 2) Real worker positions that ARE in default list
+
                         ...() {
-                          final workerPosLower =
-                              _workerPositionsInDefaults.toSet();
+                          final workerPosLower = _workerPositionsInDefaults
+                              .toSet();
                           final workerDefaultPositions = _defaultFilters
                               .skip(1)
                               .where(
@@ -941,15 +940,13 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                               Container(
                                 width: 1,
                                 height: 38,
-                                color: Color(
-                                  0xFFE0E0E0,
-                                ).withValues(alpha: 0.5),
+                                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
                               ),
                               _buildFilterTab(pos, pos),
                             ],
                           );
                         }(),
-                        // 3) Remaining defaults (no worker has this position)
+
                         ..._remainingDefaultPositions.expand(
                           (pos) => [
                             Container(
@@ -966,7 +963,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ),
                 const SizedBox(height: 22),
 
-                // Unified Table Layout or Loading/Empty states
+
                 if (_isLoading)
                   const Padding(
                     padding: EdgeInsets.all(40.0),
@@ -1033,7 +1030,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       ),
       child: Column(
         children: [
-          // Table Headers
+
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -1101,7 +1098,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
             ),
           ),
           Container(height: 1, color: const Color(0xFFF7F8FC)),
-          // List Items
+
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),

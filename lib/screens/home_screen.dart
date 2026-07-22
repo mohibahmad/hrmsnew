@@ -212,16 +212,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadPremiumStatus() async {
     bool isPremium = false;
     final user = AuthService().currentUser;
-    // Always read premium status from Firestore, never trust local cache.
+
     if (user != null && !user.isAnonymous) {
       try {
         final profile = await FirestoreService().getUserProfile();
         isPremium = profile?['isPremium'] == true;
-        // Sync to local preferences so other parts of the app (PremiumGate, etc.)
-        // also see the correct value without another Firestore call.
+
+
         await PreferencesService.setPremium(isPremium);
       } catch (_) {
-        // Fallback to local cache if Firestore is unreachable
+
         isPremium = await PreferencesService.isPremium();
       }
     }
@@ -243,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (_) {
-      // Firestore error — don't logout, let the app retry
+
     }
   }
 
@@ -256,17 +256,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
     final currentUser = AuthService().currentUser;
-    // Try to restore profile pic from local storage first (survives restarts)
+
     _restoreProfilePic(currentUser);
     _loadDashboardData();
-    // Defer the heavy dashboard (charts/cards) build to after the first frame
-    // so the sign-in -> home page transition stays smooth.
+
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _dashboardReady = true);
     });
-    // Real-time listener for premium status changes from Firestore
+
     _startPremiumListener();
-    // Load premium status first, then show dialog if needed
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkProfileExistsOrLogout();
       await _loadPremiumStatus();
@@ -344,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherWorkersCount = oCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
 
-        // Guest: use all dummy attendance data (dummy data has no createdAt)
+
         _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
 
         _totalAttendanceCount = _attendanceDocs.length;
@@ -682,7 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             return IndexedStack(
                               index: stackIndex,
                               children: [
-                                // 0: Dashboard View
+
                                 _activatedScreens[0]
                                     ? (_dashboardReady
                                           ? TweenAnimationBuilder<double>(
@@ -727,27 +727,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ],
                                             ))
                                     : const SizedBox.shrink(),
-                                // 1: Workers Screen
+
                                 _getScreen(1),
-                                // 2: Attendance Screen
+
                                 _getScreen(2),
-                                // 3: Payroll Screen
+
                                 _getScreen(3),
-                                // 4: Time Off Screen
+
                                 _getScreen(4),
-                                // 5: Assets Screen
+
                                 _getScreen(5),
-                                // 6: Holidays Screen
+
                                 _getScreen(6),
-                                // 7: Expenses Screen
+
                                 _getScreen(7),
-                                // 8: Settings Screen
+
                                 _getScreen(8),
-                                // 9: Assign Time Off
+
                                 _getScreen(9),
-                                // 10: Profile View
+
                                 _buildProfileView(stackIndex == 10),
-                                // 11: Workers Attendance Screen
+
                                 WorkersAttendanceScreen(
                                   hideSidebar: true,
                                   onProfileTap: _openProfile,
@@ -758,7 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                   onNotificationTap: _toggleNotifications,
                                 ),
-                                // 12: Documents Screen
+
                                 _getScreen(10),
                               ],
                             );
@@ -961,9 +961,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ==========================================
-                // TOP HEADER SECTION (UPCOMING HOLIDAYS)
-                // ==========================================
+
+
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -980,9 +980,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // ==========================================
-                // MAIN WHITE CONTAINER
-                // ==========================================
+
+
+
                 Builder(
                   builder: (context) {
                     return Container(
@@ -1004,7 +1004,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final activeHolidays = _holidays.where((h) {
                           if (h['isEnabled'] != true) return false;
 
-                          // Build holiday date from month and day fields
+
                           final monthStr = (h['month'] ?? '').toString();
                           final dayStr = (h['day'] ?? '').toString();
                           if (monthStr.isEmpty || dayStr.isEmpty) return false;
@@ -1014,7 +1014,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           final dayNum = int.tryParse(dayStr);
                           if (dayNum == null) return false;
 
-                          // Build holiday date (use next year if already passed this year)
+
                           var holidayDate = DateTime(
                             now.year,
                             monthNum,

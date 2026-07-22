@@ -92,7 +92,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _notesController.clear();
     }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
-    // Second calendar shows the month after the first calendar's month
+
     _calendarMonth2 = DateTime(
       _calendarMonth.year,
       _calendarMonth.month + 1,
@@ -191,7 +191,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           }
         },
         onError: (e) {
-          // Stream error handling
+
         },
       );
       _timeoffSub = FirestoreService().timeoffStream.listen(
@@ -205,13 +205,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           }
         },
         onError: (e) {
-          // Stream error handling
+
         },
       );
     }
   }
 
-  // Helper to get month name
+
   String _getMonthName(int month) {
     return DateFormat(
       'MMMM',
@@ -219,7 +219,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     ).format(DateTime(2024, month));
   }
 
-  // Helper to format date as DD/MM/YYYY
+
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
@@ -231,8 +231,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   bool get _requestedDaysExceedAvailable => _selectedDaysCount > _availableDays;
 
-  // An invalid request must never appear as a negative leave balance. Reset
-  // the displayed/requested value to zero until a valid selection is made.
+
+
   int get _requestedDays =>
       _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
 
@@ -283,8 +283,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     if (_selectedWorker == null) return 0;
     if (_timeOffType == 'Custom Leave') return 999;
     String key;
-    // Worker totals should come from these keys, but some datasets use different field names.
-    // We'll try a few common alternatives before defaulting to 0.
+
+
     switch (_timeOffType) {
       case 'Annual Leave':
         key = 'annualLeaves';
@@ -299,7 +299,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     String raw = (_selectedWorker![key] ?? '').toString();
 
     if (raw.isEmpty) {
-      // common aliases
+
       final aliases = switch (_timeOffType) {
         'Annual Leave' => const [
           'annual_leave',
@@ -565,7 +565,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  // ==== FORM ROW ====
+
 
   Widget _buildTopForm() {
     return Row(
@@ -752,7 +752,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  // ==== CALENDARS ====
+
 
   Widget _buildCalendar(DateTime monthDate, {required bool isStartCalendar}) {
     String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'
@@ -945,7 +945,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           rowChildren.add(_buildDayCell(''));
         }
         if (j < 6) {
-          rowChildren.add(const SizedBox(width: 4)); // Space between cells
+          rowChildren.add(const SizedBox(width: 4));
         }
       }
       rows.add(Row(mainAxisSize: MainAxisSize.min, children: rowChildren));
@@ -953,7 +953,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         break;
       }
       if (i < 5) {
-        rows.add(const SizedBox(height: 4)); // Space between rows
+        rows.add(const SizedBox(height: 4));
       }
     }
     return GestureDetector(
@@ -997,7 +997,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   DateTime? _dateAtGridPosition(DateTime monthDate, Offset position) {
-    const cellExtent = 54.0; // 50px date cell + 4px spacing.
+    const cellExtent = 54.0;
     final column = (position.dx / cellExtent).floor();
     final row = (position.dy / cellExtent).floor();
     if (column < 0 || column > 6 || row < 0 || row > 5) return null;
@@ -1097,7 +1097,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  // ==== BOTTOM NOTES & SUMMARY ====
+
 
   Widget _buildNotesAndSummary() {
     return LayoutBuilder(
@@ -1222,8 +1222,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-  /// Robust helper: reads 'phone' or 'contact' from a worker map,
-  /// falling through empty strings as well as nulls.
+
+
   String _getWorkerPhone(Map<String, dynamic> w) {
     for (final key in ['phone', 'contact']) {
       final val = w[key];
@@ -1245,7 +1245,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-    // Notes are required
+
     if (_notesController.text.trim().isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1273,9 +1273,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-    // Capture balances before inserting/updating the request. Guest data uses
-    // a shared list and Firestore streams can emit during the save; reading
-    // these getters afterwards would include the just-saved request twice.
+
+
+
     final availableDaysBeforeSave = _availableDays;
     final usedDaysBeforeSave = _alreadyUsedDays;
     final requestedDaysAtSave = _requestedDays;
@@ -1331,7 +1331,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
       }
 
-      // 🔥 ADD THIS AFTER SAVE: Update payroll with remaining leaves
+
       if (mounted) {
         final updatedBalance = LeaveBalanceHelper.balanceAfterRequest(
           availableBeforeSave: availableDaysBeforeSave,
@@ -1351,7 +1351,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
 
         if (isGuest) {
-          // Update dummy data
+
           final workerIdx = DummyData.workers.indexWhere(
             (w) => w['email'] == _selectedWorker!['email'],
           );
@@ -1371,7 +1371,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             await DummyData.saveToPrefs();
           }
         } else {
-          // Use updateWorkerLeaves to avoid validateWorker requiring name/email
+
           final workerId = (_selectedWorker!['id'] ?? '').toString();
           if (workerId.isNotEmpty && payrollUpdate.isNotEmpty) {
             await FirestoreService().updateWorkerLeaves(

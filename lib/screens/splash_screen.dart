@@ -28,30 +28,30 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 800),
     );
 
-    // Start entrance animation
+
     _animationController.forward();
 
     _navigateWhenReady();
   }
 
   Future<void> _navigateWhenReady() async {
-    // Keep the splash visible for a minimum time for branding, but base the
-    // navigation decision on the *restored* auth state rather than a fixed
-    // timer. On a cold start (especially on slow networks) Firebase Auth
-    // restores the persisted session asynchronously, so reading `currentUser`
-    // too early would wrongly send a logged-in user to the login screen.
+
+
+
+
+
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-    // Check if previous session was a guest (survives app restart)
+
     if (await PreferencesService.isGuest()) {
       AuthService.isGuestUser = true;
     }
 
-    // Firebase may be unavailable here: main() tolerates a failed
-    // Firebase.initializeApp(), and in tests Firebase is never initialized.
-    // Any access to FirebaseAuth must therefore be guarded — including the
-    // fallback path — so the splash screen degrades to the login screen
-    // instead of crashing.
+
+
+
+
+
     User? user;
     try {
       user = await AuthService().authStateChanges.first.timeout(

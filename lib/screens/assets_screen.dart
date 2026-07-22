@@ -193,7 +193,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     DateTime returnedDate = DateTime.now();
     bool isReturned = false;
 
-    // Helper to format date
+
     String formatDate(DateTime date) {
       final day = date.day.toString().padLeft(2, '0');
       final month = date.month.toString().padLeft(2, '0');
@@ -220,7 +220,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Modal Header
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -327,10 +327,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 try {
                                   await FirestoreService().addAsset(assetMap);
                                 } catch (e, st) {
-                                  // Helpful debug output (see console)
-                                  // ignore: avoid_print
+
+
                                   print('❌ addAsset failed: $e');
-                                  // ignore: avoid_print
+
                                   print(st);
                                   if (!context.mounted) return;
                                   FlashySnackBar.show(
@@ -371,7 +371,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Form Fields
+
                     StreamBuilder<List<String>>(
                       stream: _workerNamesStream,
                       initialData: _workerNames,
@@ -413,7 +413,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Date Picker for Loaned Date
+
                     _buildModalDatePicker(
                       context,
                       'date_loaned'.tr(),
@@ -509,7 +509,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Toggle returned vs in use
+
                     Row(
                       children: [
                         Text(
@@ -537,7 +537,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     ),
                     if (isReturned) ...[
                       const SizedBox(height: 8),
-                      // Date Picker for Returned Date
+
                       _buildModalDatePicker(
                         context,
                         'returned_date'.tr(),
@@ -878,7 +878,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  // ================= TOP HEADER =================
+
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -907,7 +907,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
             ],
           ),
           const Spacer(),
-          // Notification Bell
+
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
           GestureDetector(
@@ -922,7 +922,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   Widget _buildTopActionRow(BuildContext context) {
     return Row(
       children: [
-        // Search Bar
+
         Expanded(
           child: Container(
             height: 44,
@@ -986,7 +986,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           ),
         ),
         const SizedBox(width: 10),
-        // Add Asset Button
+
         ElevatedButton.icon(
           onPressed: () async {
             final isGuest = AuthService().currentUser?.isAnonymous ?? false;
@@ -1047,7 +1047,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  // ================= DATA TABLE (FILLED STATE) =================
+
 
   Widget _buildDataTable(List<AssetData> assets) {
     final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
@@ -1063,7 +1063,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       ),
       child: Column(
         children: [
-          // Table Headers
+
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -1103,12 +1103,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                     child: _tableHeader('date_returned_header'.tr()),
                   ),
                 ),
-                const SizedBox(width: 48), // Match the action menu size
+                const SizedBox(width: 48),
               ],
             ),
           ),
           Container(height: 1, color: const Color(0xFFF7F8FC)),
-          // Table Rows
+
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -1140,7 +1140,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   Widget _buildDataRow(AssetData data, int index) {
-    // Fallback: if asset has no profileImage, look up from workers map
+
     String? profileImage = data.profileImage;
     String? email = data.email;
     final nameClean = data.name.trim().toLowerCase();
@@ -1161,7 +1161,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       ),
       child: Row(
         children: [
-          // Name and Avatar
+
           Expanded(
             flex: 3,
             child: Padding(
@@ -1240,7 +1240,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
             ),
           ),
-          // Date Returned (Colored)
+
           Expanded(
             flex: 2,
             child: Padding(
@@ -1834,7 +1834,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     );
   }
 
-  // ================= EMPTY STATE =================
+
 
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
@@ -1872,7 +1872,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 }
 
-// Data Model for Assets
 class AssetData {
   final String? id;
   final String name;

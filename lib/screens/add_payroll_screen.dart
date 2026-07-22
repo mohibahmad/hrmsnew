@@ -100,8 +100,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     super.initState();
     _salaryCtrl.text = _salaryStr;
 
-    // Payroll fields represent days actually absent/on leave. Never initialize
-    // them from the worker's configured leave allowance.
+
+
     final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
     _absentsCtrl.text = attendanceCounts['absents'].toString();
     _leavesCtrl.text = attendanceCounts['leaves'].toString();
@@ -418,7 +418,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   }
 
   void _onNotificationTap(String type) {
-    // Close the panel; navigation back to list is handled on discard/back.
+
     setState(() => _showNotifications = false);
   }
 

@@ -284,7 +284,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         directStatus != "*****") {
       return directStatus;
     }
-    // Derive status from today's attendance records
+
     final email = worker["email"]?.toString() ?? "";
     final attRecord = _todayAttendance.cast<Map<String, dynamic>?>().firstWhere(
       (att) => att?['email']?.toString() == email,
@@ -307,7 +307,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return null;
   }
 
-  // Returns the holiday record if today's date matches an enabled holiday.
+
   Map<String, dynamic>? get _todayHoliday {
     final now = DateTime.now();
     for (final h in _holidays) {
@@ -334,8 +334,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return null;
   }
 
-  // Keeps only the most recent attendance record per worker email so that an
-  // older "Absent" record can't linger next to a newer "Leave" record.
+
+
   List<Map<String, dynamic>> _latestAttendancePerWorker(
     List<Map<String, dynamic>> records,
   ) {
@@ -418,7 +418,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left Sidebar (Standard SidebarWidget) - hide when embedded in HomeScreen
+
           if (!widget.hideSidebar)
             SidebarWidget(
               key: ValueKey('sidebar_${context.locale.languageCode}'),
@@ -448,7 +448,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 }
               },
             ),
-          // Right Main Content
+
           Expanded(
             child: IgnorePointer(
               ignoring: _isDialogOpen,
@@ -467,7 +467,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // Left List Section: Worker Attendance Statuses
+
                                 Expanded(
                                   flex: 65,
                                   child: Column(
@@ -513,7 +513,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                // Right List Section: Today Detailed Attendance Logs
+
                                 Expanded(
                                   flex: 35,
                                   child: Column(
@@ -711,8 +711,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final name = data["name"] ?? "";
     final email = data["email"] ?? "";
 
-    // Resolve the worker document (may differ from [data] when this dialog is
-    // opened from the Today Summary, where [data] is an attendance record).
+
+
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     final normalizedEmail = email.trim().toLowerCase();
     final workerDoc = isGuest
@@ -734,7 +734,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     );
 
     const validStatuses = {'Present', 'Absent', 'Leave'};
-    // Pre-select the clicked status, otherwise fall back to today's record
+
     final recordStatus = todayRecord['status'];
     final initialStatus =
         (defaultStatus != null && validStatuses.contains(defaultStatus))
@@ -742,7 +742,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         : (recordStatus != null && validStatuses.contains(recordStatus))
         ? recordStatus
         : 'Present';
-    // Initial values - only from today's attendance record, NOT from worker doc
+
     final initialReason = todayRecord['desc'] ?? '';
 
     setState(() => _isDialogOpen = true);
@@ -819,7 +819,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // AppBar (Height: 40)
+
                         Container(
                           height: 40,
                           width: double.infinity,
@@ -857,7 +857,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                             ],
                           ),
                         ),
-                        // Body Section
+
                         Padding(
                           padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
                           child: Column(
@@ -1231,12 +1231,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 }
                                               }
 
-                                              // Adjust the worker's paid leave
-                                              // balance per leave type. Decrement
-                                              // the chosen type when a NEW leave is
-                                              // recorded; restore it when an
-                                              // existing Leave is changed to
-                                              // Present/Absent.
+
+
+
+
+
+
                                               final previousStatus =
                                                   (todayRecord['status'] ?? '')
                                                       .toString();
@@ -1753,8 +1753,8 @@ class WorkerListItem extends StatelessWidget {
               ],
             ),
           ),
-          // Show attendance action buttons when no attendance has been marked yet,
-          // otherwise show "Attendance marked" label
+
+
           if (currentStatus.isEmpty) ...[
             const SizedBox(width: 12),
             _AttendanceActionButton(

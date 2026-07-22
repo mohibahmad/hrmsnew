@@ -97,7 +97,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _type1Controller = TextEditingController(text: 'Full-Time');
   final _type2Controller = TextEditingController(text: 'On-Site');
 
-  // Upgr``aded form controllers & state
+
   final _experienceLevelController = TextEditingController(text: 'Mid-Level');
   final _educationController = TextEditingController(text: 'Bachelor');
   final _salaryTypeController = TextEditingController(text: 'Monthly');
@@ -109,7 +109,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _casualLeavesController = TextEditingController();
   String _relationshipStatus = 'Single';
 
-  // Upload states
+
   Uint8List? _profileImageBytes;
   String? _profileImageName;
   String? _existingProfileImageUrl;
@@ -374,8 +374,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _existingProfileImageUrl = widget.workerToEdit!['profileImage']
           ?.toString();
 
-      // Backward/forward compatible keys:
-      // Some worker documents may store id images under different key names.
+
+
       String? _firstNonEmpty(List<String?> values) {
         for (final v in values) {
           final s = v?.toString();
@@ -429,7 +429,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _loadDefaultCompanyCurrency();
       }
     }
-    // Do not auto-default joining date - user must explicitly set it.
+
 
     _nameController.addListener(_onControllerChanged);
     _nameController.addListener(() {
@@ -918,7 +918,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _isSaving = true;
     });
 
-    // Do not allow duplicate name, email, or National ID.
+
     final nationalId = _nationalIdController.text.trim();
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
@@ -1084,7 +1084,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'joiningDate': _joiningDate ?? '',
         'profileImage': profileImageUrl,
 
-        // Canonical keys (UI expects these):
+
         'frontId': frontIdUrl,
         'backId': backIdUrl,
 
@@ -1196,7 +1196,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final email = _emailController.text.trim();
     final nationalId = _nationalIdController.text.trim();
 
-    // Check required fields
+
     if (name.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1410,11 +1410,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       },
       child: Container(
-        color: const Color(0xFFF7F8FA), // Dashboard background
+        color: const Color(0xFFF7F8FA),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Header Area
+
             Container(
               height: 94,
               padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -1474,7 +1474,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       ),
                     ],
                   ),
-                  // Save Button (Blue state based on image 2)
+
                   Builder(
                     builder: (context) {
                       final bool isEditMode = widget.workerToEdit != null;
@@ -1527,7 +1527,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
               ),
             ),
 
-            // Tabs and Form Content
+
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -1537,7 +1537,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tabs Section
+
                     Container(
                       height: 56,
                       decoration: BoxDecoration(
@@ -1573,7 +1573,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Switch Content based on active tab
+
                     if (_activeTabIndex == 0)
                       WorkerDetailFormSection(
                         nameController: _nameController,
@@ -1888,9 +1888,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   }
 }
 
-// ==========================================
-// WORKER DETAIL FORM SECTION
-// ==========================================
 class WorkerDetailFormSection extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController fatherNameController;
@@ -2001,7 +1998,7 @@ class WorkerDetailFormSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Sub-header
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -2188,13 +2185,13 @@ class WorkerDetailFormSection extends StatelessWidget {
             ),
             const SizedBox(width: 32),
 
-            // === RIGHT: Profile Upload & Status ===
+
             Expanded(
               flex: 1,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Profile Upload Section
+
                   Text(
                     'worker_profile'.tr(),
                     style: TextStyle(
@@ -2229,7 +2226,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Relationship Status Section
+
                   Text(
                     'relationship_status'.tr(),
                     style: TextStyle(
@@ -2528,7 +2525,6 @@ class WorkerDetailFormSection extends StatelessWidget {
       LocalizationHelper.localizeGender(value);
 }
 
-//
 class ExperienceFormSection extends StatefulWidget {
   final TextEditingController positionController;
   final TextEditingController type1Controller;
@@ -2610,7 +2606,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         widget.selectedJoiningDate!.isNotEmpty) {
       final dateStr = widget.selectedJoiningDate!;
 
-      // Format 1: "Month Day, Year" (e.g., "January 15, 2025")
+
       try {
         final parts = dateStr.split(' ');
         if (parts.length >= 3) {
@@ -2657,7 +2653,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Sub-header
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -2750,11 +2746,11 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         ),
         const SizedBox(height: 24),
 
-        // Main Grid & Right Panel (Calendar)
+
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Form
+
             Expanded(
               flex: 5,
               child: Container(
@@ -2863,7 +2859,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         const SizedBox(width: 24),
                         const Expanded(
                           child: SizedBox(),
-                        ), // Empty space to match image
+                        ),
                       ],
                     ),
                   ],
@@ -2871,7 +2867,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
               ),
             ),
             const SizedBox(width: 32),
-            // Right Calendar
+
             Expanded(
               flex: 2,
               child: Column(
@@ -2985,7 +2981,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        // Calendar Grid View (CrossAxisCount 7 for perfect column alignment)
+
                         Builder(
                           builder: (context) {
                             final firstDay = DateTime(
@@ -3124,7 +3120,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         ),
         const SizedBox(height: 16),
 
-        // Salary Section
+
         Text(
           'salary_section'.tr(),
           style: TextStyle(
@@ -3231,9 +3227,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   }
 }
 
-// ==========================================
-// DOCUMENTATION SECTION (IMAGE 2)
-// ==========================================
 class DocumentationSection extends StatelessWidget {
   final Uint8List? frontIdBytes;
   final String? frontIdName;
@@ -3331,7 +3324,7 @@ class DocumentationSection extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Side: ID Card Upload
+
             Expanded(
               flex: 1,
               child: Column(
@@ -3498,7 +3491,7 @@ class DocumentationSection extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            // Right Side: CV Upload Preview
+
             Expanded(
               flex: 1,
               child: Column(
@@ -4158,9 +4151,6 @@ class DocumentationSection extends StatelessWidget {
   }
 }
 
-// ==========================================
-// FILE-LEVEL SHARED HELPERS
-// ==========================================
 Widget _buildInputField(
   String label,
   String hint, {
@@ -4400,7 +4390,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
 
       if (document != null) {
         final pages = <Uint8List>[];
-        // Only render the first page for preview
+
         if (document.pagesCount >= 1) {
           final page = await document.getPage(1);
           final pageImage = await page.render(

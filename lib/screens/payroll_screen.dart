@@ -59,7 +59,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _combinePayroll() {
-    // 🔥 FIX: Ensure every worker has payroll data
+
     final isGuest = AuthService().currentUser?.isAnonymous ?? false;
     _payrollDocs = PayrollService.combinePayroll(
       _workersList,
@@ -67,7 +67,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       allowUndatedRecords: isGuest,
     );
 
-    // 🔥 ADD THIS: Fix unpaid workers
+
     for (var doc in _payrollDocs) {
       if (doc['totalWorkDays'] == null ||
           doc['totalWorkDays'].toString().isEmpty) {
@@ -596,7 +596,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       return _matchesFilter(pos, _selectedFilter);
     }).toList();
 
-    // Sort: Paid workers at top, then Unpaid
+
     filtered.sort((a, b) {
       final statusA = (a['status'] ?? '').toString();
       final statusB = (b['status'] ?? '').toString();
@@ -622,7 +622,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildFilterTabs() {
-    // Positions actually used by workers (in default list)
+
     final workerPosLower = _workersList
         .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
         .where((p) => p.isNotEmpty)
@@ -632,15 +632,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-      // 1) Real positions not in default list (e.g. "Manager", "Chef")
+
       ..._extraPositions
           .where((pos) => !defaultKeys.map((d) => d.toLowerCase()).contains(pos.toLowerCase()))
           .map((pos) => {'key': pos, 'label': pos}),
-      // 2) Real positions that ARE in default list (in default order)
+
       ...defaultKeys
           .where((d) => workerPosLower.contains(d.toLowerCase()))
           .map((d) => {'key': d, 'label': d}),
-      // 3) Remaining defaults (no worker has this position)
+
       ...defaultKeys
           .where((d) => !workerPosLower.contains(d.toLowerCase()))
           .map((d) => {'key': d, 'label': d}),

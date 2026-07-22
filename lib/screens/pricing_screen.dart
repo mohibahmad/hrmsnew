@@ -64,7 +64,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               const SizedBox(height: 20),
-                              // --- App Icon (Premium HR App Icon) ---
+
                               SvgPicture.asset(
                                 'assets/app_icon.svg',
                                 height: 70,
@@ -72,7 +72,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 36),
 
-                              // --- Heading ---
+
                               Text(
                                 'all_in_one_hr'.tr(),
                                 style: TextStyle(
@@ -84,7 +84,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 22),
 
-                              // --- Features List (with solid play arrow triangles) ---
+
                               _buildFeatureItem('secure_staff_records'.tr()),
                               _buildFeatureItem('modern_hrms_experience'.tr()),
                               _buildFeatureItem('leave_shift_management'.tr()),
@@ -137,7 +137,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 24),
 
-                              // --- Subscription Cards ---
+
                               _buildPlanCard(
                                 index: 0,
                                 title: 'monthly'.tr(),
@@ -159,7 +159,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 6),
 
-                              // --- Continue Button ---
+
                               SizedBox(
                                 width: double.infinity,
                                 height: 50,
@@ -213,7 +213,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 26),
 
-                              // --- Disclaimer Text ---
+
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
@@ -231,7 +231,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 24),
 
-                              // --- Footer Links ---
+
                               Wrap(
                                 alignment: WrapAlignment.center,
                                 spacing: 8,
@@ -249,7 +249,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   _buildFooterLink(
                                     'restore'.tr(),
                                     onTap: () {
-                                      // TODO: Implement restore purchases
+
                                     },
                                   ),
                                   _buildFooterDivider(),
@@ -366,7 +366,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         ),
         child: Stack(
           children: [
-            // Centered content (radio button, title, and right-aligned price)
+
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -416,7 +416,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 ),
               ),
             ),
-            // Popular badge
+
             if (isPopular)
               Positioned(
                 top: 0,
