@@ -479,7 +479,10 @@ class _ProfileBodyState extends State<ProfileBody> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildProfileIcon(),
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: _buildProfileIcon(),
+            ),
             if (_isEditing)
               ElevatedButton(
                 onPressed: _isLoading
