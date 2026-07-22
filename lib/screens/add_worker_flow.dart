@@ -423,11 +423,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _cvName = _cleanFileName(_existingCvUrl!);
       }
       _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
-    } else {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-      if (!isGuest) {
-        _loadDefaultCompanyCurrency();
-      }
     }
 
 
@@ -712,20 +707,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return null;
     }
     return dob;
-  }
-
-  Future<void> _loadDefaultCompanyCurrency() async {
-    try {
-      final profile = await FirestoreService().getUserProfile();
-      if (profile != null && profile['currency'] != null) {
-        final currency = CurrencyUtils.normalize(profile['currency']);
-        if (mounted) {
-          setState(() {
-            _currencyController.text = currency;
-          });
-        }
-      }
-    } catch (e) {}
   }
 
   bool _hasChanges() {
@@ -3393,7 +3374,7 @@ class DocumentationSection extends StatelessWidget {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            'Edit'.tr(),
+                                            'edit'.tr(),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w600,
@@ -3454,7 +3435,7 @@ class DocumentationSection extends StatelessWidget {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            'Edit'.tr(),
+                                            'edit'.tr(),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w600,
@@ -3561,11 +3542,11 @@ class DocumentationSection extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'Delete'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                     'delete'.tr(),
+                                     style: const TextStyle(
+                                       color: Colors.white,
+                                       fontWeight: FontWeight.w600,
+                                       fontSize: 14,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
@@ -3838,18 +3819,21 @@ class DocumentationSection extends StatelessWidget {
       context: context,
       barrierColor: Colors.black87,
       builder: (ctx) {
+        final dialogWidth =
+            (MediaQuery.of(ctx).size.width * 0.85).clamp(450.0, 720.0);
+
         return Dialog(
           backgroundColor: Colors.white,
           insetPadding: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             child: SizedBox(
-              width: MediaQuery.of(ctx).size.width * 0.9,
-              height: MediaQuery.of(ctx).size.height * 0.85,
+              width: dialogWidth,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -3879,28 +3863,56 @@ class DocumentationSection extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
-                  Expanded(
+                  Flexible(
                     child: isImage
-                        ? InteractiveViewer(
-                            minScale: 0.5,
-                            maxScale: 4.0,
-                            child: cvBytes != null
-                                ? Image.memory(cvBytes!, fit: BoxFit.contain)
-                                : CachedNetworkImage(
-                                    imageUrl: existingCvUrl ?? '',
-                                    fit: BoxFit.contain,
-                                    errorWidget: (context, url, error) =>
-                                        const Center(
+                        ? Container(
+                            color: const Color(0xFF000000),
+                            width: double.infinity,
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.of(ctx).size.height * 0.70,
+                            ),
+                            child: InteractiveViewer(
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              child: cvBytes != null
+                                  ? Image.memory(
+                                      cvBytes!,
+                                      width: dialogWidth,
+                                      fit: BoxFit.contain,
+                                    )
+                                  : CachedNetworkImage(
+                                      imageUrl: existingCvUrl ?? '',
+                                      width: dialogWidth,
+                                      fit: BoxFit.contain,
+                                      placeholder: (context, url) =>
+                                          const SizedBox(
+                                        height: 200,
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: Color(0xFF0247C4),
+                                          ),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          const Padding(
+                                        padding: EdgeInsets.all(32),
+                                        child: Center(
                                           child: Icon(
                                             Icons.broken_image,
                                             size: 48,
+                                            color: Color(0xFF9E9E9E),
                                           ),
                                         ),
-                                  ),
+                                      ),
+                                    ),
+                            ),
                           )
-                        : PdfPagePreview(
-                            cvBytes: cvBytes,
-                            existingCvUrl: existingCvUrl,
+                        : SizedBox(
+                            height: MediaQuery.of(ctx).size.height * 0.55,
+                            child: PdfPagePreview(
+                              cvBytes: cvBytes,
+                              existingCvUrl: existingCvUrl,
+                            ),
                           ),
                   ),
                 ],

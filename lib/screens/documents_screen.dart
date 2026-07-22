@@ -1167,100 +1167,112 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         lowerUrl.contains('image/');
     final isDoc = cvNameLower.endsWith('.doc') || cvNameLower.endsWith('.docx');
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: 8,
-            bottom: 8,
-            left: 50,
-            right: 50,
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: isImage
-                  ? (_cvBytes != null
-                        ? Image.memory(_cvBytes!, fit: BoxFit.cover)
-                        : (cvUrl != null && cvUrl.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: cvUrl,
-                                  fit: BoxFit.cover,
-                                  errorWidget: (context, url, error) =>
-                                      const Center(
-                                        child: Icon(
-                                          Icons.broken_image,
-                                          size: 48,
-                                        ),
-                                      ),
-                                )
-                              : const SizedBox.shrink()))
-                  : isPdf
-                  ? PdfPagePreview(cvBytes: _cvBytes, existingCvUrl: cvUrl)
-                  : isDoc
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            cvNameLower.endsWith('.docx')
-                                ? Icons.article_outlined
-                                : Icons.description_outlined,
-                            size: 48,
-                            color: const Color(0xFF0247C4),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _cvName ?? 'cv_resume'.tr(),
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 13,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.description,
-                            size: 48,
-                            color: Color(0xFF0247C4),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _cvName ?? 'cv_resume'.tr(),
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 13,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
-                      ),
+    void onTapCv() {
+      if (_cvBytes != null) {
+        final dataUrl = 'data:image/png;base64,${base64Encode(_cvBytes!)}';
+        _viewDocument(dataUrl, isImage, _cvName ?? 'cv_resume'.tr());
+      } else if (cvUrl != null && cvUrl.isNotEmpty) {
+        _viewDocument(cvUrl, isImage, _cvName ?? 'cv_resume'.tr());
+      }
+    }
+
+    return GestureDetector(
+      onTap: onTapCv,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2F3F6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              top: 8,
+              bottom: 8,
+              left: 50,
+              right: 50,
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
                     ),
+                  ],
+                ),
+                child: isImage
+                    ? (_cvBytes != null
+                          ? Image.memory(_cvBytes!, fit: BoxFit.cover)
+                          : (cvUrl != null && cvUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                    imageUrl: cvUrl,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) =>
+                                        const Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 48,
+                                          ),
+                                        ),
+                                  )
+                                : const SizedBox.shrink()))
+                    : isPdf
+                    ? PdfPagePreview(cvBytes: _cvBytes, existingCvUrl: cvUrl)
+                    : isDoc
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              cvNameLower.endsWith('.docx')
+                                  ? Icons.article_outlined
+                                  : Icons.description_outlined,
+                              size: 48,
+                              color: const Color(0xFF0247C4),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _cvName ?? 'cv_resume'.tr(),
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.description,
+                              size: 48,
+                              color: Color(0xFF0247C4),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _cvName ?? 'cv_resume'.tr(),
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1295,13 +1307,49 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewWidth = (size.width * 0.80).clamp(380.0, 800.0);
-    final previewHeight = previewWidth * 0.62;
+    final previewWidth = (size.width * 0.85).clamp(450.0, 720.0);
     final failedToLoadText = 'failed_to_load'.tr();
+
+    final Widget imageContent = widget.url.startsWith('data:')
+        ? Image.memory(
+            _base64ToBytes(widget.url),
+            width: previewWidth,
+            fit: BoxFit.contain,
+          )
+        : CachedNetworkImage(
+            imageUrl: widget.url,
+            width: previewWidth,
+            fit: BoxFit.contain,
+            placeholder: (c, u) => const SizedBox(
+              height: 200,
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF0247C4),
+                ),
+              ),
+            ),
+            errorWidget: (c, u, e) => Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.broken_image,
+                    size: 48,
+                    color: Color(0xFF9E9E9E),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    failedToLoadText,
+                    style: const TextStyle(color: Color(0xFF9E9E9E)),
+                  ),
+                ],
+              ),
+            ),
+          );
 
     final content = Container(
       width: previewWidth,
-      height: previewHeight,
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(14),
@@ -1356,98 +1404,75 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
             ),
           ),
           const Divider(color: Color(0xFFEEEEEE), height: 1),
-          Expanded(
+          Flexible(
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(14),
               ),
               child: widget.isImage
-                  ? InteractiveViewer(
-                      minScale: 0.5,
-                      maxScale: 4.0,
-                      child: widget.url.startsWith('data:')
-                          ? Image.memory(
-                              _base64ToBytes(widget.url),
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                              height: double.infinity,
-                            )
-                          : CachedNetworkImage(
-                              imageUrl: widget.url,
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                              height: double.infinity,
-                              placeholder: (c, u) => const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF0247C4),
-                                ),
-                              ),
-                              errorWidget: (c, u, e) => Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(height: 250),
-                                  Icon(
-                                    Icons.broken_image,
-                                    size: 48,
-                                    color: Color(0xFF9E9E9E),
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    failedToLoadText,
-                                    style: TextStyle(color: Color(0xFF9E9E9E)),
-                                  ),
-                                ],
-                              ),
-                            ),
+                  ? Container(
+                      color: const Color(0xFF000000),
+                      width: double.infinity,
+                      constraints: BoxConstraints(
+                        maxHeight: size.height * 0.70,
+                      ),
+                      child: InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4.0,
+                        child: imageContent,
+                      ),
                     )
-                  : Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.picture_as_pdf,
-                            size: 64,
-                            color: Color(0xFFEF4444),
-                          ),
-                          const SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Text(
-                              widget.url.split('/').last,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF1A1A1A),
-                                fontSize: 14,
-                                fontFamily: 'SF Pro Display',
-                              ),
+                  : SizedBox(
+                      height: size.height * 0.50,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.picture_as_pdf,
+                              size: 64,
+                              color: Color(0xFFEF4444),
                             ),
-                          ),
-                          const SizedBox(height: 26),
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pop(),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 28,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0247C4),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
                               child: Text(
-                                'close'.tr(),
-                                style: TextStyle(
-                                  color: Color(0xFFFFFFFF),
+                                widget.url.split('/').last,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF1A1A1A),
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
                                   fontFamily: 'SF Pro Display',
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 26),
+                            GestureDetector(
+                              onTap: () => Navigator.of(context).pop(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 28,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0247C4),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'close'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
             ),
