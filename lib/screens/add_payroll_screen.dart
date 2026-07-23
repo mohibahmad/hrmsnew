@@ -765,11 +765,16 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   focusedBorderColor: _borderLight,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildInput(
+                  'overtime_amount'.tr(),
+                  '0',
+                  _overtimeAmountCtrl,
+                  isCurrency: true,
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
                   'absent_deduction_per_day'.tr(),
@@ -778,7 +783,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   isCurrency: true,
                 ),
               ),
-              const SizedBox(width: 8),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
               Expanded(
                 child: _buildInput(
                   'leave_deduction_per_day'.tr(),
@@ -790,23 +799,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
-                  'overtime_amount'.tr(),
-                  'e.g. 500',
-                  _overtimeAmountCtrl,
-                  isCurrency: true,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _buildInput(
                   'salary'.tr(),
                   '',
                   _salaryCtrl,
                   readOnly: true,
+                  focusedBorderColor: _borderLight,
                 ),
               ),
               const SizedBox(width: 8),

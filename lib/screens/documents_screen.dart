@@ -581,6 +581,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
   void _viewDocument(String? url, bool isImage, String label) {
     if (url == null || url.isEmpty) return;
+    final lower = url.toLowerCase();
+    final isPdf = lower.endsWith('.pdf') || lower.contains('pdf');
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -588,7 +590,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (ctx, anim, secAnim) =>
-          _FullScreenDocumentViewer(url: url, label: label, isImage: isImage),
+          _FullScreenDocumentViewer(url: url, label: label, isImage: isImage, isPdf: isPdf),
       transitionBuilder: (ctx, anim, secAnim, child) {
         final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
         final scale = Tween<double>(
@@ -1296,11 +1298,13 @@ class _FullScreenDocumentViewer extends StatefulWidget {
   final String url;
   final String label;
   final bool isImage;
+  final bool isPdf;
 
   const _FullScreenDocumentViewer({
     required this.url,
     required this.label,
     required this.isImage,
+    this.isPdf = false,
   });
 
   @override
@@ -1438,112 +1442,119 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                         child: imageContent,
                       ),
                     )
-                  : SizedBox(
-                      height: 280,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.picture_as_pdf,
-                              size: 64,
-                              color: Color(0xFFEF4444),
+                    : widget.isPdf
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: PdfPagePreview(
+                              existingCvUrl: widget.url,
                             ),
-                            const SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              child: Text(
-                                cleanFileName,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFF1A1A1A),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (widget.url.startsWith('http') ||
-                                    widget.url.startsWith('file'))
-                                  GestureDetector(
-                                    onTap: () {
-                                      try {
-                                        launchUrl(
-                                          Uri.parse(widget.url),
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                      } catch (_) {}
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 11,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF0247C4),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.open_in_new,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Open Document',
-                                            style: TextStyle(
-                                              color: Color(0xFFFFFFFF),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                          )
+                        : SizedBox(
+                            height: 280,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.picture_as_pdf,
+                                    size: 64,
+                                    color: Color(0xFFEF4444),
                                   ),
-                                if (widget.url.startsWith('http') ||
-                                    widget.url.startsWith('file'))
-                                  const SizedBox(width: 12),
-                                GestureDetector(
-                                  onTap: () => Navigator.of(context).pop(),
-                                  child: Container(
+                                  const SizedBox(height: 16),
+                                  Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                      vertical: 11,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(10),
+                                      horizontal: 24,
                                     ),
                                     child: Text(
-                                      'close'.tr(),
+                                      cleanFileName,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
-                                        color: Color(0xFF334155),
+                                        color: Color(0xFF1A1A1A),
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                         fontFamily: 'SF Pro Display',
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (widget.url.startsWith('http') ||
+                                          widget.url.startsWith('file'))
+                                        GestureDetector(
+                                          onTap: () {
+                                            try {
+                                              launchUrl(
+                                                Uri.parse(widget.url),
+                                                mode: LaunchMode.externalApplication,
+                                              );
+                                            } catch (_) {}
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 11,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF0247C4),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.open_in_new,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Open Document',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFFFFFFF),
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontFamily: 'SF Pro Display',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      if (widget.url.startsWith('http') ||
+                                          widget.url.startsWith('file'))
+                                        const SizedBox(width: 12),
+                                      GestureDetector(
+                                        onTap: () => Navigator.of(context).pop(),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 11,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            'close'.tr(),
+                                            style: const TextStyle(
+                                              color: Color(0xFF334155),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          ),
             ),
           ),
         ],
