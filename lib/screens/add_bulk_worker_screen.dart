@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io' as io;
@@ -29,6 +30,8 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
+  static final RegExp _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
   static const List<String> _requiredFields = [
     'name',
     'phone',
@@ -96,20 +99,24 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   int _missingRequiredCount = 0;
   int _duplicateCount = 0;
   String? _lastFileHash;
+  ScrollController? _hScrollController;
+  StreamSubscription? _workersSubscription;
 
   Map<String, String> _fieldErrors(Map<String, dynamic> worker) {
     final errors = worker['_fieldErrors'];
-    if (errors is Map) {
-      return errors.map((key, value) => MapEntry('$key', '$value'));
-    }
+    if (errors is Map<String, String>) return errors;
     return const {};
   }
 
-  bool _hasFieldError(Map<String, dynamic> worker, String field) =>
-      _fieldErrors(worker).containsKey(field);
+  bool _hasFieldError(Map<String, dynamic> worker, String field) {
+    final errors = worker['_fieldErrors'];
+    return errors is Map && errors.containsKey(field);
+  }
 
-  bool _hasWorkerErrors(Map<String, dynamic> worker) =>
-      _fieldErrors(worker).isNotEmpty;
+  bool _hasWorkerErrors(Map<String, dynamic> worker) {
+    final errors = worker['_fieldErrors'];
+    return errors is Map && errors.isNotEmpty;
+  }
 
   List<Map<String, dynamic>> get _workersReadyToSave =>
       _validWorkers.where((worker) => !_hasWorkerErrors(worker)).map((worker) {
@@ -122,6 +129,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _hScrollController?.dispose();
+    _workersSubscription?.cancel();
+    super.dispose();
   }
 
   String _computeFileHash(Uint8List bytes) {
@@ -543,7 +557,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty &&
-          !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+          !_emailRegex.hasMatch(email)) {
         fieldErrors['email'] = 'Invalid email address';
       }
 
@@ -860,7 +874,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             _validWorkers = [];
             _hasParsedFile = false;
           });
-          FirestoreService().workersStream.listen((snapshot) {
+          _workersSubscription?.cancel();
+          _workersSubscription = FirestoreService().workersStream.listen((_) {
             if (mounted) {
               setState(() {});
             }
@@ -1085,96 +1100,98 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                   const SizedBox(height: 32),
                   if (_hasParsedFile) ...[
 
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      margin: const EdgeInsets.only(bottom: 24),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFEBF5FF), Color(0xFFF3F9FF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFD0E5FF),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF000000,
-                            ).withValues(alpha: 0.02),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color:
-                                  (_validWorkers.any(_hasWorkerErrors)
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF34D399))
-                                      .withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
+                    ...(){
+                      final bool anyErrors = _validWorkers.any(_hasWorkerErrors);
+                      final int errorCount = _validWorkers.where(_hasWorkerErrors).length;
+
+                      return [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          margin: const EdgeInsets.only(bottom: 24),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFEBF5FF), Color(0xFFF3F9FF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            child: Icon(
-                              _validWorkers.any(_hasWorkerErrors)
-                                  ? Icons.error_outline_rounded
-                                  : Icons.check_circle_rounded,
-                              color: _validWorkers.any(_hasWorkerErrors)
-                                  ? const Color(0xFFDC2626)
-                                  : const Color(0xFF059669),
-                              size: 28,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFD0E5FF),
+                              width: 1.5,
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'preview_csv_workers_found'.tr(
-                                  namedArgs: {
-                                    'count': _validWorkers.length.toString(),
-                                    'errors': _validWorkers
-                                        .where(_hasWorkerErrors)
-                                        .length
-                                        .toString(),
-                                  },
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1E293B),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                (_validWorkers.any(_hasWorkerErrors)
-                                        ? 'fix_red_fields_upload_again'
-                                        : 'review_details_save_all')
-                                    .tr(),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF64748B),
-                                  fontWeight: FontWeight.w400,
-                                  fontFamily: 'SF Pro Display',
-                                ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF000000).withValues(alpha: 0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: (anyErrors
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF34D399))
+                                      .withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  anyErrors
+                                      ? Icons.error_outline_rounded
+                                      : Icons.check_circle_rounded,
+                                  color: anyErrors
+                                      ? const Color(0xFFDC2626)
+                                      : const Color(0xFF059669),
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'preview_csv_workers_found'.tr(
+                                      namedArgs: {
+                                        'count': _validWorkers.length.toString(),
+                                        'errors': errorCount.toString(),
+                                      },
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1E293B),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    (anyErrors
+                                            ? 'fix_red_fields_upload_again'
+                                            : 'review_details_save_all')
+                                        .tr(),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF64748B),
+                                      fontWeight: FontWeight.w400,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ];
+                    }(),
 
                     Builder(
                       builder: (context) {
                         // Shared controller so header and rows scroll together horizontally
-                        final hScroll = ScrollController();
+                        _hScrollController ??= ScrollController();
+                        final hScroll = _hScrollController!;
 
                         const double rowH = 65.0;
                         const double tableContentWidth = 3978;
@@ -1233,34 +1250,34 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       child: Row(
                                         children: [
                                           _buildHeaderCell('full_name'.tr(), 200),
-                                        _buildHeaderCell('contact_number'.tr(), 120),
-                                        _buildHeaderCell('email_address'.tr(), 200),
-                                        _buildHeaderCell('job_position'.tr(), 150),
-                                        _buildHeaderCell('salary_type'.tr(), 120),
-                                        _buildHeaderCell('currency_title'.tr(), 100),
-                                        _buildHeaderCell('salary_amount'.tr(), 120),
-                                        _buildHeaderCell('father_name'.tr(), 150),
-                                        _buildHeaderCell('national_id_title'.tr(), 150),
-                                        _buildHeaderCell('religion_title'.tr(), 120),
-                                        _buildHeaderCell('date_of_birth'.tr(), 120),
-                                        _buildHeaderCell('gender_title'.tr(), 100),
-                                        _buildHeaderCell('address_title'.tr(), 250),
-                                        _buildHeaderCell('relationship_status_title'.tr(), 140),
-                                        _buildHeaderCell('employee_type'.tr(), 120),
-                                        _buildHeaderCell('work_model'.tr(), 120),
-                                        _buildHeaderCell('experience_level_title'.tr(), 130),
-                                        _buildHeaderCell('education_title'.tr(), 150),
-                                        _buildHeaderCell('leave_policy'.tr(), 120),
-                                        _buildHeaderCell('annual_leaves_title'.tr(), 100),
-                                        _buildHeaderCell('sick_leaves_title'.tr(), 100),
-                                        _buildHeaderCell('casual_leaves_title'.tr(), 100),
-                                        _buildHeaderCell('joining_date_title'.tr(), 150),
-                                        _buildHeaderCell('profile_image_url'.tr(), 200),
-                                        _buildHeaderCell('front_id_image_url'.tr(), 200),
-                                        _buildHeaderCell('back_id_image_url'.tr(), 200),
-                                        _buildHeaderCell('cv_url'.tr(), 200),
-                                      ],
-                                    ),
+                                          _buildHeaderCell('contact_number'.tr(), 120),
+                                          _buildHeaderCell('email_address'.tr(), 200),
+                                          _buildHeaderCell('job_position'.tr(), 150),
+                                          _buildHeaderCell('salary_type'.tr(), 120),
+                                          _buildHeaderCell('currency_title'.tr(), 100),
+                                          _buildHeaderCell('salary_amount'.tr(), 120),
+                                          _buildHeaderCell('father_name'.tr(), 150),
+                                          _buildHeaderCell('national_id_title'.tr(), 150),
+                                          _buildHeaderCell('religion_title'.tr(), 120),
+                                          _buildHeaderCell('date_of_birth'.tr(), 120),
+                                          _buildHeaderCell('gender_title'.tr(), 100),
+                                          _buildHeaderCell('address_title'.tr(), 250),
+                                          _buildHeaderCell('relationship_status_title'.tr(), 140),
+                                          _buildHeaderCell('employee_type'.tr(), 120),
+                                          _buildHeaderCell('work_model'.tr(), 120),
+                                          _buildHeaderCell('experience_level_title'.tr(), 130),
+                                          _buildHeaderCell('education_title'.tr(), 150),
+                                          _buildHeaderCell('leave_policy'.tr(), 120),
+                                          _buildHeaderCell('annual_leaves_title'.tr(), 100),
+                                          _buildHeaderCell('sick_leaves_title'.tr(), 100),
+                                          _buildHeaderCell('casual_leaves_title'.tr(), 100),
+                                          _buildHeaderCell('joining_date_title'.tr(), 150),
+                                          _buildHeaderCell('profile_image_url'.tr(), 200),
+                                          _buildHeaderCell('front_id_image_url'.tr(), 200),
+                                          _buildHeaderCell('back_id_image_url'.tr(), 200),
+                                          _buildHeaderCell('cv_url'.tr(), 200),
+                                        ],
+                                      ),
                                   ),
                                 ),
                               ),
