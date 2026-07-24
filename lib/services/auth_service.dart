@@ -12,10 +12,17 @@ import 'firestore_service.dart';
 import 'error_reporter.dart';
 
 class AuthService {
+  static AuthService? _instance;
+  static AuthService get instance => _instance!;
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
     region: 'us-central1',
   );
+
+  AuthService() {
+    _instance = this;
+  }
 
   static final ValueNotifier<String?> profilePicNotifier =
       ValueNotifier<String?>(null);
@@ -47,7 +54,7 @@ class AuthService {
 
   Future<void> _clearSeededDummyDataIfNeeded() async {
     try {
-      await FirestoreService().clearDummyDataForCurrentUser();
+      await FirestoreService.instance.clearDummyDataForCurrentUser();
     } catch (e, st) {
       ErrorReporter.report(e, st, context: 'clearSeededDummyData');
     }
@@ -130,7 +137,7 @@ class AuthService {
         await userCredential.user!.updateDisplayName(name);
 
         // Ensure user profile is created in Firestore
-        final firestore = FirestoreService();
+        final firestore = FirestoreService.instance;
         final profile = await firestore.getUserProfile();
         if (profile == null) {
           await firestore.createUserProfile(
@@ -168,7 +175,7 @@ class AuthService {
         final name = userCredential.user!.displayName ?? 'Apple User';
 
         // Ensure user profile is created in Firestore
-        final firestore = FirestoreService();
+        final firestore = FirestoreService.instance;
         final profile = await firestore.getUserProfile();
         if (profile == null) {
           await firestore.createUserProfile(
@@ -209,7 +216,7 @@ class AuthService {
   /// doesn't see the upgrade dialog again.
   Future<void> _syncPremiumStatusFromFirestore() async {
     try {
-      final profile = await FirestoreService().getUserProfile();
+      final profile = await FirestoreService.instance.getUserProfile();
       if (profile != null && profile['isPremium'] == true) {
         await PreferencesService.setPremium(true);
       }

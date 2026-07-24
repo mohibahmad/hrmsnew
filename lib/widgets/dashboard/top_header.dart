@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 
 class TopHeader extends StatelessWidget {
@@ -16,7 +17,7 @@ class TopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthService().currentUser;
+    final user = context.read<AuthService>().currentUser;
     final name = user?.displayName ?? 'User';
 
     return Container(

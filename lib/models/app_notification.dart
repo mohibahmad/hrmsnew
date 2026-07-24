@@ -1,3 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+String _tsToString(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) return value.toDate().toIso8601String();
+  if (value is DateTime) return value.toIso8601String();
+  return value.toString();
+}
+
 class AppNotification {
   final String? id;
   final String type;
@@ -22,7 +31,7 @@ class AppNotification {
       title: data['title'] ?? '',
       message: data['message'] ?? '',
       isRead: data['isRead'] ?? false,
-      createdAt: data['createdAt'],
+      createdAt: _tsToString(data['createdAt']),
     );
   }
 

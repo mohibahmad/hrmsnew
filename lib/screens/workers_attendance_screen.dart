@@ -10,6 +10,7 @@ import '../services/dummy_data.dart';
 import '../services/time_off_service.dart';
 import '../services/preferences_service.dart';
 import '../widgets/sidebar_widget.dart';
+import 'package:provider/provider.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../utils/date_utils.dart' as app_date_utils;
@@ -17,6 +18,7 @@ import '../utils/leave_balance_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import '../utils/guest_restriction.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color bgGray = Color(0xFFF7F8FA);
@@ -70,7 +72,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   bool _isSaving = false;
   String? _errorMessage;
   bool _isPremium = false;
-  final FirestoreService _firestore = FirestoreService();
+  late AuthService _authService;
+  late FirestoreService _firestore;
   StreamSubscription? _workersSub;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _holidaysSub;
@@ -90,7 +93,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    final currentUser = AuthService().currentUser;
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    final currentUser = _authService.currentUser;
     if (currentUser != null && !currentUser.isAnonymous) {
       _firestore
           .getUserProfile()
@@ -108,7 +113,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   Future<void> _loadData() async {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       final companyWorkingDays =
           await PreferencesService.getCompanyWorkingDays();
@@ -130,7 +135,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       return;
     }
 
-    final user = AuthService().currentUser;
+    final user = _authService.currentUser;
     if (user != null && !user.isAnonymous) {
       try {
         final profile = await _firestore.getUserProfile();
@@ -424,7 +429,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               key: ValueKey('sidebar_${context.locale.languageCode}'),
               selectedIndex: 2,
               selectedSubIndex: 0,
-              isGuest: AuthService().currentUser?.isAnonymous ?? false,
+              isGuest: _authService.currentUser?.isAnonymous ?? false,
               isPremium: _isPremium,
               onItemSelected: (index, {subIndex}) {
                 _isDialogOpen = false;
@@ -439,7 +444,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 );
               },
               onBackToLogin: () {
-                AuthService().signOut();
+                _authService.signOut();
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -572,7 +577,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     String? defaultStatus,
     String titleKey = 'mark_attendance',
   }) {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       Navigator.of(
         context,
@@ -713,7 +718,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
 
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final normalizedEmail = email.trim().toLowerCase();
     final workerDoc = isGuest
         ? DummyData.workers.firstWhere(
@@ -1079,8 +1084,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
                                             try {
                                               final isGuest =
-                                                  AuthService()
-                                                      .currentUser
+                                                  _authService.currentUser
                                                       ?.isAnonymous ??
                                                   false;
                                               final type =
@@ -1403,7 +1407,16 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       minimumSize: const Size(0, 40),
                                       elevation: 0,
                                     ),
-                                    child: Text(
+                                    child: _isSaving
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
                                       'save'.tr(),
                                       style: TextStyle(
                                         color: Color(0xFFFFFFFF),
@@ -1576,6 +1589,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 currentStatus: _getWorkerStatus(entry.value),
                 isHoliday: isHoliday,
                 onMarkAttendance: (status) {
+                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
                   if (isHoliday) {
                     FlashySnackBar.show(
                       context,

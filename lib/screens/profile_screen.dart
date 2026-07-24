@@ -13,11 +13,13 @@ import '../services/preferences_service.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/guest_restriction.dart';
 import '../utils/validators.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/notification_bell.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
+import 'package:provider/provider.dart';
 
 Uint8List? _compressImageBytes(Uint8List rawBytes) {
   try {
@@ -99,6 +101,8 @@ class _ProfileBodyState extends State<ProfileBody> {
   late final TextEditingController _contact1Controller;
   late final TextEditingController _contact2Controller;
   late final TextEditingController _addressController;
+  late AuthService _authService;
+  late FirestoreService _firestore;
   bool _isLoading = true;
   bool _isEditing = false;
   String? _profilePicUrl;
@@ -106,10 +110,12 @@ class _ProfileBodyState extends State<ProfileBody> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _businessNameController = TextEditingController();
     _companyIdController = TextEditingController();
     _emailController = TextEditingController(
-      text: AuthService().currentUser?.email ?? '',
+      text: _authService.currentUser?.email ?? '',
     );
     _currencyController = TextEditingController(text: 'USD');
     _contact1Controller = TextEditingController();
@@ -150,7 +156,7 @@ class _ProfileBodyState extends State<ProfileBody> {
   static Map<String, String>? _guestProfileCache;
 
   Future<void> _loadProfile() async {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _guestProfileCache = null;
     }
@@ -178,7 +184,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       return;
     }
 
-    final profile = await FirestoreService().getUserProfile();
+    final profile = await _firestore.getUserProfile();
     if (profile != null && mounted) {
       final storedCurrency = profile['currency'];
       final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
@@ -186,7 +192,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         _businessNameController.text = profile['businessName'] ?? '';
         _companyIdController.text = profile['companyId'] ?? '';
         _emailController.text =
-            profile['email'] ?? AuthService().currentUser?.email ?? '';
+            profile['email'] ?? _authService.currentUser?.email ?? '';
         _currencyController.text = normalizedCurrency;
         _contact1Controller.text = profile['contact1'] ?? '';
         _contact2Controller.text = profile['contact2'] ?? '';
@@ -198,7 +204,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (!CurrencyUtils.isSupported(storedCurrency) ||
           storedCurrency.toString().trim() != normalizedCurrency) {
         try {
-          await FirestoreService().updateUserProfile({
+          await _firestore.updateUserProfile({
             'currency': normalizedCurrency,
           });
         } catch (_) {
@@ -217,7 +223,7 @@ class _ProfileBodyState extends State<ProfileBody> {
   String? _newProfileImagePath;
 
   Future<void> _pickProfilePic() async {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       FlashySnackBar.show(
         context,
@@ -325,13 +331,13 @@ class _ProfileBodyState extends State<ProfileBody> {
     _currencyController.text = normalizedCurrency;
 
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       String? downloadUrl;
 
       if (!isGuest) {
         if (_newProfileImageBytes != null || _newProfileImagePath != null) {
           final fileName =
-              'profile_${AuthService().currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              'profile_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final ref = FirebaseStorage.instance
               .ref()
               .child('profile_pics')
@@ -379,7 +385,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         }
 
         if (downloadUrl != null) {
-          await AuthService().currentUser?.updatePhotoURL(downloadUrl);
+          await _authService.currentUser?.updatePhotoURL(downloadUrl);
           _profilePicUrl = downloadUrl;
           AuthService.profilePicNotifier.value = downloadUrl;
           await PreferencesService.setProfilePicUrl(downloadUrl);
@@ -387,7 +393,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newProfileImagePath = null;
         }
 
-        await FirestoreService().updateUserProfile({
+        await _firestore.updateUserProfile({
           'businessName': _businessNameController.text,
           'companyId': _companyIdController.text,
           'email': _emailController.text,
@@ -526,7 +532,14 @@ class _ProfileBodyState extends State<ProfileBody> {
               )
             else
               InkWell(
-                onTap: () => setState(() => _isEditing = true),
+                onTap: () {
+                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
+                  setState(() => _isEditing = true);
+                },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.all(10),

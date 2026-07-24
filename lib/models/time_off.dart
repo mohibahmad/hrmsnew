@@ -1,3 +1,31 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+String _dateToString(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) {
+    final d = value.toDate();
+    return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+  if (value is DateTime) {
+    return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+  }
+  return value.toString();
+}
+
+List<String> _parseSelectedDates(dynamic value) {
+  if (value is! Iterable) return [];
+  return value.map((date) {
+    if (date is Timestamp) {
+      final d = date.toDate();
+      return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    }
+    if (date is DateTime) {
+      return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    }
+    return date.toString();
+  }).toList();
+}
+
 class TimeOff {
   final String? id;
   final String name;
@@ -33,11 +61,6 @@ class TimeOff {
     this.createdAt,
   });
 
-  static List<String> _parseSelectedDates(dynamic value) {
-    if (value is! Iterable) return const [];
-    return value.map((date) => date.toString()).toList();
-  }
-
   factory TimeOff.fromMap(Map<String, dynamic> data, {String? id}) {
     return TimeOff(
       id: id ?? data['id'],
@@ -47,14 +70,14 @@ class TimeOff {
       contact: data['contact'] ?? data['phone'] ?? '',
       action: data['action'] ?? '',
       type: data['type'] ?? '',
-      startDate: data['startDate'] ?? '',
-      endDate: data['endDate'] ?? '',
+      startDate: _dateToString(data['startDate']),
+      endDate: _dateToString(data['endDate']),
       selectedDates: _parseSelectedDates(data['selectedDates']),
       requestedDays: data['requestedDays'] ?? 0,
       notes: data['notes'] ?? '',
       status: data['status'] ?? 'Approved',
       workerAvatar: data['workerAvatar'],
-      createdAt: data['createdAt'],
+      createdAt: data['createdAt']?.toString(),
     );
   }
 

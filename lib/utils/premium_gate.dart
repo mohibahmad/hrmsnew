@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/preferences_service.dart';
 import '../services/auth_service.dart';
 import '../screens/pricing_screen.dart';
@@ -18,7 +19,7 @@ class PremiumGate {
   }
 
   static Future<bool> shouldShowUpgradeDialog(BuildContext context) async {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = context.read<AuthService>().currentUser?.isAnonymous ?? false;
     if (isGuest) return false;
     final isPremium = await PreferencesService.isPremium();
     if (isPremium) return false;

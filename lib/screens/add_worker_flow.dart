@@ -25,6 +25,7 @@ import '../utils/worker_identity.dart';
 import '../utils/localization_helper.dart';
 import '../utils/rate_us_helper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 
 const List<String> _months = [
   'January',
@@ -83,6 +84,8 @@ class AddNewWorkerFlow extends StatefulWidget {
 }
 
 class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
   int _activeTabIndex = 0;
   final _nameController = TextEditingController();
   final _fatherNameController = TextEditingController();
@@ -304,6 +307,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     if (widget.workerToEdit != null) {
       _nameController.text = (widget.workerToEdit!['name'] ?? '').toString();
       _fatherNameController.text = (widget.workerToEdit!['fatherName'] ?? '')
@@ -901,14 +906,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
 
     final nationalId = _nationalIdController.text.trim();
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
     if (!isEditing) {
       try {
         Iterable<Map<String, dynamic>> existingWorkers = DummyData.workers;
         if (!isGuest) {
-          final snapshot = await FirestoreService().getWorkersOnce();
+          final snapshot = await _firestore.getWorkersOnce();
           existingWorkers = snapshot.docs.map(
             (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
           );
@@ -1109,7 +1114,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             await DummyData.saveToPrefs();
           }
         } else {
-          await FirestoreService().updateWorker(editId, data);
+          await _firestore.updateWorker(editId, data);
         }
       } else {
         if (isGuest) {
@@ -1117,7 +1122,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           DummyData.workers.insert(0, {...data, 'id': newId});
           await DummyData.saveToPrefs();
         } else {
-          await FirestoreService().addWorker(data);
+          await _firestore.addWorker(data);
         }
       }
 
@@ -1126,7 +1131,13 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _isSaving = false;
       });
       if (!context.mounted) return;
-      FlashySnackBar.show(context, message: 'worker_added_successfully'.tr());
+      final workerName = widget.workerToEdit?['name']?.toString() ?? '';
+      FlashySnackBar.show(
+        context,
+        message: widget.workerToEdit != null
+            ? '$workerName updated successfully!'
+            : 'worker_added_successfully'.tr(),
+      );
       await tryShowFirstMilestoneRateUs(context, 'worker');
       if (context.mounted) {
         widget.onBack?.call();
@@ -1225,14 +1236,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
     if (!isEditing) {
       try {
         Iterable<Map<String, dynamic>> existingWorkers = DummyData.workers;
         if (!isGuest) {
-          final snapshot = await FirestoreService().getWorkersOnce();
+          final snapshot = await _firestore.getWorkersOnce();
           existingWorkers = snapshot.docs.map(
             (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
           );
@@ -3584,9 +3595,9 @@ class DocumentationSection extends StatelessWidget {
   }) {
     final bool hasFile =
         bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
-    final bool isPdf =
-        (fileName != null && fileName.toLowerCase().endsWith('.pdf')) ||
-        (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
+    final bool isPdf = bytes != null
+        ? (fileName != null && fileName.toLowerCase().endsWith('.pdf'))
+        : (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
 
     return GestureDetector(
       onTap: hasFile ? null : onTap,
@@ -3609,34 +3620,9 @@ class DocumentationSection extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (isPdf)
-                    Container(
-                      color: Colors.white,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.picture_as_pdf,
-                            color: Color(0xFFE53935),
-                            size: 48,
-                          ),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              fileName ?? 'pdf_document'.tr(),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                      ),
+                    PdfPagePreview(
+                      cvBytes: bytes,
+                      existingCvUrl: existingUrl,
                     )
                   else if (bytes != null)
                     Image.memory(bytes, fit: BoxFit.cover)

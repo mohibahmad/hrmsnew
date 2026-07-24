@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -13,6 +14,7 @@ import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
 
 import 'assign_time_off.dart';
+import '../utils/guest_restriction.dart';
 
 class Worker {
   final String name;
@@ -76,6 +78,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
   bool _isAssigningTimeOff = false;
   Map<String, dynamic>? _workerForTimeOff;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   @override
   void dispose() {
@@ -127,11 +131,32 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
 
     for (var doc in combined) {
-      final annualLeaves =
-          int.tryParse(doc['annualLeaves']?.toString() ?? '0') ?? 0;
-      final usedLeaves =
-          int.tryParse(doc['leavesUsed']?.toString() ?? '0') ?? 0;
-      final remaining = annualLeaves - usedLeaves;
+      final action = (doc['action'] ?? '').toString();
+      int remaining;
+
+      switch (action) {
+        case 'Sick Leave':
+          remaining =
+              int.tryParse(
+                (doc['availableSickLeaves'] ?? doc['sickLeaves'] ?? '0').toString(),
+              ) ??
+              0;
+          break;
+        case 'Casual Leave':
+          remaining =
+              int.tryParse(
+                (doc['availableCasualLeaves'] ?? doc['casualLeaves'] ?? '0').toString(),
+              ) ??
+              0;
+          break;
+        default:
+          remaining =
+              int.tryParse(
+                (doc['availableAnnualLeaves'] ?? doc['annualLeaves'] ?? '0').toString(),
+              ) ??
+              0;
+      }
+
       doc['remainingLeaves'] = remaining.toString();
     }
 
@@ -140,7 +165,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   void _refreshGuestData() {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
         _isLoading = true;
@@ -149,20 +174,22 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         _combineTimeOff();
       });
     } else {
-      _isLoading = true;
+      setState(() => _combineTimeOff());
     }
   }
 
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _rawTimeoffDocs = [];
     _timeoffDocs = [];
     _workersList = [];
     _isLoading = true;
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+      _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _workersList = snapshot.docs
@@ -172,7 +199,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           });
         }
       });
-      _timeoffSub = FirestoreService().timeoffStream.listen(
+      _timeoffSub = _firestore.timeoffStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -367,8 +394,33 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     if (confirmed != true) return;
 
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+
+      final leaveType = (doc['action'] ?? '').toString();
+      final requestedDays =
+          int.tryParse((doc['requestedDays'] ?? '0').toString()) ?? 0;
+
+      final balanceKey = switch (leaveType) {
+        'Annual Leave' => 'availableAnnualLeaves',
+        'Sick Leave' => 'availableSickLeaves',
+        'Casual Leave' => 'availableCasualLeaves',
+        _ => null,
+      };
+
       if (isGuest) {
+        if (balanceKey != null && requestedDays > 0) {
+          final workerIndex = DummyData.workers.indexWhere((w) {
+            final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
+            final docEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+            return wEmail.isNotEmpty && wEmail == docEmail;
+          });
+          if (workerIndex != -1) {
+            final current = int.tryParse(
+              DummyData.workers[workerIndex][balanceKey]?.toString() ?? '0',
+            ) ?? 0;
+            DummyData.workers[workerIndex][balanceKey] = current + requestedDays;
+          }
+        }
         setState(() {
           DummyData.timeoff.removeWhere(
             (e) =>
@@ -387,9 +439,26 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           _combineTimeOff();
         });
       } else {
+        if (balanceKey != null && requestedDays > 0) {
+          final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+          final workerIndex = _workersList.indexWhere((w) {
+            final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
+            return wEmail.isNotEmpty && wEmail == workerEmail;
+          });
+          if (workerIndex != -1) {
+            final worker = _workersList[workerIndex];
+            final workerId = (worker['id'] ?? '').toString();
+            final current = int.tryParse(
+              worker[balanceKey]?.toString() ?? '0',
+            ) ?? 0;
+            await _firestore.updateWorker(workerId, {
+              balanceKey: current + requestedDays,
+            });
+          }
+        }
         final id = doc['id'] as String?;
         if (id != null && id.isNotEmpty) {
-          await FirestoreService().deleteTimeOffRecord(id);
+          await _firestore.deleteTimeOffRecord(id);
         }
       }
       if (mounted) {
@@ -916,39 +985,30 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                 }
 
                                 final isGuest =
-                                    AuthService().currentUser?.isAnonymous ??
+                                    _authService.currentUser?.isAnonymous ??
                                     false;
                                 if (isGuest) {
-                                  Navigator.of(context)
-                                      .push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AssignTimeOffScreen(
-                                                onBack: () =>
-                                                    Navigator.of(context).pop(),
-                                                initialWorker: doc,
-                                              ),
-                                        ),
-                                      )
-                                      .then((_) => _refreshGuestData());
+                                  showGuestRestrictionDialog(context);
                                   return;
                                 }
                                 if (widget.onAssignTimeOff != null) {
                                   widget.onAssignTimeOff!(doc);
                                 } else {
-
                                   Navigator.of(context)
                                       .push(
                                         MaterialPageRoute(
                                           builder: (context) =>
                                               AssignTimeOffScreen(
-                                                onBack: () =>
-                                                    Navigator.of(context).pop(),
-                                                initialWorker: doc,
-                                              ),
+                                            onBack: () =>
+                                                Navigator.of(context).pop(),
+                                            initialWorker: doc,
+                                          ),
                                         ),
                                       )
-                                      .then((_) => _refreshGuestData());
+                                      .then((_) {
+                                        if (!isGuest) return;
+                                        _refreshGuestData();
+                                      });
                                 }
                               },
                               mouseCursor: SystemMouseCursors.click,

@@ -13,6 +13,7 @@ import 'login_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -33,6 +34,16 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
+  }
+
   String _getCurrentLanguageName() {
     final code = context.locale.languageCode;
     for (final entry in languageMap.entries) {
@@ -42,13 +53,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _resetPassword(BuildContext context) async {
-    final email = AuthService().currentUser?.email;
+    final email = _authService.currentUser?.email;
     if (email != null && email.isNotEmpty) {
       final passwordWasReset = await Navigator.of(context).push<bool>(
         MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
       );
       if (passwordWasReset == true) {
-        await AuthService().signOut();
+        await _authService.signOut();
         if (mounted) widget.onLogout();
       }
     } else {
@@ -234,11 +245,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm != true) return;
 
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       if (!isGuest) {
-        await FirestoreService().deleteUserData();
+        await _firestore.deleteUserData();
       }
-      await AuthService().signOut();
+      await _authService.signOut();
 
       if (context.mounted) {
         FlashySnackBar.show(

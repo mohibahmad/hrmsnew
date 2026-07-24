@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
@@ -38,28 +39,31 @@ class _SignupScreenState extends State<SignupScreen> {
   bool get _anyLoading =>
       _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
 
-  final AuthService _authService = AuthService();
+  late final AuthService _authService;
+  late final FirestoreService _firestoreService;
 
   StreamSubscription? _googleSub;
 
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestoreService = Provider.of<FirestoreService>(context, listen: false);
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')
         .doc('google')
         .snapshots()
         .listen((doc) {
-      if (doc.exists && mounted) {
-        setState(() {
-          _googleEnabled = doc.data()?['googleEnable'] == true;
+          if (doc.exists && mounted) {
+            setState(() {
+              _googleEnabled = doc.data()?['googleEnable'] == true;
+            });
+          } else if (mounted) {
+            setState(() {
+              _googleEnabled = true;
+            });
+          }
         });
-      } else if (mounted) {
-        setState(() {
-          _googleEnabled = true;
-        });
-      }
-    });
   }
 
   @override
@@ -209,9 +213,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       final email = _emailController.text.trim();
-      final isDeleted = await FirestoreService().isEmailDeleted(email);
+      final isDeleted = await _firestoreService.isEmailDeleted(email);
       if (isDeleted) {
-      if (mounted) {
+        if (mounted) {
           FlashySnackBar.show(
             context,
             message: 'account_deleted_contact'.tr(),
@@ -226,21 +230,20 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
       );
 
-
       try {
         await credential.user?.updateDisplayName(
           _usernameController.text.trim(),
         );
       } catch (_) {}
 
-      await FirestoreService().createUserProfile(
+      await _firestoreService.createUserProfile(
         username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
         phone: "",
       );
 
       final userName = _usernameController.text.trim();
-      await FirestoreService().addNotification({
+      await _firestoreService.addNotification({
         'type': 'welcome',
         'title': 'notif_title_welcome'.tr(namedArgs: {'name': userName}),
         'message': 'notif_msg_welcome'.tr(),
@@ -488,38 +491,23 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 12),
 
-
       if (_googleEnabled)
         buildSocialButton(
           context: context,
           text: 'continue_with_google'.tr(),
-          icon: SvgPicture.asset('assets/google_icon.svg', width: 16, height: 16),
+          icon: SvgPicture.asset(
+            'assets/google_icon.svg',
+            width: 16,
+            height: 16,
+          ),
           isLoading: _isGoogleLoading,
           onPressed: _anyLoading ? null : _handleGoogleLogin,
           backgroundColor: Colors.white,
           textColor: const Color(0xFF000000),
         ),
-      if (_googleEnabled)
-        const SizedBox(height: 8),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      if (_googleEnabled) const SizedBox(height: 8),
 
       const SizedBox(height: 8),
-
 
       buildSocialButton(
         context: context,

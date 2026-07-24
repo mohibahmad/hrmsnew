@@ -120,7 +120,7 @@
   "remaining_days": "Jours restants",
   "casual_leave": "Congé occasionnel : {value}%",
   "sick_leave": "Congé maladie : {value}%",
-  "medical_leave": "Congé médical : {value}%",
+  "annual_leave_chart": "Congé annuel : {value}%",
   "sidebar_dashboard": "Tableau de bord",
   "sidebar_workers": "Travailleurs",
   "sidebar_workforce": "Effectifs",
@@ -836,5 +836,11 @@
   "upload_failed": "Échec de l'upload : {error}",
   "cv_resume": "CV/Curriculum",
   "failed_to_load": "Échec du chargement",
-  "close": "Fermer"
+  "close": "Fermer",
+  "profile_shared_successfully": "Profil de l'employé partagé avec succès!",
+  "profile_share_failed": "Échec du partage du profil : {error}",
+  "guest_feature_locked": "Fonctionnalité non disponible",
+  "guest_feature_desc": "Cette fonctionnalité est uniquement disponible pour les utilisateurs inscrits. Veuillez vous connecter pour y accéder.",
+  "sign_in": "Se connecter",
+  "cancel": "Annuler"
 }

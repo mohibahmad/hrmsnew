@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../services/dummy_data.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
@@ -84,12 +87,13 @@ class LeaveBalanceHelper {
   }
 
   static Future<int> getAvailableLeaveBalance(
+    BuildContext context,
     String email,
     FirestoreService firestore,
     List<Map<String, dynamic>> todayAttendance,
   ) async {
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = context.read<AuthService>().currentUser?.isAnonymous ?? false;
       if (isGuest) {
         final worker = DummyData.workers.firstWhere(
           (w) =>

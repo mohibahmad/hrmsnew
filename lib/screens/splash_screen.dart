@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/preferences_service.dart';
 import 'login_screen.dart';
@@ -18,16 +19,17 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
+  late AuthService _authService;
 
   @override
   void initState() {
     super.initState();
+    _authService = context.read<AuthService>();
 
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-
 
     _animationController.forward();
 
@@ -35,48 +37,29 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateWhenReady() async {
-
-
-
-
-
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-
-    if (await PreferencesService.isGuest()) {
-      AuthService.isGuestUser = true;
-    }
-
-
-
-
-
+    final isGuest = await PreferencesService.isGuest();
+    AuthService.isGuestUser = isGuest;
 
     User? user;
+
     try {
-      user = await AuthService().authStateChanges.first.timeout(
+      user = await _authService.authStateChanges.first.timeout(
         const Duration(seconds: 5),
-        onTimeout: () {
-          try {
-            return AuthService().currentUser;
-          } catch (_) {
-            return null;
-          }
-        },
+        onTimeout: () => _authService.currentUser,
       );
     } catch (_) {
-      try {
-        user = AuthService().currentUser;
-      } catch (_) {
-        user = null;
-      }
+      user = _authService.currentUser;
     }
 
     await minimumSplash;
 
     if (!mounted) return;
 
-    final destination = user != null ? const HomeScreen() : const LoginScreen();
+    final destination = user != null || isGuest
+        ? const HomeScreen()
+        : const LoginScreen();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(

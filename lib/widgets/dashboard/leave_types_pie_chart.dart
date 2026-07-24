@@ -3,158 +3,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../models/leave_chart_config.dart';
 import '../custom_timeframe_dropdown.dart';
 
 class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
-  final List<Map<String, dynamic>> timeoffDocs;
-  final List<Map<String, dynamic>> workersList;
+  final List<Map<String, dynamic>> attendanceDocs;
 
   const LeaveTypesPieChart({
     super.key,
     required this.period,
     this.isEmpty = false,
-    required this.timeoffDocs,
-    required this.workersList,
+    required this.attendanceDocs,
   });
-
-  static const Map<String, LeavePeriodConfig> configs = {
-    'Week': LeavePeriodConfig(
-      casualVal: 60,
-      sickVal: 15,
-      medicalVal: 25,
-      casualPath: [Offset(147, 116), Offset(97, 60), Offset(55, 60)],
-      casualLeft: 65,
-      casualTop: 36,
-      sickPath: [Offset(230, 110), Offset(275, 60), Offset(325, 60)],
-      sickRight: 65,
-      sickTop: 36,
-      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
-      medicalLeft: 90,
-      medicalBottom: 18,
-    ),
-    'Month': LeavePeriodConfig(
-      casualVal: 50,
-      sickVal: 20,
-      medicalVal: 30,
-      casualPath: [Offset(151, 107.5), Offset(105, 60), Offset(55, 60)],
-      casualLeft: 65,
-      casualTop: 36,
-      sickPath: [Offset(226.4, 103.5), Offset(275, 60), Offset(325, 60)],
-      sickRight: 65,
-      sickTop: 36,
-      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
-      medicalLeft: 90,
-      medicalBottom: 18,
-    ),
-    '6 Month': LeavePeriodConfig(
-      casualVal: 40,
-      sickVal: 30,
-      medicalVal: 30,
-      casualPath: [Offset(147, 114), Offset(98, 60), Offset(55, 60)],
-      casualLeft: 65,
-      casualTop: 36,
-      sickPath: [Offset(212, 91), Offset(275, 60), Offset(325, 60)],
-      sickRight: 65,
-      sickTop: 36,
-      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
-      medicalLeft: 90,
-      medicalBottom: 18,
-    ),
-    'Yearly': LeavePeriodConfig(
-      casualVal: 35,
-      sickVal: 35,
-      medicalVal: 30,
-      casualPath: [Offset(146, 118), Offset(95, 60), Offset(55, 60)],
-      casualLeft: 65,
-      casualTop: 36,
-      sickPath: [Offset(215, 83), Offset(275, 60), Offset(325, 60)],
-      sickRight: 65,
-      sickTop: 36,
-      medicalPath: [Offset(175, 205), Offset(135, 245), Offset(80, 245)],
-      medicalLeft: 90,
-      medicalBottom: 18,
-    ),
-  };
 
   @override
   Widget build(BuildContext context) {
-    final defaultConfig = configs[period] ?? configs['Month']!;
-
-    final activeWorkersEmails = workersList
-        .map((w) => (w['email'] ?? '').toString().trim().toLowerCase())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-    final activeWorkersNames = workersList
-        .map((w) => (w['name'] ?? '').toString().trim().toLowerCase())
-        .where((n) => n.isNotEmpty)
-        .toSet();
-
-    DateTime? dateLimit;
-    final now = DateTime.now();
-    if (period == 'Week') {
-      dateLimit = now.subtract(const Duration(days: 7));
-    } else if (period == 'Month') {
-      dateLimit = now.subtract(const Duration(days: 30));
-    } else if (period == '6 Month') {
-      dateLimit = now.subtract(const Duration(days: 180));
-    } else if (period == 'Yearly') {
-      dateLimit = now.subtract(const Duration(days: 365));
-    }
-
     int casualCount = 0;
     int sickCount = 0;
-    int annualCount = 0;
 
-    for (var t in timeoffDocs) {
-      final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
-      final tName = (t['name'] ?? '').toString().trim().toLowerCase();
-      final belongsToActive =
-          (tEmail.isNotEmpty && activeWorkersEmails.contains(tEmail)) ||
-          (tName.isNotEmpty && activeWorkersNames.contains(tName));
-      if (!belongsToActive) continue;
-
-      if (dateLimit != null) {
-        final tDate = DateTime.tryParse(t['startDate'] ?? '');
-        if (tDate != null && tDate.isBefore(dateLimit)) {
-          continue;
-        }
-      }
-
-      final action = (t['action'] ?? '').toString().trim().toLowerCase();
-      if (action.contains('casual')) {
+    for (final att in attendanceDocs) {
+      final status = (att['status'] ?? '').toString().trim().toLowerCase();
+      if (status != 'leave') continue;
+      final type = (att['type'] ?? '').toString().trim();
+      if (type == 'Casual Leave') {
         casualCount++;
-      } else if (action.contains('sick')) {
+      } else if (type == 'Sick Leave') {
         sickCount++;
-      } else if (action.contains('annual') || action.contains('maternity')) {
-        annualCount++;
-      } else {
-        annualCount++;
       }
     }
 
-    final int total = casualCount + sickCount + annualCount;
-    final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0.0;
-    final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0.0;
-    final double medicalPercent = total > 0 ? (annualCount / total) * 100 : 0.0;
+    final int total = casualCount + sickCount;
+    final bool reallyEmpty = isEmpty || total == 0;
 
-    final double casualVal = total > 0
-        ? casualPercent
-        : defaultConfig.casualVal;
-    final double sickVal = total > 0 ? sickPercent : defaultConfig.sickVal;
-    final double medicalVal = total > 0
-        ? medicalPercent
-        : defaultConfig.medicalVal;
+    final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0;
+    final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0;
 
-    final double totalValue = casualVal + sickVal + medicalVal;
+    final double casualVal = total > 0 ? casualPercent : 0;
+    final double sickVal = total > 0 ? sickPercent : 0;
+
+    final double totalValue = casualVal + sickVal;
     final double casualSweep = totalValue > 0
         ? (casualVal / totalValue) * 360
         : 0;
-    final double sickSweep = totalValue > 0 ? (sickVal / totalValue) * 360 : 0;
-    final double medicalSweep = totalValue > 0
-        ? (medicalVal / totalValue) * 360
+    final double sickSweep = totalValue > 0
+        ? (sickVal / totalValue) * 360
         : 0;
 
     double normalizeAngle(double a) {
@@ -163,68 +56,15 @@ class LeaveTypesPieChart extends StatelessWidget {
       return val;
     }
 
-    final double aCasual = normalizeAngle(108 + casualSweep / 2);
-    final double aSick = normalizeAngle(108 + casualSweep + sickSweep / 2);
-    final double aMedical = normalizeAngle(
-      108 + casualSweep + sickSweep + medicalSweep / 2,
-    );
-
-    double angleDistance(double a, double b) {
-      double diff = (a - b).abs() % 360;
-      return diff > 180 ? 360 - diff : diff;
+    Offset getCircumferencePoint(double angleDegrees) {
+      final double rad = angleDegrees * math.pi / 180;
+      return Offset(190 + 45 * math.cos(rad), 130 + 45 * math.sin(rad));
     }
 
-    final slots = [
-      const SlotConfig(
-        targetAngle: 0.0,
-        elbow: Offset(275, 60),
-        labelEnd: Offset(325, 60),
-        right: 65,
-        top: 36,
-      ),
-      const SlotConfig(
-        targetAngle: 120.0,
-        elbow: Offset(135, 245),
-        labelEnd: Offset(80, 245),
-        left: 90,
-        bottom: 18,
-      ),
-      const SlotConfig(
-        targetAngle: 240.0,
-        elbow: Offset(105, 32),
-        labelEnd: Offset(55, 32),
-        left: 65,
-        top: 8,
-      ),
-    ];
-
-    final sliceAngles = [aCasual, aSick, aMedical];
-    final permutations = const [
-      [0, 1, 2],
-      [0, 2, 1],
-      [1, 0, 2],
-      [1, 2, 0],
-      [2, 0, 1],
-      [2, 1, 0],
-    ];
-
-    double minCost = double.infinity;
-    List<int> bestPerm = permutations[0];
-
-    for (final perm in permutations) {
-      double cost = 0;
-      for (int i = 0; i < 3; i++) {
-        cost += angleDistance(sliceAngles[i], slots[perm[i]].targetAngle);
-      }
-      if (cost < minCost) {
-        minCost = cost;
-        bestPerm = perm;
-      }
-    }
-
-    final slotCasual = slots[bestPerm[0]];
-    final slotSick = slots[bestPerm[1]];
-    final slotMedical = slots[bestPerm[2]];
+    final double casualStartAngle = 108;
+    final double casualEndAngle = 108 + casualSweep;
+    final double sickStartAngle = casualEndAngle;
+    final double sickEndAngle = casualEndAngle + sickSweep;
 
     double getClosestAngleInSlice(
       double startAngle,
@@ -234,19 +74,14 @@ class LeaveTypesPieChart extends StatelessWidget {
     ) {
       double sweep = endAngle - startAngle;
       if (sweep < 0) sweep += 360;
-
       if (sweep <= 2 * padding) {
         return normalizeAngle(startAngle + sweep / 2);
       }
-
       double startLimit = startAngle + padding;
       double endLimit = startAngle + sweep - padding;
-
       double t = (targetAngle - startLimit) % 360;
       if (t < 0) t += 360;
-
       double allowedSweep = endLimit - startLimit;
-
       if (t <= allowedSweep) {
         return normalizeAngle(startLimit + t);
       } else {
@@ -260,72 +95,18 @@ class LeaveTypesPieChart extends StatelessWidget {
       }
     }
 
-    final double casualStartAngle = 108;
-    final double casualEndAngle = 108 + casualSweep;
     final double casualLineAngle = getClosestAngleInSlice(
       casualStartAngle,
       casualEndAngle,
-      slotCasual.targetAngle,
+      0.0,
       casualSweep * 0.35,
     );
-
-    final double sickStartAngle = casualEndAngle;
-    final double sickEndAngle = casualEndAngle + sickSweep;
     final double sickLineAngle = getClosestAngleInSlice(
       sickStartAngle,
       sickEndAngle,
-      slotSick.targetAngle,
+      120.0,
       sickSweep * 0.35,
     );
-
-    final double medicalStartAngle = sickEndAngle;
-    final double medicalEndAngle = sickEndAngle + medicalSweep;
-    final double medicalLineAngle = getClosestAngleInSlice(
-      medicalStartAngle,
-      medicalEndAngle,
-      slotMedical.targetAngle,
-      medicalSweep * 0.35,
-    );
-
-    Offset getCircumferencePoint(double angleDegrees) {
-      final double rad = angleDegrees * math.pi / 180;
-      return Offset(190 + 45 * math.cos(rad), 130 + 45 * math.sin(rad));
-    }
-
-    final config = LeavePeriodConfig(
-      casualVal: casualVal,
-      sickVal: sickVal,
-      medicalVal: medicalVal,
-      casualPath: [
-        getCircumferencePoint(casualLineAngle),
-        slotCasual.elbow,
-        slotCasual.labelEnd,
-      ],
-      sickPath: [
-        getCircumferencePoint(sickLineAngle),
-        slotSick.elbow,
-        slotSick.labelEnd,
-      ],
-      medicalPath: [
-        getCircumferencePoint(medicalLineAngle),
-        slotMedical.elbow,
-        slotMedical.labelEnd,
-      ],
-      casualLeft: slotCasual.left,
-      casualTop: slotCasual.top,
-      casualRight: slotCasual.right,
-      casualBottom: slotCasual.bottom,
-      sickLeft: slotSick.left,
-      sickTop: slotSick.top,
-      sickRight: slotSick.right,
-      sickBottom: slotSick.bottom,
-      medicalLeft: slotMedical.left,
-      medicalTop: slotMedical.top,
-      medicalRight: slotMedical.right,
-      medicalBottom: slotMedical.bottom,
-    );
-
-    final bool reallyEmpty = isEmpty || total == 0 || workersList.isEmpty;
 
     return Card(
       elevation: 0,
@@ -381,69 +162,61 @@ class LeaveTypesPieChart extends StatelessWidget {
                                   centerSpaceRadius: 0,
                                   startDegreeOffset: 108,
                                   sections: [
-                                    PieChartSectionData(
-                                      color: const Color(0xFF84A9FF),
-                                      value: config.casualVal,
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
-                                    PieChartSectionData(
-                                      color: const Color(0xFFFF4A5E),
-                                      value: config.sickVal,
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
-                                    PieChartSectionData(
-                                      color: const Color(0xFF97FFA9),
-                                      value: config.medicalVal,
-                                      radius: 85,
-                                      showTitle: false,
-                                    ),
+                                    if (casualVal > 0)
+                                      PieChartSectionData(
+                                        color: const Color(0xFF84A9FF),
+                                        value: casualVal,
+                                        radius: 85,
+                                        showTitle: false,
+                                      ),
+                                    if (sickVal > 0)
+                                      PieChartSectionData(
+                                        color: const Color(0xFFFF4A5E),
+                                        value: sickVal,
+                                        radius: 85,
+                                        showTitle: false,
+                                      ),
                                   ],
                                 ),
                               ),
                               CustomPaint(
                                 size: const Size(380, 260),
                                 painter: CalloutLinesPainter(
-                                  casualPath: config.casualVal > 0
-                                      ? config.casualPath
+                                  casualPath: casualVal > 0
+                                      ? [
+                                          getCircumferencePoint(casualLineAngle),
+                                          casualLineAngle < 180
+                                              ? Offset(330, 110)
+                                              : Offset(50, 60),
+                                          casualLineAngle < 180
+                                              ? Offset(370, 110)
+                                              : Offset(30, 60),
+                                        ]
                                       : const [],
-                                  sickPath: config.sickVal > 0
-                                      ? config.sickPath
-                                      : const [],
-                                  medicalPath: config.medicalVal > 0
-                                      ? config.medicalPath
+                                  sickPath: sickVal > 0
+                                      ? [
+                                          getCircumferencePoint(sickLineAngle),
+                                          const Offset(135, 245),
+                                          const Offset(80, 245),
+                                        ]
                                       : const [],
                                 ),
                               ),
-                              if (config.casualVal > 0)
+                              if (casualVal > 0)
                                 Positioned(
-                                  top: config.casualTop,
-                                  left: config.casualLeft,
-                                  right: config.casualRight,
-                                  bottom: config.casualBottom,
+                                  right: casualLineAngle < 180 ? 40 : null,
+                                  left: casualLineAngle < 180 ? null : 40,
+                                  top: 42,
                                   child: ChartLabel(
-                                    '${config.casualVal.toInt()}%',
+                                    '${casualVal.toInt()}%',
                                   ),
                                 ),
-                              if (config.sickVal > 0)
+                              if (sickVal > 0)
                                 Positioned(
-                                  top: config.sickTop,
-                                  left: config.sickLeft,
-                                  right: config.sickRight,
-                                  bottom: config.sickBottom,
+                                  left: 90,
+                                  bottom: 18,
                                   child: ChartLabel(
-                                    '${config.sickVal.toInt()}%',
-                                  ),
-                                ),
-                              if (config.medicalVal > 0)
-                                Positioned(
-                                  top: config.medicalTop,
-                                  left: config.medicalLeft,
-                                  right: config.medicalRight,
-                                  bottom: config.medicalBottom,
-                                  child: ChartLabel(
-                                    '${config.medicalVal.toInt()}%',
+                                    '${sickVal.toInt()}%',
                                   ),
                                 ),
                             ],
@@ -455,47 +228,28 @@ class LeaveTypesPieChart extends StatelessWidget {
                   const SizedBox(height: 30),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Column(
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: buildLegendItem(
-                                const Color(0xFF84A9FF),
-                                'casual_leave'.tr(
-                                  namedArgs: {
-                                    'value': '${config.casualVal.toInt()}',
-                                  },
-                                ),
-                              ),
+                        Expanded(
+                          child: buildLegendItem(
+                            const Color(0xFF84A9FF),
+                            'casual_leave'.tr(
+                              namedArgs: {
+                                'value': '${casualVal.toInt()}',
+                              },
                             ),
-                            Expanded(
-                              child: buildLegendItem(
-                                const Color(0xFFFF4A5E),
-                                'sick_leave'.tr(
-                                  namedArgs: {
-                                    'value': '${config.sickVal.toInt()}',
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: buildLegendItem(
-                                const Color(0xFF97FFA9),
-                                'medical_leave'.tr(
-                                  namedArgs: {
-                                    'value': '${config.medicalVal.toInt()}',
-                                  },
-                                ),
-                              ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: buildLegendItem(
+                            const Color(0xFFFF4A5E),
+                            'sick_leave'.tr(
+                              namedArgs: {
+                                'value': '${sickVal.toInt()}',
+                              },
                             ),
-                            const Expanded(child: SizedBox()),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -581,12 +335,10 @@ class ChartLabel extends StatelessWidget {
 class CalloutLinesPainter extends CustomPainter {
   final List<Offset> casualPath;
   final List<Offset> sickPath;
-  final List<Offset> medicalPath;
 
   CalloutLinesPainter({
     required this.casualPath,
     required this.sickPath,
-    required this.medicalPath,
   });
 
   @override
@@ -598,7 +350,6 @@ class CalloutLinesPainter extends CustomPainter {
 
     _drawOffsetPath(canvas, paint, casualPath);
     _drawOffsetPath(canvas, paint, sickPath);
-    _drawOffsetPath(canvas, paint, medicalPath);
   }
 
   void _drawOffsetPath(Canvas canvas, Paint paint, List<Offset> points) {
@@ -614,7 +365,6 @@ class CalloutLinesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CalloutLinesPainter oldDelegate) {
     return oldDelegate.casualPath != casualPath ||
-        oldDelegate.sickPath != sickPath ||
-        oldDelegate.medicalPath != medicalPath;
+        oldDelegate.sickPath != sickPath;
   }
 }

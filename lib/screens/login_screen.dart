@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -39,28 +39,31 @@ class _LoginScreenState extends State<LoginScreen> {
   bool get _anyLoading =>
       _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
 
-  final AuthService _authService = AuthService();
+  late final AuthService _authService;
+  late final FirestoreService _firestoreService;
 
   StreamSubscription? _googleSub;
 
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestoreService = Provider.of<FirestoreService>(context, listen: false);
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')
         .doc('google')
         .snapshots()
         .listen((doc) {
-      if (doc.exists && mounted) {
-        setState(() {
-          _googleEnabled = doc.data()?['googleEnable'] == true;
+          if (doc.exists && mounted) {
+            setState(() {
+              _googleEnabled = doc.data()?['googleEnable'] == true;
+            });
+          } else if (mounted) {
+            setState(() {
+              _googleEnabled = true;
+            });
+          }
         });
-      } else if (mounted) {
-        setState(() {
-          _googleEnabled = true;
-        });
-      }
-    });
   }
 
   @override
@@ -82,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (await _handleDeletedAccountIfNeeded()) return;
         if (!mounted) return;
 
-        final profile = await FirestoreService().getUserProfile();
+        final profile = await _firestoreService.getUserProfile();
         if (profile != null) {
           final pic = profile['profilePic'];
           if (pic != null && pic.isNotEmpty) {
@@ -191,7 +194,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    _submitted = true;
+    setState(() {
+      _submitted = true;
+    });
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -203,16 +209,19 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (mounted) {
-        final loggedInEmail =
-            _authService.currentUser?.email?.trim().toLowerCase();
+        final loggedInEmail = _authService.currentUser?.email
+            ?.trim()
+            .toLowerCase();
         if (loggedInEmail == null || loggedInEmail != enteredEmail) {
           await _authService.signOut();
           if (mounted) {
-            _showErrorSnackBar('login_failed'.tr(namedArgs: {'code': 'email-mismatch'}));
+            _showErrorSnackBar(
+              'login_failed'.tr(namedArgs: {'code': 'email-mismatch'}),
+            );
           }
           return;
         }
-        final profile = await FirestoreService().getUserProfile();
+        final profile = await _firestoreService.getUserProfile();
         if (profile == null) {
           await _authService.signOut();
           if (mounted) {
@@ -301,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email == null || email.isEmpty) return false;
 
     try {
-      final isDeleted = await FirestoreService().isCurrentUserDeleted();
+      final isDeleted = await _firestoreService.isCurrentUserDeleted();
       if (isDeleted) {
         await _authService.signOut();
         if (mounted) {
@@ -374,15 +383,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: inputDecoration('email_hint'.tr()),
-               validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'email_required'.tr();
-                  }
-                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
-                    return 'email_invalid'.tr();
-                  }
-                  return null;
-                },
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'email_required'.tr();
+                }
+                if (!RegExp(
+                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                ).hasMatch(value.trim())) {
+                  return 'email_invalid'.tr();
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             InputLabel(label: 'password_label'.tr()),
@@ -392,7 +403,11 @@ class _LoginScreenState extends State<LoginScreen> {
               enabled: !_anyLoading,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) {},
+              onFieldSubmitted: (_) {
+                if (!_anyLoading) {
+                  _handleLogin();
+                }
+              },
               style: const TextStyle(
                 fontSize: 14,
                 fontFamily: 'SF Pro Display',
@@ -476,7 +491,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                  color: Color(0x99CBCBCB),
+                    color: Color(0xFFFFFFFF),
                     fontFamily: 'SF Pro Display',
                     height: 1.0,
                   ),
@@ -503,38 +518,26 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 16),
 
-
       if (_googleEnabled)
-        buildSocialButton(context: context,
+        buildSocialButton(
+          context: context,
           text: 'continue_with_google'.tr(),
-          icon: SvgPicture.asset('assets/google_icon.svg', width: 16, height: 16),
+          icon: SvgPicture.asset(
+            'assets/google_icon.svg',
+            width: 16,
+            height: 16,
+          ),
           isLoading: _isGoogleLoading,
           onPressed: _anyLoading ? null : _handleGoogleLogin,
           backgroundColor: Colors.white,
           textColor: const Color(0xFF000000),
         ),
-      if (_googleEnabled)
-        const SizedBox(height: 8),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      if (_googleEnabled) const SizedBox(height: 8),
 
       const SizedBox(height: 8),
 
-
-      buildSocialButton(context: context,
+      buildSocialButton(
+        context: context,
         text: 'continue_as_guest'.tr(),
         icon: SvgPicture.asset(
           'assets/guest_icon.svg',
@@ -557,33 +560,38 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 24),
 
       Center(
-        child: RichText(
-          text: TextSpan(
-            text: 'dont_have_account'.tr(),
-            style: const TextStyle(
-              color: Color(0xFF000000),
-              fontSize: 13,
-              fontFamily: 'SF Pro Display',
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            Text(
+              'dont_have_account'.tr(),
+              style: const TextStyle(
+                color: Color(0xFF000000),
+                fontSize: 13,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
-            children: [
-              TextSpan(
-                text: 'sign_up'.tr(),
+            GestureDetector(
+              onTap: _anyLoading
+                  ? null
+                  : () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const SignupScreen(),
+                        ),
+                      );
+                    },
+              child: Text(
+                'sign_up'.tr(),
                 style: const TextStyle(
                   color: Colors.red,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'SF Pro Display',
                 ),
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const SignupScreen(),
-                      ),
-                    );
-                  },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ];

@@ -19,6 +19,7 @@ import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/image_utils.dart';
 import '../widgets/amount_text.dart';
+import 'package:provider/provider.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -91,6 +92,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     'cv': 'CV URL',
   };
 
+  late AuthService _authService;
+  late FirestoreService _firestore;
   bool _isSaving = false;
   List<Map<String, dynamic>> _validWorkers = [];
   bool _hasParsedFile = false;
@@ -129,6 +132,8 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
   }
 
   @override
@@ -358,7 +363,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .toList();
 
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
     Set<String> existingNames = {};
     Set<String> existingNationalIds = {};
@@ -388,7 +393,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           .toSet();
     } else {
       try {
-        final snapshot = await FirestoreService().getWorkersOnce();
+        final snapshot = await _firestore.getWorkersOnce();
         existingEmails = snapshot.docs
             .map(
               (d) => WorkerIdentity.normalizeEmail(
@@ -776,7 +781,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       _isSaving = true;
     });
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
 
     _showBulkProgressDialog();
 
@@ -791,7 +796,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
         await DummyData.saveToPrefs();
       } else {
-        final result = await FirestoreService().addBulkWorkers(workersReadyToSave);
+        final result = await _firestore.addBulkWorkers(workersReadyToSave);
         importedCount = result.imported;
         if (result.skipped > 0) {
           finalSkippedDuplicates += result.skipped;
@@ -875,7 +880,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             _hasParsedFile = false;
           });
           _workersSubscription?.cancel();
-          _workersSubscription = FirestoreService().workersStream.listen((_) {
+          _workersSubscription = _firestore.workersStream.listen((_) {
             if (mounted) {
               setState(() {});
             }

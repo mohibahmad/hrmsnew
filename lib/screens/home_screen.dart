@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -58,6 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showNotifications = false;
   bool _showWorkersAttendance = false;
   final List<bool> _activatedScreens = List.filled(13, false);
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -124,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return SettingsScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-          isGuest: AuthService().currentUser?.isAnonymous ?? false,
+                    isGuest: _authService.currentUser?.isAnonymous ?? false,
           onNotificationTap: _toggleNotifications,
         );
       case 9:
@@ -211,17 +214,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadPremiumStatus() async {
     bool isPremium = false;
-    final user = AuthService().currentUser;
+    final user = _authService.currentUser;
 
     if (user != null && !user.isAnonymous) {
       try {
-        final profile = await FirestoreService().getUserProfile();
+        final profile = await _firestore.getUserProfile();
         isPremium = profile?['isPremium'] == true;
-
 
         await PreferencesService.setPremium(isPremium);
       } catch (_) {
-
         isPremium = await PreferencesService.isPremium();
       }
     }
@@ -229,37 +230,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkProfileExistsOrLogout() async {
-    final user = AuthService().currentUser;
+    final user = _authService.currentUser;
     if (user == null || user.isAnonymous) return;
 
     try {
-      final profile = await FirestoreService().getUserProfile();
+      final profile = await _firestore.getUserProfile();
       if (profile == null) {
-        await AuthService().signOut();
+        await _authService.signOut();
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         }
       }
-    } catch (_) {
-
-    }
+    } catch (_) {}
   }
 
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _selectedIndex = widget.initialIndex;
     _selectedSubIndex = widget.initialSubIndex;
     final stackIdx = _getStackIndex();
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
-    final currentUser = AuthService().currentUser;
+    final currentUser = _authService.currentUser;
 
     _restoreProfilePic(currentUser);
     _loadDashboardData();
-
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _dashboardReady = true);
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _restoreProfilePic(User? currentUser) async {
     if (currentUser != null && !currentUser.isAnonymous) {
       try {
-        final profile = await FirestoreService().getUserProfile();
+        final profile = await _firestore.getUserProfile();
         if (mounted && profile != null) {
           final pic = profile['profilePic'];
           if (pic != null && pic.toString().isNotEmpty) {
@@ -299,11 +299,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startPremiumListener() {
-    final user = AuthService().currentUser;
+    final user = _authService.currentUser;
     if (user == null || user.isAnonymous) return;
-    _profileSub = FirestoreService().userProfileStream.listen((profile) {
+    _profileSub = _firestore.userProfileStream.listen((profile) {
       if (profile == null) {
-        AuthService().signOut();
+        _authService.signOut();
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -321,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadDashboardData() {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
         final workersList = DummyData.workers;
@@ -344,7 +344,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherWorkersCount = oCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
 
-
         _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
 
         _totalAttendanceCount = _attendanceDocs.length;
@@ -361,13 +360,11 @@ class _HomeScreenState extends State<HomeScreen> {
             .length;
       });
     } else {
-      final firestore = FirestoreService();
-
       setState(() {
         _holidays = [];
       });
 
-      _holidaysSub = firestore.holidaysStream.listen((snap) {
+      _holidaysSub = _firestore.holidaysStream.listen((snap) {
         if (mounted) {
           setState(() {
             _holidays = snap.docs
@@ -380,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      _workersSub = firestore.workersStream.listen((snap) {
+      _workersSub = _firestore.workersStream.listen((snap) {
         if (mounted) {
           int mCount = 0;
           int fCount = 0;
@@ -411,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      _attendanceSub = firestore.attendanceStream.listen((snap) {
+      _attendanceSub = _firestore.attendanceStream.listen((snap) {
         if (mounted) {
           setState(() {
             final today = DateTime.now();
@@ -439,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      _timeoffSub = firestore.timeoffStream.listen((snap) {
+      _timeoffSub = _firestore.timeoffStream.listen((snap) {
         if (mounted) {
           setState(() {
             _timeoffDocs = snap.docs
@@ -450,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      _expensesSub = firestore.expensesStream.listen((snap) {
+      _expensesSub = _firestore.expensesStream.listen((snap) {
         if (mounted) {
           setState(() {
             _rawExpensesDocs = snap.docs.map((doc) {
@@ -466,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      _payrollSub = firestore.payrollStream.listen((snap) {
+      _payrollSub = _firestore.payrollStream.listen((snap) {
         if (mounted) {
           setState(() {
             _rawPayrollDocs = snap.docs.map((doc) {
@@ -490,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
 
-      _notifSub = firestore.notificationsStream.listen((snap) {
+      _notifSub = _firestore.notificationsStream.listen((snap) {
         if (mounted) {
           setState(() {
             _unreadNotifCount = snap.docs.where((d) {
@@ -506,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
       if (isGuest) {
         _recalculateDummyTotals(period);
       } else {
@@ -571,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleBackToLogin() async {
-    await AuthService().signOut();
+    await _authService.signOut();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -596,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _showNotifications = willShow;
     });
     if (willShow) {
-      FirestoreService().markAllNotificationsRead();
+      _firestore.markAllNotificationsRead();
     }
   }
 
@@ -657,7 +654,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: ValueKey('sidebar_${context.locale.languageCode}'),
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
-                    isGuest: AuthService().currentUser?.isAnonymous ?? false,
+          isGuest: _authService.currentUser?.isAnonymous ?? false,
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) => setState(() {
                       _selectedIndex = index;
@@ -682,7 +679,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             return IndexedStack(
                               index: stackIndex,
                               children: [
-
                                 _activatedScreens[0]
                                     ? (_dashboardReady
                                           ? TweenAnimationBuilder<double>(
@@ -920,8 +916,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             isEmpty:
                                 _totalTimeoffCount == 0 ||
                                 _totalWorkersCount == 0,
-                            timeoffDocs: _timeoffDocs,
-                            workersList: _workersList,
+                            attendanceDocs: _attendanceDocs,
+                             
                           ),
                         ],
                       );
@@ -949,8 +945,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 isEmpty:
                                     _totalTimeoffCount == 0 ||
                                     _totalWorkersCount == 0,
-                                timeoffDocs: _timeoffDocs,
-                                workersList: _workersList,
+                                attendanceDocs: _attendanceDocs,
+                                 
                               ),
                             ),
                           ],
@@ -960,9 +956,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-
-
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -979,9 +972,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-
-
-
 
                 Builder(
                   builder: (context) {
@@ -1004,7 +994,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         final activeHolidays = _holidays.where((h) {
                           if (h['isEnabled'] != true) return false;
 
-
                           final monthStr = (h['month'] ?? '').toString();
                           final dayStr = (h['day'] ?? '').toString();
                           if (monthStr.isEmpty || dayStr.isEmpty) return false;
@@ -1013,7 +1002,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (monthNum == null) return false;
                           final dayNum = int.tryParse(dayStr);
                           if (dayNum == null) return false;
-
 
                           var holidayDate = DateTime(
                             now.year,

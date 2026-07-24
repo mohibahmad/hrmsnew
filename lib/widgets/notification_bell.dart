@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -16,16 +17,20 @@ class NotificationBell extends StatefulWidget {
 class _NotificationBellState extends State<NotificationBell> {
   StreamSubscription? _notifSub;
   int _unreadCount = 0;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   @override
   void initState() {
     super.initState();
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    _authService = context.read<AuthService>();
+    _firestore = context.read<FirestoreService>();
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _unreadCount = DummyData.notifications.where((n) => n['isRead'] != true).length;
       return;
     }
-    _notifSub = FirestoreService().notificationsStream.listen((snap) {
+    _notifSub = _firestore.notificationsStream.listen((snap) {
       if (mounted) {
         setState(() {
           _unreadCount = snap.docs.where((d) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/error_reporter.dart';
@@ -18,7 +19,8 @@ Future<bool> handleDeletedAccountIfNeeded(
   if (email == null || email.isEmpty) return false;
 
   try {
-    final isDeleted = await FirestoreService().isCurrentUserDeleted();
+    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    final isDeleted = await firestoreService.isCurrentUserDeleted();
     if (isDeleted) {
       await authService.signOut();
       if (context.mounted) {

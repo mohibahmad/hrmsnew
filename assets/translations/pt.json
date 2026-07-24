@@ -120,7 +120,7 @@
   "remaining_days": "Dias Restantes",
   "casual_leave": "Licença Casual: {value}%",
   "sick_leave": "Licença Médica: {value}%",
-  "medical_leave": "Licença Médica: {value}%",
+  "annual_leave_chart": "Férias Anuais: {value}%",
   "sidebar_dashboard": "Painel",
   "sidebar_workers": "Trabalhadores",
   "sidebar_workforce": "Força de Trabalho",
@@ -844,5 +844,11 @@
   "upload_failed": "Falha no upload: {error}",
   "cv_resume": "CV/Currículo",
   "failed_to_load": "Falha ao carregar",
-  "close": "Fechar"
+  "close": "Fechar",
+  "profile_shared_successfully": "Perfil do trabalhador compartilhado com sucesso!",
+  "profile_share_failed": "Falha ao compartilhar o perfil: {error}",
+  "guest_feature_locked": "Recurso indisponível",
+  "guest_feature_desc": "Este recurso está disponível apenas para usuários registrados. Faça login para acessar.",
+  "sign_in": "Entrar",
+  "cancel": "Cancelar"
 }

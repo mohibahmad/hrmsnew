@@ -1,3 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+String _tsToString(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) return value.toDate().toIso8601String();
+  if (value is DateTime) return value.toIso8601String();
+  return value.toString();
+}
+
 class Payroll {
   final String? id;
   final String name;
@@ -54,8 +63,8 @@ class Payroll {
       leaveDeduction: data['leaveDeduction'] ?? '',
       salary: data['salary'] ?? '',
       netSalary: data['netSalary'] ?? '',
-      createdAt: data['createdAt'],
-      lastModified: data['lastModified'],
+      createdAt: _tsToString(data['createdAt']),
+      lastModified: _tsToString(data['lastModified']),
     );
   }
 

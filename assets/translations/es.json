@@ -120,7 +120,7 @@
   "remaining_days": "Días Restantes",
   "casual_leave": "Permiso Casual: {value}%",
   "sick_leave": "Permiso por Enfermedad: {value}%",
-  "medical_leave": "Permiso Médico: {value}%",
+  "annual_leave_chart": "Vacaciones Anuales: {value}%",
   "sidebar_dashboard": "Panel de Control",
   "sidebar_workers": "Trabajadores",
   "sidebar_workforce": "Personal",
@@ -844,5 +844,11 @@
   "upload_failed": "Error al subir: {error}",
   "cv_resume": "CV/Currículum",
   "failed_to_load": "Error al cargar",
-  "close": "Cerrar"
+  "close": "Cerrar",
+  "profile_shared_successfully": "Perfil de trabajador compartido exitosamente!",
+  "profile_share_failed": "Error al compartir el perfil: {error}",
+  "guest_feature_locked": "Función no disponible",
+  "guest_feature_desc": "Esta función solo está disponible para usuarios registrados. Inicie sesión para acceder.",
+  "sign_in": "Iniciar sesión",
+  "cancel": "Cancelar"
 }

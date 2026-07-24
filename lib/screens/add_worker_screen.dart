@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/upload_service.dart';
@@ -30,6 +31,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   final Color textDark = const Color(0xFF000000);
   final Color formBgGrey = const Color(0xFFF3F5F8);
 
+  late AuthService _authService;
+  late FirestoreService _firestore;
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController fatherNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -45,6 +49,13 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   Uint8List? _profileImageBytes;
   String? _profileImageName;
   String selectedGender = 'Male';
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
+  }
 
   @override
   void dispose() {
@@ -162,7 +173,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
     try {
       String? profileImageUrl;
       if (_profileImageBytes != null) {
-        final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+        final isGuest = _authService.currentUser?.isAnonymous ?? false;
         if (isGuest) {
           profileImageUrl =
               'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
@@ -196,7 +207,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
       }
 
 
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       if (isGuest) {
 
         final newWorker = {
@@ -219,7 +230,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         DummyData.workers.add(newWorker);
         await DummyData.saveToPrefs();
       } else {
-        await FirestoreService().addWorker({
+        await _firestore.addWorker({
           'name': nameController.text.trim(),
           'fatherName': fatherNameController.text.trim(),
           'email': emailController.text.trim(),
@@ -293,7 +304,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
           SidebarWidget(
             key: ValueKey('sidebar_${context.locale.languageCode}'),
             selectedIndex: 1,
-            isGuest: AuthService().currentUser?.isAnonymous ?? false,
+            isGuest: _authService.currentUser?.isAnonymous ?? false,
             onItemSelected: (index, {subIndex}) {
               Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                 MaterialPageRoute(
@@ -306,7 +317,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               );
             },
             onBackToLogin: () {
-              AuthService().signOut();
+              _authService.signOut();
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (route) => false,

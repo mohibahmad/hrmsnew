@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
 
 class SubscriptionDialog extends StatefulWidget {
   final bool isPremium;
@@ -20,6 +21,16 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final Color leftPanelBlue = const Color(0xFF0247C4);
   final Color cardLightBlue = const Color(0xFFE5EEFC);
   int _selectedPlanIndex = 1;
+  bool _isSaving = false;
+  late AuthService _authService;
+  late FirestoreService _firestore;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,19 +175,26 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 width: double.infinity,
                                 height: 50,
                                 child: ElevatedButton(
-                                  onPressed: () async {
-                                    await PreferencesService.setPremium(true);
-                                    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
-                                    if (!isGuest) {
-                                      try {
-                                        await FirestoreService()
-                                            .updateUserProfile({
-                                              'isPremium': true,
-                                            });
-                                      } catch (_) {}
-                                    }
-                                    if (context.mounted) {
-                                      Navigator.of(context).pop(true);
+                                  onPressed: _isSaving
+                                      ? null
+                                      : () async {
+                                    setState(() => _isSaving = true);
+                                    try {
+                                      await PreferencesService.setPremium(true);
+                                      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                                      if (!isGuest) {
+                                        try {
+                                          await _firestore
+                                              .updateUserProfile({
+                                                'isPremium': true,
+                                              });
+                                        } catch (_) {}
+                                      }
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop(true);
+                                      }
+                                    } finally {
+                                      if (mounted) setState(() => _isSaving = false);
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -186,7 +204,16 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                       borderRadius: BorderRadius.circular(50),
                                     ),
                                   ),
-                                  child: Text(
+                                  child: _isSaving
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
                                     'continue'.tr(),
                                     style: TextStyle(
                                       color: Color(0xFFFFFFFF),

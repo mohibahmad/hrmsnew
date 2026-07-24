@@ -5,9 +5,11 @@ import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../widgets/amount_text.dart';
 
 import '../utils/date_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
@@ -17,8 +19,19 @@ import '../utils/delete_dialog.dart';
 import '../utils/premium_gate.dart';
 import '../services/preferences_service.dart';
 import '../utils/rate_us_helper.dart';
-import 'login_screen.dart';
-import '../widgets/amount_text.dart';
+import '../utils/guest_restriction.dart';
+
+String _eds(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) {
+    final d = value.toDate();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+  if (value is DateTime) {
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+  return value.toString();
+}
 
 class ExpensesScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -44,6 +57,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _selectedPeriod = 'Yearly';
   StreamSubscription? _expensesSub;
   StreamSubscription? _workersSub;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   @override
   void dispose() {
@@ -56,16 +71,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _expensesDocs = [];
     _isLoading = true;
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+      _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {});
         }
       });
-      _expensesSub = FirestoreService().expensesStream.listen(
+      _expensesSub = _firestore.expensesStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -114,7 +131,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   double get _monthExpenseSum {
     final now = DateTime.now();
     return _expensesDocs.fold(0.0, (sum, doc) {
-      final dateStr = (doc['date'] ?? '').toString();
+      final dateStr = _eds(doc['date']);
       if (dateStr.isEmpty) return sum;
       final parts = dateStr.split('/');
       if (parts.length != 3) return sum;
@@ -179,7 +196,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final category = (doc['category'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      final dateStr = (doc['date'] ?? '').toString();
+      final dateStr = _eds(doc['date']);
 
       final matchesSearch = name.contains(query) || category.contains(query);
       final matchesPeriod = _isDateWithinPeriod(dateStr, _selectedPeriod);
@@ -195,7 +212,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     if (!confirmed) return;
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
         _expensesDocs.removeWhere((e) => e['id'] == docId);
@@ -203,7 +220,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         DummyData.saveToPrefs();
       });
     } else {
-      await FirestoreService().deleteExpense(docId);
+      await _firestore.deleteExpense(docId);
     }
   }
 
@@ -219,12 +236,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     final docId = doc['id']?.toString() ?? '';
 
-    final dateParts = (doc['date']?.toString() ?? '').split('/');
+    final dateParts = _eds(doc['date']).split('/');
     int selectedDay = dateParts.isNotEmpty
         ? int.tryParse(dateParts[0]) ?? DateTime.now().day
         : DateTime.now().day;
-    DateTime calendarDate = DateTime.now();
+    final currentDate = doc['date'];
+    DateTime calendarDate;
+    if (currentDate is Timestamp) {
+      calendarDate = currentDate.toDate();
+    } else if (currentDate is DateTime) {
+      calendarDate = currentDate;
+    } else {
+      calendarDate = DateTime.now();
+    }
 
+    var isSaving = false;
     showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -279,79 +305,120 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             ),
                             minimumSize: const Size(0, 32),
                           ),
-                          onPressed: () async {
-                            if (categoryController.text.trim().isEmpty) {
-                              FlashySnackBar.show(
-                                context,
-                                message: 'please_enter_category'.tr(),
-                                isError: true,
-                              );
-                              return;
-                            }
-                            final double? amt = double.tryParse(
-                              amountController.text.trim(),
-                            );
-                            if (amt == null) {
-                              FlashySnackBar.show(
-                                context,
-                                message: 'please_enter_valid_amount'.tr(),
-                                isError: true,
-                              );
-                              return;
-                            }
-                            final dateStr =
-                                '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
-                            final updatedMap = {
-                              'date': dateStr,
-                              'category': categoryController.text,
-                              'amount': amt,
-                              'name': descriptionController.text,
-                              'description': descriptionController.text,
-                            };
-                            final isGuest =
-                                AuthService().currentUser?.isAnonymous ?? false;
-                            if (isGuest) {
-                              setState(() {
-                                final idx = _expensesDocs.indexWhere(
-                                  (e) => e['id'] == docId,
-                                );
-                                if (idx != -1)
-                                  _expensesDocs[idx] = {
-                                    ...updatedMap,
-                                    'id': docId,
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  setModalState(() => isSaving = true);
+                                  if (categoryController.text.trim().isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_enter_category'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  final double? amt = double.tryParse(
+                                    amountController.text.trim(),
+                                  );
+                                  if (amt == null) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_enter_valid_amount'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  if (descriptionController.text.trim().isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_enter_expense_title'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  final date = DateTime(
+                                    calendarDate.year,
+                                    calendarDate.month,
+                                    selectedDay,
+                                  );
+                                  final updatedMap = {
+                                    'date': date,
+                                    'category': categoryController.text,
+                                    'amount': amt,
+                                    'name': descriptionController.text,
+                                    'description': descriptionController.text,
                                   };
-                                final dummyIdx = DummyData.expenses.indexWhere(
-                                  (e) => e['id'] == docId,
-                                );
-                                if (dummyIdx != -1)
-                                  DummyData.expenses[dummyIdx] = {
-                                    ...updatedMap,
-                                    'id': docId,
-                                  };
-                              });
-                              await DummyData.saveToPrefs();
-                            } else {
-                              await FirestoreService().updateExpense(
-                                docId,
-                                updatedMap,
-                              );
-                            }
-                            if (!context.mounted) return;
-                            Navigator.of(context).pop();
-                            FlashySnackBar.show(
-                              context,
-                              message: 'expense_updated'.tr(),
-                            );
-                          },
-                          child: Text(
-                            'save'.tr(),
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
+                                   final isGuest =
+                                      _authService.currentUser?.isAnonymous ??
+                                      false;
+                                   try {
+                                     if (isGuest) {
+                                      setState(() {
+                                        final idx = _expensesDocs.indexWhere(
+                                          (e) => e['id'] == docId,
+                                        );
+                                        if (idx != -1)
+                                          _expensesDocs[idx] = {
+                                            ...updatedMap,
+                                            'id': docId,
+                                          };
+                                        final dummyIdx = DummyData.expenses
+                                            .indexWhere(
+                                              (e) => e['id'] == docId,
+                                            );
+                                        if (dummyIdx != -1)
+                                          DummyData.expenses[dummyIdx] = {
+                                            ...updatedMap,
+                                            'id': docId,
+                                          };
+                                      });
+                                      await DummyData.saveToPrefs();
+                                    } else {
+                                      await _firestore.updateExpense(
+                                        docId,
+                                        updatedMap,
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setModalState(() => isSaving = false);
+                                    if (!context.mounted) return;
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'failed_to_update_expense'.tr(
+                                        namedArgs: {'error': e.toString()},
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  if (!context.mounted) return;
+                                  Navigator.of(context).pop();
+                                  FlashySnackBar.show(
+                                    context,
+                                    message: 'expense_updated'.tr(),
+                                  );
+                                },
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'save'.tr(),
+                                  style: TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -477,6 +544,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     int selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
 
+    var isSaving = false;
     showDialog(
       context: parentContext,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -496,7 +564,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -532,82 +599,125 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             ),
                             minimumSize: const Size(0, 32),
                           ),
-                          onPressed: () {
-                            if (categoryController.text.trim().isEmpty) {
-                              FlashySnackBar.show(
-                                context,
-                                message: 'please_enter_category'.tr(),
-                                isError: true,
-                              );
-                              return;
-                            }
-                            final double? amt = double.tryParse(
-                              amountController.text.trim(),
-                            );
-                            if (amt == null) {
-                              FlashySnackBar.show(
-                                context,
-                                message: 'please_enter_valid_amount'.tr(),
-                                isError: true,
-                              );
-                              return;
-                            }
-                            final dateStr =
-                                '${selectedDay.toString().padLeft(2, '0')}/${calendarDate.month.toString().padLeft(2, '0')}/${calendarDate.year}';
-                            final isGuest =
-                                AuthService().currentUser?.isAnonymous ?? false;
-                            final expenseMap = {
-                              'date': dateStr,
-                              'category': categoryController.text,
-                              'amount': amt,
-                              'name': descriptionController.text,
-                              'description': descriptionController.text,
-                            };
-                            if (isGuest) {
-                              final newId =
-                                  'dummy_e${DateTime.now().millisecondsSinceEpoch}';
-                              setState(() {
-                                _expensesDocs.insert(0, {
-                                  ...expenseMap,
-                                  'id': newId,
-                                });
-                                DummyData.expenses.insert(0, {
-                                  ...expenseMap,
-                                  'id': newId,
-                                });
-                                DummyData.saveToPrefs();
-                              });
-                            } else {
-                              FirestoreService().addExpense(expenseMap);
-                            }
-                            Navigator.of(context).pop();
-                            FlashySnackBar.show(
-                              parentContext,
-                              message: 'successfully_added_expense'.tr(
-                                namedArgs: {'name': categoryController.text},
-                              ),
-                            );
-                            if (parentContext.mounted) {
-                              tryShowFirstMilestoneRateUs(
-                                parentContext,
-                                'expense',
-                              );
-                            }
-                          },
-                          child: Text(
-                            'save'.tr(),
-                            style: TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  setModalState(() => isSaving = true);
+                                  if (categoryController.text.trim().isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_enter_category'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  final double? amt = double.tryParse(
+                                    amountController.text.trim(),
+                                  );
+                                  if (amt == null) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_enter_valid_amount'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  if (descriptionController.text.trim().isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_enter_expense_title'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  final date = DateTime(
+                                    calendarDate.year,
+                                    calendarDate.month,
+                                    selectedDay,
+                                  );
+                                   final isGuest =
+                                      _authService.currentUser?.isAnonymous ??
+                                      false;
+                                   final expenseMap = {
+                                    'date': date,
+                                    'category': categoryController.text,
+                                    'amount': amt,
+                                    'name': descriptionController.text,
+                                    'description': descriptionController.text,
+                                  };
+                                  try {
+                                    if (isGuest) {
+                                      final newId =
+                                          'dummy_e${DateTime.now().millisecondsSinceEpoch}';
+                                      setState(() {
+                                        _expensesDocs.insert(0, {
+                                          ...expenseMap,
+                                          'id': newId,
+                                        });
+                                        DummyData.expenses.insert(0, {
+                                          ...expenseMap,
+                                          'id': newId,
+                                        });
+                                        DummyData.saveToPrefs();
+                                      });
+                                    } else {
+                                      await _firestore.addExpense(
+                                        expenseMap,
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setModalState(() => isSaving = false);
+                                    if (!context.mounted) return;
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'failed_to_add_expense'.tr(
+                                        namedArgs: {'error': e.toString()},
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+                                  Navigator.of(context).pop();
+                                  FlashySnackBar.show(
+                                    parentContext,
+                                    message: 'successfully_added_expense'.tr(
+                                      namedArgs: {
+                                        'name': categoryController.text,
+                                      },
+                                    ),
+                                  );
+                                  if (parentContext.mounted) {
+                                    tryShowFirstMilestoneRateUs(
+                                      parentContext,
+                                      'expense',
+                                    );
+                                  }
+                                },
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'save'.tr(),
+                                  style: TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
-
 
                     Row(
                       children: [
@@ -1174,12 +1284,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           height: 44,
           child: ElevatedButton.icon(
             onPressed: () async {
-              final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+              final isGuest = _authService.currentUser?.isAnonymous ?? false;
               if (isGuest) {
                 if (!mounted) return;
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+                showGuestRestrictionDialog(context);
                 return;
               }
               final isPremium = await PreferencesService.isPremium();
@@ -1345,7 +1453,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       onChanged: (value) {
         setState(() {
           _selectedPeriod = value;
-          final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+          final isGuest = _authService.currentUser?.isAnonymous ?? false;
           if (isGuest) {
             _adjustDummyDatesForPeriod(value);
           }
@@ -1353,8 +1461,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       },
     );
   }
-
-
 
   Widget _buildDataTable(List<Map<String, dynamic>> expenses) {
     final double tableHeight = (MediaQuery.of(context).size.height - 409).clamp(
@@ -1370,7 +1476,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ),
       child: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -1445,7 +1550,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Widget _buildDataRow(Map<String, dynamic> doc, int index) {
     final name = (doc['name'] ?? '').toString();
-    final date = (doc['date'] ?? '').toString();
+    final date = _eds(doc['date']);
     final category = (doc['category'] ?? '').toString();
     final amount = (doc['amount'] ?? 0).toDouble();
 

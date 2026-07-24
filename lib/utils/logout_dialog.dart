@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
 
@@ -37,7 +38,7 @@ import '../screens/login_screen.dart';
 
   if (confirmed == true) {
     try {
-      await AuthService().signOut();
+      await context.read<AuthService>().signOut();
     } catch (_) {}
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(

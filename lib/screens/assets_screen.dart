@@ -11,12 +11,25 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/preferences_service.dart';
+import 'package:provider/provider.dart';
 import '../utils/premium_gate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
 import '../utils/rate_us_helper.dart';
-import 'login_screen.dart';
+import '../utils/guest_restriction.dart';
+
+String _adts(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) {
+    final d = value.toDate();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+  if (value is DateTime) {
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+  return value.toString();
+}
 
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -35,6 +48,8 @@ class AssetsScreen extends StatefulWidget {
 }
 
 class _AssetsScreenState extends State<AssetsScreen> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
   final _searchController = TextEditingController();
   String _searchQuery = '';
   List<AssetData> _assets = [];
@@ -55,21 +70,23 @@ class _AssetsScreenState extends State<AssetsScreen> {
   @override
   void initState() {
     super.initState();
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _assets = DummyData.assets.map((data) {
         return AssetData(
           data['name'] ?? '',
           data['position'] ?? '',
           data['type'] ?? '',
-          data['dateLoaned'] ?? '',
-          data['dateReturned'] ?? '',
+          _adts(data['dateLoaned']),
+          _adts(data['dateReturned']),
           data['isReturned'] ?? false,
           profileImage: data['profileImage']?.toString(),
           email: data['email']?.toString(),
           phone: data['phone']?.toString(),
           cnic: data['cnic']?.toString(),
-          dateOfJoining: data['dateOfJoining']?.toString(),
+          dateOfJoining: _adts(data['dateOfJoining']),
         );
       }).toList();
       _workerNames = DummyData.workers
@@ -83,7 +100,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
       };
     } else {
       _isLoading = true;
-      _assetsSub = FirestoreService().assetsStream.listen((snapshot) {
+      _assetsSub = _firestore.assetsStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             final sortedDocs = snapshot.docs.toList();
@@ -106,22 +123,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 data['name'] ?? '',
                 data['position'] ?? '',
                 data['type'] ?? '',
-                data['dateLoaned'] ?? '',
-                data['dateReturned'] ?? '',
+                _adts(data['dateLoaned']),
+                _adts(data['dateReturned']),
                 data['isReturned'] ?? false,
                 id: doc.id,
                 profileImage: data['profileImage']?.toString(),
                 email: data['email']?.toString(),
                 phone: data['phone']?.toString(),
                 cnic: data['cnic']?.toString(),
-                dateOfJoining: data['dateOfJoining']?.toString(),
+                dateOfJoining: _adts(data['dateOfJoining']),
               );
             }).toList();
             _isLoading = false;
           });
         }
       });
-      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+      _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _workerNames = snapshot.docs
@@ -145,7 +162,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   Stream<List<String>> get _workerNamesStream {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       final names = DummyData.workers
           .map((w) => (w['name'] ?? '').toString())
@@ -154,7 +171,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
           .toList();
       return Stream.value(names);
     } else {
-      return FirestoreService().workersStream.map((snapshot) {
+      return _firestore.workersStream.map((snapshot) {
         final list = snapshot.docs
             .map((doc) {
               final data = doc.data() as Map<String, dynamic>?;
@@ -192,6 +209,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     DateTime loanedDate = DateTime.now();
     DateTime returnedDate = DateTime.now();
     bool isReturned = false;
+    var isSaving = false;
 
 
     String formatDate(DateTime date) {
@@ -252,10 +270,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             ),
                             minimumSize: const Size(0, 36),
                           ),
-                          onPressed: () async {
+onPressed: isSaving
+                              ? null
+                              : () async {
                             if (selectedWorkerName != null &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
+                              setModalState(() => isSaving = true);
                               final workerData =
                                   _workersMap[selectedWorkerName] ?? {};
                               final workerProfileImage =
@@ -271,9 +292,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'name': selectedWorkerName!,
                                 'position': positionController.text,
                                 'type': typeController.text,
-                                'dateLoaned': formatDate(loanedDate),
+                                'dateLoaned': loanedDate,
                                 'dateReturned': isReturned
-                                    ? formatDate(returnedDate)
+                                    ? returnedDate
                                     : _inUseKey,
                                 'isReturned': isReturned,
                                 'profileImage': workerProfileImage ?? '',
@@ -283,7 +304,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'dateOfJoining': workerDateOfJoining ?? '',
                               };
                               final isGuest =
-                                  AuthService().currentUser?.isAnonymous ??
+                                  _authService.currentUser?.isAnonymous ??
                                   false;
                               if (isGuest) {
                                 final newAsset = {
@@ -323,14 +344,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   DummyData.assets.insert(0, newAsset);
                                   DummyData.saveToPrefs();
                                 });
+                                setModalState(() => isSaving = false);
                               } else {
                                 try {
-                                  await FirestoreService().addAsset(assetMap);
+                                  await _firestore.addAsset(assetMap);
                                 } catch (e, st) {
-
-
+                                  setModalState(() => isSaving = false);
                                   print('❌ addAsset failed: $e');
-
                                   print(st);
                                   if (!context.mounted) return;
                                   FlashySnackBar.show(
@@ -358,7 +378,16 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               }
                             }
                           },
-                          child: Text(
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
                             'save'.tr(),
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),
@@ -370,8 +399,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-
-
                     StreamBuilder<List<String>>(
                       stream: _workerNamesStream,
                       initialData: _workerNames,
@@ -989,12 +1016,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
         ElevatedButton.icon(
           onPressed: () async {
-            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
             if (isGuest) {
               if (!mounted) return;
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+              showGuestRestrictionDialog(context);
               return;
             }
             final isPremium = await PreferencesService.isPremium();
@@ -1292,7 +1317,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               content: 'delete_asset_desc'.tr(),
             );
             if (!confirmed) return;
-            final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
             if (isGuest) {
               setState(() {
                 _assets.remove(data);
@@ -1303,7 +1328,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
               DummyData.saveToPrefs();
             } else {
               if (data.id != null)
-                await FirestoreService().deleteAsset(data.id!);
+                await _firestore.deleteAsset(data.id!);
             }
           }
         },
@@ -1395,6 +1420,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     DateTime loanedDate = _parseDate(data.dateLoaned) ?? DateTime(2025, 1, 1);
     DateTime returnedDate = _parseDate(data.dateReturned) ?? DateTime.now();
     bool isReturned = data.isReturned;
+    var isSaving = false;
 
     String formatDate(DateTime date) {
       final day = date.day.toString().padLeft(2, '0');
@@ -1453,10 +1479,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             ),
                             minimumSize: const Size(0, 36),
                           ),
-                          onPressed: () async {
+                          onPressed: isSaving
+                              ? null
+                              : () async {
                             if (selectedWorkerName != null &&
                                 typeController.text.isNotEmpty &&
                                 positionController.text.isNotEmpty) {
+                              setModalState(() => isSaving = true);
                               final workerData =
                                   _workersMap[selectedWorkerName] ?? {};
                               final workerProfileImage =
@@ -1472,9 +1501,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'name': selectedWorkerName!,
                                 'position': positionController.text,
                                 'type': typeController.text,
-                                'dateLoaned': formatDate(loanedDate),
+                                'dateLoaned': loanedDate,
                                 'dateReturned': isReturned
-                                    ? formatDate(returnedDate)
+                                    ? returnedDate
                                     : _inUseKey,
                                 'isReturned': isReturned,
                                 'profileImage': workerProfileImage ?? '',
@@ -1484,7 +1513,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 'dateOfJoining': workerDateOfJoining ?? '',
                               };
                               final isGuest =
-                                  AuthService().currentUser?.isAnonymous ??
+                                  _authService.currentUser?.isAnonymous ??
                                   false;
                               if (isGuest) {
                                 setState(() {
@@ -1518,10 +1547,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                 await DummyData.saveToPrefs();
                               } else {
                                 if (data.id != null) {
-                                  await FirestoreService().updateAsset(
-                                    data.id!,
-                                    assetMap,
-                                  );
+                                  try {
+                                    await _firestore.updateAsset(
+                                      data.id!,
+                                      assetMap,
+                                    );
+                                  } catch (e) {
+                                    setModalState(() => isSaving = false);
+                                    if (!context.mounted) return;
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'failed_to_update_asset'.tr(
+                                        namedArgs: {'error': e.toString()},
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   setState(() {
                                     _assets = _assets.map((a) {
                                       if (a.id == data.id) {
@@ -1555,7 +1596,16 @@ class _AssetsScreenState extends State<AssetsScreen> {
                               );
                             }
                           },
-                          child: Text(
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
                             'save'.tr(),
                             style: const TextStyle(
                               color: Color(0xFFFFFFFF),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -11,6 +12,7 @@ import '../services/preferences_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import 'add_payroll_screen.dart';
+import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/amount_text.dart';
 import 'login_screen.dart';
@@ -34,6 +36,8 @@ class PayrollScreen extends StatefulWidget {
 }
 
 class _PayrollScreenState extends State<PayrollScreen> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedFilter = 'All';
@@ -49,6 +53,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   bool _isAddingPayroll = false;
   Map<String, dynamic>? _workerForPayroll;
+  bool _isRunningPayroll = false;
 
   @override
   void dispose() {
@@ -59,14 +64,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _combinePayroll() {
-
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     _payrollDocs = PayrollService.combinePayroll(
       _workersList,
       _rawPayrollDocs,
       allowUndatedRecords: isGuest,
     );
-
 
     for (var doc in _payrollDocs) {
       if (doc['totalWorkDays'] == null ||
@@ -85,11 +88,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Future<void> _loadCompanySalaryDay() async {
     int? salaryDay;
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       salaryDay = await PreferencesService.getCompanySalaryDay();
     } else {
-      final profile = await FirestoreService().getUserProfile();
+      final profile = await _firestore.getUserProfile();
       final rawDay = profile?['salaryPaymentDay'];
       salaryDay = rawDay is num
           ? rawDay.toInt()
@@ -105,11 +108,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_isSalaryDaySaving) return;
     setState(() => _isSalaryDaySaving = true);
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       if (isGuest) {
         await PreferencesService.setCompanySalaryDay(day);
       } else {
-        await FirestoreService().updateUserProfile({'salaryPaymentDay': day});
+        await _firestore.updateUserProfile({'salaryPaymentDay': day});
       }
       if (!mounted) return;
       setState(() => _salaryPaymentDay = day);
@@ -191,8 +194,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   decoration: InputDecoration(
                     labelText: 'salary_day_of_month'.tr(),
                     prefixIcon: const Icon(
-                      Icons.payments_rounded,
+                      Icons.account_balance_wallet,
                       color: Color(0xFF0247C4),
+                      size: 22,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -262,14 +266,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _payrollDocs = [];
     _workersList = [];
     _rawPayrollDocs = [];
     _isLoading = true;
     _loadCompanySalaryDay();
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      _workersSub = FirestoreService().workersStream.listen((snapshot) {
+      _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _workersList = snapshot.docs
@@ -279,7 +285,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           });
         }
       });
-      _payrollSub = FirestoreService().payrollStream.listen(
+      _payrollSub = _firestore.payrollStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -302,6 +308,42 @@ class _PayrollScreenState extends State<PayrollScreen> {
       _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
       _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
       _combinePayroll();
+    }
+
+    // Check if today is salary day and offer auto-run.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoSalaryDay();
+    });
+  }
+
+  Future<void> _checkAutoSalaryDay() async {
+    final triggered = await SalaryDayScheduler().checkAndRunIfDue(context);
+    if (triggered && mounted) {
+      // Reload data after auto-run.
+      FlashySnackBar.show(
+        context,
+        message: 'payroll_run_complete'.tr(
+          namedArgs: {'count': '${_filteredEmployees.length}'},
+        ),
+      );
+    }
+  }
+
+  Future<void> _handlePayAll() async {
+    if (_isRunningPayroll) return;
+    setState(() => _isRunningPayroll = true);
+    try {
+      final summary = await SalaryDayScheduler().payAll(context);
+      if (summary != null && mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'payroll_run_complete'.tr(
+            namedArgs: {'count': '${summary.successCount}'},
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRunningPayroll = false);
     }
   }
 
@@ -351,6 +393,53 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           ),
                         ),
                       ),
+                      if (_salaryPaymentDay != null &&
+                          DateTime.now().day == _salaryPaymentDay)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: ElevatedButton.icon(
+                            onPressed: _isRunningPayroll ? null : _handlePayAll,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF27AE60),
+                              foregroundColor: const Color(0xFFFFFFFF),
+                              minimumSize: const Size(32, 50),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              elevation: 0,
+                            ),
+                            icon: _isRunningPayroll
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFFFFFFFF),
+                                    ),
+                                  )
+                                : SvgPicture.asset(
+                                    'assets/payroll_icon.svg',
+                                    width: 22,
+                                    height: 22,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFFFFFFFF),
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                            label: Text(
+                              'pay_all'.tr(),
+                              style: const TextStyle(
+                                color: Color(0xFFFFFFFF),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                        ),
                       ElevatedButton.icon(
                         onPressed: _isSalaryDaySaving
                             ? null
@@ -596,7 +685,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
       return _matchesFilter(pos, _selectedFilter);
     }).toList();
 
-
     filtered.sort((a, b) {
       final statusA = (a['status'] ?? '').toString();
       final statusB = (b['status'] ?? '').toString();
@@ -622,19 +710,28 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildFilterTabs() {
-
     final workerPosLower = _workersList
         .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
         .where((p) => p.isNotEmpty)
         .toSet();
 
-    final defaultKeys = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+    final defaultKeys = [
+      'Designer',
+      'Developer',
+      'Engineering',
+      'Sales',
+      'Management',
+    ];
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
 
       ..._extraPositions
-          .where((pos) => !defaultKeys.map((d) => d.toLowerCase()).contains(pos.toLowerCase()))
+          .where(
+            (pos) => !defaultKeys
+                .map((d) => d.toLowerCase())
+                .contains(pos.toLowerCase()),
+          )
           .map((pos) => {'key': pos, 'label': pos}),
 
       ...defaultKeys
@@ -914,7 +1011,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   return InkWell(
                     onTap: () {
                       final isGuest =
-                          AuthService().currentUser?.isAnonymous ?? false;
+                          _authService.currentUser?.isAnonymous ?? false;
                       if (isGuest) {
                         Navigator.of(context).push(
                           MaterialPageRoute(

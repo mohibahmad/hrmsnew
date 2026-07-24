@@ -15,8 +15,14 @@ class BulkWorkerResult {
 
 class FirestoreService {
   static bool isTesting = false;
+  static FirestoreService? _instance;
+  static FirestoreService get instance => _instance!;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  FirestoreService() {
+    _instance = this;
+  }
 
   Map<String, dynamic> _withNormalizedCurrency(Map<String, dynamic> data) {
     final normalized = Map<String, dynamic>.from(data);
@@ -27,7 +33,7 @@ class FirestoreService {
   }
 
   String get _userKey {
-    final user = AuthService().currentUser;
+    final user = AuthService.instance.currentUser;
     if (user == null) return '';
 
     final uid = user.uid;
@@ -62,7 +68,7 @@ class FirestoreService {
     required String email,
     required String phone,
   }) async {
-    final user = AuthService().currentUser;
+    final user = AuthService.instance.currentUser;
     if (user == null) return;
 
     final doc = _db.collection('hrms_user').doc(user.uid);
@@ -386,7 +392,7 @@ class FirestoreService {
   Future<Map<String, int>> getWorkerMonthlyAttendance(String email) async {
     final normalizedEmail = email.trim().toLowerCase();
     List<Map<String, dynamic>> records;
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = AuthService.instance.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       records = List<Map<String, dynamic>>.from(DummyData.attendance);
     } else {
@@ -658,7 +664,7 @@ class FirestoreService {
       'contact2': '+1 (555) 019-5678',
       'address': '10880 Malibu Point, Malibu, CA',
       'hasDummyData': true,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
     // Seed Workers

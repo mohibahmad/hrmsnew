@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../shared/auth_widgets.dart';
@@ -26,7 +27,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _otpController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final AuthService _authService = AuthService();
+  late AuthService _authService;
 
   _PasswordResetStep _step = _PasswordResetStep.email;
   bool _isLoading = false;
@@ -40,6 +41,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
   }
 
   @override

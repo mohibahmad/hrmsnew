@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -30,6 +31,8 @@ class AssignTimeOffScreen extends StatefulWidget {
 }
 
 class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
   bool _isLoading = false;
   String _timeOffType = 'Annual Leave';
   DateTime _startDate = DateTime.now();
@@ -53,6 +56,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     if (widget.initialWorker != null) {
       _selectedWorker = widget.initialWorker;
     }
@@ -115,7 +120,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   }
 
   void _loadWorkers() {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
         _workers = DummyData.workers;
@@ -151,7 +156,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
       });
     } else {
-      _workersSub = FirestoreService().workersStream.listen(
+      _workersSub = _firestore.workersStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -194,7 +199,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
         },
       );
-      _timeoffSub = FirestoreService().timeoffStream.listen(
+      _timeoffSub = _firestore.timeoffStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -1283,7 +1288,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       final recordMap = {
         'name': _selectedWorker!['name'] ?? 'Worker',
         'email': _selectedWorker!['email'] ?? '',
@@ -1291,16 +1296,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'contact': _getWorkerPhone(_selectedWorker!),
         'action': _timeOffType,
         'type': _timeOffType,
-        'startDate':
-            '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-        'endDate':
-            '${_endDate.year}-${_endDate.month.toString().padLeft(2, '0')}-${_endDate.day.toString().padLeft(2, '0')}',
-        'selectedDates': _sortedSelectedDates
-            .map(
-              (date) =>
-                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
-            )
-            .toList(),
+        'startDate': _startDate,
+        'endDate': _endDate,
+        'selectedDates': _sortedSelectedDates.toList(),
         'notes': _notesController.text.trim(),
         'requestedDays': _requestedDays,
         'status': 'Approved',
@@ -1325,9 +1323,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         await DummyData.saveToPrefs();
       } else {
         if (_editingId != null) {
-          await FirestoreService().updateTimeOffRecord(_editingId!, recordMap);
+          await _firestore.updateTimeOffRecord(_editingId!, recordMap);
         } else {
-          await FirestoreService().addTimeOffRecord(recordMap);
+          await _firestore.addTimeOffRecord(recordMap);
         }
       }
 
@@ -1374,7 +1372,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
           final workerId = (_selectedWorker!['id'] ?? '').toString();
           if (workerId.isNotEmpty && payrollUpdate.isNotEmpty) {
-            await FirestoreService().updateWorkerLeaves(
+            await _firestore.updateWorkerLeaves(
               workerId,
               payrollUpdate,
             );
@@ -1516,7 +1514,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       final workerId = (_selectedWorker!['id'] ?? '').toString();
       final currentAnnual =
           int.tryParse(_selectedWorker!['annualLeaves']?.toString() ?? '12') ??
@@ -1547,7 +1545,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
       } else {
         if (workerId.isNotEmpty) {
-          await FirestoreService().updateWorkerLeaves(workerId, {
+          await _firestore.updateWorkerLeaves(workerId, {
             'annualLeaves': newAnnual.toString(),
             'availableAnnualLeaves': newAvailable.toString(),
           });

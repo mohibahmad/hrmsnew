@@ -3,9 +3,25 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
+  static const _dataVersionKey = 'dummy_data_version';
+  static const _currentDataVersion = 2;
+
   static Future<void> loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      final savedVersion = prefs.getInt(_dataVersionKey) ?? 0;
+      if (savedVersion < _currentDataVersion) {
+        await prefs.remove('dummy_workers');
+        await prefs.remove('dummy_expenses');
+        await prefs.remove('dummy_attendance');
+        await prefs.remove('dummy_payroll');
+        await prefs.remove('dummy_timeoff');
+        await prefs.remove('dummy_assets');
+        await prefs.remove('dummy_holidays');
+        await prefs.setInt(_dataVersionKey, _currentDataVersion);
+        return;
+      }
 
       try {
         final workersJson = prefs.getString('dummy_workers');
@@ -185,6 +201,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_2',
@@ -203,6 +220,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_3',
@@ -221,6 +239,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_4',
@@ -239,6 +258,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_5',
@@ -257,6 +277,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_6',
@@ -275,6 +296,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_7',
@@ -293,6 +315,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_8',
@@ -311,6 +334,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_9',
@@ -329,6 +353,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_10',
@@ -347,6 +372,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_11',
@@ -365,6 +391,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_12',
@@ -383,6 +410,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_13',
@@ -401,6 +429,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_14',
@@ -419,6 +448,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_15',
@@ -437,6 +467,7 @@ class DummyData {
       'sickLeaves': '8',
       'casualLeaves': '10',
       'leavesUsed': '0',
+      'profileImage': 'assets/imageplaceholder.png',
     },
   ];
 
@@ -447,6 +478,7 @@ class DummyData {
       'date': '05/06/2026',
       'category': 'Meals',
       'amount': 124.50,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e2',
@@ -454,6 +486,7 @@ class DummyData {
       'date': '04/06/2026',
       'category': 'Software',
       'amount': 45.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e3',
@@ -461,6 +494,7 @@ class DummyData {
       'date': '02/06/2026',
       'category': 'Equipment',
       'amount': 89.99,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e4',
@@ -468,6 +502,7 @@ class DummyData {
       'date': '01/06/2026',
       'category': 'Infrastructure',
       'amount': 250.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e5',
@@ -475,6 +510,7 @@ class DummyData {
       'date': '28/05/2026',
       'category': 'Marketing',
       'amount': 500.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e6',
@@ -482,6 +518,7 @@ class DummyData {
       'date': '25/05/2026',
       'category': 'Software',
       'amount': 150.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e7',
@@ -489,6 +526,7 @@ class DummyData {
       'date': '22/05/2026',
       'category': 'Software',
       'amount': 320.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e8',
@@ -496,6 +534,7 @@ class DummyData {
       'date': '19/05/2026',
       'category': 'Utilities',
       'amount': 60.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e9',
@@ -503,6 +542,7 @@ class DummyData {
       'date': '15/05/2026',
       'category': 'Equipment',
       'amount': 299.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e10',
@@ -510,6 +550,7 @@ class DummyData {
       'date': '10/05/2026',
       'category': 'Furniture',
       'amount': 180.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e11',
@@ -517,6 +558,7 @@ class DummyData {
       'date': '08/05/2026',
       'category': 'Software',
       'amount': 79.99,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e12',
@@ -524,6 +566,7 @@ class DummyData {
       'date': '05/05/2026',
       'category': 'Events',
       'amount': 400.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e13',
@@ -531,6 +574,7 @@ class DummyData {
       'date': '06/06/2026',
       'category': 'Software',
       'amount': 99.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e14',
@@ -538,6 +582,7 @@ class DummyData {
       'date': '05/06/2026',
       'category': 'Security',
       'amount': 55.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e15',
@@ -545,6 +590,7 @@ class DummyData {
       'date': '03/06/2026',
       'category': 'Training',
       'amount': 150.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e16',
@@ -552,6 +598,7 @@ class DummyData {
       'date': '07/06/2026',
       'category': 'Meals',
       'amount': 210.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e17',
@@ -559,6 +606,7 @@ class DummyData {
       'date': '08/06/2026',
       'category': 'Software',
       'amount': 350.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e18',
@@ -566,6 +614,7 @@ class DummyData {
       'date': '09/06/2026',
       'category': 'Travel',
       'amount': 475.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e19',
@@ -573,6 +622,7 @@ class DummyData {
       'date': '10/06/2026',
       'category': 'Supplies',
       'amount': 65.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e20',
@@ -580,6 +630,7 @@ class DummyData {
       'date': '11/06/2026',
       'category': 'Travel',
       'amount': 180.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e21',
@@ -587,6 +638,7 @@ class DummyData {
       'date': '12/06/2026',
       'category': 'Travel',
       'amount': 520.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e22',
@@ -594,6 +646,7 @@ class DummyData {
       'date': '13/06/2026',
       'category': 'Utilities',
       'amount': 45.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e23',
@@ -601,6 +654,7 @@ class DummyData {
       'date': '14/06/2026',
       'category': 'Meals',
       'amount': 290.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_e24',
@@ -608,6 +662,7 @@ class DummyData {
       'date': '15/06/2026',
       'category': 'Marketing',
       'amount': 750.00,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_e25',
@@ -615,6 +670,7 @@ class DummyData {
       'date': '16/06/2026',
       'category': 'Travel',
       'amount': 890.00,
+      'profileImage': 'assets/imageplaceholder.png',
     },
   ];
 
@@ -627,6 +683,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'Remote',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a2',
@@ -636,6 +693,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'On-Site',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a3',
@@ -645,6 +703,7 @@ class DummyData {
       'status': 'Absent',
       'attendanceType': 'On-Site',
       'workType': 'Contract',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a4',
@@ -654,6 +713,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'On-Site',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a5',
@@ -663,6 +723,7 @@ class DummyData {
       'status': 'Leave',
       'attendanceType': 'Remote',
       'workType': 'Part Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a6',
@@ -672,6 +733,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'Remote',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a7',
@@ -681,6 +743,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'On-Site',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a8',
@@ -690,6 +753,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'Remote',
       'workType': 'Contract',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a9',
@@ -699,6 +763,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'On-Site',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a10',
@@ -708,6 +773,7 @@ class DummyData {
       'status': 'Absent',
       'attendanceType': 'On-Site',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a11',
@@ -719,6 +785,7 @@ class DummyData {
       'workType': 'Part Time',
       'type': 'Sick Leave',
       'desc': 'Sick leave due to fever, doctor advised rest for 2 days.',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a12',
@@ -728,6 +795,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'Remote',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a13',
@@ -737,6 +805,7 @@ class DummyData {
       'status': 'Present',
       'attendanceType': 'On-Site',
       'workType': 'Full Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a14',
@@ -746,6 +815,7 @@ class DummyData {
       'status': 'Absent',
       'attendanceType': 'Remote',
       'workType': 'Contract',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_a15',
@@ -755,6 +825,7 @@ class DummyData {
       'status': 'Leave',
       'attendanceType': 'Remote',
       'workType': 'Part Time',
+      'profileImage': 'assets/imageplaceholder.png',
     },
   ];
 
@@ -771,6 +842,7 @@ class DummyData {
       'leaves': '08',
       'overtimeDays': '12',
       'salary': '\$ 95,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p2',
@@ -784,6 +856,7 @@ class DummyData {
       'leaves': '06',
       'overtimeDays': '05',
       'salary': '\$ 75,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p3',
@@ -797,6 +870,7 @@ class DummyData {
       'leaves': '02',
       'overtimeDays': '00',
       'salary': '\$ 85,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p4',
@@ -810,6 +884,7 @@ class DummyData {
       'leaves': '10',
       'overtimeDays': '15',
       'salary': '\$ 110,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p5',
@@ -823,6 +898,7 @@ class DummyData {
       'leaves': '12',
       'overtimeDays': '02',
       'salary': '\$ 60,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p6',
@@ -836,6 +912,7 @@ class DummyData {
       'leaves': '05',
       'overtimeDays': '08',
       'salary': '\$ 80,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p7',
@@ -849,6 +926,7 @@ class DummyData {
       'leaves': '04',
       'overtimeDays': '02',
       'salary': '\$ 70,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p8',
@@ -862,6 +940,7 @@ class DummyData {
       'leaves': '03',
       'overtimeDays': '04',
       'salary': '\$ 65,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p9',
@@ -875,6 +954,7 @@ class DummyData {
       'leaves': '05',
       'overtimeDays': '06',
       'salary': '\$ 68,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p10',
@@ -888,6 +968,7 @@ class DummyData {
       'leaves': '08',
       'overtimeDays': '10',
       'salary': '\$ 120,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p11',
@@ -901,6 +982,7 @@ class DummyData {
       'leaves': '15',
       'overtimeDays': '01',
       'salary': '\$ 55,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p12',
@@ -914,6 +996,7 @@ class DummyData {
       'leaves': '05',
       'overtimeDays': '10',
       'salary': '\$ 88,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p13',
@@ -927,6 +1010,7 @@ class DummyData {
       'leaves': '04',
       'overtimeDays': '02',
       'salary': '\$ 90,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_p14',
@@ -940,6 +1024,7 @@ class DummyData {
       'leaves': '03',
       'overtimeDays': '00',
       'salary': '\$ 95,000',
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_p15',
@@ -953,6 +1038,7 @@ class DummyData {
       'leaves': '12',
       'overtimeDays': '01',
       'salary': '\$ 48,000',
+      'profileImage': 'assets/imageplaceholder.png',
     },
   ];
 
@@ -967,6 +1053,7 @@ class DummyData {
       'startDate': '2026-07-10',
       'endDate': '2026-07-15',
       'requestedDays': 5,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_t2',
@@ -978,6 +1065,7 @@ class DummyData {
       'startDate': '2026-07-12',
       'endDate': '2026-07-13',
       'requestedDays': 2,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_t3',
@@ -989,6 +1077,7 @@ class DummyData {
       'startDate': '2026-07-08',
       'endDate': '2026-07-09',
       'requestedDays': 2,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_t4',
@@ -1000,6 +1089,7 @@ class DummyData {
       'startDate': '2026-06-20',
       'endDate': '2026-07-20',
       'requestedDays': 30,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_t5',
@@ -1011,6 +1101,7 @@ class DummyData {
       'startDate': '2026-07-11',
       'endDate': '2026-07-14',
       'requestedDays': 3,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_t6',
@@ -1022,6 +1113,7 @@ class DummyData {
       'startDate': '2026-07-13',
       'endDate': '2026-07-13',
       'requestedDays': 1,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_t7',
@@ -1033,6 +1125,7 @@ class DummyData {
       'startDate': '2026-07-07',
       'endDate': '2026-07-08',
       'requestedDays': 2,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_t8',
@@ -1044,6 +1137,7 @@ class DummyData {
       'startDate': '2026-06-01',
       'endDate': '2026-07-01',
       'requestedDays': 30,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_t9',
@@ -1055,6 +1149,7 @@ class DummyData {
       'startDate': '2026-07-09',
       'endDate': '2026-07-12',
       'requestedDays': 3,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_t10',
@@ -1066,6 +1161,7 @@ class DummyData {
       'startDate': '2026-07-06',
       'endDate': '2026-07-07',
       'requestedDays': 2,
+      'profileImage': 'assets/boy.png',
     },
     {
       'id': 'dummy_t11',
@@ -1077,6 +1173,7 @@ class DummyData {
       'startDate': '2026-07-01',
       'endDate': '2026-07-05',
       'requestedDays': 5,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'id': 'dummy_t12',
@@ -1088,6 +1185,7 @@ class DummyData {
       'startDate': '2026-07-10',
       'endDate': '2026-07-11',
       'requestedDays': 2,
+      'profileImage': 'assets/boy.png',
     },
   ];
 
@@ -1439,6 +1537,7 @@ class DummyData {
       'dateLoaned': '15/01/2025',
       'dateReturned': '15/01/2025',
       'isReturned': true,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'name': 'Amelia White',
@@ -1447,6 +1546,7 @@ class DummyData {
       'dateLoaned': '10/03/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/boy.png',
     },
     {
       'name': 'Charlotte Martin',
@@ -1455,6 +1555,7 @@ class DummyData {
       'dateLoaned': '20/05/2025',
       'dateReturned': '20/05/2025',
       'isReturned': true,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'name': 'Sophia Martinez',
@@ -1463,6 +1564,7 @@ class DummyData {
       'dateLoaned': '05/02/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/boy.png',
     },
     {
       'name': 'Daniel Anderson',
@@ -1471,6 +1573,7 @@ class DummyData {
       'dateLoaned': '12/04/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'name': 'John Smith',
@@ -1479,6 +1582,7 @@ class DummyData {
       'dateLoaned': '18/06/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/boy.png',
     },
     {
       'name': 'Michael Johnson',
@@ -1487,6 +1591,7 @@ class DummyData {
       'dateLoaned': '22/06/2025',
       'dateReturned': '22/06/2025',
       'isReturned': true,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'name': 'Olivia Thomas',
@@ -1495,6 +1600,7 @@ class DummyData {
       'dateLoaned': '01/07/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/boy.png',
     },
     {
       'name': 'James Miller',
@@ -1503,6 +1609,7 @@ class DummyData {
       'dateLoaned': '05/07/2025',
       'dateReturned': '05/07/2025',
       'isReturned': true,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'name': 'Harper Garcia',
@@ -1511,6 +1618,7 @@ class DummyData {
       'dateLoaned': '10/08/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/boy.png',
     },
     {
       'name': 'Benjamin Harris',
@@ -1519,6 +1627,7 @@ class DummyData {
       'dateLoaned': '15/08/2025',
       'dateReturned': 'in_use',
       'isReturned': false,
+      'profileImage': 'assets/imageplaceholder.png',
     },
     {
       'name': 'Lucas Taylor',
@@ -1527,6 +1636,7 @@ class DummyData {
       'dateLoaned': '20/09/2025',
       'dateReturned': '20/09/2025',
       'isReturned': true,
+      'profileImage': 'assets/boy.png',
     },
   ];
 }

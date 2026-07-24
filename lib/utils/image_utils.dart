@@ -47,7 +47,8 @@ bool _isValidUrl(String? url) {
   return url.startsWith('http') ||
       url.startsWith('data:image/') ||
       url.startsWith('/') ||
-      url.startsWith('file://');
+      url.startsWith('file://') ||
+      url.startsWith('assets/');
 }
 
 bool _fileExists(String path) {
@@ -66,6 +67,9 @@ ImageProvider? getProfileImageOrNull(String? url) {
   }
   if (url.startsWith('http')) {
     return CachedNetworkImageProvider(url);
+  }
+  if (url.startsWith('assets/')) {
+    return AssetImage(url);
   }
   if (_fileExists(url)) {
     return FileImage(File(url));

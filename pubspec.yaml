@@ -160,6 +160,7 @@ flutter:
     - assets/privacy_policy.svg
     - assets/signout.svg
     - assets/boy.png
+    - assets/imageplaceholder.png
     - assets/placeholdemptystate.png
     - assets/sucess.png
     - assets/google_icon.svg

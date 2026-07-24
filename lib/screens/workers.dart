@@ -13,14 +13,15 @@ import 'pricing_screen.dart';
 import 'add_worker_flow.dart';
 import 'add_bulk_worker_screen.dart';
 import '../utils/delete_dialog.dart';
-import 'login_screen.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/image_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
+import '../utils/guest_restriction.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/amount_text.dart';
-import 'package:share_plus/share_plus.dart';
+import '../services/worker_profile_service.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(const WorkerManagementApp());
@@ -54,6 +55,7 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _currentMenuIndex = 1;
   bool _isPremium = false;
+  late AuthService _authService;
 
   final Color sidebarBlue = const Color(0xFF0B50C3);
   final Color activeTabBlue = const Color(0xFF4C84E0);
@@ -61,6 +63,16 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _loadPremiumStatus();
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final isPremium = await PreferencesService.isPremium();
+    if (!mounted) return;
+    setState(() {
+      _isPremium = isPremium;
+    });
   }
 
   @override
@@ -73,7 +85,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             color: sidebarBlue,
             child: Column(
               children: [
-                if (!(AuthService().currentUser?.isAnonymous ?? false) &&
+                if (!(_authService.currentUser?.isAnonymous ?? false) &&
                     !_isPremium)
                   GestureDetector(
                     onTap: () async {
@@ -84,7 +96,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                         ).withValues(alpha: 0.5),
                         builder: (context) => const SubscriptionDialog(),
                       );
-                      if (result == true) {}
+                      if (result == true && mounted) {
+                        final isPremium = await PreferencesService.isPremium();
+                        if (!mounted) return;
+                        setState(() {
+                          _isPremium = isPremium;
+                        });
+                      }
                     },
                     child: Container(
                       width: 238,
@@ -470,6 +488,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
   StreamSubscription? _workersSub;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   @override
   void dispose() {
@@ -481,20 +501,22 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _allWorkers = [];
     _isLoading = true;
     _loadWorkers();
   }
 
   void _loadWorkers() {
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
         _allWorkers = DummyData.workers;
         _isLoading = false;
       });
     } else {
-      _workersSub = FirestoreService().workersStream.listen(
+      _workersSub = _firestore.workersStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -656,7 +678,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     );
     if (!confirmed) return;
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     try {
       if (isGuest) {
         DummyData.workers.removeWhere((w) => w['id']?.toString() == docId);
@@ -665,7 +687,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           _allWorkers = DummyData.workers;
         });
       } else {
-        await FirestoreService().deleteWorker(docId);
+        await _firestore.deleteWorker(docId);
       }
       if (mounted) {
         FlashySnackBar.show(
@@ -822,14 +844,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       label: 'add_worker'.tr(),
                       onTap: () async {
                         final isGuest =
-                            AuthService().currentUser?.isAnonymous ?? false;
+                            _authService.currentUser?.isAnonymous ?? false;
                         if (isGuest) {
                           if (!mounted) return;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                          );
+                          showGuestRestrictionDialog(context);
                           return;
                         }
                         final isPremium = await PreferencesService.isPremium();
@@ -858,14 +876,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       label: 'add_bulk_workers'.tr(),
                       onTap: () async {
                         final isGuest =
-                            AuthService().currentUser?.isAnonymous ?? false;
+                            _authService.currentUser?.isAnonymous ?? false;
                         if (isGuest) {
                           if (!mounted) return;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                          );
+                          showGuestRestrictionDialog(context);
                           return;
                         }
                         final isPremium = await PreferencesService.isPremium();
@@ -1418,26 +1432,33 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 }
 
-class WorkerProfilePreviewDialog extends StatelessWidget {
+class WorkerProfilePreviewDialog extends StatefulWidget {
   final Map<String, dynamic> worker;
 
   const WorkerProfilePreviewDialog({super.key, required this.worker});
 
+  @override
+  State<WorkerProfilePreviewDialog> createState() => _WorkerProfilePreviewDialogState();
+}
+
+class _WorkerProfilePreviewDialogState extends State<WorkerProfilePreviewDialog> {
+  bool _isSharing = false;
   final Color primaryBlue = const Color(0xFF0953D4);
   final Color iconLightBlue = const Color(0xFFE5EEFC);
   final Color cardBorderGrey = const Color(0xFFE8E8E8);
 
-  String _v(String key) => (worker[key] ?? '').toString();
-  String _na(String val) => val.isNotEmpty ? val : 'na'.tr();
+  String _v(Map<String, dynamic> w, String key) => (w[key] ?? '').toString();
+  String _na(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
   @override
   Widget build(BuildContext context) {
-    final name = _v('name');
-    final email = _v('email');
-    final phone = _v('phone');
+    final worker = widget.worker;
+    final name = _v(worker, 'name');
+    final email = _v(worker, 'email');
+    final phone = _v(worker, 'phone');
     final profileImage = worker['profileImage'] as String?;
-    final currency = CurrencyUtils.normalize(_v('currency'));
-    final salaryAmount = _v('salaryAmount');
+    final currency = CurrencyUtils.normalize(_v(worker, 'currency'));
+    final salaryAmount = _v(worker, 'salaryAmount');
     final rawSalary = salaryAmount.isNotEmpty
         ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
         : '';
@@ -1516,17 +1537,46 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                                     BlendMode.srcIn,
                                   ),
                                 ),
-                                onPressed: () {
-                                  final shareText = [
-                                    if (name.isNotEmpty) name,
-                                    if (email.isNotEmpty) email,
-                                    if (phone.isNotEmpty) phone,
-                                    if (salary.isNotEmpty) salary,
-                                  ].join('\n');
-                                  SharePlus.instance.share(
-                                    ShareParams(text: shareText),
-                                  );
-                                },
+                                onPressed: _isSharing
+                                    ? null
+                                    : () async {
+                                        setState(() => _isSharing = true);
+                                        try {
+                                          final bytes = await WorkerProfileService.generateWorkerProfile(
+                                            name: name,
+                                            email: email,
+                                            phone: phone,
+                                            fatherHusbandName: _na(_v(worker, 'fatherName')),
+                                            position: _v(worker, 'position'),
+                                            nationalId: _na(_v(worker, 'nationalId')),
+                                            attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
+                                            workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
+                                            experienceLevel: _na(_v(worker, 'experienceLevel')),
+                                            gender: _na(LocalizationHelper.localizeGender(_v(worker, 'gender'))),
+                                            joiningDate: _na(_v(worker, 'joiningDate')),
+                                            salary: salary,
+                                            education: _na(_v(worker, 'education')),
+                                            salaryType: _na(_v(worker, 'salaryType')),
+                                            religion: _na(_v(worker, 'religion')),
+                                            dateOfBirth: _na(_v(worker, 'dob')),
+                                            relationshipStatus: _na(_v(worker, 'relationshipStatus')),
+                                            address: _na(_v(worker, 'address')),
+                                          );
+                                          final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+                                          await WorkerProfileService.shareWorkerProfile(bytes, '${safeName}_profile.pdf');
+                                          if (mounted) {
+                                            FlashySnackBar.show(context, message: 'profile_shared_successfully'.tr());
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            FlashySnackBar.show(context, message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                                          }
+                                        } finally {
+                                          if (mounted) {
+                                            setState(() => _isSharing = false);
+                                          }
+                                        }
+                                      },
                                 constraints: const BoxConstraints(),
                                 padding: const EdgeInsets.all(4),
                               ),
@@ -1646,48 +1696,48 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         _buildInfoCard(
                           Icons.person,
                           'father_husband_name'.tr(),
-                          _na(_v('fatherName')),
+                          _na(_v(worker, 'fatherName')),
                         ),
                         _buildInfoCard(
                           Icons.business_center,
                           'postion'.tr(),
-                          _v('position'),
+                          _v(worker, 'position'),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.badge,
                           'national_id'.tr(),
-                          _na(_v('nationalId')),
+                          _na(_v(worker, 'nationalId')),
                         ),
                         _buildInfoCard(
                           Icons.location_on_outlined,
                           'attendance_type'.tr(),
-                          LocalizationHelper.localizeType2(_v('type2')),
+                          LocalizationHelper.localizeType2(_v(worker, 'type2')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.schedule,
                           'work_type'.tr(),
-                          LocalizationHelper.localizeType1(_v('type1')),
+                          LocalizationHelper.localizeType1(_v(worker, 'type1')),
                         ),
                         _buildInfoCard(
                           Icons.show_chart,
                           'experience_level'.tr(),
-                          _na(_v('experienceLevel')),
+                          _na(_v(worker, 'experienceLevel')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(LocalizationHelper.localizeGender(_v('gender'))),
+                          _na(LocalizationHelper.localizeGender(_v(worker, 'gender'))),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
                           'joining_date'.tr(),
-                          _na(_v('joiningDate')),
+                          _na(_v(worker, 'joiningDate')),
                         ),
                       ),
                       _buildRow(
@@ -1700,19 +1750,19 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         _buildInfoCard(
                           Icons.school,
                           'education_title'.tr(),
-                          _na(_v('education')),
+                          _na(_v(worker, 'education')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.money,
                           'salary_type'.tr(),
-                          _na(_v('salaryType')),
+                          _na(_v(worker, 'salaryType')),
                         ),
                         _buildInfoCard(
                           Icons.art_track_outlined,
                           'religion_title'.tr(),
-                          _na(_v('religion')),
+                          _na(_v(worker, 'religion')),
                           assetImage: 'assets/religion.png',
                         ),
                       ),
@@ -1720,19 +1770,19 @@ class WorkerProfilePreviewDialog extends StatelessWidget {
                         _buildInfoCard(
                           Icons.cake,
                           'date_of_birth'.tr(),
-                          _na(_v('dob')),
+                          _na(_v(worker, 'dob')),
                         ),
                         _buildInfoCard(
                           Icons.favorite,
                           'relationship_status'.tr(),
-                          _na(_v('relationshipStatus')),
+                          _na(_v(worker, 'relationshipStatus')),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.home,
                           'address'.tr(),
-                          _na(_v('address')),
+                          _na(_v(worker, 'address')),
                         ),
                         const SizedBox.shrink(),
                       ),

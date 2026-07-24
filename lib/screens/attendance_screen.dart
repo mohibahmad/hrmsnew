@@ -22,6 +22,7 @@ import '../utils/image_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
+import 'package:provider/provider.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
 const Color lightBlueBg = Color(0xFFE8F0FE);
@@ -103,6 +104,8 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
@@ -121,50 +124,81 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
   StreamSubscription? _timeOffSub;
+  Timer? _searchDebounce;
+  List<Map<String, dynamic>>? _cachedFiltered;
+  String _filterCacheKey = '';
 
   @override
   void dispose() {
     _attendanceSub?.cancel();
     _workersSub?.cancel();
     _timeOffSub?.cancel();
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _combineAttendance() {
+    _cachedFiltered = null;
+    _filterCacheKey = '';
+
     _attendanceDocs =
         AttendanceService.combineAttendance(
           workersList: _workersList,
           rawAttendanceDocs: _rawAttendanceDocs,
-        ).where((record) {
-          return !TimeOffService.isWorkerOnLeave(record, _timeOffRecords);
+        ).map((record) {
+          final isOnLeave = TimeOffService.isWorkerOnLeave(
+            record,
+            _timeOffRecords,
+          );
+          if (isOnLeave) {
+            return {
+              ...record,
+              'status': 'Leave',
+            };
+          }
+          return record;
         }).toList();
+
     if (_workersLoaded && _attendanceLoaded) {
       _isLoading = false;
     }
-    _presentCount = _attendanceDocs
-        .where((d) => d['status'] == 'Present' && _matchesPeriod(d))
-        .length;
-    _absentCount = _attendanceDocs
-        .where((d) => d['status'] == 'Absent' && _matchesPeriod(d))
-        .length;
-    _leaveCount = _attendanceDocs
-        .where((d) => d['status'] == 'Leave' && _matchesPeriod(d))
-        .length;
+
+    int present = 0;
+    int absent = 0;
+    int leave = 0;
+
+    for (final record in _attendanceDocs) {
+      if (!_matchesPeriod(record)) continue;
+      final status = record['status'];
+      if (status == 'Present') {
+        present++;
+      } else if (status == 'Absent') {
+        absent++;
+      } else if (status == 'Leave') {
+        leave++;
+      }
+    }
+
+    _presentCount = present;
+    _absentCount = absent;
+    _leaveCount = leave;
   }
 
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _attendanceDocs = [];
     _workersList = [];
     _rawAttendanceDocs = [];
     _isLoading = true;
     _workersLoaded = false;
     _attendanceLoaded = false;
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      _workersSub = FirestoreService().workersStream.listen(
+      _workersSub = _firestore.workersStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -185,7 +219,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
       );
-      _attendanceSub = FirestoreService().attendanceStream.listen(
+      _attendanceSub = _firestore.attendanceStream.listen(
         (snapshot) {
           if (mounted) {
             setState(() {
@@ -206,7 +240,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }
         },
       );
-      _timeOffSub = FirestoreService().timeoffStream.listen((snapshot) {
+      _timeOffSub = _firestore.timeoffStream.listen((snapshot) {
         if (!mounted) return;
         setState(() {
           _timeOffRecords = snapshot.docs
@@ -251,23 +285,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredRecords {
-    return _attendanceDocs.where((doc) {
+    final key = '${_attendanceDocs.length}_$_searchQuery$_selectedTab$_selectedTimeframe';
+    if (_cachedFiltered != null && _filterCacheKey == key) {
+      return _cachedFiltered!;
+    }
+    _filterCacheKey = key;
+    final query = _searchQuery.toLowerCase();
+    _cachedFiltered = _attendanceDocs.where((doc) {
       if (!_matchesPeriod(doc)) return false;
-
-      final name = (doc['name'] ?? '').toString().toLowerCase();
-      final role = (doc['role'] ?? '').toString().toLowerCase();
+      if (query.isNotEmpty) {
+        final name = (doc['name'] ?? '').toString().toLowerCase();
+        final role = (doc['role'] ?? '').toString().toLowerCase();
+        if (!name.contains(query) && !role.contains(query)) return false;
+      }
       final status = (doc['status'] ?? '').toString();
-      final query = _searchQuery.toLowerCase();
-
-      final matchesSearch = name.contains(query) || role.contains(query);
-      if (!matchesSearch) return false;
-
       if (_selectedTab == 'All') return true;
       if (_selectedTab == 'Present') return status == 'Present';
       if (_selectedTab == 'Absent') return status == 'Absent';
       if (_selectedTab == 'Leaves') return status == 'Leave';
       return false;
     }).toList();
+    return _cachedFiltered!;
   }
 
   @override
@@ -415,8 +453,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
+                      _searchQuery = val;
+                      _searchDebounce?.cancel();
+                      _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+                        if (mounted) setState(() {});
                       });
                     },
                     decoration: InputDecoration(
@@ -1513,7 +1553,7 @@ class _WorkerAttendancePreviewCardState
     ]);
 
 
-    final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);
+    final sortedRecords = List<Map<String, dynamic>>.from(_filteredRecords);
     sortedRecords.sort((a, b) {
       final aTime = a['createdAt'];
       final bTime = b['createdAt'];

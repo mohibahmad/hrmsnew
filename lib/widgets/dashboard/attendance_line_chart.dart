@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/chart_utils.dart';
 import '../custom_timeframe_dropdown.dart';
@@ -22,6 +23,14 @@ class AttendanceLineChart extends StatefulWidget {
 }
 
 class _AttendanceLineChartState extends State<AttendanceLineChart> {
+  late AuthService _authService;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+  }
+
   @override
   void didUpdateWidget(covariant AttendanceLineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -62,7 +71,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                         final chartData = getChartData(
                           widget.period,
                           widget.attendanceDocs,
-                          AuthService().currentUser?.isAnonymous ?? false,
+                          _authService.currentUser?.isAnonymous ?? false,
                           context.locale.toString(),
                         );
                         final double rawMaxY = chartData.values.isEmpty

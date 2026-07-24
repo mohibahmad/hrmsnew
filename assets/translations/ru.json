@@ -120,7 +120,7 @@
   "remaining_days": "Оставшиеся дни",
   "casual_leave": "Отпуск за свой счет: {value}%",
   "sick_leave": "Больничный: {value}%",
-  "medical_leave": "Медицинский отпуск: {value}%",
+  "annual_leave_chart": "Ежегодный отпуск: {value}%",
   "sidebar_dashboard": "Панель управления",
   "sidebar_workers": "Сотрудники",
   "sidebar_workforce": "Персонал",
@@ -844,5 +844,11 @@
   "upload_failed": "Ошибка загрузки: {error}",
   "cv_resume": "Резюме",
   "failed_to_load": "Не удалось загрузить",
-  "close": "Закрыть"
+  "close": "Закрыть",
+  "profile_shared_successfully": "Профиль сотрудника успешно отправлен!",
+  "profile_share_failed": "Не удалось отправить профиль: {error}",
+  "guest_feature_locked": "Функция недоступна",
+  "guest_feature_desc": "Эта функция доступна только для зарегистрированных пользователей. Войдите в систему для доступа.",
+  "sign_in": "Войти",
+  "cancel": "Отмена"
 }

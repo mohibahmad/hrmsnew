@@ -1,3 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+String _expenseDateToString(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) {
+    final d = value.toDate();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+  if (value is DateTime) {
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+  return value.toString();
+}
+
 class Expense {
   final String? id;
   final String name;
@@ -22,10 +36,10 @@ class Expense {
       id: id ?? data['id'],
       name: data['name'] ?? '',
       description: data['description'] ?? '',
-      date: data['date'] ?? '',
+      date: _expenseDateToString(data['date']),
       category: data['category'] ?? '',
       amount: (data['amount'] ?? 0).toDouble(),
-      createdAt: data['createdAt'],
+      createdAt: data['createdAt']?.toString(),
     );
   }
 

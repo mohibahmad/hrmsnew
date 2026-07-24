@@ -12,6 +12,7 @@ import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
+import 'package:provider/provider.dart';
 
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
@@ -31,6 +32,8 @@ class AddPayrollScreen extends StatefulWidget {
 }
 
 class _AddPayrollScreenState extends State<AddPayrollScreen> {
+  late AuthService _authService;
+  late FirestoreService _firestore;
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
   final _leavesCtrl = TextEditingController();
@@ -98,6 +101,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _salaryCtrl.text = _salaryStr;
 
 
@@ -127,7 +132,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   Future<void> _fetchMonthlyAttendance() async {
     if (_email.trim().isEmpty) return;
     try {
-      final attendance = await FirestoreService().getWorkerMonthlyAttendance(
+      final attendance = await _firestore.getWorkerMonthlyAttendance(
         _email,
       );
       if (!mounted) return;
@@ -184,7 +189,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       );
       return;
     }
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final record = {
       'name': _name,
       'email': _email,
@@ -200,7 +205,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'leaveDeduction': _leaveDeductionCtrl.text.trim(),
       'salary': _salaryStr,
       'netSalary': _calculatedNet,
-      'lastModified': DateTime.now().toIso8601String(),
+      'lastModified': DateTime.now(),
     };
     setState(() => _isSaving = true);
     try {
@@ -222,20 +227,18 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         final hasExistingRecord = widget.workerData['hasPayrollRecord'] == true;
         final existingId = widget.workerData['id']?.toString() ?? '';
         if (hasExistingRecord && existingId.isNotEmpty) {
-          await FirestoreService().updatePayrollRecord(existingId, record);
+          await _firestore.updatePayrollRecord(existingId, record);
         } else {
-          await FirestoreService().addPayrollRecord(record);
+          await _firestore.addPayrollRecord(record);
         }
       }
 
       final netAmount = PayrollService.extractSalary(_calculatedNet);
       if (netAmount > 0) {
         final now = DateTime.now();
-        final dateStr =
-            '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
         final expenseRecord = {
           'name': _name,
-          'date': dateStr,
+          'date': now,
           'category': 'Salary',
           'amount': netAmount,
           'description': 'Salary payment for $_name',
@@ -246,7 +249,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
           await DummyData.saveToPrefs();
         } else {
-          await FirestoreService().addExpense(expenseRecord);
+          await _firestore.addExpense(expenseRecord);
         }
       }
 
@@ -413,7 +416,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   void _toggleNotifications() {
     setState(() => _showNotifications = !_showNotifications);
     if (_showNotifications) {
-      FirestoreService().markAllNotificationsRead();
+      _firestore.markAllNotificationsRead();
     }
   }
 

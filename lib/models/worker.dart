@@ -1,4 +1,24 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/currency_utils.dart';
+
+String _tsToString(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) return value.toDate().toIso8601String();
+  if (value is DateTime) return value.toIso8601String();
+  return value.toString();
+}
+
+String _dateOnly(dynamic value) {
+  if (value == null) return '';
+  if (value is Timestamp) {
+    final d = value.toDate();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+  if (value is DateTime) {
+    return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+  }
+  return value.toString();
+}
 
 class Worker {
   final String? id;
@@ -74,7 +94,7 @@ class Worker {
       phone: data['phone'] ?? '',
       nationalId: data['nationalId'] ?? '',
       religion: data['religion'] ?? '',
-      dob: data['dob'] ?? '',
+      dob: _dateOnly(data['dob']),
       gender: data['gender'] ?? 'Male',
       address: data['address'] ?? '',
       relationshipStatus: data['relationshipStatus'] ?? 'Single',
@@ -90,12 +110,12 @@ class Worker {
       annualLeaves: data['annualLeaves'] ?? '',
       sickLeaves: data['sickLeaves'] ?? '',
       casualLeaves: data['casualLeaves'] ?? '',
-      joiningDate: data['joiningDate'] ?? '',
+      joiningDate: _dateOnly(data['joiningDate']),
       profileImage: data['profileImage'],
       frontId: data['frontId'] ?? data['front_id'] ?? data['idFront'] ?? data['id_front'],
       backId: data['backId'] ?? data['back_id'] ?? data['idBack'] ?? data['id_back'],
       cv: data['cv'],
-      createdAt: data['createdAt'],
+      createdAt: _tsToString(data['createdAt']),
       status: data['status'] ?? '',
     );
   }

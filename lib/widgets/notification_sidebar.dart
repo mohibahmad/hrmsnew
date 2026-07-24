@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
@@ -29,10 +30,14 @@ class _NotificationSidebarState extends State<NotificationSidebar>
   StreamSubscription? _notifSub;
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
+  late AuthService _authService;
+  late FirestoreService _firestore;
 
   @override
   void initState() {
     super.initState();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -47,12 +52,12 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
 
-    final isGuest = AuthService().currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _notifications = List<Map<String, dynamic>>.from(DummyData.notifications);
       _isLoading = false;
     } else {
-      _notifSub = FirestoreService().notificationsStream.listen(
+      _notifSub = _firestore.notificationsStream.listen(
         (snap) {
           if (mounted) {
             setState(() {
@@ -401,9 +406,9 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   child: GestureDetector(
                     onTap: () async {
                       final isGuest =
-                          AuthService().currentUser?.isAnonymous ?? false;
+                          _authService.currentUser?.isAnonymous ?? false;
                       if (!isGuest) {
-                        await FirestoreService().clearAllNotifications();
+                        await _firestore.clearAllNotifications();
                       }
                       setState(() {
                         _notifications.clear();
@@ -534,7 +539,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     return GestureDetector(
       onTap: () {
         if (notificationId.isNotEmpty) {
-          FirestoreService().deleteNotification(notificationId);
+          _firestore.deleteNotification(notificationId);
           setState(() {
             _notifications.removeWhere((n) => n['id'] == notificationId);
           });
@@ -684,7 +689,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                       GestureDetector(
                         onTap: () async {
                           if (notificationId.isNotEmpty) {
-                            await FirestoreService().deleteNotification(
+                            await _firestore.deleteNotification(
                               notificationId,
                             );
                             setState(() {
@@ -746,7 +751,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           GestureDetector(
             onTap: () {
               if (notificationId.isNotEmpty) {
-                FirestoreService().deleteNotification(notificationId);
+                _firestore.deleteNotification(notificationId);
                 setState(() {
                   _notifications.removeWhere((n) => n['id'] == notificationId);
                 });
@@ -882,7 +887,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               child: GestureDetector(
                 onTap: () async {
                   if (notificationId.isNotEmpty) {
-                    await FirestoreService().deleteNotification(notificationId);
+                    await _firestore.deleteNotification(notificationId);
                     setState(() {
                       _notifications.removeWhere(
                         (n) => n['id'] == notificationId,
