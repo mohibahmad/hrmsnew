@@ -340,16 +340,19 @@ class _PayrollScreenState extends State<PayrollScreen> {
     try {
       final summary = await SalaryDayScheduler()
           .payAll(context)
-          .timeout(const Duration(seconds: 120), onTimeout: () {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'Payroll operation timed out. Please try again.',
-            isError: true,
+          .timeout(
+            const Duration(seconds: 120),
+            onTimeout: () {
+              if (mounted) {
+                FlashySnackBar.show(
+                  context,
+                  message: 'Payroll operation timed out. Please try again.',
+                  isError: true,
+                );
+              }
+              return null;
+            },
           );
-        }
-        return null;
-      });
       if (summary != null && mounted) {
         FlashySnackBar.show(
           context,
@@ -411,8 +414,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       ),
                       if (_isPayDate)
                         Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: ElevatedButton.icon(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: ElevatedButton.icon(
                             onPressed: _isRunningPayroll
                                 ? null
                                 : () {
@@ -670,7 +673,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildFilterTabs() {
-    const defaultPositions = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+    const defaultPositions = [
+      'Designer',
+      'Developer',
+      'Engineering',
+      'Sales',
+      'Management',
+    ];
     final actualPositions = <String>{};
     for (final w in _workersList) {
       final pos = (w['position'] ?? '').toString().trim();
@@ -692,7 +701,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ...positionsToShow.map((p) => {'key': p, 'label': p}),
     ];
     return Container(
-      width: 560,
+      width: 570,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

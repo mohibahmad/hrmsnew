@@ -40,7 +40,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       child: Center(
         child: SizedBox(
           width: 960,
-          height: 630,
+          height: 680,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -48,7 +48,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 alignment: Alignment.center,
                 child: Container(
                   width: 920,
-                  height: 580,
+                  height: 610,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: Color(0xFFFFFFFF),
@@ -83,7 +83,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               ),
                               const SizedBox(height: 36),
 
-
                               Text(
                                 'all_in_one_hr'.tr(),
                                 style: TextStyle(
@@ -94,7 +93,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 ),
                               ),
                               const SizedBox(height: 22),
-
 
                               _buildFeatureItem('secure_staff_records'.tr()),
                               _buildFeatureItem('modern_hrms_experience'.tr()),
@@ -111,227 +109,197 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                         ),
                       ),
 
-                        Expanded(
+                      Expanded(
                         flex: 11,
                         child: Container(
                           color: Color(0xFFFFFFFF),
                           width: double.infinity,
                           height: double.infinity,
                           padding: const EdgeInsets.fromLTRB(48, 16, 48, 24),
-                           child: SingleChildScrollView(
+                          child: SingleChildScrollView(
                             child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Text(
-                                  'choose_your_plan'.tr(),
-                                  style: TextStyle(
-                                    color: primaryBlue,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                'select_subscription'.tr(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: primaryBlue,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.3,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-
-
-                              _buildPlanCard(
-                                index: 0,
-                                title: 'monthly'.tr(),
-                                price: '\$6.99',
-                              ),
-                              _buildPlanCard(
-                                index: 1,
-                                title: 'six_month'.tr(),
-                                price: '\$46.99',
-                                isPopular: true,
-                                badgeText: 'popular',
-                              ),
-                              _buildPlanCard(
-                                index: 2,
-                                title: 'yearly'.tr(),
-                                price: '\$64.99',
-                                isPopular: true,
-                                badgeText: 'hottest',
-                              ),
-                              const SizedBox(height: 6),
-
-
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _isSaving
-                                      ? null
-                                      : () async {
-                                    setState(() => _isSaving = true);
-                                    try {
-                                      await PreferencesService.setPremium(true);
-                                      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                                      if (!isGuest) {
-                                        try {
-                                          await _firestore
-                                              .updateUserProfile({
-                                                'isPremium': true,
-                                              });
-                                        } catch (_) {}
-                                      }
-                                      if (context.mounted) {
-                                        Navigator.of(context).pop(true);
-                                      }
-                                    } finally {
-                                      if (mounted) setState(() => _isSaving = false);
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: primaryBlue,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(50),
-                                    ),
-                                  ),
-                                  child: _isSaving
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Text(
-                                    'continue'.tr(),
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: Text(
+                                    'choose_your_plan'.tr(),
                                     style: TextStyle(
-                                      color: Color(0xFFFFFFFF),
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
+                                      color: primaryBlue,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 14),
-
-                               GestureDetector(
-                                onTap: () => Navigator.of(context).pop(false),
-                                child: Text(
-                                  'continue_free_plan'.tr(),
-                                  style: TextStyle(
-                                    color: Color(0xFF0242AE),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 26),
-
-
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  'subscription_disclaimer'.tr(),
+                                Text(
+                                  'select_subscription'.tr(),
                                   textAlign: TextAlign.center,
-
                                   style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 11,
+                                    color: primaryBlue,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
                                     height: 1.3,
-                                    fontWeight: FontWeight.w400,
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 24),
+                                const SizedBox(height: 24),
 
+                                _buildPlanCard(
+                                  index: 0,
+                                  title: 'monthly'.tr(),
+                                  price: '\$6.99',
+                                ),
+                                _buildPlanCard(
+                                  index: 1,
+                                  title: 'six_month'.tr(),
+                                  price: '\$46.99',
+                                  isPopular: true,
+                                  badgeText: 'popular',
+                                ),
+                                _buildPlanCard(
+                                  index: 2,
+                                  title: 'yearly'.tr(),
+                                  price: '\$64.99',
+                                  isPopular: true,
+                                  badgeText: 'hottest',
+                                ),
+                                const SizedBox(height: 6),
 
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: [
-                                  _buildFooterLink(
-                                    'privacy_policy'.tr(),
-                                    onTap: () => launchUrl(
-                                      Uri.parse(
-                                        'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: _isSaving
+                                        ? null
+                                        : () async {
+                                            setState(() => _isSaving = true);
+                                            try {
+                                              await PreferencesService.setPremium(
+                                                true,
+                                              );
+                                              final isGuest =
+                                                  _authService
+                                                      .currentUser
+                                                      ?.isAnonymous ??
+                                                  false;
+                                              if (!isGuest) {
+                                                try {
+                                                  await _firestore
+                                                      .updateUserProfile({
+                                                        'isPremium': true,
+                                                      });
+                                                } catch (_) {}
+                                              }
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop(true);
+                                              }
+                                            } finally {
+                                              if (mounted)
+                                                setState(
+                                                  () => _isSaving = false,
+                                                );
+                                            }
+                                          },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: primaryBlue,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(50),
                                       ),
                                     ),
+                                    child: _isSaving
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            'continue'.tr(),
+                                            style: TextStyle(
+                                              color: Color(0xFFFFFFFF),
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
                                   ),
-                                  _buildFooterDivider(),
-                                  _buildFooterLink(
-                                    'restore'.tr(),
-                                    onTap: () {
+                                ),
+                                const SizedBox(height: 14),
 
-                                    },
+                                GestureDetector(
+                                  onTap: () => Navigator.of(context).pop(false),
+                                  child: Text(
+                                    'continue_free_plan'.tr(),
+                                    style: TextStyle(
+                                      color: Color(0xFF0242AE),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
-                                  _buildFooterDivider(),
-                                  GestureDetector(
-                                    onTap: () => launchUrl(
-                                      Uri.parse(
-                                        'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                ),
+                                const SizedBox(height: 26),
+
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(
+                                    'subscription_disclaimer'.tr(),
+                                    textAlign: TextAlign.center,
+
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 11,
+                                      height: 1.3,
+                                      fontWeight: FontWeight.w400,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    _buildFooterLink(
+                                      'privacy_policy'.tr(),
+                                      onTap: () => launchUrl(
+                                        Uri.parse(
+                                          'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                        ),
                                       ),
                                     ),
-                                    behavior: HitTestBehavior.opaque,
-                                    child: _buildFooterLink(
-                                      'terms_of_use'.tr(),
+                                    _buildFooterDivider(),
+                                    _buildFooterLink(
+                                      'restore'.tr(),
+                                      onTap: () {},
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    _buildFooterDivider(),
+                                    GestureDetector(
+                                      onTap: () => launchUrl(
+                                        Uri.parse(
+                                          'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                        ),
+                                      ),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: _buildFooterLink(
+                                        'terms_of_use'.tr(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-              Positioned(
-                top: -12,
-                right: -6,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF000000).withValues(alpha: 0.15),
-                        blurRadius: 0.5,
-                        offset: const Offset(0, 2),
-                      ),
                     ],
-                  ),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      iconSize: 18,
-                      icon: const Icon(
-                        Icons.close,
-                        color: Color(0xFF0A44A9),
-                        size: 18,
-                      ),
-                      onPressed: () => Navigator.of(context).pop(false),
-                    ),
                   ),
                 ),
               ),
@@ -393,7 +361,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         ),
         child: Stack(
           children: [
-
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

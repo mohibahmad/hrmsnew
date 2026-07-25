@@ -22,8 +22,7 @@ class Worker {
   final String position;
   final String contact;
   final String action;
-  final bool
-  isMaleAvatar;
+  final bool isMaleAvatar;
 
   Worker(
     this.name,
@@ -57,8 +56,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
-
-
 
   List<Map<String, dynamic>> _rawTimeoffDocs = [];
   List<Map<String, dynamic>> _timeoffDocs = [];
@@ -110,7 +107,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
         });
       } else {
-
         combined.add({
           ...worker,
           'action': '',
@@ -120,7 +116,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       }
     }
-
 
     for (var doc in combined) {
       final action = (doc['action'] ?? '').toString();
@@ -132,7 +127,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         if (rEmail != workerEmail) continue;
         final rAction = (record['action'] ?? record['type'] ?? '').toString();
         if (rAction != action) continue;
-        final rDays = int.tryParse((record['requestedDays'] ?? '0').toString()) ?? 0;
+        final rDays =
+            int.tryParse((record['requestedDays'] ?? '0').toString()) ?? 0;
         usedDays += rDays;
       }
 
@@ -143,7 +139,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           if (avail.isNotEmpty && int.tryParse(avail) != null) {
             remaining = int.parse(avail);
           } else {
-            final total = int.tryParse((doc['sickLeaves'] ?? '0').toString()) ?? 0;
+            final total =
+                int.tryParse((doc['sickLeaves'] ?? '0').toString()) ?? 0;
             remaining = (total - usedDays).clamp(0, 999999);
           }
           break;
@@ -152,7 +149,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           if (avail.isNotEmpty && int.tryParse(avail) != null) {
             remaining = int.parse(avail);
           } else {
-            final total = int.tryParse((doc['casualLeaves'] ?? '0').toString()) ?? 0;
+            final total =
+                int.tryParse((doc['casualLeaves'] ?? '0').toString()) ?? 0;
             remaining = (total - usedDays).clamp(0, 999999);
           }
           break;
@@ -161,7 +159,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           if (avail.isNotEmpty && int.tryParse(avail) != null) {
             remaining = int.parse(avail);
           } else {
-            final total = int.tryParse((doc['medicalLeaves'] ?? '0').toString()) ?? 0;
+            final total =
+                int.tryParse((doc['medicalLeaves'] ?? '0').toString()) ?? 0;
             remaining = (total - usedDays).clamp(0, 999999);
           }
           break;
@@ -170,7 +169,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           if (avail.isNotEmpty && int.tryParse(avail) != null) {
             remaining = int.parse(avail);
           } else {
-            final total = int.tryParse((doc['annualLeaves'] ?? '0').toString()) ?? 0;
+            final total =
+                int.tryParse((doc['annualLeaves'] ?? '0').toString()) ?? 0;
             remaining = (total - usedDays).clamp(0, 999999);
           }
       }
@@ -276,7 +276,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return _matchesFilter(position, _selectedTab);
     }).toList();
 
-
     filtered.sort((a, b) {
       final actionA = (a['action'] ?? '').toString();
       final actionB = (b['action'] ?? '').toString();
@@ -289,7 +288,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
   Future<void> _handleDelete(Map<String, dynamic> doc) async {
-
     final action = (doc['action'] ?? '').toString();
     if (action.isEmpty) {
       if (mounted) {
@@ -368,14 +366,20 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         if (balanceKey != null && requestedDays > 0) {
           final workerIndex = DummyData.workers.indexWhere((w) {
             final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
-            final docEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+            final docEmail = (doc['email'] ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
             return wEmail.isNotEmpty && wEmail == docEmail;
           });
           if (workerIndex != -1) {
-            final current = int.tryParse(
-              DummyData.workers[workerIndex][balanceKey]?.toString() ?? '0',
-            ) ?? 0;
-            DummyData.workers[workerIndex][balanceKey] = current + requestedDays;
+            final current =
+                int.tryParse(
+                  DummyData.workers[workerIndex][balanceKey]?.toString() ?? '0',
+                ) ??
+                0;
+            DummyData.workers[workerIndex][balanceKey] =
+                current + requestedDays;
           }
         }
         setState(() {
@@ -397,7 +401,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         });
       } else {
         if (balanceKey != null && requestedDays > 0) {
-          final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+          final workerEmail = (doc['email'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
           final workerIndex = _workersList.indexWhere((w) {
             final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
             return wEmail.isNotEmpty && wEmail == workerEmail;
@@ -405,9 +412,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           if (workerIndex != -1) {
             final worker = _workersList[workerIndex];
             final workerId = (worker['id'] ?? '').toString();
-            final current = int.tryParse(
-              worker[balanceKey]?.toString() ?? '0',
-            ) ?? 0;
+            final current =
+                int.tryParse(worker[balanceKey]?.toString() ?? '0') ?? 0;
             await _firestore.updateWorker(workerId, {
               balanceKey: current + requestedDays,
             });
@@ -597,9 +603,14 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     );
   }
 
-
   Widget _buildFilterTabs() {
-    const defaultPositions = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+    const defaultPositions = [
+      'Designer',
+      'Developer',
+      'Engineering',
+      'Sales',
+      'Management',
+    ];
     final actualPositions = <String>{};
     for (final w in _workersList) {
       final pos = (w['position'] ?? '').toString().trim();
@@ -616,13 +627,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       positionsToShow = sortedPositions;
     }
 
-    final allFilters = [
-      'All',
-      ...positionsToShow,
-    ];
+    final allFilters = ['All', ...positionsToShow];
 
     return Container(
-      width: 560,
+      width: 570,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -689,7 +697,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       ),
       child: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -790,7 +797,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     ),
                     child: Row(
                       children: [
-
                         Expanded(
                           flex: 3,
                           child: Padding(
@@ -901,10 +907,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                         MaterialPageRoute(
                                           builder: (context) =>
                                               AssignTimeOffScreen(
-                                            onBack: () =>
-                                                Navigator.of(context).pop(),
-                                            initialWorker: doc,
-                                          ),
+                                                onBack: () =>
+                                                    Navigator.of(context).pop(),
+                                                initialWorker: doc,
+                                              ),
                                         ),
                                       )
                                       .then((_) {

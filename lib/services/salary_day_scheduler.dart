@@ -818,21 +818,37 @@ class SalaryDayScheduler {
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                       child: Row(
                         children: [
+                          // Selected count text
+                          Text(
+                            '$filteredSelectedCount Selected Worker',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF0247C4),
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                          const Spacer(),
+                          if (summary.failCount > 0) ...[
+                            _summaryChip(
+                              Icons.error_outline,
+                              '${summary.failCount} Fail',
+                              const Color(0xFFE74C3C),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           // Select All / Deselect All button
                           InkWell(
                             onTap: () {
                               setDialogState(() {
-                                // Get indices of currently visible filtered results
                                 final filteredIndices = filteredResults
                                     .map((r) => summary.results.indexOf(r))
                                     .toSet();
                                 final allFilteredSelected = filteredIndices
                                     .every((i) => selectedIndices.contains(i));
                                 if (allFilteredSelected) {
-                                  // Deselect only filtered workers
                                   selectedIndices.removeAll(filteredIndices);
                                 } else {
-                                  // Select all filtered workers
                                   selectedIndices.addAll(filteredIndices);
                                 }
                               });
@@ -891,34 +907,6 @@ class SalaryDayScheduler {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Selected count badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0247C4),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '$filteredSelectedCount selected',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          if (summary.failCount > 0)
-                            _summaryChip(
-                              Icons.error_outline,
-                              '${summary.failCount} Fail',
-                              const Color(0xFFE74C3C),
-                            ),
                         ],
                       ),
                     ),

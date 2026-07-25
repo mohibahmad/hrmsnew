@@ -234,7 +234,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   ),
                 const SizedBox(height: 16),
 
-
                 _buildNavItem(
                   Icons.grid_view_rounded,
                   'sidebar_dashboard'.tr(),
@@ -866,10 +865,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 ),
                 const SizedBox(height: 22),
 
-
                 Builder(
                   builder: (context) {
-                    const defaultPositions = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+                    const defaultPositions = [
+                      'Designer',
+                      'Developer',
+                      'Engineering',
+                      'Sales',
+                      'Management',
+                    ];
                     final actualPositions = <String>{};
                     for (final w in _allWorkers) {
                       final pos = (w['position'] ?? '').toString().trim();
@@ -881,18 +885,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     if (actualPositions.isEmpty) {
                       positionsToShow = defaultPositions;
                     } else if (actualPositions.length == 1) {
-                      positionsToShow = [...defaultPositions, ...sortedPositions];
+                      positionsToShow = [
+                        ...defaultPositions,
+                        ...sortedPositions,
+                      ];
                     } else {
                       positionsToShow = sortedPositions;
                     }
 
-                    final allFilters = [
-                      'All',
-                      ...positionsToShow,
-                    ];
+                    final allFilters = ['All', ...positionsToShow];
 
                     return Container(
-                      width: 560,
+                      width: 580,
                       height: 46,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
@@ -906,7 +910,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             for (final f in allFilters)
-                              _buildFilterTab(f, f == 'All' ? 'all_filter'.tr() : f),
+                              _buildFilterTab(
+                                f,
+                                f == 'All' ? 'all_filter'.tr() : f,
+                              ),
                           ],
                         ),
                       ),
@@ -914,7 +921,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                   },
                 ),
                 const SizedBox(height: 22),
-
 
                 if (_isLoading)
                   const Padding(
@@ -982,7 +988,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       ),
       child: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -1196,14 +1201,16 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         WorkerProfilePreviewDialog(worker: worker),
                   );
                 } else if (value == 'edit') {
-                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
                   if (isGuest) {
                     showGuestRestrictionDialog(context);
                     return;
                   }
                   widget.onEditWorker?.call(worker);
                 } else if (value == 'delete') {
-                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
                   if (isGuest) {
                     showGuestRestrictionDialog(context);
                     return;
@@ -1386,10 +1393,12 @@ class WorkerProfilePreviewDialog extends StatefulWidget {
   const WorkerProfilePreviewDialog({super.key, required this.worker});
 
   @override
-  State<WorkerProfilePreviewDialog> createState() => _WorkerProfilePreviewDialogState();
+  State<WorkerProfilePreviewDialog> createState() =>
+      _WorkerProfilePreviewDialogState();
 }
 
-class _WorkerProfilePreviewDialogState extends State<WorkerProfilePreviewDialog> {
+class _WorkerProfilePreviewDialogState
+    extends State<WorkerProfilePreviewDialog> {
   bool _isSharing = false;
   final Color primaryBlue = const Color(0xFF0953D4);
   final Color iconLightBlue = const Color(0xFFE5EEFC);
@@ -1494,30 +1503,75 @@ class _WorkerProfilePreviewDialogState extends State<WorkerProfilePreviewDialog>
                                             name: name,
                                             email: email,
                                             phone: phone,
-                                            fatherHusbandName: _na(_v(worker, 'fatherName')),
+                                            fatherHusbandName: _na(
+                                              _v(worker, 'fatherName'),
+                                            ),
                                             position: _v(worker, 'position'),
-                                            nationalId: _na(_v(worker, 'nationalId')),
-                                            attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
-                                            workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
-                                            experienceLevel: _na(_v(worker, 'experienceLevel')),
-                                            gender: _na(LocalizationHelper.localizeGender(_v(worker, 'gender'))),
-                                            joiningDate: _na(_v(worker, 'joiningDate')),
+                                            nationalId: _na(
+                                              _v(worker, 'nationalId'),
+                                            ),
+                                            attendanceType:
+                                                LocalizationHelper.localizeType2(
+                                                  _v(worker, 'type2'),
+                                                ),
+                                            workType:
+                                                LocalizationHelper.localizeType1(
+                                                  _v(worker, 'type1'),
+                                                ),
+                                            experienceLevel: _na(
+                                              _v(worker, 'experienceLevel'),
+                                            ),
+                                            gender: _na(
+                                              LocalizationHelper.localizeGender(
+                                                _v(worker, 'gender'),
+                                              ),
+                                            ),
+                                            joiningDate: _na(
+                                              _v(worker, 'joiningDate'),
+                                            ),
                                             salary: salary,
-                                            education: _na(_v(worker, 'education')),
-                                            salaryType: _na(_v(worker, 'salaryType')),
-                                            religion: _na(_v(worker, 'religion')),
+                                            education: _na(
+                                              _v(worker, 'education'),
+                                            ),
+                                            salaryType: _na(
+                                              _v(worker, 'salaryType'),
+                                            ),
+                                            religion: _na(
+                                              _v(worker, 'religion'),
+                                            ),
                                             dateOfBirth: _na(_v(worker, 'dob')),
-                                            relationshipStatus: _na(_v(worker, 'relationshipStatus')),
+                                            relationshipStatus: _na(
+                                              _v(worker, 'relationshipStatus'),
+                                            ),
                                             address: _na(_v(worker, 'address')),
                                           );
-                                          final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-                                          await WorkerProfileService.shareWorkerProfile(bytes, '${safeName}_profile.pdf');
+                                          final safeName = name.replaceAll(
+                                            RegExp(r'[^a-zA-Z0-9_-]'),
+                                            '_',
+                                          );
+                                          await WorkerProfileService.shareWorkerProfile(
+                                            bytes,
+                                            '${safeName}_profile.pdf',
+                                          );
                                           if (mounted) {
-                                            FlashySnackBar.show(context, message: 'profile_shared_successfully'.tr());
+                                            FlashySnackBar.show(
+                                              context,
+                                              message:
+                                                  'profile_shared_successfully'
+                                                      .tr(),
+                                            );
                                           }
                                         } catch (e) {
                                           if (mounted) {
-                                            FlashySnackBar.show(context, message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}), isError: true);
+                                            FlashySnackBar.show(
+                                              context,
+                                              message: 'error_occurred'.tr(
+                                                namedArgs: {
+                                                  'error': e.toString(),
+                                                },
+                                              ),
+                                              isError: true,
+                                            );
                                           }
                                         } finally {
                                           if (mounted) {
@@ -1680,7 +1734,11 @@ class _WorkerProfilePreviewDialogState extends State<WorkerProfilePreviewDialog>
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(LocalizationHelper.localizeGender(_v(worker, 'gender'))),
+                          _na(
+                            LocalizationHelper.localizeGender(
+                              _v(worker, 'gender'),
+                            ),
+                          ),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
