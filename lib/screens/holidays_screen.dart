@@ -1657,6 +1657,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 }
                 _editHoliday(item);
               } else if (value == 'delete') {
+                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                if (isGuest) {
+                  showGuestRestrictionDialog(context);
+                  return;
+                }
                 _deleteHoliday(item);
               }
             },

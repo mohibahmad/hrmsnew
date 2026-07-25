@@ -1654,6 +1654,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             }
             _editExpense(doc);
           } else if (value == 'delete') {
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
             _deleteExpense(docId);
           }
         },

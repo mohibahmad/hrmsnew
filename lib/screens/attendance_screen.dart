@@ -1328,14 +1328,7 @@ class _WorkerAttendancePreviewCardState
           Positioned(
             bottom: 0,
             right: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFFFFF),
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(1),
-              child: Icon(Icons.check_circle, color: color, size: 14),
-            ),
+            child: Icon(Icons.check_circle, color: color, size: 14),
           ),
         ],
       ),
@@ -1355,14 +1348,7 @@ class _WorkerAttendancePreviewCardState
           Positioned(
             bottom: 0,
             right: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFFFFF),
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(1),
-              child: Icon(Icons.cancel, color: color, size: 14),
-            ),
+            child: Icon(Icons.cancel, color: color, size: 14),
           ),
         ],
       ),
@@ -1382,14 +1368,7 @@ class _WorkerAttendancePreviewCardState
           Positioned(
             bottom: 0,
             right: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFFFFF),
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(1),
-              child: Icon(Icons.work, color: color, size: 10),
-            ),
+            child: Icon(Icons.work, color: color, size: 10),
           ),
         ],
       ),

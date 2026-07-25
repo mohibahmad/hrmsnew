@@ -1258,8 +1258,18 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                         WorkerProfilePreviewDialog(worker: worker),
                   );
                 } else if (value == 'edit') {
+                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
                   widget.onEditWorker?.call(worker);
                 } else if (value == 'delete') {
+                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
                   _deleteWorker(docId);
                 }
               },
