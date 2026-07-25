@@ -52,9 +52,7 @@ class LeaveTypesPieChart extends StatelessWidget {
     final double casualSweep = totalValue > 0
         ? (casualVal / totalValue) * 360
         : 0;
-    final double sickSweep = totalValue > 0
-        ? (sickVal / totalValue) * 360
-        : 0;
+    final double sickSweep = totalValue > 0 ? (sickVal / totalValue) * 360 : 0;
     final double medicalSweep = totalValue > 0
         ? (medicalVal / totalValue) * 360
         : 0;
@@ -152,9 +150,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                               child: buildLegendItem(
                                 const Color(0xFF84A9FF),
                                 'casual_leave'.tr(
-                                  namedArgs: {
-                                    'value': '${casualVal.toInt()}',
-                                  },
+                                  namedArgs: {'value': '${casualVal.toInt()}'},
                                 ),
                               ),
                             ),
@@ -163,24 +159,20 @@ class LeaveTypesPieChart extends StatelessWidget {
                               child: buildLegendItem(
                                 const Color(0xFFFF4A5E),
                                 'sick_leave'.tr(
-                                  namedArgs: {
-                                    'value': '${sickVal.toInt()}',
-                                  },
+                                  namedArgs: {'value': '${sickVal.toInt()}'},
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
                               child: buildLegendItem(
                                 const Color(0xFF97FFA9),
                                 'medical_leave'.tr(
-                                  namedArgs: {
-                                    'value': '${medicalVal.toInt()}',
-                                  },
+                                  namedArgs: {'value': '${medicalVal.toInt()}'},
                                 ),
                               ),
                             ),
@@ -283,7 +275,6 @@ class _DonutCalloutPainter extends CustomPainter {
     void processCallout(String type, double val, double midAngle) {
       if (val <= 0) return;
 
-      // Convert degrees to radians (fl_chart: 0 is right, increasing clockwise)
       final angleRad = midAngle * math.pi / 180.0;
       final innerRadius = radius - 35.0; // Start line deeper inside the slice
       final p1 = Offset(
@@ -291,14 +282,14 @@ class _DonutCalloutPainter extends CustomPainter {
         center.dy + innerRadius * math.sin(angleRad),
       );
 
-      // Professional 45-degree diagonal routing algorithm
       final isRightSide = math.cos(angleRad) >= 0;
       final isTopSide = math.sin(angleRad) < 0;
-      
-      final double D = 55.0; // Increased diagonal extension length to push lines further away
+
+      final double D =
+          55.0; // Increased diagonal extension length to push lines further away
       final double dx = isRightSide ? D : -D;
       final double dy = isTopSide ? -D : D;
-      
+
       final p2 = Offset(p1.dx + dx, p1.dy + dy);
 
       if (isRightSide) {
@@ -313,8 +304,12 @@ class _DonutCalloutPainter extends CustomPainter {
     processCallout('medical', medicalVal, medicalMidAngle);
 
     // Sort labels vertically for anti-collision
-    leftLabels.sort((a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy));
-    rightLabels.sort((a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy));
+    leftLabels.sort(
+      (a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy),
+    );
+    rightLabels.sort(
+      (a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy),
+    );
 
     void drawLabels(List<Map<String, dynamic>> labels, bool isRightSide) {
       final lineExtension = 65.0;
@@ -322,12 +317,10 @@ class _DonutCalloutPainter extends CustomPainter {
       final minSpacing = 35.0; // minimum vertical gap between labels
 
       for (final labelData in labels) {
-        final type = labelData['type'] as String;
         final val = labelData['val'] as double;
         final p1 = labelData['p1'] as Offset;
         var p2 = labelData['p2'] as Offset;
 
-        // Apply anti-collision shift if necessary
         if (p2.dy < lastY + minSpacing) {
           p2 = Offset(p2.dx, lastY + minSpacing);
         }
@@ -358,7 +351,6 @@ class _DonutCalloutPainter extends CustomPainter {
         );
         textPainter.layout();
 
-        // Center text horizontally over the horizontal segment
         final centerX = (p2.dx + p3.dx) / 2;
         final labelX = centerX - textPainter.width / 2;
         final labelY = p2.dy - textPainter.height - 4; // padding above the line

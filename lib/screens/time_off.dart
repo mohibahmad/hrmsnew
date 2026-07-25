@@ -65,14 +65,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
 
-  static const _defaultFilters = [
-    'All',
-    'Designer',
-    'Developer',
-    'Engineering',
-    'Sales',
-    'Management',
-  ];
   StreamSubscription? _timeoffSub;
   StreamSubscription? _workersSub;
 
@@ -265,69 +257,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
   bool _matchesFilter(String position, String filter) {
     if (filter == 'All') return true;
-    final pos = position.toLowerCase();
-    final f = filter.toLowerCase();
-    if (f == 'designer') {
-      return pos.contains('designer') ||
-          pos.contains('design lead') ||
-          pos.contains('creative director') ||
-          pos.contains('ui') ||
-          pos.contains('ux') ||
-          pos.contains('graphic') ||
-          pos.contains('visual');
-    } else if (f == 'developer') {
-      return pos.contains('developer') ||
-          pos.contains('programmer') ||
-          pos.contains('coder') ||
-          pos.contains('software') ||
-          pos.contains('frontend') ||
-          pos.contains('backend') ||
-          pos.contains('full stack') ||
-          pos.contains('fullstack');
-    } else if (f == 'engineering') {
-      return pos.contains('engineer') ||
-          pos.contains('architect') ||
-          pos.contains('devops') ||
-          pos.contains('cloud') ||
-          pos.contains('data') ||
-          pos.contains('scientist') ||
-          pos.contains('machine learning') ||
-          pos.contains('ml') ||
-          pos.contains('qa') ||
-          pos.contains('tester') ||
-          pos.contains('it support') ||
-          pos.contains('network') ||
-          pos.contains('database') ||
-          pos.contains('dba') ||
-          pos.contains('cyber') ||
-          pos.contains('security') ||
-          pos.contains('cto') ||
-          pos.contains('chief technology');
-    } else if (f == 'sales') {
-      return pos.contains('sales') ||
-          pos.contains('marketing') ||
-          pos.contains('seo') ||
-          pos.contains('content') ||
-          pos.contains('social media') ||
-          pos.contains('brand') ||
-          pos.contains('business development') ||
-          pos.contains('account executive') ||
-          pos.contains('customer success');
-    } else if (f == 'management') {
-      return pos.contains('manager') ||
-          pos.contains('director') ||
-          pos.contains('head') ||
-          pos.contains('lead') ||
-          pos.contains('chief') ||
-          pos.contains('cpo') ||
-          pos.contains('product') ||
-          pos.contains('project') ||
-          pos.contains('program') ||
-          pos.contains('scrum') ||
-          pos.contains('agile') ||
-          pos.contains('business analyst');
-    }
-    return pos.contains(f) || f.contains(pos);
+    return position.toLowerCase().contains(filter.toLowerCase());
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
@@ -668,42 +598,32 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   }
 
 
-  List<String> get _extraPositions {
-    final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
-    final extras = <String>{};
-    for (final doc in _workersList) {
-      final pos = (doc['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty && !existing.contains(pos.toLowerCase())) {
-        extras.add(pos);
-      }
-    }
-    final sorted = extras.toList()..sort();
-    return sorted;
-  }
-
-
-  List<String> get _workerPositionsInDefaults {
-    final workerPositions = _workersList
-        .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
-        .where((p) => p.isNotEmpty)
-        .toSet();
-    return workerPositions.toList();
-  }
-
-
-  List<String> get _remainingDefaultPositions {
-    final workerPosLower = _workerPositionsInDefaults.toSet();
-
-    return _defaultFilters
-        .skip(1)
-        .where((d) => !workerPosLower.contains(d.toLowerCase()))
-        .toList();
-  }
-
   Widget _buildFilterTabs() {
+    const defaultPositions = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+    final actualPositions = <String>{};
+    for (final w in _workersList) {
+      final pos = (w['position'] ?? '').toString().trim();
+      if (pos.isNotEmpty) actualPositions.add(pos);
+    }
+    final sortedPositions = actualPositions.toList()..sort();
+
+    List<String> positionsToShow;
+    if (actualPositions.isEmpty) {
+      positionsToShow = defaultPositions;
+    } else if (actualPositions.length == 1) {
+      positionsToShow = [...defaultPositions, ...sortedPositions];
+    } else {
+      positionsToShow = sortedPositions;
+    }
+
+    final allFilters = [
+      'All',
+      ...positionsToShow,
+    ];
+
     return Container(
-      width: 640,
-      height: 50,
+      width: 560,
+      height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -711,56 +631,12 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildTabItem('All', 'all_filter'.tr()),
-            Container(
-              width: 1,
-              height: 38,
-              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-            ),
-
-            ..._extraPositions.asMap().entries.expand(
-              (entry) => [
-                Container(
-                  width: 1,
-                  height: 38,
-                  color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                ),
-                _buildTabItem(entry.value, entry.value),
-              ],
-            ),
-
-            ...() {
-              final workerPosLower = _workerPositionsInDefaults.toSet();
-              final workerDefaultPositions = _defaultFilters
-                  .skip(1)
-                  .where((d) => workerPosLower.contains(d.toLowerCase()))
-                  .toList();
-              return workerDefaultPositions.expand(
-                (pos) => [
-                  Container(
-                    width: 1,
-                    height: 38,
-                    color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                  ),
-                  _buildTabItem(pos, pos),
-                ],
-              );
-            }(),
-
-            ..._remainingDefaultPositions.expand(
-              (pos) => [
-                Container(
-                  width: 1,
-                  height: 38,
-                  color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                ),
-                _buildTabItem(pos, pos),
-              ],
-            ),
+            for (final f in allFilters)
+              _buildTabItem(f, f == 'All' ? 'all_filter'.tr() : f),
           ],
         ),
       ),

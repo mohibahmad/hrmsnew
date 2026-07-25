@@ -617,46 +617,6 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     return pos.contains(f) || f.contains(pos);
   }
 
-  static const _defaultFilters = [
-    'All',
-    'Designer',
-    'Developer',
-    'Engineering',
-    'Sales',
-    'Management',
-  ];
-
-
-  List<String> get _extraPositions {
-    final existing = _defaultFilters.map((e) => e.toLowerCase()).toSet();
-    final extras = <String>{};
-    for (final doc in _allWorkers) {
-      final pos = (doc['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty && !existing.contains(pos.toLowerCase())) {
-        extras.add(pos);
-      }
-    }
-    final sorted = extras.toList()..sort();
-    return sorted;
-  }
-
-
-  List<String> get _workerPositionsInDefaults {
-    final workerPositions = _allWorkers
-        .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
-        .where((p) => p.isNotEmpty)
-        .toSet();
-    return workerPositions.toList();
-  }
-
-  List<String> get _remainingDefaultPositions {
-    final workerPosLower = _workerPositionsInDefaults.toSet();
-    return _defaultFilters
-        .skip(1)
-        .where((d) => !workerPosLower.contains(d.toLowerCase()))
-        .toList();
-  }
-
   List<Map<String, dynamic>> get _filteredWorkers {
     return _allWorkers.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
@@ -907,73 +867,51 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 const SizedBox(height: 22),
 
 
-                Container(
-                  width: 560,
+                Builder(
+                  builder: (context) {
+                    const defaultPositions = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+                    final actualPositions = <String>{};
+                    for (final w in _allWorkers) {
+                      final pos = (w['position'] ?? '').toString().trim();
+                      if (pos.isNotEmpty) actualPositions.add(pos);
+                    }
+                    final sortedPositions = actualPositions.toList()..sort();
 
-                  height: 50,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _buildFilterTab('All', 'all_filter'.tr()),
-                        Container(
-                          width: 1,
-                          height: 38,
-                          color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                        ),
+                    List<String> positionsToShow;
+                    if (actualPositions.isEmpty) {
+                      positionsToShow = defaultPositions;
+                    } else if (actualPositions.length == 1) {
+                      positionsToShow = [...defaultPositions, ...sortedPositions];
+                    } else {
+                      positionsToShow = sortedPositions;
+                    }
 
-                        ..._extraPositions.asMap().entries.expand(
-                          (entry) => [
-                            Container(
-                              width: 1,
-                              height: 38,
-                              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                            ),
-                            _buildFilterTab(entry.value, entry.value),
+                    final allFilters = [
+                      'All',
+                      ...positionsToShow,
+                    ];
+
+                    return Container(
+                      width: 560,
+                      height: 46,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            for (final f in allFilters)
+                              _buildFilterTab(f, f == 'All' ? 'all_filter'.tr() : f),
                           ],
                         ),
-
-                        ...() {
-                          final workerPosLower = _workerPositionsInDefaults
-                              .toSet();
-                          final workerDefaultPositions = _defaultFilters
-                              .skip(1)
-                              .where(
-                                (d) => workerPosLower.contains(d.toLowerCase()),
-                              )
-                              .toList();
-                          return workerDefaultPositions.expand(
-                            (pos) => [
-                              Container(
-                                width: 1,
-                                height: 38,
-                                color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                              ),
-                              _buildFilterTab(pos, pos),
-                            ],
-                          );
-                        }(),
-
-                        ..._remainingDefaultPositions.expand(
-                          (pos) => [
-                            Container(
-                              width: 1,
-                              height: 38,
-                              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                            ),
-                            _buildFilterTab(pos, pos),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 22),
 

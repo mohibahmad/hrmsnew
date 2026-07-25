@@ -16,7 +16,6 @@ import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/amount_text.dart';
-import 'login_screen.dart';
 
 class PayrollScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -55,6 +54,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isAddingPayroll = false;
   Map<String, dynamic>? _workerForPayroll;
   bool _isRunningPayroll = false;
+
+  bool get _isPayDate {
+    if (_salaryPaymentDay == null) return false;
+    return _salaryPaymentDay == DateTime.now().day;
+  }
 
   @override
   void dispose() {
@@ -334,7 +338,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_isRunningPayroll) return;
     setState(() => _isRunningPayroll = true);
     try {
-      final summary = await SalaryDayScheduler().payAll(context);
+      final summary = await SalaryDayScheduler()
+          .payAll(context)
+          .timeout(const Duration(seconds: 120), onTimeout: () {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'Payroll operation timed out. Please try again.',
+            isError: true,
+          );
+        }
+        return null;
+      });
       if (summary != null && mounted) {
         FlashySnackBar.show(
           context,
@@ -394,19 +409,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           ),
                         ),
                       ),
-                      if (_salaryPaymentDay != null &&
-                          DateTime.now().day == _salaryPaymentDay)
+                      if (_isPayDate)
                         Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: ElevatedButton.icon(
-                            onPressed: _isRunningPayroll ? null : () {
-                                final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                                if (isGuest) {
-                                  showGuestRestrictionDialog(context);
-                                  return;
-                                }
-                                _handlePayAll();
-                              },
+                            padding: const EdgeInsets.only(right: 12),
+                            child: ElevatedButton.icon(
+                            onPressed: _isRunningPayroll
+                                ? null
+                                : () {
+                                    final isGuest =
+                                        _authService.currentUser?.isAnonymous ??
+                                        false;
+                                    if (isGuest) {
+                                      showGuestRestrictionDialog(context);
+                                      return;
+                                    }
+                                    _handlePayAll();
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF27AE60),
                               foregroundColor: const Color(0xFFFFFFFF),
@@ -452,7 +470,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         onPressed: _isSalaryDaySaving
                             ? null
                             : () {
-                                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                                final isGuest =
+                                    _authService.currentUser?.isAnonymous ??
+                                    false;
                                 if (isGuest) {
                                   showGuestRestrictionDialog(context);
                                   return;
@@ -624,69 +644,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   bool _matchesFilter(String position, String filter) {
     if (filter == 'All') return true;
-    final pos = position.toLowerCase();
-    final f = filter.toLowerCase();
-    if (f == 'designer') {
-      return pos.contains('designer') ||
-          pos.contains('design lead') ||
-          pos.contains('creative director') ||
-          pos.contains('ui') ||
-          pos.contains('ux') ||
-          pos.contains('graphic') ||
-          pos.contains('visual');
-    } else if (f == 'developer') {
-      return pos.contains('developer') ||
-          pos.contains('programmer') ||
-          pos.contains('coder') ||
-          pos.contains('software') ||
-          pos.contains('frontend') ||
-          pos.contains('backend') ||
-          pos.contains('full stack') ||
-          pos.contains('fullstack');
-    } else if (f == 'engineering') {
-      return pos.contains('engineer') ||
-          pos.contains('architect') ||
-          pos.contains('devops') ||
-          pos.contains('cloud') ||
-          pos.contains('data') ||
-          pos.contains('scientist') ||
-          pos.contains('machine learning') ||
-          pos.contains('ml') ||
-          pos.contains('qa') ||
-          pos.contains('tester') ||
-          pos.contains('it support') ||
-          pos.contains('network') ||
-          pos.contains('database') ||
-          pos.contains('dba') ||
-          pos.contains('cyber') ||
-          pos.contains('security') ||
-          pos.contains('cto') ||
-          pos.contains('chief technology');
-    } else if (f == 'sales') {
-      return pos.contains('sales') ||
-          pos.contains('marketing') ||
-          pos.contains('seo') ||
-          pos.contains('content') ||
-          pos.contains('social media') ||
-          pos.contains('brand') ||
-          pos.contains('business development') ||
-          pos.contains('account executive') ||
-          pos.contains('customer success');
-    } else if (f == 'management') {
-      return pos.contains('manager') ||
-          pos.contains('director') ||
-          pos.contains('head') ||
-          pos.contains('lead') ||
-          pos.contains('chief') ||
-          pos.contains('cpo') ||
-          pos.contains('product') ||
-          pos.contains('project') ||
-          pos.contains('program') ||
-          pos.contains('scrum') ||
-          pos.contains('agile') ||
-          pos.contains('business analyst');
-    }
-    return pos.contains(f) || f.contains(pos);
+    return position.toLowerCase().contains(filter.toLowerCase());
   }
 
   List<Map<String, dynamic>> get _filteredEmployees {
@@ -711,55 +669,31 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return filtered;
   }
 
-  List<String> get _extraPositions {
-    final positionsByKey = <String, String>{};
-    for (final doc in _workersList) {
-      final pos = (doc['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty) {
-        positionsByKey.putIfAbsent(pos.toLowerCase(), () => pos);
-      }
-    }
-    final sorted = positionsByKey.values.toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    return sorted;
-  }
-
   Widget _buildFilterTabs() {
-    final workerPosLower = _workersList
-        .map((doc) => (doc['position'] ?? '').toString().trim().toLowerCase())
-        .where((p) => p.isNotEmpty)
-        .toSet();
+    const defaultPositions = ['Designer', 'Developer', 'Engineering', 'Sales', 'Management'];
+    final actualPositions = <String>{};
+    for (final w in _workersList) {
+      final pos = (w['position'] ?? '').toString().trim();
+      if (pos.isNotEmpty) actualPositions.add(pos);
+    }
+    final sortedPositions = actualPositions.toList()..sort();
 
-    final defaultKeys = [
-      'Designer',
-      'Developer',
-      'Engineering',
-      'Sales',
-      'Management',
-    ];
+    List<String> positionsToShow;
+    if (actualPositions.isEmpty) {
+      positionsToShow = defaultPositions;
+    } else if (actualPositions.length == 1) {
+      positionsToShow = [...defaultPositions, ...sortedPositions];
+    } else {
+      positionsToShow = sortedPositions;
+    }
 
     final filters = <Map<String, String>>[
       {'key': 'All', 'label': 'all_filter'.tr()},
-
-      ..._extraPositions
-          .where(
-            (pos) => !defaultKeys
-                .map((d) => d.toLowerCase())
-                .contains(pos.toLowerCase()),
-          )
-          .map((pos) => {'key': pos, 'label': pos}),
-
-      ...defaultKeys
-          .where((d) => workerPosLower.contains(d.toLowerCase()))
-          .map((d) => {'key': d, 'label': d}),
-
-      ...defaultKeys
-          .where((d) => !workerPosLower.contains(d.toLowerCase()))
-          .map((d) => {'key': d, 'label': d}),
+      ...positionsToShow.map((p) => {'key': p, 'label': p}),
     ];
     return Container(
-      width: 640,
-      height: 50,
+      width: 560,
+      height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Color(0xFFFFFFFF),
@@ -767,17 +701,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (int i = 0; i < filters.length; i++) ...[
-              if (i > 0)
-                Container(
-                  width: 1,
-                  height: 38,
-                  color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
-                ),
               _buildFilterTab(filters[i]['key']!, filters[i]['label']!),
             ],
           ],
@@ -1070,9 +998,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
   ) async {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
-    final String totalWorkDays = (data['totalWorkDays'] ?? '').toString();
-    final String absents = (data['absents'] ?? '').toString();
-    final String leaves = (data['leaves'] ?? '').toString();
+    final String totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
+    final String absents = (data['absents'] ?? '0').toString();
+    final String leaves = (data['leaves'] ?? '0').toString();
     final String rawAbsentDeduction = (data['absentDeduction'] ?? '0')
         .toString();
     final String rawLeaveDeduction = (data['leaveDeduction'] ?? '0').toString();

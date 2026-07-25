@@ -470,6 +470,86 @@ class FirestoreService {
     return docRef.id;
   }
 
+  /// Bulk-adds payroll records using Firestore batch writes for performance.
+  /// Returns the number of successfully added records.
+  Future<int> addBulkPayrollRecords(List<Map<String, dynamic>> records) async {
+    final coll = _payroll;
+    if (coll == null) return 0;
+    var batch = _db.batch();
+    int count = 0;
+    for (final record in records) {
+      try {
+        Validators.validatePayroll(record);
+        final docRef = coll.doc();
+        batch.set(docRef, {
+          ...record,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        count++;
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _db.batch();
+        }
+      } catch (_) {
+        // Individual record failures are non-fatal.
+      }
+    }
+    if (count % 500 != 0 && count > 0) {
+      await batch.commit();
+    }
+    return count;
+  }
+
+  /// Bulk-adds expense records using Firestore batch writes for performance.
+  Future<void> addBulkExpenses(List<Map<String, dynamic>> expenses) async {
+    final coll = _expenses;
+    if (coll == null) return;
+    var batch = _db.batch();
+    int count = 0;
+    for (final expense in expenses) {
+      try {
+        Validators.validateExpense(expense);
+        final docRef = coll.doc();
+        batch.set(docRef, {
+          ...expense,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        count++;
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _db.batch();
+        }
+      } catch (_) {}
+    }
+    if (count % 500 != 0 && count > 0) {
+      await batch.commit();
+    }
+  }
+
+  /// Bulk-adds notifications using Firestore batch writes for performance.
+  Future<void> addBulkNotifications(List<Map<String, dynamic>> notifications) async {
+    final coll = _notifications;
+    if (coll == null) return;
+    var batch = _db.batch();
+    int count = 0;
+    for (final notification in notifications) {
+      final docRef = coll.doc();
+      batch.set(docRef, {
+        ...notification,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
+    }
+    if (count % 500 != 0 && count > 0) {
+      await batch.commit();
+    }
+  }
+
   Future<void> updatePayrollRecord(String id, Map<String, dynamic> data) async {
     final coll = _payroll;
     if (coll == null) return;

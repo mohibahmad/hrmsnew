@@ -168,7 +168,9 @@ class PayrollService {
       final symbol = getCurrencySymbol(currency);
       return symbol.isEmpty ? salaryAmount : '$symbol $salaryAmount';
     }
-    return (data['salary'] ?? '').toString().trim();
+    final salary = (data['salary'] ?? '').toString().trim();
+    if (salary.isNotEmpty) return salary;
+    return '\$ 0';
   }
 
   /// Payroll absences and leaves are attendance counts, not leave allowance.

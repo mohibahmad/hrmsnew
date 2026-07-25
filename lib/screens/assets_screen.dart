@@ -1316,25 +1316,19 @@ onPressed: isSaving
             }
             _showEditAssetModal(data);
           } else if (value == 'delete') {
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
             final confirmed = await DeleteDialog.show(
               context: context,
               title: 'delete_asset'.tr(),
               content: 'delete_asset_desc'.tr(),
             );
             if (!confirmed) return;
-            final isGuest = _authService.currentUser?.isAnonymous ?? false;
-            if (isGuest) {
-              setState(() {
-                _assets.remove(data);
-              });
-              DummyData.assets.removeWhere(
-                (a) => a['name'] == data.name && a['type'] == data.type,
-              );
-              DummyData.saveToPrefs();
-            } else {
-              if (data.id != null)
-                await _firestore.deleteAsset(data.id!);
-            }
+            if (data.id != null)
+              await _firestore.deleteAsset(data.id!);
           }
         },
         itemBuilder: (context) => [
