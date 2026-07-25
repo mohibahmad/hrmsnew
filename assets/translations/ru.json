@@ -507,6 +507,8 @@
   "holiday_list": "Список праздников",
   "no_holidays_found": "Праздники не найдены",
   "sick_leave_type": "Больничный",
+  "medical_leave_type": "Медицинский отпуск",
+  "medical_leave": "Медицинский отпуск: {value}%",
   "leave_type": "Тип отпуска",
   "notif_welcome": "Добро пожаловать",
   "saving_bulk_workers": "Сохранение массовых сотрудников...",

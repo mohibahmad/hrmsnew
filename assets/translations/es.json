@@ -507,6 +507,8 @@
   "holiday_list": "Lista de Feriados",
   "no_holidays_found": "No se Encontraron Feriados",
   "sick_leave_type": "Permiso por Enfermedad",
+  "medical_leave_type": "Permiso Médico",
+  "medical_leave": "Permiso Médico: {value}%",
   "leave_type": "Tipo de Permiso",
   "notif_welcome": "Bienvenido",
   "saving_bulk_workers": "Guardando trabajadores en masa...",

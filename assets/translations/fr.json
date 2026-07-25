@@ -507,6 +507,8 @@
   "holiday_list": "Liste des jours fériés",
   "no_holidays_found": "Aucun Jour Férié",
   "sick_leave_type": "Congé Maladie",
+  "medical_leave_type": "Congé Médical",
+  "medical_leave": "Congé Médical: {value}%",
   "leave_type": "Type de Congé",
   "notif_welcome": "Bienvenue",
   "saving_bulk_workers": "Enregistrement des travailleurs en masse...",

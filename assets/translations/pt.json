@@ -507,6 +507,8 @@
   "holiday_list": "Lista de Feriados",
   "no_holidays_found": "Nenhum Feriado Encontrado",
   "sick_leave_type": "Licença Médica",
+  "medical_leave_type": "Licença Médica",
+  "medical_leave": "Licença Médica: {value}%",
   "leave_type": "Tipo de Licença",
   "notif_welcome": "Bem-vindo",
   "saving_bulk_workers": "Salvando trabalhadores em massa...",
