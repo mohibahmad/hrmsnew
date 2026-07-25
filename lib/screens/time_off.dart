@@ -1006,16 +1006,15 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     .toString();
                                 final hasTimeOff = rawAction.isNotEmpty;
 
-                                if (hasTimeOff) {
-                                  _showTimeOffDataDialog(context, doc, index);
-                                  return;
-                                }
-
                                 final isGuest =
                                     _authService.currentUser?.isAnonymous ??
                                     false;
                                 if (isGuest) {
                                   showGuestRestrictionDialog(context);
+                                  return;
+                                }
+                                if (hasTimeOff) {
+                                  _showTimeOffDataDialog(context, doc, index);
                                   return;
                                 }
                                 if (widget.onAssignTimeOff != null) {

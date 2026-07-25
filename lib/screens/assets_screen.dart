@@ -1309,6 +1309,11 @@ onPressed: isSaving
         elevation: 4,
         onSelected: (value) async {
           if (value == 'edit') {
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
             _showEditAssetModal(data);
           } else if (value == 'delete') {
             final confirmed = await DeleteDialog.show(

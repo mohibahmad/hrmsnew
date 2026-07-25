@@ -1650,6 +1650,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             elevation: 4,
             onSelected: (value) {
               if (value == 'edit') {
+                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                if (isGuest) {
+                  showGuestRestrictionDialog(context);
+                  return;
+                }
                 _editHoliday(item);
               } else if (value == 'delete') {
                 _deleteHoliday(item);

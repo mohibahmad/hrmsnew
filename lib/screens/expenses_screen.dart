@@ -1647,6 +1647,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         elevation: 4,
         onSelected: (value) {
           if (value == 'edit') {
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
             _editExpense(doc);
           } else if (value == 'delete') {
             _deleteExpense(docId);
