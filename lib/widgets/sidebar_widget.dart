@@ -232,23 +232,27 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               child: GestureDetector(
                 onTap: widget.onBackToLogin,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.arrow_back,
                         color: Color(0xFFFFFFFF),
-                        size: 22,
+                        size: 20,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          'back_to_login_sidebar'.tr(),
-                          style: TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'SF Pro',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'back_to_login_sidebar'.tr(),
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'SF Pro',
+                            ),
                           ),
                         ),
                       ),
