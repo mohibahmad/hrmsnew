@@ -659,8 +659,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildTab('All', 'all_tab'.tr()),
+            Container(
+              width: 1,
+              height: 24,
+              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+            ),
             _buildTab('Present', 'present_tab'.tr()),
+            Container(
+              width: 1,
+              height: 24,
+              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+            ),
             _buildTab('Absent', 'absent_tab'.tr()),
+            Container(
+              width: 1,
+              height: 24,
+              color: Color(0xFFE0E0E0).withValues(alpha: 0.5),
+            ),
             _buildTab('Leaves', 'leaves_tab'.tr()),
           ],
         ),
