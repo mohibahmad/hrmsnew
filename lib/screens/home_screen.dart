@@ -192,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _totalAttendanceCount = 0;
   int _totalTimeoffCount = 0;
   int _unreadNotifCount = 0;
+  List<Map<String, dynamic>> _allAttendanceDocs = [];
   List<Map<String, dynamic>> _attendanceDocs = [];
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
@@ -344,7 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherWorkersCount = oCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
 
-        _attendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+        _allAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+        _attendanceDocs = _allAttendanceDocs;
 
         _totalAttendanceCount = _attendanceDocs.length;
         _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
@@ -412,25 +414,25 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           setState(() {
             final today = DateTime.now();
-            _attendanceDocs = snap.docs
+            _allAttendanceDocs = snap.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .where((att) {
-                  final createdAt = att['createdAt'];
-                  if (createdAt == null) return false;
-                  DateTime? dt;
-                  if (createdAt is DateTime) {
-                    dt = createdAt;
-                  } else if (createdAt is String) {
-                    dt = DateTime.tryParse(createdAt);
-                  } else if (createdAt is Timestamp) {
-                    dt = createdAt.toDate();
-                  }
-                  return dt != null &&
-                      dt.year == today.year &&
-                      dt.month == today.month &&
-                      dt.day == today.day;
-                })
                 .toList();
+            _attendanceDocs = _allAttendanceDocs.where((att) {
+              final createdAt = att['createdAt'];
+              if (createdAt == null) return false;
+              DateTime? dt;
+              if (createdAt is DateTime) {
+                dt = createdAt;
+              } else if (createdAt is String) {
+                dt = DateTime.tryParse(createdAt);
+              } else if (createdAt is Timestamp) {
+                dt = createdAt.toDate();
+              }
+              return dt != null &&
+                  dt.year == today.year &&
+                  dt.month == today.month &&
+                  dt.day == today.day;
+            }).toList();
             _totalAttendanceCount = _attendanceDocs.length;
           });
         }
@@ -561,6 +563,45 @@ class _HomeScreenState extends State<HomeScreen> {
     _salaryChartPoints = salarySeries.points;
     _totalExpensesSum = expenseSeries.total;
     _totalSalarySum = salarySeries.total;
+  }
+
+  List<Map<String, dynamic>> _getFilteredAttendanceDocs(String period) {
+    final now = DateTime.now();
+    return _allAttendanceDocs.where((att) {
+      final createdAt = att['createdAt'];
+      DateTime? dt;
+      if (createdAt != null) {
+        if (createdAt is DateTime) {
+          dt = createdAt;
+        } else if (createdAt is String) {
+          dt = DateTime.tryParse(createdAt);
+        } else if (createdAt is Timestamp) {
+          dt = createdAt.toDate();
+        }
+      } else {
+        // Fallback for DummyData that lacks createdAt: 
+        // deterministically distribute over the last 90 days based on ID
+        final id = att['id']?.toString() ?? '';
+        final num = int.tryParse(id.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        dt = now.subtract(Duration(days: num % 90));
+      }
+      
+      if (dt == null) return true;
+      final diff = now.difference(dt);
+      switch (period) {
+        case 'Today':
+          return diff.inDays == 0;
+        case 'Week':
+          return diff.inDays <= 7;
+        case 'Month':
+          return diff.inDays <= 30;
+        case '6 Month':
+          return diff.inDays <= 180;
+        case 'Yearly':
+        default:
+          return true;
+      }
+    }).toList();
   }
 
   void _handleLogout() {
@@ -907,7 +948,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               isEmpty:
                                   _totalAttendanceCount == 0 ||
                                   _totalWorkersCount == 0,
-                              attendanceDocs: _attendanceDocs,
+                              attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -916,8 +957,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             isEmpty:
                                 _totalTimeoffCount == 0 ||
                                 _totalWorkersCount == 0,
-                            attendanceDocs: _attendanceDocs,
-                             
+                            attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
                           ),
                         ],
                       );
@@ -934,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   isEmpty:
                                       _totalAttendanceCount == 0 ||
                                       _totalWorkersCount == 0,
-                                  attendanceDocs: _attendanceDocs,
+                                  attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
                                 ),
                               ),
                             ),
@@ -945,8 +985,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 isEmpty:
                                     _totalTimeoffCount == 0 ||
                                     _totalWorkersCount == 0,
-                                attendanceDocs: _attendanceDocs,
-                                 
+                                attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
                               ),
                             ),
                           ],

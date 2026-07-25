@@ -17,10 +17,10 @@ import 'services/firestore_service.dart';
 import 'services/preferences_service.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   await runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      
       _setupErrorHandling();
 
       try {
