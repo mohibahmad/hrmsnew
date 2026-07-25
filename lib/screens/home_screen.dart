@@ -1024,6 +1024,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (daysUntilHoliday < 0) return false;
 
                           switch (_selectedPeriod) {
+                            case 'Today':
+                              return daysUntilHoliday == 0;
                             case 'Week':
                               return daysUntilHoliday <= 7;
                             case 'Month':
