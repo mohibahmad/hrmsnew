@@ -11,6 +11,7 @@ import '../services/payroll_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/guest_restriction.dart';
 import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
@@ -398,7 +399,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: ElevatedButton.icon(
-                            onPressed: _isRunningPayroll ? null : _handlePayAll,
+                            onPressed: _isRunningPayroll ? null : () {
+                                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                                if (isGuest) {
+                                  showGuestRestrictionDialog(context);
+                                  return;
+                                }
+                                _handlePayAll();
+                              },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF27AE60),
                               foregroundColor: const Color(0xFFFFFFFF),
@@ -443,7 +451,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       ElevatedButton.icon(
                         onPressed: _isSalaryDaySaving
                             ? null
-                            : _showSalaryDayDialog,
+                            : () {
+                                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                                if (isGuest) {
+                                  showGuestRestrictionDialog(context);
+                                  return;
+                                }
+                                _showSalaryDayDialog();
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0247C4),
                           foregroundColor: const Color(0xFFFFFFFF),
@@ -1013,11 +1028,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       final isGuest =
                           _authService.currentUser?.isAnonymous ?? false;
                       if (isGuest) {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
+                        showGuestRestrictionDialog(context);
                         return;
                       }
                       if (isPaid && hasData) {

@@ -132,29 +132,55 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
     for (var doc in combined) {
       final action = (doc['action'] ?? '').toString();
-      int remaining;
+      final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
 
+      int usedDays = 0;
+      for (final record in _rawTimeoffDocs) {
+        final rEmail = (record['email'] ?? '').toString().trim().toLowerCase();
+        if (rEmail != workerEmail) continue;
+        final rAction = (record['action'] ?? record['type'] ?? '').toString();
+        if (rAction != action) continue;
+        final rDays = int.tryParse((record['requestedDays'] ?? '0').toString()) ?? 0;
+        usedDays += rDays;
+      }
+
+      int remaining;
       switch (action) {
         case 'Sick Leave':
-          remaining =
-              int.tryParse(
-                (doc['availableSickLeaves'] ?? doc['sickLeaves'] ?? '0').toString(),
-              ) ??
-              0;
+          final avail = doc['availableSickLeaves']?.toString() ?? '';
+          if (avail.isNotEmpty && int.tryParse(avail) != null) {
+            remaining = int.parse(avail);
+          } else {
+            final total = int.tryParse((doc['sickLeaves'] ?? '0').toString()) ?? 0;
+            remaining = (total - usedDays).clamp(0, 999999);
+          }
           break;
         case 'Casual Leave':
-          remaining =
-              int.tryParse(
-                (doc['availableCasualLeaves'] ?? doc['casualLeaves'] ?? '0').toString(),
-              ) ??
-              0;
+          final avail = doc['availableCasualLeaves']?.toString() ?? '';
+          if (avail.isNotEmpty && int.tryParse(avail) != null) {
+            remaining = int.parse(avail);
+          } else {
+            final total = int.tryParse((doc['casualLeaves'] ?? '0').toString()) ?? 0;
+            remaining = (total - usedDays).clamp(0, 999999);
+          }
+          break;
+        case 'Medical Leave':
+          final avail = doc['availableMedicalLeaves']?.toString() ?? '';
+          if (avail.isNotEmpty && int.tryParse(avail) != null) {
+            remaining = int.parse(avail);
+          } else {
+            final total = int.tryParse((doc['medicalLeaves'] ?? '0').toString()) ?? 0;
+            remaining = (total - usedDays).clamp(0, 999999);
+          }
           break;
         default:
-          remaining =
-              int.tryParse(
-                (doc['availableAnnualLeaves'] ?? doc['annualLeaves'] ?? '0').toString(),
-              ) ??
-              0;
+          final avail = doc['availableAnnualLeaves']?.toString() ?? '';
+          if (avail.isNotEmpty && int.tryParse(avail) != null) {
+            remaining = int.parse(avail);
+          } else {
+            final total = int.tryParse((doc['annualLeaves'] ?? '0').toString()) ?? 0;
+            remaining = (total - usedDays).clamp(0, 999999);
+          }
       }
 
       doc['remainingLeaves'] = remaining.toString();
@@ -404,6 +430,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         'Annual Leave' => 'availableAnnualLeaves',
         'Sick Leave' => 'availableSickLeaves',
         'Casual Leave' => 'availableCasualLeaves',
+        'Medical Leave' => 'availableMedicalLeaves',
         _ => null,
       };
 
@@ -1085,6 +1112,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       localizedAction = 'sick_leave_type'.tr();
     } else if (action == 'Casual Leave') {
       localizedAction = 'casual_leave_type'.tr();
+    } else if (action == 'Medical Leave') {
+      localizedAction = 'medical_leave_type'.tr();
     } else if (action == 'Maternity Leave') {
       localizedAction = 'maternity_leave'.tr();
     } else if (action == 'Custom Leave') {

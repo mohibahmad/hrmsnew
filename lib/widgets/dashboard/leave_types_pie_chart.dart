@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -21,6 +22,7 @@ class LeaveTypesPieChart extends StatelessWidget {
   Widget build(BuildContext context) {
     int casualCount = 0;
     int sickCount = 0;
+    int medicalCount = 0;
 
     for (final att in attendanceDocs) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
@@ -30,83 +32,39 @@ class LeaveTypesPieChart extends StatelessWidget {
         casualCount++;
       } else if (type == 'Sick Leave') {
         sickCount++;
+      } else if (type == 'Medical Leave') {
+        medicalCount++;
       }
     }
 
-    final int total = casualCount + sickCount;
+    final int total = casualCount + sickCount + medicalCount;
     final bool reallyEmpty = isEmpty || total == 0;
 
     final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0;
     final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0;
+    final double medicalPercent = total > 0 ? (medicalCount / total) * 100 : 0;
 
     final double casualVal = total > 0 ? casualPercent : 0;
     final double sickVal = total > 0 ? sickPercent : 0;
+    final double medicalVal = total > 0 ? medicalPercent : 0;
 
-    final double totalValue = casualVal + sickVal;
+    final double totalValue = casualVal + sickVal + medicalVal;
     final double casualSweep = totalValue > 0
         ? (casualVal / totalValue) * 360
         : 0;
     final double sickSweep = totalValue > 0
         ? (sickVal / totalValue) * 360
         : 0;
-
-    double normalizeAngle(double a) {
-      double val = a % 360;
-      if (val < 0) val += 360;
-      return val;
-    }
-
-    Offset getCircumferencePoint(double angleDegrees) {
-      final double rad = angleDegrees * math.pi / 180;
-      return Offset(190 + 45 * math.cos(rad), 130 + 45 * math.sin(rad));
-    }
+    final double medicalSweep = totalValue > 0
+        ? (medicalVal / totalValue) * 360
+        : 0;
 
     final double casualStartAngle = 108;
-    final double casualEndAngle = 108 + casualSweep;
-    final double sickStartAngle = casualEndAngle;
-    final double sickEndAngle = casualEndAngle + sickSweep;
-
-    double getClosestAngleInSlice(
-      double startAngle,
-      double endAngle,
-      double targetAngle,
-      double padding,
-    ) {
-      double sweep = endAngle - startAngle;
-      if (sweep < 0) sweep += 360;
-      if (sweep <= 2 * padding) {
-        return normalizeAngle(startAngle + sweep / 2);
-      }
-      double startLimit = startAngle + padding;
-      double endLimit = startAngle + sweep - padding;
-      double t = (targetAngle - startLimit) % 360;
-      if (t < 0) t += 360;
-      double allowedSweep = endLimit - startLimit;
-      if (t <= allowedSweep) {
-        return normalizeAngle(startLimit + t);
-      } else {
-        double distToStart = 360 - t;
-        double distToEnd = t - allowedSweep;
-        if (distToStart < distToEnd) {
-          return normalizeAngle(startLimit);
-        } else {
-          return normalizeAngle(endLimit);
-        }
-      }
-    }
-
-    final double casualLineAngle = getClosestAngleInSlice(
-      casualStartAngle,
-      casualEndAngle,
-      0.0,
-      casualSweep * 0.35,
-    );
-    final double sickLineAngle = getClosestAngleInSlice(
-      sickStartAngle,
-      sickEndAngle,
-      120.0,
-      sickSweep * 0.35,
-    );
+    final double casualMidAngle = casualStartAngle + casualSweep / 2;
+    final double sickStartAngle = casualStartAngle + casualSweep;
+    final double sickMidAngle = sickStartAngle + sickSweep / 2;
+    final double medicalStartAngle = sickStartAngle + sickSweep;
+    final double medicalMidAngle = medicalStartAngle + medicalSweep / 2;
 
     return Card(
       elevation: 0,
@@ -133,95 +91,53 @@ class LeaveTypesPieChart extends StatelessWidget {
                     child: SizedBox(
                       width: 380,
                       height: 260,
-                      child: TweenAnimationBuilder<double>(
-                        key: const ValueKey('entrance'),
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 700),
-                        curve: Curves.easeOutQuart,
-                        builder: (context, value, childWidget) {
-                          return Opacity(opacity: value, child: childWidget);
-                        },
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 500),
-                          switchInCurve: Curves.easeInOutCubic,
-                          switchOutCurve: Curves.easeInOutCubic,
-                          transitionBuilder:
-                              (Widget child, Animation<double> animation) {
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: child,
-                                );
-                              },
-                          child: Stack(
-                            key: ValueKey(period),
-                            alignment: Alignment.center,
-                            children: [
-                              PieChart(
-                                PieChartData(
-                                  sectionsSpace: 0.0,
-                                  centerSpaceRadius: 0,
-                                  startDegreeOffset: 108,
-                                  sections: [
-                                    if (casualVal > 0)
-                                      PieChartSectionData(
-                                        color: const Color(0xFF84A9FF),
-                                        value: casualVal,
-                                        radius: 85,
-                                        showTitle: false,
-                                      ),
-                                    if (sickVal > 0)
-                                      PieChartSectionData(
-                                        color: const Color(0xFFFF4A5E),
-                                        value: sickVal,
-                                        radius: 85,
-                                        showTitle: false,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              CustomPaint(
-                                size: const Size(380, 260),
-                                painter: CalloutLinesPainter(
-                                  casualPath: casualVal > 0
-                                      ? [
-                                          getCircumferencePoint(casualLineAngle),
-                                          casualLineAngle < 180
-                                              ? Offset(330, 110)
-                                              : Offset(50, 60),
-                                          casualLineAngle < 180
-                                              ? Offset(370, 110)
-                                              : Offset(30, 60),
-                                        ]
-                                      : const [],
-                                  sickPath: sickVal > 0
-                                      ? [
-                                          getCircumferencePoint(sickLineAngle),
-                                          const Offset(135, 245),
-                                          const Offset(80, 245),
-                                        ]
-                                      : const [],
-                                ),
-                              ),
-                              if (casualVal > 0)
-                                Positioned(
-                                  right: casualLineAngle < 180 ? 40 : null,
-                                  left: casualLineAngle < 180 ? null : 40,
-                                  top: 42,
-                                  child: ChartLabel(
-                                    '${casualVal.toInt()}%',
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          PieChart(
+                            PieChartData(
+                              sectionsSpace: 0.0,
+                              centerSpaceRadius: 0,
+                              startDegreeOffset: 108,
+                              sections: [
+                                if (casualVal > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFF84A9FF),
+                                    value: casualVal,
+                                    radius: 85,
+                                    showTitle: false,
                                   ),
-                                ),
-                              if (sickVal > 0)
-                                Positioned(
-                                  left: 90,
-                                  bottom: 18,
-                                  child: ChartLabel(
-                                    '${sickVal.toInt()}%',
+                                if (sickVal > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFFFF4A5E),
+                                    value: sickVal,
+                                    radius: 85,
+                                    showTitle: false,
                                   ),
-                                ),
-                            ],
+                                if (medicalVal > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFF97FFA9),
+                                    value: medicalVal,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
+                          CustomPaint(
+                            size: const Size(380, 260),
+                            painter: _DonutCalloutPainter(
+                              center: const Offset(190, 130),
+                              radius: 85,
+                              casualVal: casualVal,
+                              sickVal: sickVal,
+                              medicalVal: medicalVal,
+                              casualMidAngle: casualMidAngle,
+                              sickMidAngle: sickMidAngle,
+                              medicalMidAngle: medicalMidAngle,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -247,6 +163,17 @@ class LeaveTypesPieChart extends StatelessWidget {
                             'sick_leave'.tr(
                               namedArgs: {
                                 'value': '${sickVal.toInt()}',
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: buildLegendItem(
+                            const Color(0xFF97FFA9),
+                            'medical_leave'.tr(
+                              namedArgs: {
+                                'value': '${medicalVal.toInt()}',
                               },
                             ),
                           ),
@@ -312,59 +239,135 @@ class LeaveTypesPieChart extends StatelessWidget {
   }
 }
 
-class ChartLabel extends StatelessWidget {
-  final String text;
-  const ChartLabel(this.text);
+class _DonutCalloutPainter extends CustomPainter {
+  final Offset center;
+  final double radius;
+  final double casualVal;
+  final double sickVal;
+  final double medicalVal;
+  final double casualMidAngle;
+  final double sickMidAngle;
+  final double medicalMidAngle;
 
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-        color: Color(0xFF000000),
-        fontFamily: 'SF Pro Display',
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
-class CalloutLinesPainter extends CustomPainter {
-  final List<Offset> casualPath;
-  final List<Offset> sickPath;
-
-  CalloutLinesPainter({
-    required this.casualPath,
-    required this.sickPath,
+  const _DonutCalloutPainter({
+    required this.center,
+    required this.radius,
+    required this.casualVal,
+    required this.sickVal,
+    required this.medicalVal,
+    required this.casualMidAngle,
+    required this.sickMidAngle,
+    required this.medicalMidAngle,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final linePaint = Paint()
       ..color = const Color(0xFF000000)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
-    _drawOffsetPath(canvas, paint, casualPath);
-    _drawOffsetPath(canvas, paint, sickPath);
-  }
+    final leftLabels = <Map<String, dynamic>>[];
+    final rightLabels = <Map<String, dynamic>>[];
 
-  void _drawOffsetPath(Canvas canvas, Paint paint, List<Offset> points) {
-    if (points.length < 2) return;
-    final path = Path();
-    path.moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
+    void processCallout(String type, double val, double midAngle) {
+      if (val <= 0) return;
+
+      // Convert degrees to radians (fl_chart: 0 is right, increasing clockwise)
+      final angleRad = midAngle * math.pi / 180.0;
+      final innerRadius = radius - 35.0; // Start line deeper inside the slice
+      final p1 = Offset(
+        center.dx + innerRadius * math.cos(angleRad),
+        center.dy + innerRadius * math.sin(angleRad),
+      );
+
+      final elbowRadius = radius + 20;
+      final p2 = Offset(
+        center.dx + elbowRadius * math.cos(angleRad),
+        center.dy + elbowRadius * math.sin(angleRad),
+      );
+
+      final isRightSide = math.cos(angleRad) >= 0;
+      if (isRightSide) {
+        rightLabels.add({'type': type, 'val': val, 'p1': p1, 'p2': p2});
+      } else {
+        leftLabels.add({'type': type, 'val': val, 'p1': p1, 'p2': p2});
+      }
     }
-    canvas.drawPath(path, paint);
+
+    processCallout('casual', casualVal, casualMidAngle);
+    processCallout('sick', sickVal, sickMidAngle);
+    processCallout('medical', medicalVal, medicalMidAngle);
+
+    // Sort labels vertically for anti-collision
+    leftLabels.sort((a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy));
+    rightLabels.sort((a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy));
+
+    void drawLabels(List<Map<String, dynamic>> labels, bool isRightSide) {
+      final lineExtension = 85.0;
+      double lastY = -9999;
+      final minSpacing = 35.0; // minimum vertical gap between labels
+
+      for (final labelData in labels) {
+        final type = labelData['type'] as String;
+        final val = labelData['val'] as double;
+        final p1 = labelData['p1'] as Offset;
+        var p2 = labelData['p2'] as Offset;
+
+        // Move the casual (blue) line down to make it steeper/lower as requested
+        if (type == 'casual') {
+          p2 = Offset(p2.dx, p2.dy + 40);
+        }
+        
+        // Move the medical (green) line down similarly
+        if (type == 'medical') {
+          p2 = Offset(p2.dx, p2.dy + 40);
+        }
+
+        // Apply anti-collision shift if necessary
+        if (p2.dy < lastY + minSpacing) {
+          p2 = Offset(p2.dx, lastY + minSpacing);
+        }
+        lastY = p2.dy;
+
+        final p3 = Offset(
+          p2.dx + (isRightSide ? lineExtension : -lineExtension),
+          p2.dy,
+        );
+
+        final path = Path()
+          ..moveTo(p1.dx, p1.dy)
+          ..lineTo(p2.dx, p2.dy)
+          ..lineTo(p3.dx, p3.dy);
+        canvas.drawPath(path, linePaint);
+
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: '${val.toInt()}%',
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        );
+        textPainter.layout();
+
+        // Center text horizontally over the horizontal segment
+        final centerX = (p2.dx + p3.dx) / 2;
+        final labelX = centerX - textPainter.width / 2;
+        final labelY = p2.dy - textPainter.height - 4; // padding above the line
+
+        textPainter.paint(canvas, Offset(labelX, labelY));
+      }
+    }
+
+    drawLabels(leftLabels, false);
+    drawLabels(rightLabels, true);
   }
 
   @override
-  bool shouldRepaint(covariant CalloutLinesPainter oldDelegate) {
-    return oldDelegate.casualPath != casualPath ||
-        oldDelegate.sickPath != sickPath;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

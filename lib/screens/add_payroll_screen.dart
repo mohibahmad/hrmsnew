@@ -10,6 +10,7 @@ import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/guest_restriction.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
 import 'package:provider/provider.dart';
@@ -510,7 +511,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
             const SizedBox(width: 16),
             ElevatedButton(
-              onPressed: _isSaving ? null : _handleSave,
+              onPressed: _isSaving ? null : () {
+                final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                if (isGuest) {
+                  showGuestRestrictionDialog(context);
+                  return;
+                }
+                _handleSave();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0B50C3),
                 foregroundColor: Colors.white,

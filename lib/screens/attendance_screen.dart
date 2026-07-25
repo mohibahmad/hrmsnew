@@ -22,6 +22,7 @@ import '../utils/image_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/guest_restriction.dart';
 import 'package:provider/provider.dart';
 
 const Color primaryBlue = Color(0xFF0B51C1);
@@ -500,6 +501,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           height: 50,
           child: ElevatedButton(
             onPressed: () {
+              final isGuest = _authService.currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
               if (widget.onWorkersAttendanceTap != null) {
                 widget.onWorkersAttendanceTap!();
               } else {

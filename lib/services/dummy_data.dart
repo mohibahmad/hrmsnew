@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class DummyData {
   static const _dataVersionKey = 'dummy_data_version';
-  static const _currentDataVersion = 2;
+  static const _currentDataVersion = 4;
 
   static Future<void> loadFromPrefs() async {
     try {
@@ -158,6 +158,10 @@ class DummyData {
             w['casualLeaves'].toString().trim().isEmpty) {
           w['casualLeaves'] = '10';
         }
+        if (w['medicalLeaves'] == null ||
+            w['medicalLeaves'].toString().trim().isEmpty) {
+          w['medicalLeaves'] = '5';
+        }
         if (w['leavesUsed'] == null ||
             w['leavesUsed'].toString().trim().isEmpty) {
           w['leavesUsed'] = '0';
@@ -200,6 +204,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -219,6 +224,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -238,6 +244,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -257,6 +264,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -276,6 +284,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -295,6 +304,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -314,6 +324,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -333,6 +344,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -352,6 +364,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -371,6 +384,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -390,6 +404,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -409,6 +424,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -428,6 +444,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -447,6 +464,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/boy.png',
     },
@@ -466,6 +484,7 @@ class DummyData {
       'annualLeaves': '12',
       'sickLeaves': '8',
       'casualLeaves': '10',
+      'medicalLeaves': '5',
       'leavesUsed': '0',
       'profileImage': 'assets/imageplaceholder.png',
     },
@@ -721,6 +740,7 @@ class DummyData {
       'email': 'david.brown@stark.com',
       'role': 'Marketing Specialist',
       'status': 'Leave',
+      'type': 'Casual Leave',
       'attendanceType': 'Remote',
       'workType': 'Part Time',
       'profileImage': 'assets/imageplaceholder.png',
@@ -812,9 +832,11 @@ class DummyData {
       'name': 'Henry Thompson',
       'email': 'henry.thompson@stark.com',
       'role': 'Data Scientist',
-      'status': 'Absent',
+      'status': 'Leave',
+      'type': 'Medical Leave',
       'attendanceType': 'Remote',
       'workType': 'Contract',
+      'desc': 'Medical leave for surgery recovery, doctor recommended 1 week rest.',
       'profileImage': 'assets/imageplaceholder.png',
     },
     {
@@ -823,8 +845,10 @@ class DummyData {
       'email': 'harper.garcia@stark.com',
       'role': 'Technical Writer',
       'status': 'Leave',
+      'type': 'Medical Leave',
       'attendanceType': 'Remote',
       'workType': 'Part Time',
+      'desc': 'Medical leave for dental surgery, doctor advised 3 days rest.',
       'profileImage': 'assets/imageplaceholder.png',
     },
   ];
@@ -1186,6 +1210,18 @@ class DummyData {
       'endDate': '2026-07-11',
       'requestedDays': 2,
       'profileImage': 'assets/boy.png',
+    },
+    {
+      'id': 'dummy_t13',
+      'name': 'Henry Thompson',
+      'email': 'henry.thompson@stark.com',
+      'position': 'Data Scientist',
+      'contact': '+1 555-0114',
+      'action': 'Medical Leave',
+      'startDate': '2026-07-14',
+      'endDate': '2026-07-18',
+      'requestedDays': 5,
+      'profileImage': 'assets/imageplaceholder.png',
     },
   ];
 

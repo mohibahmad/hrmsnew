@@ -579,9 +579,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }) {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      showGuestRestrictionDialog(context);
       return;
     }
     _showMarkAttendanceDialog(

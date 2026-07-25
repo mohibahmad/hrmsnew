@@ -8,6 +8,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/guest_restriction.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
@@ -262,6 +263,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         typeKey = 'Sick Leave';
       case 'Casual Leave':
         typeKey = 'Casual Leave';
+      case 'Medical Leave':
+        typeKey = 'Medical Leave';
       case 'Custom Leave':
         typeKey = 'Custom Leave';
       default:
@@ -287,21 +290,36 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   int get _availableDays {
     if (_selectedWorker == null) return 0;
     if (_timeOffType == 'Custom Leave') return 999;
-    String key;
 
+    final String? availKey;
+    final String configKey;
 
     switch (_timeOffType) {
       case 'Annual Leave':
-        key = 'annualLeaves';
+        availKey = 'availableAnnualLeaves';
+        configKey = 'annualLeaves';
       case 'Sick Leave':
-        key = 'sickLeaves';
+        availKey = 'availableSickLeaves';
+        configKey = 'sickLeaves';
       case 'Casual Leave':
-        key = 'casualLeaves';
+        availKey = 'availableCasualLeaves';
+        configKey = 'casualLeaves';
+      case 'Medical Leave':
+        availKey = 'availableMedicalLeaves';
+        configKey = 'medicalLeaves';
       default:
         return 0;
     }
 
-    String raw = (_selectedWorker![key] ?? '').toString();
+    if (availKey != null) {
+      final raw = (_selectedWorker![availKey] ?? '').toString();
+      if (raw.isNotEmpty) {
+        final parsed = int.tryParse(raw);
+        if (parsed != null) return parsed < 0 ? 0 : parsed;
+      }
+    }
+
+    String raw = (_selectedWorker![configKey] ?? '').toString();
 
     if (raw.isEmpty) {
 
@@ -611,7 +629,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
               onPressed: (_selectedWorker == null || _isLoading)
                   ? null
-                  : () => _handleSave(),
+                  : () {
+                      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                      if (isGuest) {
+                        showGuestRestrictionDialog(context);
+                        return;
+                      }
+                      _handleSave();
+                    },
               child: Text(
                 (_editingId == null ? 'assign' : 'save').tr(),
                 style: const TextStyle(
@@ -696,6 +721,17 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                     value: 'Casual Leave',
                     child: Text(
                       'casual_leave_type'.tr(),
+                      style: const TextStyle(
+                        fontFamily: 'SF Pro Display',
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Medical Leave',
+                    child: Text(
+                      'medical_leave_type'.tr(),
                       style: const TextStyle(
                         fontFamily: 'SF Pro Display',
                         fontSize: 14,

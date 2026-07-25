@@ -137,8 +137,8 @@ Future<void> _initializeMacOSWindow() async {
     await windowManager.ensureInitialized();
 
     const windowOptions = WindowOptions(
-      size: Size(1295, 800),
-      minimumSize: Size(1000, 650),
+      size: Size(1440, 900),
+      minimumSize: Size(1280, 800),
       center: true,
       title: 'HRMS',
       titleBarStyle: TitleBarStyle.normal,
