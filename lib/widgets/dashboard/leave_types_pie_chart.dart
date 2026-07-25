@@ -144,39 +144,49 @@ class LeaveTypesPieChart extends StatelessWidget {
                   const SizedBox(height: 30),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Row(
+                    child: Column(
                       children: [
-                        Expanded(
-                          child: buildLegendItem(
-                            const Color(0xFF84A9FF),
-                            'casual_leave'.tr(
-                              namedArgs: {
-                                'value': '${casualVal.toInt()}',
-                              },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: buildLegendItem(
+                                const Color(0xFF84A9FF),
+                                'casual_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${casualVal.toInt()}',
+                                  },
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: buildLegendItem(
+                                const Color(0xFFFF4A5E),
+                                'sick_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${sickVal.toInt()}',
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: buildLegendItem(
-                            const Color(0xFFFF4A5E),
-                            'sick_leave'.tr(
-                              namedArgs: {
-                                'value': '${sickVal.toInt()}',
-                              },
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: buildLegendItem(
+                                const Color(0xFF97FFA9),
+                                'medical_leave'.tr(
+                                  namedArgs: {
+                                    'value': '${medicalVal.toInt()}',
+                                  },
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: buildLegendItem(
-                            const Color(0xFF97FFA9),
-                            'medical_leave'.tr(
-                              namedArgs: {
-                                'value': '${medicalVal.toInt()}',
-                              },
-                            ),
-                          ),
+                            const SizedBox(width: 16),
+                            const Spacer(), // Keeps alignment same as above
+                          ],
                         ),
                       ],
                     ),
@@ -281,13 +291,16 @@ class _DonutCalloutPainter extends CustomPainter {
         center.dy + innerRadius * math.sin(angleRad),
       );
 
-      final elbowRadius = radius + 20;
-      final p2 = Offset(
-        center.dx + elbowRadius * math.cos(angleRad),
-        center.dy + elbowRadius * math.sin(angleRad),
-      );
-
+      // Professional 45-degree diagonal routing algorithm
       final isRightSide = math.cos(angleRad) >= 0;
+      final isTopSide = math.sin(angleRad) < 0;
+      
+      final double D = 55.0; // Increased diagonal extension length to push lines further away
+      final double dx = isRightSide ? D : -D;
+      final double dy = isTopSide ? -D : D;
+      
+      final p2 = Offset(p1.dx + dx, p1.dy + dy);
+
       if (isRightSide) {
         rightLabels.add({'type': type, 'val': val, 'p1': p1, 'p2': p2});
       } else {
@@ -304,7 +317,7 @@ class _DonutCalloutPainter extends CustomPainter {
     rightLabels.sort((a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy));
 
     void drawLabels(List<Map<String, dynamic>> labels, bool isRightSide) {
-      final lineExtension = 85.0;
+      final lineExtension = 65.0;
       double lastY = -9999;
       final minSpacing = 35.0; // minimum vertical gap between labels
 
@@ -313,16 +326,6 @@ class _DonutCalloutPainter extends CustomPainter {
         final val = labelData['val'] as double;
         final p1 = labelData['p1'] as Offset;
         var p2 = labelData['p2'] as Offset;
-
-        // Move the casual (blue) line down to make it steeper/lower as requested
-        if (type == 'casual') {
-          p2 = Offset(p2.dx, p2.dy + 40);
-        }
-        
-        // Move the medical (green) line down similarly
-        if (type == 'medical') {
-          p2 = Offset(p2.dx, p2.dy + 40);
-        }
 
         // Apply anti-collision shift if necessary
         if (p2.dy < lastY + minSpacing) {

@@ -758,7 +758,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           .map((d) => {'key': d, 'label': d}),
     ];
     return Container(
-      width: 550,
+      width: 640,
       height: 50,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

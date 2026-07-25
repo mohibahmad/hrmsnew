@@ -702,7 +702,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
   Widget _buildFilterTabs() {
     return Container(
-      width: 550,
+      width: 640,
       height: 50,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
