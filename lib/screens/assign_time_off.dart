@@ -35,7 +35,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _isLoading = false;
-  String _timeOffType = 'Annual Leave';
+  String _timeOffType = 'Sick Leave';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   DateTime _calendarMonth = DateTime.now();
@@ -94,7 +94,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _selectedDates = <DateTime>{};
       _startDate = DateTime.now();
       _endDate = DateTime.now();
-      _timeOffType = 'Annual Leave';
+      _timeOffType = 'Sick Leave';
       _notesController.clear();
     }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
@@ -255,21 +255,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final workerEmail = (_selectedWorker!['email'] ?? '')
         .toString()
         .toLowerCase();
-    String typeKey;
-    switch (_timeOffType) {
-      case 'Annual Leave':
-        typeKey = 'Annual Leave';
-      case 'Sick Leave':
-        typeKey = 'Sick Leave';
-      case 'Casual Leave':
-        typeKey = 'Casual Leave';
-      case 'Medical Leave':
-        typeKey = 'Medical Leave';
-      case 'Custom Leave':
-        typeKey = 'Custom Leave';
-      default:
-        return 0;
-    }
+    // All leave types (Sick, Casual, Medical, Annual) come from Annual Leave balance.
+    // Count all paid leave types except 'Custom Leave'.
     int used = 0;
     for (final record in _timeoffRecords) {
       if (_editingId != null && record['id']?.toString() == _editingId) {
@@ -278,7 +265,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final recordEmail = (record['email'] ?? '').toString().toLowerCase();
       if (recordEmail != workerEmail) continue;
       final action = (record['action'] ?? record['type'] ?? '').toString();
-      if (action != typeKey) continue;
+      if (action == 'Custom Leave') continue;
       final requestedDays = record['requestedDays'];
       if (requestedDays is int) {
         used += requestedDays;
@@ -294,19 +281,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     final String? availKey;
     final String configKey;
 
+    // All leave types (Sick, Casual, Medical, Annual) use Annual Leave balance.
     switch (_timeOffType) {
       case 'Annual Leave':
+      case 'Sick Leave':
+      case 'Casual Leave':
+      case 'Medical Leave':
         availKey = 'availableAnnualLeaves';
         configKey = 'annualLeaves';
-      case 'Sick Leave':
-        availKey = 'availableSickLeaves';
-        configKey = 'sickLeaves';
-      case 'Casual Leave':
-        availKey = 'availableCasualLeaves';
-        configKey = 'casualLeaves';
-      case 'Medical Leave':
-        availKey = 'availableMedicalLeaves';
-        configKey = 'medicalLeaves';
       default:
         return 0;
     }
@@ -322,29 +304,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     String raw = (_selectedWorker![configKey] ?? '').toString();
 
     if (raw.isEmpty) {
-
-      final aliases = switch (_timeOffType) {
-        'Annual Leave' => const [
-          'annual_leave',
-          'annualLeave',
-          'annual_leave_days',
-          'annualLeaves',
-        ],
-        'Sick Leave' => const [
-          'sick_leave',
-          'sickLeave',
-          'sick_leave_days',
-          'sickLeaves',
-        ],
-        'Casual Leave' => const [
-          'casual_leave',
-          'casualLeave',
-          'casual_leave_days',
-          'casualLeaves',
-        ],
-        _ => const [],
-      };
-
+      // All leave types use annual leave aliases.
+      const aliases = [
+        'annual_leave',
+        'annualLeave',
+        'annual_leave_days',
+        'annualLeaves',
+      ];
       for (final a in aliases) {
         final v = _selectedWorker![a];
         if (v != null && v.toString().trim().isNotEmpty) {
@@ -695,17 +661,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   color: Colors.black,
                 ),
                 items: [
-                  DropdownMenuItem(
-                    value: 'Annual Leave',
-                    child: Text(
-                      'annual_leave'.tr(),
-                      style: const TextStyle(
-                        fontFamily: 'SF Pro Display',
-                        fontSize: 14,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
                   DropdownMenuItem(
                     value: 'Sick Leave',
                     child: Text(
@@ -1375,37 +1330,23 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         final remainingLeaves = updatedBalance.remaining;
         final Map<String, dynamic> payrollUpdate = {};
 
-        if (_timeOffType == 'Annual Leave') {
-          payrollUpdate['availableAnnualLeaves'] = remainingLeaves.toString();
-          payrollUpdate['leavesUsed'] = updatedBalance.used.toString();
-        } else if (_timeOffType == 'Sick Leave') {
-          payrollUpdate['availableSickLeaves'] = remainingLeaves.toString();
-        } else if (_timeOffType == 'Casual Leave') {
-          payrollUpdate['availableCasualLeaves'] = remainingLeaves.toString();
-        }
+        // All leave types deduct from Annual Leave balance.
+        payrollUpdate['availableAnnualLeaves'] = remainingLeaves.toString();
+        payrollUpdate['leavesUsed'] = updatedBalance.used.toString();
 
         if (isGuest) {
-
           final workerIdx = DummyData.workers.indexWhere(
             (w) => w['email'] == _selectedWorker!['email'],
           );
           if (workerIdx != -1) {
-            if (_timeOffType == 'Annual Leave') {
-              DummyData.workers[workerIdx]['availableAnnualLeaves'] =
-                  remainingLeaves.toString();
-              DummyData.workers[workerIdx]['leavesUsed'] = updatedBalance.used
-                  .toString();
-            } else if (_timeOffType == 'Sick Leave') {
-              DummyData.workers[workerIdx]['availableSickLeaves'] =
-                  remainingLeaves.toString();
-            } else if (_timeOffType == 'Casual Leave') {
-              DummyData.workers[workerIdx]['availableCasualLeaves'] =
-                  remainingLeaves.toString();
-            }
+            // All leave types deduct from Annual Leave balance.
+            DummyData.workers[workerIdx]['availableAnnualLeaves'] =
+                remainingLeaves.toString();
+            DummyData.workers[workerIdx]['leavesUsed'] = updatedBalance.used
+                .toString();
             await DummyData.saveToPrefs();
           }
         } else {
-
           final workerId = (_selectedWorker!['id'] ?? '').toString();
           if (workerId.isNotEmpty && payrollUpdate.isNotEmpty) {
             await _firestore.updateWorkerLeaves(

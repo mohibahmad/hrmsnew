@@ -314,24 +314,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
       _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
       _combinePayroll();
     }
-
-    // Check if today is salary day and offer auto-run.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAutoSalaryDay();
-    });
-  }
-
-  Future<void> _checkAutoSalaryDay() async {
-    final triggered = await SalaryDayScheduler().checkAndRunIfDue(context);
-    if (triggered && mounted) {
-      // Reload data after auto-run.
-      FlashySnackBar.show(
-        context,
-        message: 'payroll_run_complete'.tr(
-          namedArgs: {'count': '${_filteredEmployees.length}'},
-        ),
-      );
-    }
   }
 
   Future<void> _handlePayAll() async {
@@ -870,132 +852,150 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   Widget _buildEmployeeRow(Map<String, dynamic> doc, int index) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FA),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 24.0),
-              child: Row(
-                children: [
-                  WorkerAvatar(
-                    imageUrl: doc['profileImage']?.toString(),
-                    name: (doc['name'] ?? '').toString(),
-                    size: 40,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          (doc['name'] ?? '').toString(),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          (doc['email'] ?? '').toString(),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ],
+    return GestureDetector(
+      onTap: () {
+        final isGuest = _authService.currentUser?.isAnonymous ?? false;
+        if (isGuest) {
+          showGuestRestrictionDialog(context);
+          return;
+        }
+        final isPaid = (doc['status'] ?? '').toString().toLowerCase() == 'paid';
+        final hasData = (doc['totalWorkDays'] ?? '').toString().isNotEmpty;
+        if (isPaid && hasData) {
+          _showPayrollDataDialog(context, doc, index);
+        } else {
+          setState(() {
+            _isAddingPayroll = true;
+            _workerForPayroll = doc;
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F8FA),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24.0),
+                child: Row(
+                  children: [
+                    WorkerAvatar(
+                      imageUrl: doc['profileImage']?.toString(),
+                      name: (doc['name'] ?? '').toString(),
+                      size: 40,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 24.0),
-              child: Text(
-                (doc['position'] ?? '').toString(),
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.black,
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 2,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 24.0),
-              child: Text(
-                (doc['phone'] ?? doc['contact'] ?? '').toString(),
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.black,
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 1,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Builder(
-                builder: (context) {
-                  final isPaid =
-                      (doc['status'] ?? '').toString().toLowerCase() == 'paid';
-                  final hasData = (doc['totalWorkDays'] ?? '')
-                      .toString()
-                      .isNotEmpty;
-                  return InkWell(
-                    onTap: () {
-                      final isGuest =
-                          _authService.currentUser?.isAnonymous ?? false;
-                      if (isGuest) {
-                        showGuestRestrictionDialog(context);
-                        return;
-                      }
-                      if (isPaid && hasData) {
-                        _showPayrollDataDialog(context, doc, index);
-                      } else {
-                        setState(() {
-                          _isAddingPayroll = true;
-                          _workerForPayroll = doc;
-                        });
-                      }
-                    },
-                    mouseCursor: SystemMouseCursors.click,
-                    borderRadius: BorderRadius.circular(6),
-                    child: Text(
-                      isPaid ? 'paid'.tr() : 'pay'.tr(),
-                      style: TextStyle(
-                        color: isPaid
-                            ? const Color(0xFF27AE60)
-                            : const Color(0xFFE74C3C),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'SF Pro Display',
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (doc['name'] ?? '').toString(),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            (doc['email'] ?? '').toString(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24.0),
+                child: Text(
+                  (doc['position'] ?? '').toString(),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 2,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 24.0),
+                child: Text(
+                  (doc['phone'] ?? doc['contact'] ?? '').toString(),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Builder(
+                  builder: (context) {
+                    final isPaid =
+                        (doc['status'] ?? '').toString().toLowerCase() == 'paid';
+                    final hasData = (doc['totalWorkDays'] ?? '')
+                        .toString()
+                        .isNotEmpty;
+                    return InkWell(
+                      onTap: () {
+                        final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                        if (isGuest) {
+                          showGuestRestrictionDialog(context);
+                          return;
+                        }
+                        if (isPaid && hasData) {
+                          _showPayrollDataDialog(context, doc, index);
+                        } else {
+                          setState(() {
+                            _isAddingPayroll = true;
+                            _workerForPayroll = doc;
+                          });
+                        }
+                      },
+                      mouseCursor: SystemMouseCursors.click,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Text(
+                        isPaid ? 'paid'.tr() : 'pay'.tr(),
+                        style: TextStyle(
+                          color: isPaid
+                              ? const Color(0xFF27AE60)
+                              : const Color(0xFFE74C3C),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -783,6 +783,15 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                 final bool hasTimeOff = action.isNotEmpty;
                 action = hasTimeOff ? 'assigned'.tr() : 'assign'.tr();
                 return GestureDetector(
+                  onTap: () {
+                    final isGuest =
+                        _authService.currentUser?.isAnonymous ?? false;
+                    if (isGuest) {
+                      showGuestRestrictionDialog(context);
+                      return;
+                    }
+                    _showTimeOffDataDialog(context, doc, index);
+                  },
                   onLongPress: (doc['action'] ?? '').toString().isNotEmpty
                       ? () => _handleDelete(doc)
                       : null,
@@ -985,6 +994,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         .toString();
     final String notes = (data['notes'] ?? '').toString();
     final String remainingLeaves = (data['remainingLeaves'] ?? '0').toString();
+    final String annualLeavesBalance = (data['availableAnnualLeaves'] ?? data['annualLeaves'] ?? '0').toString();
 
     String localizedAction = action;
     if (action == 'Annual Leave') {
@@ -1187,7 +1197,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     size: 20,
                                   ),
                                   title: 'annual_leaves'.tr(),
-                                  value: remainingLeaves,
+                                  value: annualLeavesBalance,
                                 ),
                               ),
                             ],

@@ -7,31 +7,28 @@ import '../services/auth_service.dart';
 
 class LeaveBalanceHelper {
   /// Maps a leave type label to its running-balance field name.
+  /// All leave types (Sick, Casual, Medical) deduct from Annual Leave balance.
   static const Map<String, String> availKeyForType = {
-    'Sick Leave': 'availableSickLeaves',
-    'Casual Leave': 'availableCasualLeaves',
+    'Sick Leave': 'availableAnnualLeaves',
+    'Casual Leave': 'availableAnnualLeaves',
     'Annual Leave': 'availableAnnualLeaves',
-    'Medical Leave': 'availableMedicalLeaves',
+    'Medical Leave': 'availableAnnualLeaves',
   };
 
   /// Maps a leave type label to its configured allowance field name.
+  /// All leave types use the Annual Leave allowance.
   static const Map<String, String> configKeyForType = {
-    'Sick Leave': 'sickLeaves',
-    'Casual Leave': 'casualLeaves',
+    'Sick Leave': 'annualLeaves',
+    'Casual Leave': 'annualLeaves',
     'Annual Leave': 'annualLeaves',
-    'Medical Leave': 'medicalLeaves',
+    'Medical Leave': 'annualLeaves',
   };
 
   static int _toInt(dynamic v) => int.tryParse(v?.toString() ?? '0') ?? 0;
 
-  /// Total leave allowance (annual + casual + sick + medical) as configured when the
-  /// worker was added individually or imported via bulk upload.
+  /// Total leave allowance - all leave types come from Annual Leave.
   static int totalLeaveAllowance(Map<String, dynamic> worker) {
-    final annual = _toInt(worker['annualLeaves']);
-    final casual = _toInt(worker['casualLeaves']);
-    final sick = _toInt(worker['sickLeaves']);
-    final medical = _toInt(worker['medicalLeaves']);
-    return annual + casual + sick + medical;
+    return _toInt(worker['annualLeaves']);
   }
 
   /// Remaining paid leave balance for a specific [leaveType]. Prefers the
@@ -58,12 +55,11 @@ class LeaveBalanceHelper {
     return 0;
   }
 
-  /// True when the worker has no paid leave remaining for any type.
+  /// True when the worker has no paid leave remaining.
+  /// All leave types (Sick, Casual, Medical) come from Annual Leave,
+  /// so only Annual Leave balance matters.
   static bool allLeavesExhausted(Map<String, dynamic> worker) {
-    return remainingForType(worker, 'Sick Leave') <= 0 &&
-        remainingForType(worker, 'Casual Leave') <= 0 &&
-        remainingForType(worker, 'Annual Leave') <= 0 &&
-        remainingForType(worker, 'Medical Leave') <= 0;
+    return remainingForType(worker, 'Annual Leave') <= 0;
   }
 
   /// The exhausted state only blocks creating another request. An existing
@@ -108,10 +104,6 @@ class LeaveBalanceHelper {
         if (worker.isEmpty) return 0;
         final annual =
             int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        final casual =
-            int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
-        final sick = int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
-        final medical = int.tryParse(worker['medicalLeaves']?.toString() ?? '0') ?? 0;
         final usedLeaves = DummyData.attendance
             .where(
               (att) =>
@@ -120,7 +112,7 @@ class LeaveBalanceHelper {
                   att['status'] == 'Leave',
             )
             .length;
-        final totalBalance = annual + casual + sick + medical;
+        final totalBalance = annual;
         return (totalBalance - usedLeaves).clamp(0, totalBalance);
       } else {
         final snapshot = await firestore.getWorkersOnce();
@@ -132,10 +124,6 @@ class LeaveBalanceHelper {
         );
         final annual =
             int.tryParse(worker['annualLeaves']?.toString() ?? '0') ?? 0;
-        final casual =
-            int.tryParse(worker['casualLeaves']?.toString() ?? '0') ?? 0;
-        final sick = int.tryParse(worker['sickLeaves']?.toString() ?? '0') ?? 0;
-        final medical = int.tryParse(worker['medicalLeaves']?.toString() ?? '0') ?? 0;
         final usedLeaves = todayAttendance
             .where(
               (att) =>
@@ -144,7 +132,7 @@ class LeaveBalanceHelper {
                   att['status'] == 'Leave',
             )
             .length;
-        final totalBalance = annual + casual + sick + medical;
+        final totalBalance = annual;
         return (totalBalance - usedLeaves).clamp(0, totalBalance);
       }
     } catch (e) {

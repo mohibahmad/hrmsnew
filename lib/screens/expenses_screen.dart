@@ -1548,88 +1548,98 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDataRow(Map<String, dynamic> doc, int index) {
-    final name = (doc['name'] ?? '').toString();
-    final date = _eds(doc['date']);
-    final category = (doc['category'] ?? '').toString();
-    final amount = (doc['amount'] ?? 0).toDouble();
+Widget _buildDataRow(Map<String, dynamic> doc, int index) {
+     final name = (doc['name'] ?? '').toString();
+     final date = _eds(doc['date']);
+     final category = (doc['category'] ?? '').toString();
+     final amount = (doc['amount'] ?? 0).toDouble();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FA),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Text(
-                name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 40.0, right: 16.0),
-              child: Text(
-                category,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Text(
-                date,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF000000),
-                  fontFamily: 'SF Pro Display',
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: AmountText(
-              _formatCurrency(amount),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF0247C4),
-                fontWeight: FontWeight.w600,
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-          ),
-          _buildActionMenu(doc),
-        ],
-      ),
-    );
-  }
+     return GestureDetector(
+       onTap: () {
+         final isGuest = _authService.currentUser?.isAnonymous ?? false;
+         if (isGuest) {
+           showGuestRestrictionDialog(context);
+           return;
+         }
+         _editExpense(doc);
+       },
+       child: Container(
+         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+         decoration: BoxDecoration(
+           color: const Color(0xFFF6F8FA),
+           borderRadius: BorderRadius.circular(6),
+         ),
+         child: Row(
+           children: [
+             Expanded(
+               flex: 3,
+               child: Padding(
+                 padding: const EdgeInsets.only(right: 16.0),
+                 child: Text(
+                   name,
+                   style: const TextStyle(
+                     fontWeight: FontWeight.bold,
+                     fontSize: 16,
+                     color: Color(0xFF000000),
+                     fontFamily: 'SF Pro Display',
+                   ),
+                   maxLines: 2,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+               ),
+             ),
+             Expanded(
+               flex: 3,
+               child: Padding(
+                 padding: const EdgeInsets.only(left: 40.0, right: 16.0),
+                 child: Text(
+                   category,
+                   style: const TextStyle(
+                     fontSize: 15,
+                     color: Color(0xFF000000),
+                     fontFamily: 'SF Pro Display',
+                   ),
+                   maxLines: 2,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+               ),
+             ),
+             Expanded(
+               flex: 3,
+               child: Padding(
+                 padding: const EdgeInsets.only(right: 16.0),
+                 child: Text(
+                   date,
+                   textAlign: TextAlign.center,
+                   style: const TextStyle(
+                     fontSize: 15,
+                     color: Color(0xFF000000),
+                     fontFamily: 'SF Pro Display',
+                   ),
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+               ),
+             ),
+             Expanded(
+               flex: 2,
+               child: AmountText(
+                 _formatCurrency(amount),
+                 textAlign: TextAlign.center,
+                 style: const TextStyle(
+                   fontSize: 15,
+                   color: Color(0xFF0247C4),
+                   fontWeight: FontWeight.w600,
+                   fontFamily: 'SF Pro Display',
+                 ),
+               ),
+             ),
+             _buildActionMenu(doc),
+           ],
+         ),
+       ),
+     );
+   }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
     final docId = doc['id']?.toString() ?? '';

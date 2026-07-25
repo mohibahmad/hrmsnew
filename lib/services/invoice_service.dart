@@ -26,26 +26,235 @@ class InvoiceService {
   }) async {
     final pdf = pw.Document();
 
-    final primaryColor = PdfColor.fromHex('#0247C4');
-    final accentColor = PdfColor.fromHex('#27AE60');
-    final greyColor = PdfColor.fromHex('#6B7280');
-    final lightBg = PdfColor.fromHex('#F8F9FA');
-    final borderColor = PdfColor.fromHex('#DEE2E6');
+    final PdfColor primaryBlue = PdfColor.fromHex('#172052');
+    final PdfColor primaryRed = PdfColor.fromHex('#D7232B');
+    final PdfColor textColor = PdfColor.fromHex('#172052');
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(40, 40, 40, 40),
+        margin: const pw.EdgeInsets.fromLTRB(45, 50, 45, 50),
         build: (context) => [
-          _buildHeader(primaryColor, accentColor, greyColor, payPeriod),
-          pw.SizedBox(height: 24),
-          _buildEmployeeSection(primaryColor, lightBg, borderColor, employeeName, email, position, totalWorkDays, daysWorked, absents, leaves, overtimeAmount),
-          pw.SizedBox(height: 24),
-          _buildSalarySection(primaryColor, lightBg, borderColor, dailyRate, grossPay, overtimePay, absentDeduction, leaveDeduction, totalDeductions),
+          // 1. Header (Logo & INVOICE)
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Row(
+                children: [
+                  pw.Container(
+                    width: 28,
+                    height: 28,
+                    color: primaryRed,
+                  ),
+                  pw.SizedBox(width: 15),
+                  pw.Text(
+                    'logo',
+                    style: pw.TextStyle(
+                      fontSize: 32,
+                      color: primaryBlue,
+                      fontWeight: pw.FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+              pw.Text(
+                'INVOICE',
+                style: pw.TextStyle(
+                  fontSize: 26,
+                  color: primaryRed,
+                  fontWeight: pw.FontWeight.normal,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 35),
+
+          // 2. Invoice Details (Number & Date)
+          pw.Text(
+            'Invoice N $payPeriod',
+            style: pw.TextStyle(color: textColor, fontSize: 11),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            _formatDate(DateTime.now()),
+            style: pw.TextStyle(color: textColor, fontSize: 11),
+          ),
+          pw.SizedBox(height: 40),
+
+          // 3. Billing Addresses (Bill From & Bill To)
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: _buildAddressBlock(
+                  primaryBlue,
+                  textColor,
+                  'Bill From',
+                  'HRMS Company',
+                  '123 Street, City, State',
+                  '23123',
+                  '+00 000 000 000',
+                ),
+              ),
+              pw.SizedBox(width: 60),
+              pw.Expanded(
+                child: _buildAddressBlock(
+                  primaryBlue,
+                  textColor,
+                  'Bill To',
+                  employeeName,
+                  email,
+                  'Position: $position',
+                  '',
+                ),
+              ),
+            ],
+          ),
           pw.SizedBox(height: 20),
-          _buildNetSalary(netSalary, primaryColor),
-          pw.SizedBox(height: 24),
-          _buildFooter(greyColor),
+
+          // Employee Info Detail Row (attendance data)
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: primaryBlue, width: 0.5),
+            ),
+            child: pw.Row(
+              children: [
+                _infoCell('Work Days', totalWorkDays),
+                _infoCell('Days Worked', daysWorked),
+                _infoCell('Absents', absents),
+                _infoCell('Leaves', leaves),
+                _infoCell('Overtime', overtimeAmount),
+                pw.Expanded(child: _infoCell('Salary', salary)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 20),
+
+          // 4. Table Header
+          pw.Container(
+            color: primaryBlue,
+            padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+            child: pw.Row(
+              children: [
+                pw.Expanded(flex: 5, child: pw.Text('Description', style: _headerStyle())),
+                pw.Expanded(flex: 2, child: pw.Center(child: pw.Text('Rate', style: _headerStyle()))),
+                pw.Expanded(flex: 2, child: pw.Center(child: pw.Text('Qty', style: _headerStyle()))),
+                pw.Expanded(flex: 2, child: pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Text('Total', style: _headerStyle()),
+                )),
+              ],
+            ),
+          ),
+
+          // 5. Table Rows
+          _buildTableRow(primaryBlue, textColor, 'Basic Salary', dailyRate, daysWorked, grossPay),
+          _buildTableRow(primaryBlue, textColor, 'Overtime', overtimePay, '1', overtimePay),
+          _buildTableRow(primaryBlue, textColor, 'Absent Deduction', absentDeduction, absents, absentDeduction),
+          _buildTableRow(primaryBlue, textColor, 'Leave Deduction', leaveDeduction, leaves, leaveDeduction),
+          _buildTableRow(primaryBlue, textColor, 'Total Deductions', '', '', totalDeductions),
+
+          pw.SizedBox(height: 20),
+
+          // 6. Payment Info & Totals
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Payment Info Left Side
+              pw.Expanded(
+                flex: 10,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Container(
+                      width: double.infinity,
+                      color: primaryBlue,
+                      padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                      child: pw.Text(
+                        'Payment Info',
+                        style: pw.TextStyle(color: PdfColors.white, fontSize: 11),
+                      ),
+                    ),
+                    pw.SizedBox(height: 10),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 10),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Bank Account', style: pw.TextStyle(color: textColor, fontSize: 11)),
+                          pw.SizedBox(height: 5),
+                          pw.Text('ER73829 27382 28338', style: pw.TextStyle(color: textColor, fontSize: 11)),
+                          pw.SizedBox(height: 5),
+                          pw.Text('Pay Period', style: pw.TextStyle(color: textColor, fontSize: 11)),
+                          pw.SizedBox(height: 5),
+                          pw.Text(payPeriod, style: pw.TextStyle(color: textColor, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.Expanded(flex: 3, child: pw.SizedBox()),
+              // Totals Right Side
+              pw.Expanded(
+                flex: 9,
+                child: pw.Column(
+                  children: [
+                    _buildTotalRow(textColor, 'Subtotal', _extractNumeric(grossPay)),
+                    pw.SizedBox(height: 8),
+                    _buildTotalRow(textColor, 'Tax', '\$0.00'),
+                    pw.SizedBox(height: 8),
+                    pw.Container(
+                      color: primaryBlue,
+                      padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            'Total',
+                            style: pw.TextStyle(color: PdfColors.white, fontSize: 11),
+                          ),
+                          pw.Text(
+                            _extractNumeric(netSalary),
+                            style: pw.TextStyle(color: PdfColors.white, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 50),
+
+          // 7. Thank You text
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(left: 35),
+            child: pw.Text(
+              'Thank you!',
+              style: pw.TextStyle(
+                fontSize: 28,
+                color: primaryRed,
+                fontWeight: pw.FontWeight.normal,
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 25),
+
+          // 8. Terms and Conditions
+          pw.Text(
+            'Terms and conditions',
+            style: pw.TextStyle(color: textColor, fontSize: 11),
+          ),
+          pw.SizedBox(height: 5),
+          pw.Text(
+            'This invoice is for payroll services rendered for the period of $payPeriod. '
+            'Payment is due immediately upon receipt. Please contact HR for any discrepancies.',
+            style: pw.TextStyle(color: textColor, fontSize: 11, height: 1.4),
+          ),
         ],
       ),
     );
@@ -53,292 +262,165 @@ class InvoiceService {
     return pdf.save();
   }
 
-  static pw.Widget _buildHeader(PdfColor primaryColor, PdfColor accentColor, PdfColor greyColor, String payPeriod) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  static pw.Widget _buildAddressBlock(
+    PdfColor primaryBlue,
+    PdfColor textColor,
+    String title,
+    String name,
+    String address,
+    String zip,
+    String phone,
+  ) {
+    return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Row(
-              children: [
-                pw.Container(
-                  width: 10,
-                  height: 36,
-                  decoration: pw.BoxDecoration(
-                    color: primaryColor,
-                    borderRadius: pw.BorderRadius.circular(2),
-                  ),
-                ),
-                pw.SizedBox(width: 10),
-                pw.Text(
-                  'INVOICE',
-                  style: pw.TextStyle(
-                    fontSize: 28,
-                    fontWeight: pw.FontWeight.bold,
-                    color: primaryColor,
-                    letterSpacing: 4,
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 10),
-            pw.Text(
-              'Pay Period: $payPeriod',
-              style: pw.TextStyle(fontSize: 12, color: greyColor, letterSpacing: 0.5),
-            ),
-          ],
-        ),
         pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-          decoration: pw.BoxDecoration(
-            color: accentColor,
-            borderRadius: pw.BorderRadius.circular(4),
-          ),
+          width: double.infinity,
+          color: primaryBlue,
+          padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 10),
           child: pw.Text(
-            'PAID',
-            style: pw.TextStyle(
-                  color: PdfColors.white,
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                  letterSpacing: 2,
-            ),
+            title,
+            style: pw.TextStyle(color: PdfColors.white, fontSize: 11),
           ),
         ),
-      ],
-    );
-  }
-
-  static pw.Widget _buildEmployeeSection(PdfColor primaryColor, PdfColor lightBg, PdfColor borderColor, String name, String email, String position, String totalWorkDays, String daysWorked, String absents, String leaves, String overtimeAmount) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(20),
-      decoration: pw.BoxDecoration(
-        color: lightBg,
-        borderRadius: pw.BorderRadius.circular(6),
-        border: pw.Border.all(color: borderColor),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Container(
-            margin: const pw.EdgeInsets.only(bottom: 14),
-            child: pw.Text(
-              'Employee Information',
-              style: pw.TextStyle(
-                fontSize: 15,
-                fontWeight: pw.FontWeight.bold,
-                color: primaryColor,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-          pw.Row(
+        pw.SizedBox(height: 10),
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 10),
+          child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    _infoRow('Employee Name', name),
-                    _infoRow('Email Address', email),
-                    _infoRow('Position', position),
-                  ],
-                ),
-              ),
-              pw.SizedBox(width: 30),
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    _infoRow('Total Work Days', totalWorkDays),
-                    _infoRow('Days Worked', daysWorked),
-                    _infoRow('Absents', absents),
-                    _infoRow('Leaves', leaves),
-                    _infoRow('Overtime Amount', overtimeAmount),
-                  ],
-                ),
-              ),
+              pw.Text(name, style: pw.TextStyle(color: textColor, fontSize: 11)),
+              if (address.isNotEmpty) ...[
+                pw.SizedBox(height: 5),
+                pw.Text(address, style: pw.TextStyle(color: textColor, fontSize: 11)),
+              ],
+              if (zip.isNotEmpty) ...[
+                pw.SizedBox(height: 5),
+                pw.Text(zip, style: pw.TextStyle(color: textColor, fontSize: 11)),
+              ],
+              if (phone.isNotEmpty) ...[
+                pw.SizedBox(height: 5),
+                pw.Text(phone, style: pw.TextStyle(color: textColor, fontSize: 11)),
+              ],
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  static pw.Widget _infoRow(String label, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 5),
+  static pw.TextStyle _headerStyle() {
+    return pw.TextStyle(
+      color: PdfColors.white,
+      fontSize: 11,
+      fontWeight: pw.FontWeight.normal,
+    );
+  }
+
+  static pw.TextStyle _cellStyle(PdfColor textColor) {
+    return pw.TextStyle(color: textColor, fontSize: 11);
+  }
+
+  static pw.Widget _buildTableRow(
+    PdfColor primaryBlue,
+    PdfColor textColor,
+    String desc,
+    String rate,
+    String qty,
+    String total,
+  ) {
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border(bottom: pw.BorderSide(color: primaryBlue, width: 0.8)),
+      ),
+      padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 10),
       child: pw.Row(
         children: [
-          pw.SizedBox(
-            width: 100,
-            child: pw.Text(
-              label,
-              style: pw.TextStyle(fontSize: 12, color: PdfColor.fromHex('#6B7280')),
-            ),
-          ),
-          pw.SizedBox(width: 6),
-          pw.Expanded(
-            child: pw.Text(
-              value.isNotEmpty ? value : '-',
-              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1F2937')),
-            ),
-          ),
+          pw.Expanded(flex: 5, child: pw.Text(desc, style: _cellStyle(textColor))),
+          pw.Expanded(flex: 2, child: pw.Center(child: pw.Text(rate.isNotEmpty ? rate : '-', style: _cellStyle(textColor)))),
+          pw.Expanded(flex: 2, child: pw.Center(child: pw.Text(qty.isNotEmpty ? qty : '-', style: _cellStyle(textColor)))),
+          pw.Expanded(flex: 2, child: pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text(total.isNotEmpty ? total : '-', style: _cellStyle(textColor)),
+          )),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildSalarySection(PdfColor primaryColor, PdfColor lightBg, PdfColor borderColor, String dailyRate, String grossPay, String overtimePay, String absentDeduction, String leaveDeduction, String totalDeductions) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(20),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: borderColor),
-        borderRadius: pw.BorderRadius.circular(6),
-      ),
+  static pw.Widget _infoCell(String label, String value) {
+    return pw.Expanded(
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Container(
-            margin: const pw.EdgeInsets.only(bottom: 14),
-            child: pw.Text(
-              'Salary Breakdown',
-              style: pw.TextStyle(
-                fontSize: 15,
-                fontWeight: pw.FontWeight.bold,
-                color: primaryColor,
-                letterSpacing: 1,
-              ),
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: 9,
+              color: PdfColor.fromHex('#6B7280'),
+              fontWeight: pw.FontWeight.normal,
             ),
           ),
-          pw.Table(
-            border: pw.TableBorder.all(color: borderColor, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(3),
-              1: const pw.FlexColumnWidth(2),
-            },
-            children: [
-              _tableHeaderRow('Description', 'Amount'),
-              _tableRow('Daily Rate', dailyRate),
-              _tableRow('Gross Pay', grossPay),
-              _tableRow('Overtime Pay', overtimePay),
-              _tableRow('Absent Deduction', absentDeduction),
-              _tableRow('Leave Deduction', leaveDeduction),
-              _tableRow('Total Deductions', totalDeductions),
-            ],
+          pw.SizedBox(height: 2),
+          pw.Text(
+            value.isNotEmpty ? value : '-',
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromHex('#172052'),
+            ),
           ),
         ],
       ),
     );
   }
 
-  static pw.TableRow _tableHeaderRow(String col1, String col2) {
-    return pw.TableRow(
-      decoration: pw.BoxDecoration(
-        color: PdfColor.fromHex('#F0F4FF'),
-      ),
-      children: [
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: pw.Text(
-            col1,
-            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#0247C4')),
-          ),
-        ),
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: pw.Text(
-            col2,
-            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#0247C4')),
-            textAlign: pw.TextAlign.right,
-          ),
-        ),
-      ],
-    );
-  }
-
-  static pw.TableRow _tableRow(String label, String value) {
-    return pw.TableRow(
-      children: [
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: pw.Text(label, style: pw.TextStyle(fontSize: 13, color: PdfColor.fromHex('#374151'))),
-        ),
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          child: pw.Text(
-            value.isNotEmpty ? value : r'$0',
-            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1F2937')),
-            textAlign: pw.TextAlign.right,
-          ),
-        ),
-      ],
-    );
-  }
-
-  static pw.Widget _buildNetSalary(String netSalary, PdfColor primaryColor) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: pw.BoxDecoration(
-        color: primaryColor,
-        borderRadius: pw.BorderRadius.circular(6),
-      ),
+  static pw.Widget _buildTotalRow(PdfColor textColor, String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 10),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'NET SALARY',
-                style: pw.TextStyle(
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                  letterSpacing: 2,
-                ),
-              ),
-              pw.SizedBox(height: 2),
-              pw.Text(
-                'Total amount payable',
-                style: pw.TextStyle(fontSize: 12, color: PdfColor.fromHex('#BBDEFB')),
-              ),
-            ],
-          ),
-          pw.Text(
-            netSalary,
-            style: pw.TextStyle(
-              fontSize: 24,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.white,
-            ),
-          ),
+          pw.Text(label, style: pw.TextStyle(color: textColor, fontSize: 11)),
+          pw.Text(value, style: pw.TextStyle(color: textColor, fontSize: 11)),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildFooter(PdfColor greyColor) {
-    return pw.Column(
-      children: [
-        pw.Divider(color: PdfColor.fromHex('#DEE2E6'), thickness: 0.5),
-        pw.SizedBox(height: 10),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(
-              'Thank you for your business',
-              style: pw.TextStyle(fontSize: 11, color: greyColor, fontStyle: pw.FontStyle.italic),
-            ),
-            pw.Text(
-              'Generated on ${DateTime.now().toString().substring(0, 10)}',
-              style: pw.TextStyle(fontSize: 11, color: greyColor),
-            ),
-          ],
-        ),
-      ],
-    );
+  static String _formatDate(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final day = date.day;
+    final suffix = day >= 11 && day <= 13 ? 'th'
+        : day % 10 == 1 ? 'st'
+        : day % 10 == 2 ? 'nd'
+        : day % 10 == 3 ? 'rd'
+        : 'th';
+    return '${months[date.month - 1]}. $day$suffix, ${date.year}';
+  }
+
+  /// Extracts numeric portion preserving the original currency symbol.
+  static String _extractNumeric(String formatted) {
+    if (formatted.isEmpty) return r'$0.00';
+    // Determine currency symbol from original string
+    String currency = r'$';
+    if (formatted.startsWith('Rs') || formatted.startsWith('rs') || formatted.startsWith('RS')) {
+      currency = 'Rs ';
+    } else if (formatted.startsWith(r'$')) {
+      currency = r'$';
+    }
+    // Remove currency symbols and commas, keep the number
+    final cleaned = formatted.replaceAll(RegExp(r'[^0-9.]'), '');
+    if (cleaned.isEmpty) return '${currency}0.00';
+    final value = double.tryParse(cleaned);
+    if (value == null) return '${currency}0.00';
+    if (value == value.roundToDouble()) {
+      return '$currency${value.round()}';
+    }
+    return '$currency${value.toStringAsFixed(2)}';
   }
 
   static Future<void> shareInvoice(Uint8List bytes, String fileName) async {

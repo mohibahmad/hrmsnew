@@ -272,6 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _checkProfileExistsOrLogout();
       await _loadPremiumStatus();
     });
+
   }
 
   Future<void> _restoreProfilePic(User? currentUser) async {

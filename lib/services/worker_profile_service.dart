@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
@@ -287,6 +289,23 @@ class WorkerProfileService {
           files: [XFile.fromData(bytes, name: fileName)],
         ),
       );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<void> downloadWorkerProfile(Uint8List bytes, String fileName) async {
+    try {
+      final result = await FilePicker.saveFile(
+        dialogTitle: 'Save Worker Profile',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        bytes: bytes,
+      );
+      if (result != null) {          final file = File(result);
+        await file.writeAsBytes(bytes);
+      }
     } catch (e) {
       rethrow;
     }

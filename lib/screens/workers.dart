@@ -1549,7 +1549,7 @@ class _WorkerProfilePreviewDialogState
                                             RegExp(r'[^a-zA-Z0-9_-]'),
                                             '_',
                                           );
-                                          await WorkerProfileService.shareWorkerProfile(
+                                          await WorkerProfileService.downloadWorkerProfile(
                                             bytes,
                                             '${safeName}_profile.pdf',
                                           );
@@ -1557,8 +1557,7 @@ class _WorkerProfilePreviewDialogState
                                             FlashySnackBar.show(
                                               context,
                                               message:
-                                                  'profile_shared_successfully'
-                                                      .tr(),
+                                                  'Profile PDF downloaded successfully',
                                             );
                                           }
                                         } catch (e) {

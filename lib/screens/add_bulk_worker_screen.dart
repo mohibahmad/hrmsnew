@@ -52,10 +52,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     'salaryType',
     'currency',
     'salaryAmount',
-    'leavePolicy',
     'annualLeaves',
-    'sickLeaves',
-    'casualLeaves',
     'joiningDate',
     'frontId',
     'backId',
@@ -81,10 +78,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     'salaryType': 'Salary Type',
     'currency': 'Currency',
     'salaryAmount': 'Salary Amount',
-    'leavePolicy': 'Leave Policy',
     'annualLeaves': 'Annual Leaves',
-    'sickLeaves': 'Sick Leaves',
-    'casualLeaves': 'Casual Leaves',
     'joiningDate': 'Joining Date',
     'profileImage': 'Profile Image URL',
     'frontId': 'Front ID Image URL',
@@ -104,6 +98,19 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   String? _lastFileHash;
   ScrollController? _hScrollController;
   StreamSubscription? _workersSubscription;
+
+
+
+  Set<String> _errorFieldNames() {
+    final fields = <String>{};
+    for (final worker in _validWorkers) {
+      final errors = worker['_fieldErrors'];
+      if (errors is Map) {
+        fields.addAll(errors.keys.cast<String>());
+      }
+    }
+    return fields;
+  }
 
   Map<String, String> _fieldErrors(Map<String, dynamic> worker) {
     final errors = worker['_fieldErrors'];
@@ -172,10 +179,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'Salary Type',
       'Currency',
       'Salary Amount',
-      'Leave Policy',
       'Annual Leaves',
-      'Sick Leaves',
-      'Casual Leaves',
       'Joining Date',
       'Profile Image URL',
       'Front ID Image URL',
@@ -183,13 +187,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'CV URL',
     ].join(',');
     final String dataRows =
-        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,Standard,15,10,10,1/15/2025,https://i.pravatar.cc/150?u=john,https://example.com/front_id.jpg,https://example.com/back_id.jpg,https://example.com/cv/john.pdf\n'
-        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,Standard,15,10,10,1/15/2025,https://i.pravatar.cc/150?u=jane,https://example.com/front_id2.jpg,https://example.com/back_id2.jpg,https://example.com/cv/jane.pdf\n'
-        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,Standard,15,10,10,1/15/2025,https://i.pravatar.cc/150?u=michael,https://example.com/front_id3.jpg,https://example.com/back_id3.jpg,https://example.com/cv/michael.pdf\n'
-        'Emily Brown,5551234567,emily@example.com,Thomas Brown,37405-9988776-5,Christianity,1992-07-08,Female,321 Oak Avenue Chicago,Married,Marketing Manager,Full-Time,On-Site,Senior,Master\'s,Monthly,USD,8500,Standard,20,12,10,1/20/2025,https://i.pravatar.cc/150?u=emily,https://example.com/front_id4.jpg,https://example.com/back_id4.jpg,https://example.com/cv/emily.pdf\n'
-        'Carlos Garcia,5559876543,carlos@example.com,Luis Garcia,37405-4433221-4,Catholic,1985-03-22,Male,654 Pine Road Miami,Single,DevOps Engineer,Full-Time,On-Site,Senior,Bachelor\'s,Monthly,USD,9500,Standard,18,12,10,2/1/2025,https://i.pravatar.cc/150?u=carlos,https://example.com/front_id5.jpg,https://example.com/back_id5.jpg,https://example.com/cv/carlos.pdf\n'
-        'Aisha Khan,5552468135,aisha@example.com,Imran Khan,37405-5566778-7,Islam,1993-11-12,Female,789 Maple Drive Houston,Single,Data Analyst,Full-Time,Hybrid,Mid-Level,Bachelor\'s,Monthly,USD,7000,Standard,15,10,10,2/5/2025,https://i.pravatar.cc/150?u=aisha,https://example.com/front_id6.jpg,https://example.com/back_id6.jpg,https://example.com/cv/aisha.pdf\n'
-        'Robert Wilson,5553691479,robert@example.com,James Wilson,37405-1122334-8,None,1980-09-05,Male,147 Elm Street Seattle,Married,HR Director,Full-Time,On-Site,Senior,Master\'s,Annual,USD,110000,Standard,20,15,12,1/10/2025,https://i.pravatar.cc/150?u=robert,https://example.com/front_id7.jpg,https://example.com/back_id7.jpg,https://example.com/cv/robert.pdf';
+        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,Christianity,1990-05-15,Male,123 Street California,Single,Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,Monthly,USD,5000,15,1/15/2025,https://i.pravatar.cc/150?u=john,https://example.com/front_id.jpg,https://example.com/back_id.jpg,https://example.com/cv/john.pdf\n'
+        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,Islam,1995-10-20,Female,456 Avenue New York,Married,UI Designer,Part-Time,Remote,Senior,Bachelor\'s,Monthly,USD,6000,15,1/15/2025,https://i.pravatar.cc/150?u=jane,https://example.com/front_id2.jpg,https://example.com/back_id2.jpg,https://example.com/cv/jane.pdf\n'
+        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,None,1988-02-28,Male,789 Road Texas,Single,Project Manager,Contract,Hybrid,Senior,Master\'s,Monthly,USD,7500,15,1/15/2025,https://i.pravatar.cc/150?u=michael,https://example.com/front_id3.jpg,https://example.com/back_id3.jpg,https://example.com/cv/michael.pdf\n'
+        'Emily Brown,5551234567,emily@example.com,Thomas Brown,37405-9988776-5,Christianity,1992-07-08,Female,321 Oak Avenue Chicago,Married,Marketing Manager,Full-Time,On-Site,Senior,Master\'s,Monthly,USD,8500,20,1/20/2025,https://i.pravatar.cc/150?u=emily,https://example.com/front_id4.jpg,https://example.com/back_id4.jpg,https://example.com/cv/emily.pdf\n'
+        'Carlos Garcia,5559876543,carlos@example.com,Luis Garcia,37405-4433221-4,Catholic,1985-03-22,Male,654 Pine Road Miami,Single,DevOps Engineer,Full-Time,On-Site,Senior,Bachelor\'s,Monthly,USD,9500,18,2/1/2025,https://i.pravatar.cc/150?u=carlos,https://example.com/front_id5.jpg,https://example.com/back_id5.jpg,https://example.com/cv/carlos.pdf\n'
+        'Aisha Khan,5552468135,aisha@example.com,Imran Khan,37405-5566778-7,Islam,1993-11-12,Female,789 Maple Drive Houston,Single,Data Analyst,Full-Time,Hybrid,Mid-Level,Bachelor\'s,Monthly,USD,7000,15,2/5/2025,https://i.pravatar.cc/150?u=aisha,https://example.com/front_id6.jpg,https://example.com/back_id6.jpg,https://example.com/cv/aisha.pdf\n'
+        'Robert Wilson,5553691479,robert@example.com,James Wilson,37405-1122334-8,None,1980-09-05,Male,147 Elm Street Seattle,Married,HR Director,Full-Time,On-Site,Senior,Master\'s,Annual,USD,110000,20,1/10/2025,https://i.pravatar.cc/150?u=robert,https://example.com/front_id7.jpg,https://example.com/back_id7.jpg,https://example.com/cv/robert.pdf';
     final String templateStr = '$headerRow\n$dataRows';
 
     try {
@@ -887,9 +891,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           });
         }
 
-        if (!dialogShown && mounted) {
-          widget.onBack?.call();
-        }
+        widget.onBack?.call();
       }
     } catch (e) {
       if (mounted) Navigator.of(context).pop();
@@ -1003,15 +1005,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                     ),
                   ],
                 ),
-                if (_hasParsedFile)
+                if (_hasParsedFile && _validWorkers.isNotEmpty && _validWorkers.every((w) => !_hasWorkerErrors(w)))
                   Builder(
                     builder: (context) {
-                      // canSave = true when at least one worker has no errors
-                      final bool hasAnyValidWorker =
-                          _validWorkers.any((w) => !_hasWorkerErrors(w));
-                      final bool canSave =
-                          hasAnyValidWorker && !_isSaving;
-
+                      final bool canSave = !_isSaving;
                       return GestureDetector(
                         onTap: canSave ? _saveBulkWorkers : null,
                         child: Container(
@@ -1199,11 +1196,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         final hScroll = _hScrollController!;
 
                         const double rowH = 65.0;
-                        const double tableContentWidth = 3978;
+                        const double tableContentWidth = 3658;
                         final int count = _validWorkers.length;
-                        // show at most 600px of rows (≈9 rows); grows up to 70% of screen
+                        // Fixed max height: at most 280px
                         final double listH = (rowH * count)
-                            .clamp(0.0, MediaQuery.of(context).size.height * 0.70);
+                            .clamp(0.0, 280.0);
 
                         return Container(
                           decoration: BoxDecoration(
@@ -1224,92 +1221,81 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // ── Sticky header (synced with body scroll) ──
+                              // ── Single horizontal scroll for header + rows ──
                               SingleChildScrollView(
-                                controller: hScroll,
                                 scrollDirection: Axis.horizontal,
-                                physics: const NeverScrollableScrollPhysics(),
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      minWidth: MediaQuery.of(context).size.width - 80,
-                                      maxWidth: tableContentWidth,
-                                    ),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 16,
-                                      ),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: Radius.circular(12),
-                                          topRight: Radius.circular(12),
+                                controller: hScroll,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: tableContentWidth,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // ── Header ──
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 16,
                                         ),
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Color(0xFFE2E8F0),
-                                            width: 1,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFF8FAFC),
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(12),
+                                            topRight: Radius.circular(12),
+                                          ),
+                                          border: Border(
+                                            bottom: BorderSide(
+                                              color: Color(0xFFE2E8F0),
+                                              width: 1,
+                                            ),
                                           ),
                                         ),
+                                        child: Row(
+                                          children: [
+                                            _buildHeaderCell('full_name'.tr(), 200, fieldKey: 'name'),
+                                            _buildHeaderCell('contact_number'.tr(), 120, fieldKey: 'phone'),
+                                            _buildHeaderCell('email_address'.tr(), 200, fieldKey: 'email'),
+                                            _buildHeaderCell('job_position'.tr(), 150, fieldKey: 'position'),
+                                            _buildHeaderCell('salary_type'.tr(), 120, fieldKey: 'salaryType'),
+                                            _buildHeaderCell('currency_title'.tr(), 100, fieldKey: 'currency'),
+                                            _buildHeaderCell('salary_amount'.tr(), 120, fieldKey: 'salaryAmount'),
+                                            _buildHeaderCell('father_name'.tr(), 150, fieldKey: 'fatherName'),
+                                            _buildHeaderCell('national_id_title'.tr(), 150, fieldKey: 'nationalId'),
+                                            _buildHeaderCell('religion_title'.tr(), 120, fieldKey: 'religion'),
+                                            _buildHeaderCell('date_of_birth'.tr(), 120, fieldKey: 'dob'),
+                                            _buildHeaderCell('gender_title'.tr(), 100, fieldKey: 'gender'),
+                                            _buildHeaderCell('address_title'.tr(), 250, fieldKey: 'address'),
+                                            _buildHeaderCell('relationship_status_title'.tr(), 140, fieldKey: 'relationshipStatus'),
+                                            _buildHeaderCell('employee_type'.tr(), 120, fieldKey: 'type1'),
+                                            _buildHeaderCell('work_model'.tr(), 120, fieldKey: 'type2'),
+                                            _buildHeaderCell('experience_level_title'.tr(), 130, fieldKey: 'experienceLevel'),
+                                            _buildHeaderCell('education_title'.tr(), 150, fieldKey: 'education'),
+                                            _buildHeaderCell('annual_leaves_title'.tr(), 100, fieldKey: 'annualLeaves'),
+                                            _buildHeaderCell('joining_date_title'.tr(), 150, fieldKey: 'joiningDate'),
+                                            _buildHeaderCell('profile_image_url'.tr(), 200, fieldKey: 'profileImage'),
+                                            _buildHeaderCell('front_id_image_url'.tr(), 200, fieldKey: 'frontId'),
+                                            _buildHeaderCell('back_id_image_url'.tr(), 200, fieldKey: 'backId'),
+                                            _buildHeaderCell('cv_url'.tr(), 150, fieldKey: 'cv'),
+                                          ],
+                                        ),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          _buildHeaderCell('full_name'.tr(), 200),
-                                          _buildHeaderCell('contact_number'.tr(), 120),
-                                          _buildHeaderCell('email_address'.tr(), 200),
-                                          _buildHeaderCell('job_position'.tr(), 150),
-                                          _buildHeaderCell('salary_type'.tr(), 120),
-                                          _buildHeaderCell('currency_title'.tr(), 100),
-                                          _buildHeaderCell('salary_amount'.tr(), 120),
-                                          _buildHeaderCell('father_name'.tr(), 150),
-                                          _buildHeaderCell('national_id_title'.tr(), 150),
-                                          _buildHeaderCell('religion_title'.tr(), 120),
-                                          _buildHeaderCell('date_of_birth'.tr(), 120),
-                                          _buildHeaderCell('gender_title'.tr(), 100),
-                                          _buildHeaderCell('address_title'.tr(), 250),
-                                          _buildHeaderCell('relationship_status_title'.tr(), 140),
-                                          _buildHeaderCell('employee_type'.tr(), 120),
-                                          _buildHeaderCell('work_model'.tr(), 120),
-                                          _buildHeaderCell('experience_level_title'.tr(), 130),
-                                          _buildHeaderCell('education_title'.tr(), 150),
-                                          _buildHeaderCell('leave_policy'.tr(), 120),
-                                          _buildHeaderCell('annual_leaves_title'.tr(), 100),
-                                          _buildHeaderCell('sick_leaves_title'.tr(), 100),
-                                          _buildHeaderCell('casual_leaves_title'.tr(), 100),
-                                          _buildHeaderCell('joining_date_title'.tr(), 150),
-                                          _buildHeaderCell('profile_image_url'.tr(), 200),
-                                          _buildHeaderCell('front_id_image_url'.tr(), 200),
-                                          _buildHeaderCell('back_id_image_url'.tr(), 200),
-                                          _buildHeaderCell('cv_url'.tr(), 200),
-                                        ],
-                                      ),
-                                  ),
-                                ),
-                              ),
 
-                              // ── Virtualized rows ──
-                              SizedBox(
-                                height: listH,
-                                child: Scrollbar(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    controller: hScroll,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        minWidth: MediaQuery.of(context).size.width - 80,
-                                        maxWidth: tableContentWidth,
+                                      // ── Virtualized rows ──
+                                      SizedBox(
+                                        height: listH,
+                                        child: ListView.builder(
+                                          itemCount: count,
+                                          itemBuilder: (ctx, index) {
+                                            final worker = _validWorkers[index];
+                                            return RepaintBoundary(
+                                              child: _buildWorkerRow(worker, index),
+                                            );
+                                          },
+                                        ),
                                       ),
-                                      child: ListView.builder(
-                                        itemCount: count,
-                                        itemExtent: rowH,
-                                        itemBuilder: (ctx, index) {
-                                          final worker = _validWorkers[index];
-                                          return RepaintBoundary(
-                                            child: _buildWorkerRow(worker, index),
-                                          );
-                                        },
-                                      ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -1330,100 +1316,120 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   Widget _buildWorkerRow(Map<String, dynamic> worker, int index) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       decoration: index.isEven
           ? const BoxDecoration(color: Color(0xFFFAFBFC))
           : null,
       child: Row(
         children: [
           _buildDataCell(worker['name']?.toString() ?? '', 200,
-              hasError: _hasFieldError(worker, 'name'),
-              isBold: true),
+              hasError: _hasFieldError(worker, 'name'), isBold: true,
+              fieldKey: 'name', workerIndex: index),
           _buildDataCell(worker['phone']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'phone')),
+              hasError: _hasFieldError(worker, 'phone'),
+              fieldKey: 'phone', workerIndex: index),
           _buildDataCell(worker['email']?.toString() ?? '', 200,
-              hasError: _hasFieldError(worker, 'email')),
+              hasError: _hasFieldError(worker, 'email'),
+              fieldKey: 'email', workerIndex: index),
           _buildDataCell(worker['position']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'position')),
+              hasError: _hasFieldError(worker, 'position'),
+              fieldKey: 'position', workerIndex: index),
           _buildDataCell(worker['salaryType']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'salaryType')),
+              hasError: _hasFieldError(worker, 'salaryType'),
+              fieldKey: 'salaryType', workerIndex: index),
           _buildDataCell(worker['currency']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'currency')),
+              hasError: _hasFieldError(worker, 'currency'),
+              fieldKey: 'currency', workerIndex: index),
           _buildDataCell(worker['salaryAmount']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'salaryAmount')),
+              hasError: _hasFieldError(worker, 'salaryAmount'),
+              fieldKey: 'salaryAmount', workerIndex: index),
           _buildDataCell(worker['fatherName']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'fatherName')),
+              hasError: _hasFieldError(worker, 'fatherName'),
+              fieldKey: 'fatherName', workerIndex: index),
           _buildDataCell(worker['nationalId']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'nationalId')),
+              hasError: _hasFieldError(worker, 'nationalId'),
+              fieldKey: 'nationalId', workerIndex: index),
           _buildDataCell(worker['religion']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'religion')),
+              hasError: _hasFieldError(worker, 'religion'),
+              fieldKey: 'religion', workerIndex: index),
           _buildDataCell(worker['dob']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'dob')),
+              hasError: _hasFieldError(worker, 'dob'),
+              fieldKey: 'dob', workerIndex: index),
           _buildDataCell(worker['gender']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'gender')),
+              hasError: _hasFieldError(worker, 'gender'),
+              fieldKey: 'gender', workerIndex: index),
           _buildDataCell(worker['address']?.toString() ?? '', 250,
-              hasError: _hasFieldError(worker, 'address')),
+              hasError: _hasFieldError(worker, 'address'),
+              fieldKey: 'address', workerIndex: index),
           _buildDataCell(worker['relationshipStatus']?.toString() ?? '', 140,
-              hasError: _hasFieldError(worker, 'relationshipStatus')),
+              hasError: _hasFieldError(worker, 'relationshipStatus'),
+              fieldKey: 'relationshipStatus', workerIndex: index),
           _buildDataCell(worker['type1']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'type1')),
+              hasError: _hasFieldError(worker, 'type1'),
+              fieldKey: 'type1', workerIndex: index),
           _buildDataCell(worker['type2']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'type2')),
+              hasError: _hasFieldError(worker, 'type2'),
+              fieldKey: 'type2', workerIndex: index),
           _buildDataCell(worker['experienceLevel']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'experienceLevel')),
+              hasError: _hasFieldError(worker, 'experienceLevel'),
+              fieldKey: 'experienceLevel', workerIndex: index),
           _buildDataCell(worker['education']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'education')),
-          _buildDataCell(worker['leavePolicy']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'leavePolicy')),
+              hasError: _hasFieldError(worker, 'education'),
+              fieldKey: 'education', workerIndex: index),
           _buildDataCell(worker['annualLeaves']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'annualLeaves')),
-          _buildDataCell(worker['sickLeaves']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'sickLeaves')),
-          _buildDataCell(worker['casualLeaves']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'casualLeaves')),
+              hasError: _hasFieldError(worker, 'annualLeaves'),
+              fieldKey: 'annualLeaves', workerIndex: index),
           _buildDataCell(worker['joiningDate']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'joiningDate')),
+              hasError: _hasFieldError(worker, 'joiningDate'),
+              fieldKey: 'joiningDate', workerIndex: index),
           _buildDataCell(worker['profileImage']?.toString() ?? '', 200,
-              hasError: _hasFieldError(worker, 'profileImage')),
+              hasError: _hasFieldError(worker, 'profileImage'),
+              fieldKey: 'profileImage', workerIndex: index),
           _buildDataCell(worker['frontId']?.toString() ?? '', 200,
-              hasError: _hasFieldError(worker, 'frontId')),
+              hasError: _hasFieldError(worker, 'frontId'),
+              fieldKey: 'frontId', workerIndex: index),
           _buildDataCell(worker['backId']?.toString() ?? '', 200,
-              hasError: _hasFieldError(worker, 'backId')),
-          _buildDataCell(worker['cv']?.toString() ?? '', 200,
-              hasError: _hasFieldError(worker, 'cv')),
+              hasError: _hasFieldError(worker, 'backId'),
+              fieldKey: 'backId', workerIndex: index),
+          _buildDataCell(worker['cv']?.toString() ?? '', 150,
+              hasError: _hasFieldError(worker, 'cv'),
+              fieldKey: 'cv', workerIndex: index),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String text, double width) {
+  Widget _buildHeaderCell(String text, double width, {String? fieldKey}) {
+    final bool hasError = fieldKey != null && _errorFieldNames().contains(fieldKey);
     return SizedBox(
       width: width,
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 14,
-          color: Color(0xFF475569),
-          fontFamily: 'SF Pro Display',
-        ),
+      child: Row(
+        children: [
+          Text(
+            text,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: hasError ? const Color(0xFFDC2626) : const Color(0xFF475569),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          if (hasError) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.error, size: 14, color: Color(0xFFDC2626)),
+          ],
+        ],
       ),
     );
   }
-
-  BoxDecoration? _fieldDecoration(bool hasError) => hasError
-      ? BoxDecoration(
-          color: const Color(0xFFFEE2E2),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFEF4444)),
-        )
-      : null;
 
   Widget _buildDataCell(
     String text,
     double width, {
     bool isBold = false,
     bool hasError = false,
+    String? fieldKey,
+    int workerIndex = -1,
   }) {
     final displayText = hasError && (text.isEmpty || text == '-')
         ? 'required_field'.tr()
@@ -1431,21 +1437,379 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      decoration: _fieldDecoration(hasError),
-      child: Text(
-        displayText,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-          color: hasError
-              ? const Color(0xFFDC2626)
-              : isBold
-              ? const Color(0xFF0F172A)
-              : const Color(0xFF334155),
-          fontFamily: 'SF Pro Display',
-        ),
-        overflow: TextOverflow.ellipsis,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              displayText,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: hasError
+                    ? const Color(0xFFDC2626)
+                    : isBold
+                    ? const Color(0xFF0F172A)
+                    : const Color(0xFF334155),
+                fontFamily: 'SF Pro Display',
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (hasError && fieldKey != null && workerIndex >= 0)
+            GestureDetector(
+              onTap: () => _editCell(workerIndex, fieldKey),
+              child: Container(
+                margin: const EdgeInsets.only(left: 4),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(Icons.edit_rounded, size: 13, color: Color(0xFFDC2626)),
+              ),
+            ),
+        ],
       ),
     );
   }
+
+  Future<void> _editCell(int workerIndex, String fieldKey) async {
+    if (workerIndex >= _validWorkers.length) return;
+    final worker = _validWorkers[workerIndex];
+    final currentValue = (worker[fieldKey] ?? '').toString();
+    final controller = TextEditingController(text: currentValue);
+    final label = _fieldLabels[fieldKey] ?? fieldKey;
+
+    // Determine icon based on field type
+    IconData fieldIcon;
+    switch (fieldKey) {
+      case 'name': fieldIcon = Icons.person_rounded; break;
+      case 'phone': fieldIcon = Icons.phone_rounded; break;
+      case 'email': fieldIcon = Icons.email_rounded; break;
+      case 'position': fieldIcon = Icons.badge_rounded; break;
+      case 'salaryType': fieldIcon = Icons.monetization_on_rounded; break;
+      case 'currency': fieldIcon = Icons.attach_money_rounded; break;
+      case 'salaryAmount': fieldIcon = Icons.account_balance_wallet_rounded; break;
+      case 'fatherName': fieldIcon = Icons.family_restroom_rounded; break;
+      case 'nationalId': fieldIcon = Icons.credit_card_rounded; break;
+      case 'religion': fieldIcon = Icons.church_rounded; break;
+      case 'dob': fieldIcon = Icons.cake_rounded; break;
+      case 'gender': fieldIcon = Icons.transgender_rounded; break;
+      case 'address': fieldIcon = Icons.location_on_rounded; break;
+      case 'relationshipStatus': fieldIcon = Icons.favorite_rounded; break;
+      case 'type1': fieldIcon = Icons.work_history_rounded; break;
+      case 'type2': fieldIcon = Icons.laptop_rounded; break;
+      case 'experienceLevel': fieldIcon = Icons.trending_up_rounded; break;
+      case 'education': fieldIcon = Icons.school_rounded; break;
+      case 'annualLeaves': fieldIcon = Icons.event_available_rounded; break;
+      case 'joiningDate': fieldIcon = Icons.calendar_month_rounded; break;
+      case 'profileImage': fieldIcon = Icons.add_a_photo_rounded; break;
+      case 'frontId': fieldIcon = Icons.credit_card_rounded; break;
+      case 'backId': fieldIcon = Icons.credit_score_rounded; break;
+      case 'cv': fieldIcon = Icons.description_rounded; break;
+      default: fieldIcon = Icons.edit_rounded;
+    }
+
+    final result = await showDialog<String>(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Center(
+          child: Container(
+            width: 440,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                  blurRadius: 40,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 12),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Gradient Header ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0040C8), Color(0xFF1565E8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(fieldIcon, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Edit Field',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 12,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(ctx).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Input Section ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF374151),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: TextField(
+                          controller: controller,
+                          autofocus: true,
+                          maxLines: null,
+                          minLines: 1,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontFamily: 'SF Pro Display',
+                            color: Color(0xFF111827),
+                          ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                            hintText: 'Enter $label',
+                            hintStyle: TextStyle(
+                              color: const Color(0xFF9CA3AF),
+                              fontSize: 15,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Hints for certain fields ──
+                if (_fieldHint(fieldKey).isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 13, color: const Color(0xFF9CA3AF)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _fieldHint(fieldKey),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: const Color(0xFF9CA3AF),
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ── Current Value Display ──
+                if (currentValue.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.swap_horiz_rounded, size: 14, color: const Color(0xFF6B7280)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              currentValue,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: const Color(0xFF6B7280),
+                                fontFamily: 'SF Pro Display',
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 0),
+
+                // ── Bottom Actions ──
+                Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF6B7280),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'cancel'.tr(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0247C4),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
+                          minimumSize: const Size(0, 42),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                        ),
+                        onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_rounded, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'save'.tr(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _validWorkers[workerIndex][fieldKey] = result;
+        // Re-validate: clear this field's error if it was empty and now has a value
+        final errors = _validWorkers[workerIndex]['_fieldErrors'] as Map<String, String>?;
+        if (errors != null && errors.containsKey(fieldKey) && result.isNotEmpty) {
+          errors.remove(fieldKey);
+        }
+      });
+    }
+  }
+
+  String _fieldHint(String fieldKey) {
+    switch (fieldKey) {
+      case 'name': return 'Enter the full name of the worker';
+      case 'email': return 'e.g., worker@example.com';
+      case 'phone': return 'e.g., +1 234 567 8900';
+      case 'nationalId': return 'e.g., 37405-1234567-1';
+      case 'gender': return 'Male, Female, or Other';
+      case 'dob': return 'e.g., YYYY-MM-DD or DD/MM/YYYY';
+      case 'joiningDate': return 'e.g., MM/DD/YYYY';
+      case 'salaryType': return 'e.g., Monthly, Annual, Hourly';
+      default: return '';
+    }
+  }
+
 }

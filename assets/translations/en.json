@@ -716,7 +716,7 @@
   "hourly": "Hourly",
   "standard": "Standard",
   "sick_casual_only": "Sick/Casual Only",
-  "hint_annual_leaves": "0",
+  "hint_annual_leaves": "e.g., 12",
   "hint_sick_leaves": "e.g., 7",
   "hint_casual_leaves": "e.g., 3",
   "hint_amount": "0.00",

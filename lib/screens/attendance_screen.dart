@@ -849,129 +849,135 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                 final localizeWorkType = LocalizationHelper.localizeWorkType;
 
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF6F8FA),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 24.0),
-                          child: Row(
-                            children: [
-                              WorkerAvatar(
-                                imageUrl: doc['profileImage']?.toString(),
-                                name: name,
-                                size: 40,
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => _showAttendancePreview(context, doc),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8FA),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 24.0),
+                              child: Row(
+                                children: [
+                                  WorkerAvatar(
+                                    imageUrl: doc['profileImage']?.toString(),
+                                    name: name,
+                                    size: 40,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: textDark,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          email,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: textDark,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      email,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 24.0),
+                              child: Text(
+                                status.isEmpty ? '-' : status.toLowerCase().tr(),
+                                style: TextStyle(
+                                  color: status == 'Present'
+                                      ? greenPresent
+                                      : (status == 'Absent'
+                                            ? redAbsent
+                                            : (status.isEmpty
+                                                  ? Colors.grey
+                                                  : orangeLeave)),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 24.0),
+                              child: Text(
+                                localizeWorkType(workType),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: textDark,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              role,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: textDark,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 48,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => _showAttendancePreview(context, doc),
+                                child: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.black,
+                                  size: 24,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 24.0),
-                          child: Text(
-                            status.isEmpty ? '-' : status.toLowerCase().tr(),
-                            style: TextStyle(
-                              color: status == 'Present'
-                                  ? greenPresent
-                                  : (status == 'Absent'
-                                        ? redAbsent
-                                        : (status.isEmpty
-                                              ? Colors.grey
-                                              : orangeLeave)),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 24.0),
-                          child: Text(
-                            localizeWorkType(workType),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: textDark,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          role,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: textDark,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      SizedBox(
-                        width: 48,
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => _showAttendancePreview(context, doc),
-                            child: const Icon(
-                              Icons.visibility,
-                              color: Colors.black,
-                              size: 24,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 );
               },

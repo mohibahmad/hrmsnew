@@ -288,70 +288,70 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF000000).withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          children: [
-            WorkerAvatar(
-              imageUrl: worker['profileImage']?.toString(),
-              name: name,
-              size: 48,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
-                      color: Color(0xFF000000),
-                    ),
-                  ),
-                  if (position.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+      child: GestureDetector(
+        onTap: () {
+          final isGuest = _authService.currentUser?.isAnonymous ?? false;
+          if (isGuest) {
+            showGuestRestrictionDialog(context);
+            return;
+          }
+          _openDocumentDialog(worker);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFFFF),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF000000).withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              WorkerAvatar(
+                imageUrl: worker['profileImage']?.toString(),
+                name: name,
+                size: 48,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      position,
+                      name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[500],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'SF Pro Display',
+                        color: Color(0xFF000000),
                       ),
                     ),
+                    if (position.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        position,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[500],
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: () {
-                final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                if (isGuest) {
-                  showGuestRestrictionDialog(context);
-                  return;
-                }
-                _openDocumentDialog(worker);
-              },
-              child: Container(
+              const SizedBox(width: 12),
+              Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 8,
@@ -388,8 +388,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

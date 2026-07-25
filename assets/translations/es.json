@@ -715,7 +715,7 @@
   "hourly": "Por Hora",
   "standard": "Estándar",
   "sick_casual_only": "Solo Enfermedad/Casual",
-  "hint_annual_leaves": "0",
+  "hint_annual_leaves": "e.g., 12",
   "hint_sick_leaves": "ej., 7",
   "hint_casual_leaves": "ej., 3",
   "hint_amount": "0.00",

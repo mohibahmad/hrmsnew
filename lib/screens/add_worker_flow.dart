@@ -492,7 +492,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _sickLeavesController.addListener(_autoCalcAnnualLeaves);
     _casualLeavesController.addListener(_autoCalcAnnualLeaves);
     if (widget.workerToEdit == null) {
-      _autoCalcAnnualLeaves();
+      final sickText = _sickLeavesController.text.trim();
+      final casualText = _casualLeavesController.text.trim();
+      if (sickText.isNotEmpty || casualText.isNotEmpty) {
+        _autoCalcAnnualLeaves();
+      }
     }
   }
 

@@ -779,7 +779,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           final options = [
             {'value': 'Sick Leave', 'key': 'sick_leave_type'},
             {'value': 'Casual Leave', 'key': 'casual_leave_type'},
-            {'value': 'Annual Leave', 'key': 'annual_leave'},
+            {'value': 'Medical Leave', 'key': 'medical_leave_type'},
           ];
           for (final o in options) {
             o['disabled'] =
@@ -1536,7 +1536,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-          ],
+],
         ],
       ),
     );
@@ -1606,6 +1606,25 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                     );
                   }
                 },
+                onTap: () {
+                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  if (isGuest) {
+                    showGuestRestrictionDialog(context);
+                    return;
+                  }
+                  if (isHoliday) {
+                    FlashySnackBar.show(
+                      context,
+                      message: 'non_working_day'.tr(),
+                      isError: true,
+                    );
+                  } else {
+                    _openAttendanceDialog(
+                      context,
+                      entry.value,
+                    );
+                  }
+                },
               ),
             )
             .toList(),
@@ -1646,8 +1665,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       );
     }
     return SingleChildScrollView(
-      child: Column(
-        children: _todayAttendance
+child: Column(
+		children: _todayAttendance
             .asMap()
             .entries
             .map(
@@ -1655,6 +1674,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 data: entry.value,
                 index: entry.key,
                 onEdit: () => _openAttendanceDialog(
+                  context,
+                  entry.value,
+                  defaultStatus: (entry.value['status'] ?? 'Present')
+                      .toString(),
+                  titleKey: 'edit_attendance',
+                ),
+                onTap: () => _openAttendanceDialog(
                   context,
                   entry.value,
                   defaultStatus: (entry.value['status'] ?? 'Present')
@@ -1712,6 +1738,7 @@ class WorkerListItem extends StatelessWidget {
   final String currentStatus;
   final bool isHoliday;
   final ValueChanged<String> onMarkAttendance;
+  final VoidCallback? onTap;
 
   const WorkerListItem({
     super.key,
@@ -1720,19 +1747,22 @@ class WorkerListItem extends StatelessWidget {
     this.currentStatus = '',
     this.isHoliday = false,
     required this.onMarkAttendance,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final leaveExhausted = LeaveBalanceHelper.allLeavesExhausted(data);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FC),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FC),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
         children: [
           WorkerAvatar(
             imageUrl: data['profileImage'] is String
@@ -1846,7 +1876,8 @@ class WorkerListItem extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -1920,17 +1951,21 @@ class TodayAttendanceItem extends StatelessWidget {
   final Map<String, dynamic> data;
   final int index;
   final VoidCallback? onEdit;
+  final VoidCallback? onTap;
 
   const TodayAttendanceItem({
     super.key,
     required this.data,
     required this.index,
     this.onEdit,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap ?? onEdit,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2006,7 +2041,7 @@ class TodayAttendanceItem extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -2061,3 +2096,4 @@ class StatusPill extends StatelessWidget {
     );
   }
 }
+  
