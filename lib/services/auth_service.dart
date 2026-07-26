@@ -7,6 +7,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../firebase_options.dart';
+import 'dummy_data.dart';
 import 'preferences_service.dart';
 import 'firestore_service.dart';
 import 'error_reporter.dart';
@@ -19,6 +20,7 @@ class AuthService {
   final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
     region: 'us-central1',
   );
+  final User _guestUser = GuestUser();
 
   AuthService() {
     _instance = this;
@@ -27,17 +29,12 @@ class AuthService {
   static final ValueNotifier<String?> profilePicNotifier =
       ValueNotifier<String?>(null);
 
-  /// Set to `true` when a guest user logged in via fallback (no real Firebase user).
-  static bool get isGuestUser => _isGuestUser;
-  static bool _isGuestUser = false;
-  static set isGuestUser(bool value) => _isGuestUser = value;
-
   Stream<User?> get authStateChanges {
     if (FirestoreService.isTesting) {
       return Stream.value(MockUser());
     }
-    if (isGuestUser) {
-      return Stream.value(GuestUser());
+    if (PreferencesService.cachedIsGuest) {
+      return Stream.value(_guestUser);
     }
     return _auth.authStateChanges();
   }
@@ -46,8 +43,8 @@ class AuthService {
     if (FirestoreService.isTesting) {
       return MockUser();
     }
-    if (isGuestUser) {
-      return GuestUser();
+    if (PreferencesService.cachedIsGuest) {
+      return _guestUser;
     }
     return _auth.currentUser;
   }
@@ -69,7 +66,6 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
-      _isGuestUser = false;
       await PreferencesService.setGuest(false);
       await PreferencesService.setLoggedIn(true);
       return credential;
@@ -91,7 +87,6 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
-      _isGuestUser = false;
       await PreferencesService.setGuest(false);
       await PreferencesService.setLoggedIn(true);
       await _syncPremiumStatusFromFirestore();
@@ -109,10 +104,11 @@ class AuthService {
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
-    _isGuestUser = true;
     await PreferencesService.setLoggedIn(true);
     await PreferencesService.setGuest(true);
-    return GuestUserCredential();
+    await DummyData.resetToDefaults();
+    profilePicNotifier.value = null;
+    return GuestUserCredential(_guestUser);
   }
 
   /// Sign in with Google
@@ -131,6 +127,7 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
       final userCredential = await _auth.signInWithCredential(credential);
+      await PreferencesService.setGuest(false);
       if (userCredential.user != null) {
         final name =
             googleUser.displayName ?? userCredential.user!.email ?? 'User';
@@ -148,8 +145,6 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
-      _isGuestUser = false;
-      await PreferencesService.setGuest(false);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
@@ -171,6 +166,7 @@ class AuthService {
       appleProvider.addScope('name');
 
       final userCredential = await _auth.signInWithProvider(appleProvider);
+      await PreferencesService.setGuest(false);
       if (userCredential.user != null) {
         final name = userCredential.user!.displayName ?? 'Apple User';
 
@@ -186,8 +182,6 @@ class AuthService {
         }
       }
       await PreferencesService.setLoggedIn(true);
-      _isGuestUser = false;
-      await PreferencesService.setGuest(false);
       await _syncPremiumStatusFromFirestore();
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
@@ -201,10 +195,9 @@ class AuthService {
 
   /// Sign out
   Future<void> signOut() async {
-    final wasGuest = isGuestUser;
-    _isGuestUser = false;
+    final isGuest = await PreferencesService.isGuest();
     await PreferencesService.setGuest(false);
-    if (!wasGuest) {
+    if (!isGuest) {
       await _auth.signOut();
     }
     await PreferencesService.clear();
@@ -425,8 +418,10 @@ class GuestUser implements User {
 }
 
 class GuestUserCredential implements UserCredential {
+  GuestUserCredential(this.user);
+
   @override
-  final User user = GuestUser();
+  final User user;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

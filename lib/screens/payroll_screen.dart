@@ -54,6 +54,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isAddingPayroll = false;
   Map<String, dynamic>? _workerForPayroll;
   bool _isRunningPayroll = false;
+  bool _initialized = false;
 
   bool get _isPayDate {
     if (_salaryPaymentDay == null) return false;
@@ -271,12 +272,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _payrollDocs = [];
     _workersList = [];
     _rawPayrollDocs = [];
     _isLoading = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _loadCompanySalaryDay();
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
@@ -323,12 +332,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final summary = await SalaryDayScheduler()
           .payAll(context)
           .timeout(
-            const Duration(seconds: 120),
+            const Duration(seconds: 30),
             onTimeout: () {
               if (mounted) {
                 FlashySnackBar.show(
                   context,
-                  message: 'Payroll operation timed out. Please try again.',
+                  message: 'payroll_operation_timeout'.tr(),
                   isError: true,
                 );
               }
@@ -683,11 +692,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ...positionsToShow.map((p) => {'key': p, 'label': p}),
     ];
     return Container(
-      width: 570,
+      width: 650,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
       child: SingleChildScrollView(
@@ -696,9 +705,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            for (int i = 0; i < filters.length; i++) ...[
+            for (int i = 0; i < filters.length; i++)
               _buildFilterTab(filters[i]['key']!, filters[i]['label']!),
-            ],
           ],
         ),
       ),
@@ -956,13 +964,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 child: Builder(
                   builder: (context) {
                     final isPaid =
-                        (doc['status'] ?? '').toString().toLowerCase() == 'paid';
+                        (doc['status'] ?? '').toString().toLowerCase() ==
+                        'paid';
                     final hasData = (doc['totalWorkDays'] ?? '')
                         .toString()
                         .isNotEmpty;
                     return InkWell(
                       onTap: () {
-                        final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                        final isGuest =
+                            _authService.currentUser?.isAnonymous ?? false;
                         if (isGuest) {
                           showGuestRestrictionDialog(context);
                           return;
@@ -1088,25 +1098,31 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       topRight: Radius.circular(6),
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // ── Close icon (left) ──
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
-                        child: const MouseRegion(
+                        child: MouseRegion(
                           cursor: SystemMouseCursors.click,
-                          child: Icon(
-                            Icons.close,
-                            color: Color(0xFFFFFFFF),
-                            size: 24,
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close,
+                              color: Color(0xFFFFFFFF),
+                              size: 22,
+                            ),
                           ),
                         ),
                       ),
-                      Flexible(
+                      const SizedBox(width: 12),
+                      // ── Title (center, flex) ──
+                      Expanded(
                         child: Text(
                           'payroll_data_preview'.tr(),
-                          style: TextStyle(
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -1114,17 +1130,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      // ── Edit icon (right) ──
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop('edit'),
                         child: MouseRegion(
                           cursor: SystemMouseCursors.click,
-                          child: SvgPicture.asset(
-                            'assets/edit_icon.svg',
-                            height: 20,
-                            width: 20,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFFFFFFFF),
-                              BlendMode.srcIn,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: SvgPicture.asset(
+                              'assets/edit_icon.svg',
+                              height: 22,
+                              width: 22,
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFFFFFFFF),
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),

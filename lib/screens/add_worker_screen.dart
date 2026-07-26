@@ -49,10 +49,18 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   Uint8List? _profileImageBytes;
   String? _profileImageName;
   String selectedGender = 'Male';
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
   }
@@ -155,8 +163,8 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         );
         return;
       }
-      final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
-      if (dob.isAfter(cutoff)) {
+      final age = DateTime.now().difference(dob).inDays / 365.25;
+      if (age < 18) {
         FlashySnackBar.show(
           context,
           message: 'worker_must_be_18'.tr(),
@@ -201,8 +209,9 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
               );
             }
           }
-          profileImageUrl ??=
-              'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}';
+          profileImageUrl ??= _profileImageBytes != null
+              ? 'data:image/jpeg;base64,${base64Encode(_profileImageBytes!)}'
+              : null;
         }
       }
 
@@ -229,6 +238,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         };
         DummyData.workers.add(newWorker);
         await DummyData.saveToPrefs();
+        if (mounted) setState(() {});
       } else {
         await _firestore.addWorker({
           'name': nameController.text.trim(),
@@ -292,6 +302,11 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
   void _safePop() {
     if (Navigator.canPop(context)) {
       Navigator.of(context).pop();
+    } else {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen(initialIndex: 1)),
+        (route) => false,
+      );
     }
   }
 
@@ -912,11 +927,16 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
             keyboardType: isNumeric ? TextInputType.number : null,
             inputFormatters: isNumeric
                 ? [
-                    FilteringTextInputFormatter.allow(
-                      label.toLowerCase().contains('national')
-                          ? RegExp(r'^[\d_-]*')
-                          : RegExp(r'^\d*'),
-                    ),
+                    label.toLowerCase().contains('national')
+                        ? FilteringTextInputFormatter.allow(RegExp(r'^[\d-]*'))
+                        : (label.toLowerCase().contains('phone') ||
+                                label.toLowerCase().contains('contact'))
+                            ? FilteringTextInputFormatter.allow(
+                                RegExp(r"^[\d+\-\s()]*"),
+                              )
+                            : FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d*'),
+                              ),
                     if (label.toLowerCase().contains('phone') ||
                         label.toLowerCase().contains('contact'))
                       LengthLimitingTextInputFormatter(20),

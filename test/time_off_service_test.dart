@@ -124,4 +124,113 @@ void main() {
       DateTime(2026, 7, 30),
     ]);
   });
+
+  test('paid leave balance is recalculated from approved records', () {
+    const workerWithAllowance = {
+      'name': 'Ali Khan',
+      'email': 'ali@example.com',
+      'annualLeaves': '5',
+    };
+    final records = [
+      {
+        'id': 'paid-1',
+        'email': 'ali@example.com',
+        'type': 'Annual Leave',
+        'status': 'Approved',
+        'selectedDates': ['2026-07-01', '2026-07-02'],
+      },
+      {
+        'id': 'unpaid-1',
+        'email': 'ali@example.com',
+        'type': 'Unpaid Leave',
+        'isPaidLeave': false,
+        'status': 'Approved',
+        'selectedDates': ['2026-07-03'],
+      },
+    ];
+
+    expect(
+      TimeOffService.paidDaysUsedForWorker(workerWithAllowance, records),
+      2,
+    );
+    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 3);
+  });
+
+  test('editing excludes the old record from available paid balance', () {
+    const workerWithAllowance = {
+      'name': 'Ali Khan',
+      'email': 'ali@example.com',
+      'annualLeaves': '5',
+    };
+    final records = [
+      {
+        'id': 'paid-1',
+        'email': 'ali@example.com',
+        'type': 'Annual Leave',
+        'status': 'Approved',
+        'selectedDates': ['2026-07-01', '2026-07-02'],
+      },
+    ];
+
+    expect(
+      TimeOffService.remainingPaidLeave(
+        workerWithAllowance,
+        records,
+        excludingRecordId: 'paid-1',
+      ),
+      5,
+    );
+  });
+
+  test('detects overlapping approved time off but ignores edited record', () {
+    final records = [
+      {
+        'id': 'leave-1',
+        'email': 'ali@example.com',
+        'type': 'Annual Leave',
+        'status': 'Approved',
+        'selectedDates': ['2026-07-10', '2026-07-11'],
+      },
+    ];
+
+    expect(
+      TimeOffService.hasOverlappingApprovedLeave(worker, records, [
+        DateTime(2026, 7, 11),
+      ]),
+      isTrue,
+    );
+    expect(
+      TimeOffService.hasOverlappingApprovedLeave(worker, records, [
+        DateTime(2026, 7, 11),
+      ], excludingRecordId: 'leave-1'),
+      isFalse,
+    );
+  });
+
+  test('monthly counts separate paid and unpaid leave without duplicates', () {
+    final records = [
+      {
+        'email': 'ali@example.com',
+        'type': 'Annual Leave',
+        'status': 'Approved',
+        'selectedDates': ['2026-07-01', '2026-07-02'],
+      },
+      {
+        'email': 'ali@example.com',
+        'type': 'Unpaid Leave',
+        'isPaidLeave': false,
+        'status': 'Approved',
+        'selectedDates': ['2026-07-03', '2026-07-03', '2026-08-01'],
+      },
+    ];
+
+    expect(
+      TimeOffService.monthlyLeaveCounts(
+        worker,
+        records,
+        month: DateTime(2026, 7),
+      ),
+      {'paidLeaves': 2, 'unpaidLeaves': 1, 'leaves': 3},
+    );
+  });
 }

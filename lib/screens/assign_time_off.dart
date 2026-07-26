@@ -6,13 +6,13 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/preferences_service.dart';
 import '../services/time_off_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/notification_bell.dart';
-import '../utils/leave_balance_helper.dart';
 
 class AssignTimeOffScreen extends StatefulWidget {
   final VoidCallback onBack;
@@ -32,6 +32,21 @@ class AssignTimeOffScreen extends StatefulWidget {
 }
 
 class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
+  static const List<Map<String, String>> _leaveTypeOptions = [
+    {'value': 'Annual Leave', 'labelKey': 'annual_leave'},
+    {'value': 'Sick Leave', 'labelKey': 'sick_leave_type'},
+    {'value': 'Casual Leave', 'labelKey': 'casual_leave_type'},
+    {'value': 'Medical Leave', 'labelKey': 'medical_leave_type'},
+    {'value': 'Unpaid Leave', 'labelKey': 'unpaid_leave_type'},
+  ];
+
+  static const List<String> _paidLeaveTypes = [
+    'Annual Leave',
+    'Sick Leave',
+    'Casual Leave',
+    'Medical Leave',
+  ];
+
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _isLoading = false;
@@ -53,16 +68,33 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   StreamSubscription? _workersSub;
   List<Map<String, dynamic>> _timeoffRecords = [];
   StreamSubscription? _timeoffSub;
+  List<Map<String, dynamic>> _holidays = [];
+  Set<int> _companyWorkingDays = {
+    DateTime.monday,
+    DateTime.tuesday,
+    DateTime.wednesday,
+    DateTime.thursday,
+    DateTime.friday,
+  };
+  StreamSubscription? _holidaysSub;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     if (widget.initialWorker != null) {
       _selectedWorker = widget.initialWorker;
     }
     _resetFormFields();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _loadWorkers();
   }
 
@@ -97,6 +129,25 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _timeOffType = 'Sick Leave';
       _notesController.clear();
     }
+
+    // Update calendar months to show the selected dates' month
+    if (_selectedDates.isNotEmpty) {
+      _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
+      _calendarMonth2 = DateTime(
+        _calendarMonth.year,
+        _calendarMonth.month + 1,
+        1,
+      );
+    }
+
+    // Migrate the old unlimited Custom Leave option to explicit unpaid leave.
+    if (_timeOffType == 'Custom Leave') {
+      _timeOffType = 'Unpaid Leave';
+    }
+    // Sanitize: if the stored type isn't valid, fall back to paid sick leave.
+    if (!_leaveTypeOptions.any((o) => o['value'] == _timeOffType)) {
+      _timeOffType = 'Sick Leave';
+    }
     _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
 
     _calendarMonth2 = DateTime(
@@ -123,9 +174,16 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   void _loadWorkers() {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
+      PreferencesService.getCompanyWorkingDays().then((days) {
+        if (mounted) setState(() => _companyWorkingDays = days);
+      });
       setState(() {
         _workers = DummyData.workers;
         _timeoffRecords = DummyData.timeoff;
+        _holidays = DummyData.holidays.values
+            .expand((records) => records)
+            .cast<Map<String, dynamic>>()
+            .toList();
         if (widget.initialWorker != null) {
           final targetEmail = (widget.initialWorker!['email'] ?? '')
               .toString()
@@ -157,15 +215,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
       });
     } else {
-      _workersSub = _firestore.workersStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              _workers = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              if (widget.initialWorker != null) {
-                final targetEmail = (widget.initialWorker!['email'] ?? '')
+      _workersSub = _firestore.workersStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _workers = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            if (widget.initialWorker != null) {
+              final targetEmail = (widget.initialWorker!['email'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+              _selectedWorker = _workers.firstWhere(
+                (w) =>
+                    (w['email'] ?? '').toString().trim().toLowerCase() ==
+                    targetEmail,
+                orElse: () => widget.initialWorker!,
+              );
+            } else if (_workers.isNotEmpty) {
+              if (_selectedWorker == null) {
+                _selectedWorker = _workers.first;
+              } else {
+                final targetEmail = (_selectedWorker!['email'] ?? '')
                     .toString()
                     .trim()
                     .toLowerCase();
@@ -173,50 +244,50 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   (w) =>
                       (w['email'] ?? '').toString().trim().toLowerCase() ==
                       targetEmail,
-                  orElse: () => widget.initialWorker!,
+                  orElse: () => _workers.first,
                 );
-              } else if (_workers.isNotEmpty) {
-                if (_selectedWorker == null) {
-                  _selectedWorker = _workers.first;
-                } else {
-                  final targetEmail = (_selectedWorker!['email'] ?? '')
-                      .toString()
-                      .trim()
-                      .toLowerCase();
-                  _selectedWorker = _workers.firstWhere(
-                    (w) =>
-                        (w['email'] ?? '').toString().trim().toLowerCase() ==
-                        targetEmail,
-                    orElse: () => _workers.first,
-                  );
-                }
-              } else {
-                _selectedWorker = null;
               }
-            });
+            } else {
+              _selectedWorker = null;
+            }
+          });
+        }
+      }, onError: (e) {});
+      _timeoffSub = _firestore.timeoffStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _timeoffRecords = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+          });
+        }
+      }, onError: (e) {});
+      _holidaysSub = _firestore.holidaysStream.listen((snapshot) {
+        if (!mounted) return;
+        final holidays = <Map<String, dynamic>>[];
+        var workingDays = _companyWorkingDays;
+        for (final doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['type'] == 'company_work_days') {
+            final savedDays = (data['workingDays'] as List<dynamic>? ?? [])
+                .whereType<num>()
+                .map((day) => day.toInt())
+                .where(
+                  (day) => day >= DateTime.monday && day <= DateTime.sunday,
+                )
+                .toSet();
+            if (savedDays.isNotEmpty) workingDays = savedDays;
+            continue;
           }
-        },
-        onError: (e) {
-
-        },
-      );
-      _timeoffSub = _firestore.timeoffStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              _timeoffRecords = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-            });
-          }
-        },
-        onError: (e) {
-
-        },
-      );
+          holidays.add({...data, 'id': doc.id});
+        }
+        setState(() {
+          _holidays = holidays;
+          _companyWorkingDays = workingDays;
+        });
+      }, onError: (_) {});
     }
   }
-
 
   String _getMonthName(int month) {
     return DateFormat(
@@ -225,7 +296,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     ).format(DateTime(2024, month));
   }
 
-
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
@@ -233,11 +303,43 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return '$day/$month/$year';
   }
 
+  static const List<String> _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  Map<String, dynamic>? _holidayForDate(DateTime date) {
+    final monthName = _monthNames[date.month - 1];
+    for (final holiday in _holidays) {
+      if (holiday['isEnabled'] == false) continue;
+      final holidayDay = int.tryParse((holiday['day'] ?? '').toString());
+      final holidayMonth = (holiday['month'] ?? '').toString();
+      if (holidayDay == date.day && holidayMonth == monthName) return holiday;
+    }
+    return null;
+  }
+
+  bool _isNonWorkingDate(DateTime date) {
+    return !_companyWorkingDays.contains(date.weekday) ||
+        _holidayForDate(date) != null;
+  }
+
   int get _selectedDaysCount => _selectedDates.length;
 
-  bool get _requestedDaysExceedAvailable => _selectedDaysCount > _availableDays;
+  bool get _isPaidLeave => _paidLeaveTypes.contains(_timeOffType);
 
-
+  bool get _requestedDaysExceedAvailable =>
+      _isPaidLeave && _selectedDaysCount > _availableDays;
 
   int get _requestedDays =>
       _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
@@ -250,82 +352,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     return remaining > 0 ? '$visibleDates +$remaining' : visibleDates;
   }
 
-  int get _alreadyUsedDays {
-    if (_selectedWorker == null) return 0;
-    final workerEmail = (_selectedWorker!['email'] ?? '')
-        .toString()
-        .toLowerCase();
-    // All leave types (Sick, Casual, Medical, Annual) come from Annual Leave balance.
-    // Count all paid leave types except 'Custom Leave'.
-    int used = 0;
-    for (final record in _timeoffRecords) {
-      if (_editingId != null && record['id']?.toString() == _editingId) {
-        continue;
-      }
-      final recordEmail = (record['email'] ?? '').toString().toLowerCase();
-      if (recordEmail != workerEmail) continue;
-      final action = (record['action'] ?? record['type'] ?? '').toString();
-      if (action == 'Custom Leave') continue;
-      final requestedDays = record['requestedDays'];
-      if (requestedDays is int) {
-        used += requestedDays;
-      }
-    }
-    return used;
-  }
-
   int get _availableDays {
     if (_selectedWorker == null) return 0;
-    if (_timeOffType == 'Custom Leave') return 999;
-
-    final String? availKey;
-    final String configKey;
-
-    // All leave types (Sick, Casual, Medical, Annual) use Annual Leave balance.
-    switch (_timeOffType) {
-      case 'Annual Leave':
-      case 'Sick Leave':
-      case 'Casual Leave':
-      case 'Medical Leave':
-        availKey = 'availableAnnualLeaves';
-        configKey = 'annualLeaves';
-      default:
-        return 0;
-    }
-
-    if (availKey != null) {
-      final raw = (_selectedWorker![availKey] ?? '').toString();
-      if (raw.isNotEmpty) {
-        final parsed = int.tryParse(raw);
-        if (parsed != null) return parsed < 0 ? 0 : parsed;
-      }
-    }
-
-    String raw = (_selectedWorker![configKey] ?? '').toString();
-
-    if (raw.isEmpty) {
-      // All leave types use annual leave aliases.
-      const aliases = [
-        'annual_leave',
-        'annualLeave',
-        'annual_leave_days',
-        'annualLeaves',
-      ];
-      for (final a in aliases) {
-        final v = _selectedWorker![a];
-        if (v != null && v.toString().trim().isNotEmpty) {
-          raw = v.toString();
-          break;
-        }
-      }
-    }
-
-    final total = int.tryParse(raw);
-    if (total == null) return 0;
-
-    final used = _alreadyUsedDays;
-    final remaining = total - used;
-    return remaining < 0 ? 0 : remaining;
+    if (!_isPaidLeave) return 999999;
+    return TimeOffService.remainingPaidLeave(
+      _selectedWorker!,
+      _timeoffRecords,
+      excludingRecordId: _editingId,
+    );
   }
 
   @override
@@ -333,6 +367,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _notesController.dispose();
     _workersSub?.cancel();
     _timeoffSub?.cancel();
+    _holidaysSub?.cancel();
     super.dispose();
   }
 
@@ -415,10 +450,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   Widget _buildMainCard() {
     final bool isExhausted =
         _selectedWorker != null &&
-        LeaveBalanceHelper.shouldBlockTimeOffForm(
-          _selectedWorker!,
-          isEditing: _editingId != null,
-        );
+        _isPaidLeave &&
+        _editingId == null &&
+        _availableDays <= 0;
 
     if (isExhausted) {
       return Container(
@@ -458,7 +492,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Please add more leaves to assign a new time off request for this worker.',
+              'paid_leave_exhausted_help'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -467,29 +501,68 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            SizedBox(
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0247C4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF0247C4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _timeOffType = 'Unpaid Leave';
+                        _selectedDates.clear();
+                      });
+                    },
+                    icon: const Icon(
+                      Icons.money_off,
+                      color: Color(0xFF0247C4),
+                      size: 20,
+                    ),
+                    label: Text(
+                      'assign_unpaid_leave'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFF0247C4),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  elevation: 0,
                 ),
-                onPressed: () => _showAddAnnualLeavesDialog(),
-                icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                label: Text(
-                  'add_more_annual_leaves'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'SF Pro Display',
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0247C4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      elevation: 0,
+                    ),
+                    onPressed: () => _showAddAnnualLeavesDialog(),
+                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                    label: Text(
+                      'add_more_annual_leaves'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -554,8 +627,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-
-
   Widget _buildTopForm() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -596,7 +667,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               onPressed: (_selectedWorker == null || _isLoading)
                   ? null
                   : () {
-                      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                      final isGuest =
+                          _authService.currentUser?.isAnonymous ?? false;
                       if (isGuest) {
                         showGuestRestrictionDialog(context);
                         return;
@@ -660,41 +732,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   fontSize: 14,
                   color: Colors.black,
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: 'Sick Leave',
+                items: _leaveTypeOptions.map((option) {
+                  return DropdownMenuItem<String>(
+                    value: option['value'],
                     child: Text(
-                      'sick_leave_type'.tr(),
+                      option['labelKey']!.tr(),
                       style: const TextStyle(
                         fontFamily: 'SF Pro Display',
                         fontSize: 14,
                         color: Colors.black,
                       ),
                     ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Casual Leave',
-                    child: Text(
-                      'casual_leave_type'.tr(),
-                      style: const TextStyle(
-                        fontFamily: 'SF Pro Display',
-                        fontSize: 14,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Medical Leave',
-                    child: Text(
-                      'medical_leave_type'.tr(),
-                      style: const TextStyle(
-                        fontFamily: 'SF Pro Display',
-                        fontSize: 14,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
+                  );
+                }).toList(),
                 onChanged: (v) {
                   if (v != null) {
                     setState(() {
@@ -748,8 +798,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-
-
   Widget _buildCalendar(DateTime monthDate, {required bool isStartCalendar}) {
     String monthYear = '${_getMonthName(monthDate.month)} ${monthDate.year}'
         .toUpperCase();
@@ -768,33 +816,24 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               children: [
                 InkWell(
                   onTap: () {
-                    final currentMonth = DateTime(
-                      DateTime.now().year,
-                      DateTime.now().month,
-                      1,
-                    );
                     if (isStartCalendar) {
                       final newMonth = DateTime(
                         _calendarMonth.year,
                         _calendarMonth.month - 1,
                         1,
                       );
-                      if (!newMonth.isBefore(currentMonth)) {
-                        setState(() {
-                          _calendarMonth = newMonth;
-                        });
-                      }
+                      setState(() {
+                        _calendarMonth = newMonth;
+                      });
                     } else {
                       final newMonth = DateTime(
                         _calendarMonth2.year,
                         _calendarMonth2.month - 1,
                         1,
                       );
-                      if (!newMonth.isBefore(currentMonth)) {
-                        setState(() {
-                          _calendarMonth2 = newMonth;
-                        });
-                      }
+                      setState(() {
+                        _calendarMonth2 = newMonth;
+                      });
                     }
                   },
                   borderRadius: BorderRadius.circular(4),
@@ -934,6 +973,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               '$currentDay',
               isSelected: isSelected,
               date: cellDate,
+              isDisabled: _isNonWorkingDate(cellDate),
             ),
           );
           currentDay++;
@@ -973,6 +1013,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         var exceededAvailableDays = false;
         for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
           if (candidate.contains(date)) continue;
+          if (_isNonWorkingDate(date)) continue;
           if (candidate.length >= _availableDays) {
             exceededAvailableDays = true;
             break;
@@ -1023,6 +1064,14 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   void _toggleDate(DateTime date) {
     final selectedDate = _dateOnly(date);
     final isRemoving = _selectedDates.contains(selectedDate);
+    if (!isRemoving && _isNonWorkingDate(selectedDate)) {
+      FlashySnackBar.show(
+        context,
+        message: 'time_off_non_working_day_blocked'.tr(),
+        isError: true,
+      );
+      return;
+    }
     if (!isRemoving && _selectedDates.length >= _availableDays) {
       FlashySnackBar.show(
         context,
@@ -1041,7 +1090,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     });
   }
 
-  Widget _buildDayCell(String day, {bool isSelected = false, DateTime? date}) {
+  Widget _buildDayCell(
+    String day, {
+    bool isSelected = false,
+    DateTime? date,
+    bool isDisabled = false,
+  }) {
     if (day.isEmpty) {
       return const SizedBox(width: 50, height: 50);
     }
@@ -1061,11 +1115,13 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         width: 50,
         height: 50,
         child: GestureDetector(
-          onTap: date == null ? null : () => _toggleDate(date),
+          onTap: date == null || isDisabled ? null : () => _toggleDate(date),
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isSelected ? selectedBg : Colors.transparent,
+              color: isSelected
+                  ? selectedBg
+                  : (isDisabled ? const Color(0xFFF1F5F9) : Colors.transparent),
               border: Border.all(
                 color: isSelected
                     ? selectedBorder
@@ -1081,7 +1137,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             child: Text(
               day,
               style: TextStyle(
-                color: isSelected ? const Color(0xFFFFFFFF) : dayColor,
+                color: isDisabled
+                    ? const Color(0xFFB0B7C3)
+                    : (isSelected ? const Color(0xFFFFFFFF) : dayColor),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
@@ -1092,8 +1150,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       ),
     );
   }
-
-
 
   Widget _buildNotesAndSummary() {
     return LayoutBuilder(
@@ -1218,8 +1274,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     );
   }
 
-
-
   String _getWorkerPhone(Map<String, dynamic> w) {
     for (final key in ['phone', 'contact']) {
       final val = w[key];
@@ -1241,7 +1295,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-
     if (_notesController.text.trim().isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1260,6 +1313,29 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
+    if (_selectedDates.any(_isNonWorkingDate)) {
+      FlashySnackBar.show(
+        context,
+        message: 'time_off_non_working_day_blocked'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (TimeOffService.hasOverlappingApprovedLeave(
+      _selectedWorker!,
+      _timeoffRecords,
+      _selectedDates,
+      excludingRecordId: _editingId,
+    )) {
+      FlashySnackBar.show(
+        context,
+        message: 'time_off_dates_overlap'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     if (_requestedDaysExceedAvailable) {
       FlashySnackBar.show(
         context,
@@ -1269,18 +1345,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       return;
     }
 
-
-
-
-    final availableDaysBeforeSave = _availableDays;
-    final usedDaysBeforeSave = _alreadyUsedDays;
-    final requestedDaysAtSave = _requestedDays;
-
     setState(() => _isLoading = true);
 
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
-      final recordMap = {
+      final recordMap = <String, dynamic>{
         'name': _selectedWorker!['name'] ?? 'Worker',
         'email': _selectedWorker!['email'] ?? '',
         'position': _selectedWorker!['position'] ?? 'Worker',
@@ -1293,8 +1362,31 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'notes': _notesController.text.trim(),
         'requestedDays': _requestedDays,
         'status': 'Approved',
+        'isPaidLeave': _isPaidLeave,
         'workerName': _selectedWorker!['name'] ?? 'Worker',
         'workerAvatar': _selectedWorker!['profileImage'] ?? '',
+      };
+
+      final projectedRecords =
+          _timeoffRecords
+              .where((record) => record['id']?.toString() != _editingId)
+              .map(Map<String, dynamic>.from)
+              .toList()
+            ..add({...recordMap, 'id': _editingId ?? 'pending_time_off'});
+      final usedPaidDays = TimeOffService.paidDaysUsedForWorker(
+        _selectedWorker!,
+        projectedRecords,
+      );
+      final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(
+        _selectedWorker!,
+      );
+      final remainingPaidDays = (totalPaidDays - usedPaidDays).clamp(
+        0,
+        totalPaidDays,
+      );
+      final balanceUpdate = <String, dynamic>{
+        'availableAnnualLeaves': remainingPaidDays.toString(),
+        'leavesUsed': usedPaidDays.toString(),
       };
 
       if (isGuest) {
@@ -1311,49 +1403,28 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             'id': 'guest_to_${DateTime.now().millisecondsSinceEpoch}',
           });
         }
+        final workerIdx = DummyData.workers.indexWhere(
+          (worker) =>
+              (worker['email'] ?? '').toString().trim().toLowerCase() ==
+              (_selectedWorker!['email'] ?? '').toString().trim().toLowerCase(),
+        );
+        if (workerIdx != -1) {
+          DummyData.workers[workerIdx].addAll(balanceUpdate);
+        }
         await DummyData.saveToPrefs();
       } else {
-        if (_editingId != null) {
+        final workerId = (_selectedWorker!['id'] ?? '').toString();
+        if (workerId.isNotEmpty) {
+          await _firestore.saveTimeOffWithWorkerBalance(
+            timeOffId: _editingId,
+            record: recordMap,
+            workerId: workerId,
+            balance: balanceUpdate,
+          );
+        } else if (_editingId != null) {
           await _firestore.updateTimeOffRecord(_editingId!, recordMap);
         } else {
           await _firestore.addTimeOffRecord(recordMap);
-        }
-      }
-
-
-      if (mounted) {
-        final updatedBalance = LeaveBalanceHelper.balanceAfterRequest(
-          availableBeforeSave: availableDaysBeforeSave,
-          usedBeforeSave: usedDaysBeforeSave,
-          requestedDays: requestedDaysAtSave,
-        );
-        final remainingLeaves = updatedBalance.remaining;
-        final Map<String, dynamic> payrollUpdate = {};
-
-        // All leave types deduct from Annual Leave balance.
-        payrollUpdate['availableAnnualLeaves'] = remainingLeaves.toString();
-        payrollUpdate['leavesUsed'] = updatedBalance.used.toString();
-
-        if (isGuest) {
-          final workerIdx = DummyData.workers.indexWhere(
-            (w) => w['email'] == _selectedWorker!['email'],
-          );
-          if (workerIdx != -1) {
-            // All leave types deduct from Annual Leave balance.
-            DummyData.workers[workerIdx]['availableAnnualLeaves'] =
-                remainingLeaves.toString();
-            DummyData.workers[workerIdx]['leavesUsed'] = updatedBalance.used
-                .toString();
-            await DummyData.saveToPrefs();
-          }
-        } else {
-          final workerId = (_selectedWorker!['id'] ?? '').toString();
-          if (workerId.isNotEmpty && payrollUpdate.isNotEmpty) {
-            await _firestore.updateWorkerLeaves(
-              workerId,
-              payrollUpdate,
-            );
-          }
         }
       }
 
@@ -1506,7 +1577,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
       if (isGuest) {
         final workerIdx = DummyData.workers.indexWhere(
-          (w) => w['email'] == _selectedWorker!['email'],
+          (w) =>
+              w['email'] == _selectedWorker!['email'] ||
+              w['id'] == _selectedWorker!['id'],
         );
         if (workerIdx != -1) {
           DummyData.workers[workerIdx]['annualLeaves'] = newAnnual.toString();

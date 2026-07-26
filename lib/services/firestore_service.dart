@@ -6,6 +6,7 @@ import '../utils/validators.dart';
 import '../utils/worker_identity.dart';
 import 'auth_service.dart';
 import 'dummy_data.dart';
+import 'time_off_service.dart';
 
 class BulkWorkerResult {
   final int imported;
@@ -69,7 +70,12 @@ class FirestoreService {
     required String phone,
   }) async {
     final user = AuthService.instance.currentUser;
-    if (user == null) return;
+    if (user == null ||
+        user.isAnonymous ||
+        user.uid == 'guest_uid' ||
+        user.uid.startsWith('guest_')) {
+      return;
+    }
 
     final doc = _db.collection('hrms_user').doc(user.uid);
 
@@ -331,6 +337,30 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
+  /// Keeps one salary expense per worker and payroll month. Re-saving payroll
+  /// updates the linked expense instead of creating a duplicate payment.
+  Future<void> upsertPayrollExpense(
+    Map<String, dynamic> expense, {
+    required String payrollKey,
+  }) async {
+    Validators.validateExpense(expense);
+    final coll = _expenses;
+    if (coll == null) throw StateError('No authenticated user');
+    final existing = await coll
+        .where('payrollKey', isEqualTo: payrollKey)
+        .limit(1)
+        .get();
+    if (existing.docs.isEmpty) {
+      await addExpense({...expense, 'payrollKey': payrollKey});
+      return;
+    }
+    await existing.docs.first.reference.update({
+      ...expense,
+      'payrollKey': payrollKey,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<void> deleteExpense(String id) async {
     final coll = _expenses;
     if (coll == null) return;
@@ -386,11 +416,12 @@ class FirestoreService {
     return AppDateUtils.parseDateString(createdAt.toString());
   }
 
-  /// Returns the total [absents] and [leaves] for a worker in the current
-  /// calendar month, derived from the attendance records. Re-marks on the same
-  /// day are de-duplicated so each day is only counted once.
+  /// Returns current-month attendance and approved time-off counts. Paid leave
+  /// is reported for visibility but only unpaid leave should reduce payroll.
+  /// Re-marks and overlapping time-off records are de-duplicated by date.
   Future<Map<String, int>> getWorkerMonthlyAttendance(String email) async {
     final normalizedEmail = email.trim().toLowerCase();
+    final now = DateTime.now();
     List<Map<String, dynamic>> records;
     final isGuest = AuthService.instance.currentUser?.isAnonymous ?? false;
     if (isGuest) {
@@ -400,14 +431,13 @@ class FirestoreService {
       if (coll == null) return {'absents': 0, 'leaves': 0};
 
       // 🔥 FIX: Filter by month properly
-      final now = DateTime.now();
       final startOfMonth = DateTime(now.year, now.month, 1);
-      final endOfMonth = DateTime(now.year, now.month + 1, 0);
+      final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
 
       final snap = await coll
           .where('email', isEqualTo: normalizedEmail)
           .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)
-          .where('createdAt', isLessThanOrEqualTo: endOfMonth)
+          .where('createdAt', isLessThan: startOfNextMonth)
           .get();
 
       records = snap.docs
@@ -415,28 +445,68 @@ class FirestoreService {
           .toList();
     }
 
-    int absents = 0;
-    int leaves = 0;
+    final absentDates = <DateTime>{};
+    final legacyLeaveDates = <DateTime>{};
     final seenDays = <String>{};
     for (final att in records) {
       final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
       if (normalizedEmail.isNotEmpty && attEmail != normalizedEmail) continue;
       final date = _dateFromCreatedAt(att['createdAt']);
       if (date == null) continue;
-      if (date.year != DateTime.now().year ||
-          date.month != DateTime.now().month)
-        continue;
+      if (date.year != now.year || date.month != now.month) continue;
       final dayKey = '$attEmail-${date.year}-${date.month}-${date.day}';
       if (seenDays.contains(dayKey)) continue;
       seenDays.add(dayKey);
       final status = (att['status'] ?? '').toString();
       if (status == 'Absent') {
-        absents++;
+        absentDates.add(DateTime(date.year, date.month, date.day));
       } else if (status == 'Leave') {
-        leaves++;
+        legacyLeaveDates.add(DateTime(date.year, date.month, date.day));
       }
     }
-    return {'absents': absents, 'leaves': leaves};
+
+    final List<Map<String, dynamic>> timeOffRecords;
+    if (isGuest) {
+      timeOffRecords = List<Map<String, dynamic>>.from(DummyData.timeoff);
+    } else {
+      final coll = _timeoff;
+      if (coll == null) {
+        timeOffRecords = const [];
+      } else {
+        final snapshot = await coll.get();
+        timeOffRecords = snapshot.docs
+            .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+            .toList();
+      }
+    }
+
+    final worker = <String, dynamic>{'email': normalizedEmail};
+    final planned = TimeOffService.monthlyLeaveCounts(
+      worker,
+      timeOffRecords,
+      month: now,
+    );
+    final nonDuplicateLegacyPaid = legacyLeaveDates
+        .where(
+          (date) => !TimeOffService.isWorkerOnLeave(
+            worker,
+            timeOffRecords,
+            onDate: date,
+          ),
+        )
+        .length;
+    absentDates.removeWhere(
+      (date) =>
+          TimeOffService.isWorkerOnLeave(worker, timeOffRecords, onDate: date),
+    );
+    final paidLeaves = (planned['paidLeaves'] ?? 0) + nonDuplicateLegacyPaid;
+    final unpaidLeaves = planned['unpaidLeaves'] ?? 0;
+    return {
+      'absents': absentDates.length,
+      'paidLeaves': paidLeaves,
+      'unpaidLeaves': unpaidLeaves,
+      'leaves': paidLeaves + unpaidLeaves,
+    };
   }
 
   Stream<QuerySnapshot> get attendanceStream {
@@ -527,7 +597,9 @@ class FirestoreService {
   }
 
   /// Bulk-adds notifications using Firestore batch writes for performance.
-  Future<void> addBulkNotifications(List<Map<String, dynamic>> notifications) async {
+  Future<void> addBulkNotifications(
+    List<Map<String, dynamic>> notifications,
+  ) async {
     final coll = _notifications;
     if (coll == null) return;
     var batch = _db.batch();
@@ -597,10 +669,69 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
+  /// Saves a time-off record and its derived worker leave balance in one
+  /// Firestore batch, preventing partial updates if the network drops.
+  Future<String> saveTimeOffWithWorkerBalance({
+    String? timeOffId,
+    required Map<String, dynamic> record,
+    required String workerId,
+    required Map<String, dynamic> balance,
+  }) async {
+    Validators.validateTimeOff(record);
+    final timeOffColl = _timeoff;
+    final workersColl = _workers;
+    if (timeOffColl == null || workersColl == null) {
+      throw StateError('No authenticated user');
+    }
+    final isNew = timeOffId == null || timeOffId.isEmpty;
+    final timeOffRef = isNew ? timeOffColl.doc() : timeOffColl.doc(timeOffId);
+    final batch = _db.batch();
+    batch.set(timeOffRef, {
+      ...record,
+      if (isNew) 'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    batch.set(workersColl.doc(workerId), balance, SetOptions(merge: true));
+    await batch.commit();
+
+    if (isNew) {
+      final name = (record['workerName'] ?? record['name'] ?? '').toString();
+      final type = (record['type'] ?? record['leaveType'] ?? 'Leave')
+          .toString();
+      if (name.isNotEmpty) {
+        await addNotification({
+          'type': 'time_off_added',
+          'title': 'notif_title_time_off'.tr(namedArgs: {'name': name}),
+          'message': 'notif_msg_time_off'.tr(
+            namedArgs: {'type': type, 'name': name},
+          ),
+          'data': {'name': name, 'type': type},
+        });
+      }
+    }
+    return timeOffRef.id;
+  }
+
   Future<void> deleteTimeOffRecord(String id) async {
     final coll = _timeoff;
     if (coll == null) return;
     await coll.doc(id).delete();
+  }
+
+  Future<void> deleteTimeOffWithWorkerBalance({
+    required String timeOffId,
+    required String workerId,
+    required Map<String, dynamic> balance,
+  }) async {
+    final timeOffColl = _timeoff;
+    final workersColl = _workers;
+    if (timeOffColl == null || workersColl == null) {
+      throw StateError('No authenticated user');
+    }
+    final batch = _db.batch();
+    batch.delete(timeOffColl.doc(timeOffId));
+    batch.set(workersColl.doc(workerId), balance, SetOptions(merge: true));
+    await batch.commit();
   }
 
   Stream<QuerySnapshot> get timeoffStream {

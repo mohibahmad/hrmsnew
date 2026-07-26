@@ -114,4 +114,61 @@ void main() {
       isTrue,
     );
   });
+
+  test('absence reduces monthly salary exactly once', () {
+    final result = PayrollService.calculatePayroll(
+      salary: 'Rs 100000',
+      totalWorkDays: '20',
+      daysWorked: '18',
+      absents: '2',
+      leaves: '0',
+    );
+
+    expect(result['grossSalary'], 100000);
+    expect(result['absentDeduction'], 10000);
+    expect(result['netSalary'], 90000);
+  });
+
+  test('unpaid leave uses daily rate once when no override is entered', () {
+    final result = PayrollService.calculatePayroll(
+      salary: 'Rs 100000',
+      totalWorkDays: '20',
+      daysWorked: '19',
+      absents: '0',
+      leaves: '1',
+    );
+
+    expect(result['leaveDeduction'], 5000);
+    expect(result['netSalary'], 95000);
+  });
+
+  test('custom deduction is an override rather than a second penalty', () {
+    final result = PayrollService.calculatePayroll(
+      salary: 'Rs 100000',
+      totalWorkDays: '20',
+      daysWorked: '19',
+      absents: '1',
+      leaves: '0',
+      absentDeductionPerDay: '3000',
+    );
+
+    expect(result['absentDeduction'], 3000);
+    expect(result['netSalary'], 97000);
+  });
+
+  test('explicit paid and unpaid leave counts remain separate', () {
+    final counts = PayrollService.attendanceCounts({
+      'absents': 1,
+      'paidLeaves': 3,
+      'unpaidLeaves': 2,
+      'leaves': 5,
+    });
+
+    expect(counts, {
+      'absents': 1,
+      'paidLeaves': 3,
+      'unpaidLeaves': 2,
+      'leaves': 5,
+    });
+  });
 }

@@ -28,6 +28,12 @@ String _adts(dynamic value) {
   if (value is DateTime) {
     return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   }
+  if (value is String) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
+    }
+  }
   return value.toString();
 }
 
@@ -58,6 +64,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
   StreamSubscription? _workersSub;
   List<String> _workerNames = [];
   Map<String, Map<String, dynamic>> _workersMap = {};
+  bool _initialized = false;
 
   @override
   void dispose() {
@@ -70,6 +77,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -342,8 +356,8 @@ onPressed: isSaving
                                     ),
                                   );
                                   DummyData.assets.insert(0, newAsset);
-                                  DummyData.saveToPrefs();
                                 });
+                                await DummyData.saveToPrefs();
                                 setModalState(() => isSaving = false);
                               } else {
                                 try {

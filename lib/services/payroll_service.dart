@@ -90,6 +90,7 @@ class PayrollService {
     for (final key in [
       'createdAt',
       'timestamp',
+      'payPeriod',
       'payrollDate',
       'date',
       'lastModified',
@@ -179,11 +180,23 @@ class PayrollService {
   static Map<String, int> attendanceCounts(
     Map<String, dynamic> payrollOrWorkerData,
   ) {
+    final legacyLeaves = parseIntSafe(
+      (payrollOrWorkerData['leaves'] ?? '').toString(),
+    );
+    final paidLeaves = parseIntSafe(
+      (payrollOrWorkerData['paidLeaves'] ?? '').toString(),
+    );
+    final hasExplicitUnpaid = payrollOrWorkerData.containsKey('unpaidLeaves');
+    final unpaidLeaves = hasExplicitUnpaid
+        ? parseIntSafe((payrollOrWorkerData['unpaidLeaves'] ?? '').toString())
+        : legacyLeaves;
     return {
       'absents': parseIntSafe(
         (payrollOrWorkerData['absents'] ?? '').toString(),
       ),
-      'leaves': parseIntSafe((payrollOrWorkerData['leaves'] ?? '').toString()),
+      'paidLeaves': paidLeaves,
+      'unpaidLeaves': unpaidLeaves,
+      'leaves': paidLeaves + unpaidLeaves,
     };
   }
 
@@ -249,29 +262,35 @@ class PayrollService {
         ? rawSalaryVal / totalWorkDaysVal
         : 0.0;
 
-    // Worked Days = Total Work Days - Absents (if daysWorked not provided)
+    // Worked Days is informational. Monthly gross remains the configured
+    // salary, and absence/unpaid-leave deductions are applied exactly once.
     final workedDaysVal = daysWorked.isEmpty
-        ? totalWorkDaysVal - absentDays
+        ? totalWorkDaysVal - absentDays - leaveDays
         : parseIntSafe(daysWorked);
 
-    // Gross Pay = Daily Rate × Worked Days
-    final grossSalary = workedDaysVal * dailyRate;
+    final grossSalary = rawSalaryVal;
 
     // Overtime Pay = Custom Amount (HR enters manually)
     final overtimePay = customOvertimeAmount;
 
-    // Deductions: only apply if user explicitly entered a per-day value
-    final absentDeduction = absentDeductionPerDay.trim().isNotEmpty
-        ? absentDays * customAbsentDeduction
-        : 0.0;
-    final leaveDeduction = leaveDeductionPerDay.trim().isNotEmpty
-        ? leaveDays * customLeaveDeduction
-        : 0.0;
+    // Blank per-day fields use the calculated daily rate. Entered values are
+    // treated as an explicit HR override, not an additional penalty.
+    final absentRate = absentDeductionPerDay.trim().isNotEmpty
+        ? customAbsentDeduction
+        : dailyRate;
+    final leaveRate = leaveDeductionPerDay.trim().isNotEmpty
+        ? customLeaveDeduction
+        : dailyRate;
+    final absentDeduction = absentDays * absentRate;
+    final leaveDeduction = leaveDays * leaveRate;
 
     final totalDeductions = absentDeduction + leaveDeduction;
 
     // Net Pay = Gross + OT - Deductions
-    final netSalary = grossSalary + overtimePay - totalDeductions;
+    final netSalary = (grossSalary + overtimePay - totalDeductions).clamp(
+      0.0,
+      double.infinity,
+    );
 
     return {
       'annualSalary': rawSalaryVal,
@@ -284,6 +303,8 @@ class PayrollService {
       'overtimeDays': 0,
       'grossSalary': grossSalary,
       'overtimePay': overtimePay,
+      'absentDeductionPerDayApplied': absentRate,
+      'leaveDeductionPerDayApplied': leaveRate,
       'absentDeduction': absentDeduction,
       'leaveDeduction': leaveDeduction,
       'totalDeductions': totalDeductions,

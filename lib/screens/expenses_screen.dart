@@ -59,6 +59,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   StreamSubscription? _workersSub;
   late AuthService _authService;
   late FirestoreService _firestore;
+  bool _initialized = false;
 
   @override
   void dispose() {
@@ -71,10 +72,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _expensesDocs = [];
     _isLoading = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _workersSub = _firestore.workersStream.listen((snapshot) {
@@ -168,7 +177,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _adjustDummyDatesForPeriod(String period) {
-    if (_expensesDocs.isEmpty) return;
+    final dummyList = DummyData.expenses;
+    if (dummyList.isEmpty) return;
 
     final now = DateTime.now();
     int maxDays = 7;
@@ -181,14 +191,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     else if (period == 'Yearly')
       maxDays = 365;
 
-    for (int i = 0; i < _expensesDocs.length; i++) {
-      int daysAgo = (i * maxDays / _expensesDocs.length).floor();
+    for (int i = 0; i < dummyList.length; i++) {
+      int daysAgo = (i * maxDays / dummyList.length).floor();
       final newDate = now.subtract(Duration(days: daysAgo));
       final dayStr = newDate.day.toString().padLeft(2, '0');
       final monthStr = newDate.month.toString().padLeft(2, '0');
       final yearStr = newDate.year.toString();
-      _expensesDocs[i]['date'] = '$dayStr/$monthStr/$yearStr';
+      dummyList[i]['date'] = '$dayStr/$monthStr/$yearStr';
     }
+    _expensesDocs = dummyList
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   List<Map<String, dynamic>> get _filteredExpenses {
@@ -216,9 +229,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     if (isGuest) {
       setState(() {
         _expensesDocs.removeWhere((e) => e['id'] == docId);
-        DummyData.expenses.removeWhere((e) => e['id'] == docId);
-        DummyData.saveToPrefs();
       });
+      DummyData.expenses.removeWhere((e) => e['id'] == docId);
+      await DummyData.saveToPrefs();
     } else {
       await _firestore.deleteExpense(docId);
     }
@@ -365,16 +378,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                             ...updatedMap,
                                             'id': docId,
                                           };
-                                        final dummyIdx = DummyData.expenses
-                                            .indexWhere(
-                                              (e) => e['id'] == docId,
-                                            );
-                                        if (dummyIdx != -1)
-                                          DummyData.expenses[dummyIdx] = {
-                                            ...updatedMap,
-                                            'id': docId,
-                                          };
                                       });
+                                      final dummyIdx = DummyData.expenses
+                                          .indexWhere(
+                                            (e) => e['id'] == docId,
+                                          );
+                                      if (dummyIdx != -1)
+                                        DummyData.expenses[dummyIdx] = {
+                                          ...updatedMap,
+                                          'id': docId,
+                                        };
                                       await DummyData.saveToPrefs();
                                     } else {
                                       await _firestore.updateExpense(
@@ -657,12 +670,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                           ...expenseMap,
                                           'id': newId,
                                         });
-                                        DummyData.expenses.insert(0, {
-                                          ...expenseMap,
-                                          'id': newId,
-                                        });
-                                        DummyData.saveToPrefs();
                                       });
+                                      DummyData.expenses.insert(0, {
+                                        ...expenseMap,
+                                        'id': newId,
+                                      });
+                                      await DummyData.saveToPrefs();
                                     } else {
                                       await _firestore.addExpense(
                                         expenseMap,

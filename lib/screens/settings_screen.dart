@@ -10,6 +10,7 @@ import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
@@ -40,8 +41,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
+    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (mounted) { // Safe guard — Provider.of in didChangeDependencies should only run once
+      _authService = Provider.of<AuthService>(context, listen: false);
+      _firestore = Provider.of<FirestoreService>(context, listen: false);
+    }
   }
 
   String _getCurrentLanguageName() {
@@ -59,8 +68,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
       );
       if (passwordWasReset == true) {
-        await _authService.signOut();
-        if (mounted) widget.onLogout();
+        // ✅ Logout hatao — password reset ke baad user ko Settings par hi rahne do
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'password_reset_success'.tr(),
+            title: 'success'.tr(),
+          );
+        }
       }
     } else {
       if (context.mounted) {
@@ -257,10 +272,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           message: 'account_deleted_successfully'.tr(),
           title: 'account_deleted'.tr(),
         );
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
+        // ✅ Guest user ke liye HomeScreen, login user ke liye LoginScreen
+        if (isGuest) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -285,9 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showLanguageModal(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Color(
-        0xFF000000,
-      ).withValues(alpha: 0.05),
+      barrierColor: Colors.transparent,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setModalState) {

@@ -727,6 +727,7 @@ class SalaryDayScheduler {
                               ),
                             ),
                           ),
+
                         ],
                       ),
                     ),
@@ -1129,7 +1130,7 @@ class SalaryDayScheduler {
                                                       },
                                                       icon: const Icon(Icons.payment_rounded, size: 18),
                                                       label: Text(
-                                                        'Pay ${r.workerName}',
+                                                        'pay'.tr(),
                                                         style: const TextStyle(
                                                           fontWeight: FontWeight.w700,
                                                           fontSize: 14,
@@ -1160,82 +1161,7 @@ class SalaryDayScheduler {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                       child: Row(
                         children: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF64748B),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'cancel'.tr(),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
                           const Spacer(),
-                          // Download ZIP
-                          if (filteredSelectedCount > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: StatefulBuilder(
-                                builder: (ctx2, setZipState) => OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF0247C4),
-                                    side: const BorderSide(
-                                      color: Color(0xFF0247C4),
-                                      width: 1.4,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  onPressed: isZipLoading
-                                      ? null
-                                      : () async {
-                                          setDialogState(() => isZipLoading = true);
-                                          final sel = filteredResults
-                                              .where((r) => selectedIndices.contains(summary.results.indexOf(r)))
-                                              .toList();
-                                          await _generateAndSaveZip(
-                                            context,
-                                            sel,
-                                            summary.periodLabel,
-                                          );
-                                          setDialogState(() => isZipLoading = false);
-                                        },
-                                  icon: isZipLoading
-                                      ? const SizedBox(
-                                          width: 14,
-                                          height: 14,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Color(0xFF0247C4),
-                                          ),
-                                        )
-                                      : const Icon(Icons.download_rounded, size: 16),
-                                  label: Text(
-                                    isZipLoading ? 'Generating...' : 'Download ZIP',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
                           // Pay All button
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(

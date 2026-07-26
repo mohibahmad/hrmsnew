@@ -12,7 +12,6 @@ import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../shared/auth_widgets.dart';
-import '../shared/auth_utils.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -30,7 +29,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
-  bool _isAppleLoading = false;
+  final bool _isAppleLoading = false;
   bool _isGuestLoading = false;
   bool _obscurePassword = true;
   bool _submitted = false;
@@ -47,22 +46,25 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
+    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestoreService = Provider.of<FirestoreService>(context, listen: false);
+
+    _googleSub?.cancel();
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')
         .doc('google')
         .snapshots()
         .listen((doc) {
-          if (doc.exists && mounted) {
-            setState(() {
-              _googleEnabled = doc.data()?['googleEnable'] == true;
-            });
-          } else if (mounted) {
-            setState(() {
-              _googleEnabled = true;
-            });
-          }
+          if (!mounted) return;
+          setState(() {
+            _googleEnabled = doc.data()?['googleEnable'] ?? true;
+          });
         });
   }
 
@@ -83,7 +85,18 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
-        if (await handleDeletedAccountIfNeeded(context, _authService)) return;
+        // ✅ DELETED ACCOUNT CHECK
+        if (await _firestoreService.isCurrentUserDeleted()) {
+          await _authService.signOut();
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'account_deleted_contact'.tr(),
+              isError: true,
+            );
+          }
+          return;
+        }
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -131,51 +144,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  Future<void> _handleAppleLogin() async {
-    setState(() {
-      _isAppleLoading = true;
-    });
-
-    try {
-      final userCredential = await _authService.signInWithApple();
-      if (userCredential != null && mounted) {
-        if (await handleDeletedAccountIfNeeded(context, _authService)) return;
-        if (!mounted) return;
-        FlashySnackBar.show(
-          context,
-          title: 'success'.tr(),
-          message: 'welcome_back'.tr(),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
-        return;
-      }
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'apple_login_failed'.tr(),
-          isError: true,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'apple_login_failed'.tr(),
-          isError: true,
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isAppleLoading = false);
-      }
-    }
-  }
-
   Future<void> _handleGuestLogin() async {
     setState(() => _isGuestLoading = true);
     try {
@@ -213,7 +181,16 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       final email = _emailController.text.trim();
-      final isDeleted = await _firestoreService.isEmailDeleted(email);
+
+      // ✅ EMAIL DELETED CHECK WITH ERROR HANDLING
+      bool isDeleted = false;
+      try {
+        isDeleted = await _firestoreService.isEmailDeleted(email);
+      } catch (_) {
+        // Network error — assume not deleted
+        isDeleted = false;
+      }
+
       if (isDeleted) {
         if (mounted) {
           FlashySnackBar.show(

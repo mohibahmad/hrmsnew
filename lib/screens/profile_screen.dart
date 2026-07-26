@@ -110,17 +110,20 @@ class _ProfileBodyState extends State<ProfileBody> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _businessNameController = TextEditingController();
     _companyIdController = TextEditingController();
-    _emailController = TextEditingController(
-      text: _authService.currentUser?.email ?? '',
-    );
+    _emailController = TextEditingController();
     _currencyController = TextEditingController(text: 'USD');
     _contact1Controller = TextEditingController();
     _contact2Controller = TextEditingController();
     _addressController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _loadProfile();
   }
 
@@ -129,14 +132,12 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.didUpdateWidget(oldWidget);
     if (!widget.isActive && oldWidget.isActive) {
 
-      if (mounted) {
-        setState(() {
-          _isEditing = false;
-          _newProfileImageBytes = null;
-          _newProfileImagePath = null;
-          _loadProfile();
-        });
-      }
+      setState(() {
+        _isEditing = false;
+        _newProfileImageBytes = null;
+        _newProfileImagePath = null;
+      });
+      _loadProfile();
     }
   }
 
@@ -153,30 +154,26 @@ class _ProfileBodyState extends State<ProfileBody> {
   }
 
 
-  static Map<String, String>? _guestProfileCache;
-
   Future<void> _loadProfile() async {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (!isGuest) {
-      _guestProfileCache = null;
-    }
     if (isGuest) {
+      final guestData = await PreferencesService.getGuestProfileData();
       if (mounted) {
         setState(() {
           _businessNameController.text =
-              _guestProfileCache?['businessName'] ?? 'Guest Company Ltd.';
-          _companyIdController.text = _guestProfileCache?['companyId'] ?? '';
+              guestData?['businessName'] ?? 'Guest Company Ltd.';
+          _companyIdController.text = guestData?['companyId'] ?? '';
           _emailController.text =
-              _guestProfileCache?['email'] ?? 'guest@example.com';
+              guestData?['email'] ?? 'guest@example.com';
           _currencyController.text = CurrencyUtils.normalize(
-            _guestProfileCache?['currency'],
+            guestData?['currency'],
           );
           _contact1Controller.text =
-              _guestProfileCache?['contact1'] ?? '+1 415-555-0198';
+              guestData?['contact1'] ?? '+1 415-555-0198';
           _contact2Controller.text =
-              _guestProfileCache?['contact2'] ?? '+1 415-555-0299';
+              guestData?['contact2'] ?? '+1 415-555-0299';
           _addressController.text =
-              _guestProfileCache?['address'] ?? '123 Demo Street, Test City';
+              guestData?['address'] ?? '123 Demo Street, Test City';
           _profilePicUrl = AuthService.profilePicNotifier.value;
           _isLoading = false;
         });
@@ -404,7 +401,6 @@ class _ProfileBodyState extends State<ProfileBody> {
           if (downloadUrl != null) 'profilePic': downloadUrl,
         });
       } else {
-
         if (_newProfileImageBytes != null) {
           final base64String = base64Encode(_newProfileImageBytes!);
           downloadUrl = 'data:image/png;base64,$base64String';
@@ -419,8 +415,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _newProfileImagePath = null;
         }
 
-
-        _guestProfileCache = {
+        await PreferencesService.setGuestProfileData({
           'businessName': _businessNameController.text,
           'companyId': _companyIdController.text,
           'email': _emailController.text,
@@ -428,7 +423,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           'contact1': _contact1Controller.text,
           'contact2': _contact2Controller.text,
           'address': _addressController.text,
-        };
+        });
       }
 
       if (mounted) {
@@ -470,7 +465,9 @@ class _ProfileBodyState extends State<ProfileBody> {
         onSave: _saveProfile,
         onEdit: () {
           Navigator.of(context).pop();
-          setState(() => _isEditing = true);
+          if (mounted) {
+            setState(() => _isEditing = true);
+          }
         },
       ),
     );
@@ -755,7 +752,8 @@ class _ProfileBodyState extends State<ProfileBody> {
     final bool isBusinessName = label == 'company_name'.tr();
     final bool isContact =
         label.toLowerCase().contains('contact') ||
-        label.toLowerCase().contains('phone');
+        label.toLowerCase().contains('phone') ||
+        label.toLowerCase().contains('company no');
     final bool isAddress = label.toLowerCase().contains('address');
     final Color bgColor = readOnly
         ? const Color(0xFFEEEFF2)
@@ -1005,7 +1003,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ),
                     ),
                     Align(
-                      alignment: Alignment.centerRight,
+                      alignment: Alignment(0.93, 0),
                       child: IconButton(
                         icon: SvgPicture.asset(
                           'assets/edit_icon.svg',

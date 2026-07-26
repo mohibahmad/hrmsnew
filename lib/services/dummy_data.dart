@@ -5,22 +5,109 @@ import 'package:shared_preferences/shared_preferences.dart';
 class DummyData {
   static const _dataVersionKey = 'dummy_data_version';
   static const _currentDataVersion = 5;
+  static Map<String, dynamic>? _sourceDefaults;
+
+  static dynamic _clone(dynamic value) {
+    if (value is Map) {
+      return value.map((key, item) => MapEntry(key.toString(), _clone(item)));
+    }
+    if (value is List) {
+      return value.map(_clone).toList();
+    }
+    return value;
+  }
+
+  static void _captureSourceDefaults() {
+    _sourceDefaults ??= {
+      'workers': _clone(workers),
+      'expenses': _clone(expenses),
+      'attendance': _clone(attendance),
+      'payroll': _clone(payroll),
+      'timeoff': _clone(timeoff),
+      'holidays': _clone(holidays),
+      'notifications': _clone(notifications),
+      'assets': _clone(assets),
+    };
+  }
+
+  /// Restores the complete demo dataset declared in this file.
+  ///
+  /// Guest mode starts from this source data and never needs Firebase.
+  static Future<void> resetToDefaults() async {
+    _captureSourceDefaults();
+    final defaults = _sourceDefaults!;
+
+    workers
+      ..clear()
+      ..addAll(
+        (defaults['workers'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+    expenses
+      ..clear()
+      ..addAll(
+        (defaults['expenses'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+    attendance
+      ..clear()
+      ..addAll(
+        (defaults['attendance'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+    payroll
+      ..clear()
+      ..addAll(
+        (defaults['payroll'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+    timeoff
+      ..clear()
+      ..addAll(
+        (defaults['timeoff'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+    assets
+      ..clear()
+      ..addAll(
+        (defaults['assets'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+    notifications
+      ..clear()
+      ..addAll(
+        (defaults['notifications'] as List).map(
+          (item) => Map<String, dynamic>.from(_clone(item) as Map),
+        ),
+      );
+
+    holidays.clear();
+    final defaultHolidays = defaults['holidays'] as Map;
+    for (final entry in defaultHolidays.entries) {
+      holidays[entry.key.toString()] = (entry.value as List)
+          .map((item) => Map<String, dynamic>.from(_clone(item) as Map))
+          .toList();
+    }
+
+    await saveToPrefs();
+  }
 
   static Future<void> loadFromPrefs() async {
+    _captureSourceDefaults();
     try {
       final prefs = await SharedPreferences.getInstance();
 
       final savedVersion = prefs.getInt(_dataVersionKey) ?? 0;
       if (savedVersion < _currentDataVersion) {
-        await prefs.remove('dummy_workers');
-        await prefs.remove('dummy_expenses');
-        await prefs.remove('dummy_attendance');
-        await prefs.remove('dummy_payroll');
-        await prefs.remove('dummy_timeoff');
-        await prefs.remove('dummy_assets');
-        await prefs.remove('dummy_holidays');
+        // Preserve existing guest records during an app update. New fields are
+        // filled by the compatibility defaults below instead of wiping data.
         await prefs.setInt(_dataVersionKey, _currentDataVersion);
-        return;
       }
 
       try {

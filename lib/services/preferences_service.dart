@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesService {
@@ -14,22 +15,28 @@ class PreferencesService {
   static const String _rateUsFirstAssetKey = 'rate_us_first_asset';
   static const String _companyWorkingDaysKey = 'company_working_days';
   static const String _companySalaryDayKey = 'company_salary_day';
+  static const String _guestProfileKey = 'guest_profile_data';
+  static const String _guestWorkersKey = 'guest_workers_data';
+  static const String _guestPayrollKey = 'guest_payroll_data';
 
   /// Synchronous cache of the profile pic URL so it's available on the first
   /// frame (no async delay). Populated the first time [getProfilePicUrl] is
   /// called, or explicitly via [initFromPrefs].
   static String? _cachedProfilePicUrl;
+  static bool _cachedIsGuest = false;
 
   /// Call this once at app startup (e.g. in main()) to pre-populate the sync
   /// cache from SharedPreferences before any widget builds.
   static Future<void> initFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _cachedProfilePicUrl = prefs.getString(_profilePicUrlKey);
+    _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
   }
 
   /// Synchronous getter – returns the cached value immediately, or null if
   /// [initFromPrefs] hasn't completed yet.
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
+  static bool get cachedIsGuest => _cachedIsGuest;
 
   static Future<void> setLoggedIn(bool value) async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,13 +44,15 @@ class PreferencesService {
   }
 
   static Future<void> setGuest(bool value) async {
+    _cachedIsGuest = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_guestKey, value);
   }
 
   static Future<bool> isGuest() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_guestKey) ?? false;
+    _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
+    return _cachedIsGuest;
   }
 
   static Future<void> setPremium(bool value) async {
@@ -97,6 +106,61 @@ class PreferencesService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_companySalaryDayKey, day);
+  }
+
+  static Future<void> setGuestProfileData(Map<String, String> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_guestProfileKey, jsonEncode(data));
+  }
+
+  static Future<Map<String, String>?> getGuestProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_guestProfileKey);
+    if (raw == null || raw.isEmpty) return null;
+    return Map<String, String>.from(jsonDecode(raw));
+  }
+
+  static Future<void> clearGuestProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_guestProfileKey);
+  }
+
+  static Future<void> setGuestWorkers(
+    List<Map<String, dynamic>> workers,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_guestWorkersKey, jsonEncode(workers));
+  }
+
+  static Future<List<Map<String, dynamic>>?> getGuestWorkers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_guestWorkersKey);
+    if (raw == null || raw.isEmpty) return null;
+    return List<Map<String, dynamic>>.from(jsonDecode(raw));
+  }
+
+  static Future<void> clearGuestWorkers() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_guestWorkersKey);
+  }
+
+  static Future<void> setGuestPayroll(
+    List<Map<String, dynamic>> payroll,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_guestPayrollKey, jsonEncode(payroll));
+  }
+
+  static Future<List<Map<String, dynamic>>?> getGuestPayroll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_guestPayrollKey);
+    if (raw == null || raw.isEmpty) return null;
+    return List<Map<String, dynamic>>.from(jsonDecode(raw));
+  }
+
+  static Future<void> clearGuestPayroll() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_guestPayrollKey);
   }
 
   static Future<void> setProfilePicUrl(String? url) async {
@@ -195,6 +259,8 @@ class PreferencesService {
     await prefs.remove(_rateUsFirstAssetKey);
     await prefs.remove(_companyWorkingDaysKey);
     await prefs.remove(_companySalaryDayKey);
+    await prefs.remove(_guestPayrollKey);
     _cachedProfilePicUrl = null;
+    _cachedIsGuest = false;
   }
 }

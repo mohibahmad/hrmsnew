@@ -14,7 +14,6 @@ import 'package:provider/provider.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../utils/date_utils.dart' as app_date_utils;
-import '../utils/leave_balance_helper.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
@@ -312,7 +311,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     return null;
   }
 
-
   Map<String, dynamic>? get _todayHoliday {
     final now = DateTime.now();
     for (final h in _holidays) {
@@ -338,8 +336,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }
     return null;
   }
-
-
 
   List<Map<String, dynamic>> _latestAttendancePerWorker(
     List<Map<String, dynamic>> records,
@@ -386,6 +382,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }).toList();
   }
 
+  List<Map<String, dynamic>> get _visibleTodayAttendance {
+    return _todayAttendance
+        .where(
+          (record) => !TimeOffService.isWorkerOnLeave(record, _timeOffRecords),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final holiday = _todayNonWorkingDay;
@@ -423,7 +427,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
           if (!widget.hideSidebar)
             SidebarWidget(
               key: ValueKey('sidebar_${context.locale.languageCode}'),
@@ -472,7 +475,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-
                                 Expanded(
                                   flex: 65,
                                   child: Column(
@@ -580,6 +582,22 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       showGuestRestrictionDialog(context);
+      return;
+    }
+    if (_todayNonWorkingDay != null) {
+      FlashySnackBar.show(
+        context,
+        message: 'non_working_day'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    if (TimeOffService.isWorkerOnLeave(data, _timeOffRecords)) {
+      FlashySnackBar.show(
+        context,
+        message: 'worker_on_time_off_attendance_blocked'.tr(),
+        isError: true,
+      );
       return;
     }
     _showMarkAttendanceDialog(
@@ -714,29 +732,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     final name = data["name"] ?? "";
     final email = data["email"] ?? "";
 
-
-
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    final normalizedEmail = email.trim().toLowerCase();
-    final workerDoc = isGuest
-        ? DummyData.workers.firstWhere(
-            (w) =>
-                (w['email']?.toString() ?? '').toLowerCase() == normalizedEmail,
-            orElse: () => <String, dynamic>{},
-          )
-        : _workers.firstWhere(
-            (w) =>
-                (w['email']?.toString() ?? '').toLowerCase() == normalizedEmail,
-            orElse: () => <String, dynamic>{},
-          );
-    final balanceDoc = workerDoc.isNotEmpty ? workerDoc : data;
-
     final todayRecord = _todayAttendance.firstWhere(
       (att) => att['email'] == email,
       orElse: () => <String, dynamic>{},
     );
 
-    const validStatuses = {'Present', 'Absent', 'Leave'};
+    const validStatuses = {'Present', 'Absent'};
 
     final recordStatus = todayRecord['status'];
     final initialStatus =
@@ -756,42 +757,30 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext dialogContext) {
         String selectedStatus =
-            (initialStatus == 'Present' ||
-                initialStatus == 'Absent' ||
-                initialStatus == 'Leave')
+            (initialStatus == 'Present' || initialStatus == 'Absent')
             ? initialStatus
             : 'Present';
         final initialType = (todayRecord['type'] ?? '').toString();
-        String selectedLeaveType =
-            (initialType.isNotEmpty && initialType != 'Absent')
+        const absentTypes = {
+          'Without Notice',
+          'Sick',
+          'Family Emergency',
+          'Other',
+        };
+        String selectedLeaveType = absentTypes.contains(initialType)
             ? initialType
-            : (selectedStatus == 'Absent' ? 'Without Notice' : 'Sick Leave');
+            : 'Without Notice';
 
         List<Map<String, String>> reasonOptions() {
-          if (selectedStatus == 'Absent') {
-            return const [
-              {'value': 'Without Notice', 'key': 'absent_without_notice'},
-              {'value': 'Sick', 'key': 'absent_sick'},
-              {'value': 'Family Emergency', 'key': 'absent_emergency'},
-              {'value': 'Other', 'key': 'absent_other'},
-            ];
-          }
-          final options = [
-            {'value': 'Sick Leave', 'key': 'sick_leave_type'},
-            {'value': 'Casual Leave', 'key': 'casual_leave_type'},
-            {'value': 'Medical Leave', 'key': 'medical_leave_type'},
+          return const [
+            {'value': 'Without Notice', 'key': 'absent_without_notice'},
+            {'value': 'Sick', 'key': 'absent_sick'},
+            {'value': 'Family Emergency', 'key': 'absent_emergency'},
+            {'value': 'Other', 'key': 'absent_other'},
           ];
-          for (final o in options) {
-            o['disabled'] =
-                (LeaveBalanceHelper.remainingForType(balanceDoc, o['value']!) <=
-                        0)
-                    .toString();
-          }
-          return options;
         }
 
-        String reasonLabelKey() =>
-            selectedStatus == 'Absent' ? 'absent_reason' : 'leave_type';
+        String reasonLabelKey() => 'absent_reason';
         final reasonController = TextEditingController(text: initialReason);
 
         return StatefulBuilder(
@@ -822,7 +811,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-
                         Container(
                           height: 40,
                           width: double.infinity,
@@ -898,26 +886,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setDialogState(() {
-                                          selectedStatus = 'Leave';
-                                          selectedLeaveType = 'Sick Leave';
-                                        });
-                                      },
-                                      child: _buildToggleChip(
-                                        'leave'.tr(),
-                                        'assets/leave.svg',
-                                        isSelected: selectedStatus == 'Leave',
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
-                              if (selectedStatus == 'Leave' ||
-                                  selectedStatus == 'Absent') ...[
+                              if (selectedStatus == 'Absent') ...[
                                 const SizedBox(height: 16),
                                 Text(
                                   reasonLabelKey().tr(),
@@ -1082,12 +1053,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
                                             try {
                                               final isGuest =
-                                                  _authService.currentUser
+                                                  _authService
+                                                      .currentUser
                                                       ?.isAnonymous ??
                                                   false;
                                               final type =
-                                                  (selectedStatus == 'Absent' ||
-                                                      selectedStatus == 'Leave')
+                                                  selectedStatus == 'Absent'
                                                   ? selectedLeaveType
                                                   : null;
                                               final desc =
@@ -1233,114 +1204,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                 }
                                               }
 
-
-
-
-
-
-
-                                              final previousStatus =
-                                                  (todayRecord['status'] ?? '')
-                                                      .toString();
-
-                                              Map<String, dynamic>?
-                                              findWorker() {
-                                                if (isGuest) {
-                                                  final wIdx = DummyData.workers
-                                                      .indexWhere(
-                                                        (w) =>
-                                                            w['email'] == email,
-                                                      );
-                                                  return wIdx != -1
-                                                      ? DummyData.workers[wIdx]
-                                                      : null;
-                                                }
-                                                final worker = _workers.firstWhere(
-                                                  (w) =>
-                                                      (w['email']?.toString() ??
-                                                              '')
-                                                          .toLowerCase() ==
-                                                      email.toLowerCase(),
-                                                  orElse: () => {},
-                                                );
-                                                return worker.isNotEmpty
-                                                    ? worker
-                                                    : null;
-                                              }
-
-                                              Future<void> applyLeaveDelta(
-                                                String leaveType,
-                                                int delta,
-                                              ) async {
-                                                final availKey = LeaveBalanceHelper
-                                                    .availKeyForType[leaveType];
-                                                if (availKey == null) return;
-                                                final workerMap = findWorker();
-                                                if (workerMap == null) return;
-                                                final current =
-                                                    LeaveBalanceHelper.remainingForType(
-                                                      workerMap,
-                                                      leaveType,
-                                                    );
-                                                final total =
-                                                    LeaveBalanceHelper.totalForType(
-                                                      workerMap,
-                                                      leaveType,
-                                                    );
-                                                final newVal = (current + delta)
-                                                    .clamp(0, total);
-                                                if (isGuest) {
-                                                  final wIdx = DummyData.workers
-                                                      .indexWhere(
-                                                        (w) =>
-                                                            w['email'] == email,
-                                                      );
-                                                  if (wIdx != -1) {
-                                                    DummyData
-                                                            .workers[wIdx][availKey] =
-                                                        newVal;
-                                                    if (mounted) {
-                                                      setState(() {
-                                                        _workers =
-                                                            List<
-                                                              Map<
-                                                                String,
-                                                                dynamic
-                                                              >
-                                                            >.from(
-                                                              DummyData.workers,
-                                                            );
-                                                      });
-                                                    }
-                                                  }
-                                                } else {
-                                                  final id = workerMap['id'];
-                                                  if (id != null) {
-                                                    await _firestore
-                                                        .updateWorkerLeaves(
-                                                          id,
-                                                          {availKey: newVal},
-                                                        );
-                                                  }
-                                                }
-                                              }
-
-                                              if (selectedStatus == 'Leave' &&
-                                                  previousStatus != 'Leave') {
-                                                await applyLeaveDelta(
-                                                  selectedLeaveType,
-                                                  -1,
-                                                );
-                                              } else if (previousStatus ==
-                                                      'Leave' &&
-                                                  selectedStatus != 'Leave') {
-                                                await applyLeaveDelta(
-                                                  (todayRecord['type'] ?? '')
-                                                      .toString(),
-                                                  1,
-                                                );
-                                              }
-
                                               if (isGuest) {
                                                 await DummyData.saveToPrefs();
                                               }
@@ -1415,14 +1278,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             ),
                                           )
                                         : Text(
-                                      'save'.tr(),
-                                      style: TextStyle(
-                                        color: Color(0xFFFFFFFF),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
+                                            'save'.tr(),
+                                            style: TextStyle(
+                                              color: Color(0xFFFFFFFF),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
                                   ),
                                 ],
                               ),
@@ -1536,7 +1399,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 fontFamily: 'SF Pro Display',
               ),
             ),
-],
+          ],
         ],
       ),
     );
@@ -1587,7 +1450,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 currentStatus: _getWorkerStatus(entry.value),
                 isHoliday: isHoliday,
                 onMarkAttendance: (status) {
-                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
                   if (isGuest) {
                     showGuestRestrictionDialog(context);
                     return;
@@ -1607,7 +1471,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                   }
                 },
                 onTap: () {
-                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
                   if (isGuest) {
                     showGuestRestrictionDialog(context);
                     return;
@@ -1619,10 +1484,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       isError: true,
                     );
                   } else {
-                    _openAttendanceDialog(
-                      context,
-                      entry.value,
-                    );
+                    _openAttendanceDialog(context, entry.value);
                   }
                 },
               ),
@@ -1639,7 +1501,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         isCompanyOffDay: holiday['isCompanyOffDay'] == true,
       );
     }
-    if (_todayAttendance.isEmpty) {
+    final visibleAttendance = _visibleTodayAttendance;
+    if (visibleAttendance.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1665,8 +1528,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       );
     }
     return SingleChildScrollView(
-child: Column(
-		children: _todayAttendance
+      child: Column(
+        children: visibleAttendance
             .asMap()
             .entries
             .map(
@@ -1752,7 +1615,6 @@ class WorkerListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leaveExhausted = LeaveBalanceHelper.allLeavesExhausted(data);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1763,121 +1625,100 @@ class WorkerListItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
-        children: [
-          WorkerAvatar(
-            imageUrl: data['profileImage'] is String
-                ? data['profileImage'] as String
-                : null,
-            name: (data['name'] ?? '').toString(),
-            size: 44,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  (data["name"] ?? '').toString(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: textDark,
-                    fontFamily: 'SF Pro Display',
+          children: [
+            WorkerAvatar(
+              imageUrl: data['profileImage'] is String
+                  ? data['profileImage'] as String
+                  : null,
+              name: (data['name'] ?? '').toString(),
+              size: 44,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (data["name"] ?? '').toString(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: textDark,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
                   ),
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  (data["email"] ?? '').toString(),
-                  style: const TextStyle(
-                    color: textMuted,
-                    fontSize: 13,
-                    fontFamily: 'SF Pro Display',
+                  const SizedBox(height: 2),
+                  Text(
+                    (data["email"] ?? '').toString(),
+                    style: const TextStyle(
+                      color: textMuted,
+                      fontSize: 13,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                    maxLines: 1,
                   ),
-                  maxLines: 1,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-
-          if (currentStatus.isEmpty) ...[
-            const SizedBox(width: 12),
-            _AttendanceActionButton(
-              labelKey: 'present',
-              status: 'Present',
-              color: const Color(0xFF00C853),
-              enabled: !isHoliday,
-              onTap: onMarkAttendance,
-              onDisabledTap: () {
-                FlashySnackBar.show(
-                  context,
-                  message: 'non_working_day'.tr(),
-                  isError: true,
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            _AttendanceActionButton(
-              labelKey: 'absent',
-              status: 'Absent',
-              color: const Color(0xFFF44336),
-              enabled: !isHoliday,
-              onTap: onMarkAttendance,
-              onDisabledTap: () {
-                FlashySnackBar.show(
-                  context,
-                  message: 'non_working_day'.tr(),
-                  isError: true,
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            _AttendanceActionButton(
-              labelKey: 'leave',
-              status: 'Leave',
-              color: const Color(0xFFFF9800),
-              enabled: !isHoliday && !leaveExhausted,
-              onTap: onMarkAttendance,
-              onDisabledTap: () {
-                if (isHoliday) {
+            if (currentStatus.isEmpty) ...[
+              const SizedBox(width: 12),
+              _AttendanceActionButton(
+                labelKey: 'present',
+                status: 'Present',
+                color: const Color(0xFF00C853),
+                enabled: !isHoliday,
+                onTap: onMarkAttendance,
+                onDisabledTap: () {
                   FlashySnackBar.show(
                     context,
                     message: 'non_working_day'.tr(),
                     isError: true,
                   );
-                } else {
+                },
+              ),
+              const SizedBox(width: 8),
+              _AttendanceActionButton(
+                labelKey: 'absent',
+                status: 'Absent',
+                color: const Color(0xFFF44336),
+                enabled: !isHoliday,
+                onTap: onMarkAttendance,
+                onDisabledTap: () {
                   FlashySnackBar.show(
                     context,
-                    message: 'paid_leave_exhausted'.tr(),
+                    message: 'non_working_day'.tr(),
                     isError: true,
                   );
-                }
-              },
-            ),
-          ] else ...[
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E5EA),
-                borderRadius: BorderRadius.circular(6),
+                },
               ),
-              child: Text(
-                'Attendance Marked',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
+            ] else ...[
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E5EA),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Attendance Marked',
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -1966,82 +1807,85 @@ class TodayAttendanceItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap ?? onEdit,
       child: Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FC),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              WorkerAvatar(
-                imageUrl: data['profileImage'] is String
-                    ? data['profileImage'] as String
-                    : null,
-                name: (data['name'] ?? '').toString(),
-                size: 44,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  (data["name"] ?? '').toString(),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: textDark,
-                    fontFamily: 'SF Pro Display',
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FC),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                WorkerAvatar(
+                  imageUrl: data['profileImage'] is String
+                      ? data['profileImage'] as String
+                      : null,
+                  name: (data['name'] ?? '').toString(),
+                  size: 44,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    (data["name"] ?? '').toString(),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: textDark,
+                      fontFamily: 'SF Pro Display',
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              StatusPill(status: (data["status"] ?? '').toString()),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: onEdit,
-                child: SvgPicture.asset(
-                  'assets/edit_icon.svg',
-                  height: 20,
-                  width: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF000000),
-                    BlendMode.srcIn,
+                const SizedBox(width: 12),
+                StatusPill(status: (data["status"] ?? '').toString()),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: onEdit,
+                  child: SvgPicture.asset(
+                    'assets/edit_icon.svg',
+                    height: 20,
+                    width: 20,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFF000000),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          if (data["type"] != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              (data["status"] == 'Leave' ? 'leave_type_display' : 'absent_type')
-                  .tr(namedArgs: {'type': data["type"].toString()}),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: textDark,
-                fontFamily: 'SF Pro Display',
-              ),
+              ],
             ),
-            if (data["desc"] != null) ...[
-              const SizedBox(height: 6),
+            if (data["type"] != null) ...[
+              const SizedBox(height: 12),
               Text(
-                (data["desc"] ?? '').toString(),
+                (data["status"] == 'Leave'
+                        ? 'leave_type_display'
+                        : 'absent_type')
+                    .tr(namedArgs: {'type': data["type"].toString()}),
                 style: const TextStyle(
                   fontSize: 12,
-                  color: textMuted,
-                  height: 1.3,
+                  fontWeight: FontWeight.bold,
+                  color: textDark,
                   fontFamily: 'SF Pro Display',
                 ),
-                maxLines: 2,
               ),
+              if (data["desc"] != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  (data["desc"] ?? '').toString(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: textMuted,
+                    height: 1.3,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 2,
+                ),
+              ],
             ],
           ],
-        ],
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -2096,4 +1940,3 @@ class StatusPill extends StatelessWidget {
     );
   }
 }
-  

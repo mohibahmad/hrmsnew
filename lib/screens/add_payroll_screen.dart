@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
@@ -20,6 +21,7 @@ class AddPayrollScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onBack;
+
   const AddPayrollScreen({
     super.key,
     required this.workerData,
@@ -33,8 +35,25 @@ class AddPayrollScreen extends StatefulWidget {
 }
 
 class _AddPayrollScreenState extends State<AddPayrollScreen> {
+  // ─────────────────────────────────────────────────────────────
+  //  Theme constants
+  // ─────────────────────────────────────────────────────────────
+  static const Color _primaryBlue = Color(0xFF0A44C2);
+  static const Color _darkBlue = Color(0xFF082C7C);
+  static const Color _textDark = Color(0xFF111827);
+  static const Color _textGrey = Color(0xFF000000);
+  static const Color _borderLight = Color(0xFFE5E7EB);
+
+  // ─────────────────────────────────────────────────────────────
+  //  Services
+  // ─────────────────────────────────────────────────────────────
   late AuthService _authService;
   late FirestoreService _firestore;
+  bool _initialized = false;
+
+  // ─────────────────────────────────────────────────────────────
+  //  Controllers
+  // ─────────────────────────────────────────────────────────────
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
   final _leavesCtrl = TextEditingController();
@@ -42,75 +61,63 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   final _salaryCtrl = TextEditingController();
   final _absentDeductionCtrl = TextEditingController();
   final _leaveDeductionCtrl = TextEditingController();
+  final _netCtrl = TextEditingController(text: r'$ 0');
+
+  // ─────────────────────────────────────────────────────────────
+  //  State
+  // ─────────────────────────────────────────────────────────────
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
   bool _isSaving = false;
   bool _showNotifications = false;
-  final TextEditingController _netCtrl = TextEditingController(text: r'$ 0');
+  int _paidLeaves = 0;
 
-  static const _primaryBlue = Color(0xFF0A44C2);
-  static const _darkBlue = Color(0xFF082C7C);
-  static const _textDark = Color(0xFF111827);
-  static const _textGrey = Color(0xFF000000);
-  static const _borderLight = Color(0xFFE5E7EB);
-
+  // ─────────────────────────────────────────────────────────────
+  //  Worker data accessors
+  // ─────────────────────────────────────────────────────────────
   String get _name => (widget.workerData['name'] ?? '').toString();
+
   String get _email => (widget.workerData['email'] ?? '').toString();
+
   String get _position => (widget.workerData['position'] ?? '').toString();
+
   String get _status => (widget.workerData['status'] ?? 'Active').toString();
+
   String get _phone =>
       (widget.workerData['contact'] ?? widget.workerData['phone'] ?? '')
           .toString();
+
   String get _profileImage =>
       (widget.workerData['profileImage'] ?? '').toString();
-
-  void _recalc() {
-    setState(() {
-      if (_workDaysCtrl.text.trim().isNotEmpty) {
-        final totalDays = int.tryParse(_workDaysCtrl.text.trim()) ?? 0;
-        final absentDays = int.tryParse(_absentsCtrl.text.trim()) ?? 0;
-        final leaveDays = int.tryParse(_leavesCtrl.text.trim()) ?? 0;
-        final hasLeaveDeduction = _leaveDeductionCtrl.text.trim().isNotEmpty;
-        final effectiveWorkedDays =
-            totalDays - absentDays - (hasLeaveDeduction ? leaveDays : 0);
-        _calcResult = PayrollService.calculatePayroll(
-          salary: _salaryStr,
-          totalWorkDays: _workDaysCtrl.text,
-          daysWorked: effectiveWorkedDays > 0
-              ? effectiveWorkedDays.toString()
-              : '0',
-          absents: _absentsCtrl.text,
-          leaves: _leavesCtrl.text,
-          overtimeAmount: _overtimeAmountCtrl.text,
-          absentDeductionPerDay: _absentDeductionCtrl.text,
-          leaveDeductionPerDay: _leaveDeductionCtrl.text,
-          salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
-        );
-        _calculatedNet = _calcResult['formattedNet'] as String;
-        _netCtrl.text = _calculatedNet;
-      } else {
-        _calcResult = {};
-        _calculatedNet = '';
-        _netCtrl.text = r'$ 0';
-      }
-    });
-  }
 
   String get _salaryStr =>
       PayrollService.currentSalaryDisplay(widget.workerData);
 
+  // ─────────────────────────────────────────────────────────────
+  //  Lifecycle
+  // ─────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
+    // ❌ DO NOT use Provider.of in initState — context is not available
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
+
     _salaryCtrl.text = _salaryStr;
-
-
 
     final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
     _absentsCtrl.text = attendanceCounts['absents'].toString();
-    _leavesCtrl.text = attendanceCounts['leaves'].toString();
+    _paidLeaves = attendanceCounts['paidLeaves'] ?? 0;
+    _leavesCtrl.text = (attendanceCounts['unpaidLeaves'] ?? 0).toString();
+
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
@@ -122,27 +129,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           .toString();
       _recalc();
     }
+
     if (_absentsCtrl.text.isEmpty) _absentsCtrl.text = '0';
     if (_leavesCtrl.text.isEmpty) _leavesCtrl.text = '0';
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _fetchMonthlyAttendance(),
     );
-  }
-
-  Future<void> _fetchMonthlyAttendance() async {
-    if (_email.trim().isEmpty) return;
-    try {
-      final attendance = await _firestore.getWorkerMonthlyAttendance(
-        _email,
-      );
-      if (!mounted) return;
-      setState(() {
-        _absentsCtrl.text = (attendance['absents'] ?? 0).toString();
-        _leavesCtrl.text = (attendance['leaves'] ?? 0).toString();
-        _recalc();
-      });
-    } catch (_) {}
   }
 
   @override
@@ -158,40 +151,93 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     super.dispose();
   }
 
-  Future<void> _handleSave() async {
-    final hasAbsents = (int.tryParse(_absentsCtrl.text.trim()) ?? 0) > 0;
-    final hasLeaves = (int.tryParse(_leavesCtrl.text.trim()) ?? 0) > 0;
+  // ─────────────────────────────────────────────────────────────
+  //  Payroll calculation
+  // ─────────────────────────────────────────────────────────────
+  void _recalc() {
+    if (_workDaysCtrl.text.trim().isEmpty) {
+      setState(() {
+        _calcResult = {};
+        _calculatedNet = '';
+        _netCtrl.text = r'$ 0';
+      });
+      return;
+    }
 
-    final validators = [
-      (_workDaysCtrl.text.trim(), 'Please enter Total Work Days'),
-      (_absentsCtrl.text.trim(), 'Please enter Absents'),
-      (_leavesCtrl.text.trim(), 'Please enter Leaves'),
-      (_salaryStr.trim(), 'Please enter Salary'),
+    final totalDays = int.tryParse(_workDaysCtrl.text.trim()) ?? 0;
+    final absentDays = int.tryParse(_absentsCtrl.text.trim()) ?? 0;
+    final leaveDays = int.tryParse(_leavesCtrl.text.trim()) ?? 0;
+    final effectiveWorkedDays = (totalDays - absentDays - leaveDays).clamp(
+      0,
+      totalDays,
+    );
+
+    final result = PayrollService.calculatePayroll(
+      salary: _salaryStr,
+      totalWorkDays: _workDaysCtrl.text,
+      daysWorked: effectiveWorkedDays.toString(),
+      absents: _absentsCtrl.text,
+      leaves: _leavesCtrl.text,
+      overtimeAmount: _overtimeAmountCtrl.text,
+      absentDeductionPerDay: _absentDeductionCtrl.text,
+      leaveDeductionPerDay: _leaveDeductionCtrl.text,
+      salaryType: (widget.workerData['salaryType'] ?? 'Monthly').toString(),
+    );
+
+    setState(() {
+      _calcResult = result;
+      _calculatedNet = result['formattedNet'] as String? ?? '';
+      _netCtrl.text = _calculatedNet;
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Attendance fetch
+  // ─────────────────────────────────────────────────────────────
+  Future<void> _fetchMonthlyAttendance() async {
+    if (_email.trim().isEmpty) return;
+    // ✅ Skip for guest users — Firestore not available
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) return;
+    try {
+      final attendance = await _firestore.getWorkerMonthlyAttendance(_email);
+      if (!mounted) return;
+      setState(() {
+        _absentsCtrl.text = (attendance['absents'] ?? 0).toString();
+        _paidLeaves = attendance['paidLeaves'] ?? 0;
+        _leavesCtrl.text = (attendance['unpaidLeaves'] ?? 0).toString();
+      });
+      _recalc();
+    } catch (_) {
+      // Silently ignore — attendance is optional context
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Save handler
+  // ─────────────────────────────────────────────────────────────
+  Future<void> _handleSave() async {
+    // ── Validation ──
+    final validators = <(String, String)>[
+      (_workDaysCtrl.text.trim(), 'please_enter_total_work_days'.tr()),
+      (_absentsCtrl.text.trim(), 'please_enter_absents'.tr()),
+      (_leavesCtrl.text.trim(), 'please_enter_leaves'.tr()),
+      (_salaryStr.trim(), 'please_enter_salary'.tr()),
     ];
-    for (final entry in validators) {
-      if (entry.$1.isEmpty || entry.$1 == r'$ 0') {
-        FlashySnackBar.show(context, message: entry.$2, isError: true);
+
+    for (final (value, message) in validators) {
+      if (value.isEmpty || value == r'$ 0') {
+        FlashySnackBar.show(context, message: message, isError: true);
         return;
       }
     }
-    if (hasAbsents && _absentDeductionCtrl.text.trim().isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'Please enter Absent Deduction per day',
-        isError: true,
-      );
-      return;
-    }
-    if (hasLeaves && _leaveDeductionCtrl.text.trim().isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'Please enter Leave Deduction per day',
-        isError: true,
-      );
-      return;
-    }
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    final record = {
+    final now = DateTime.now();
+    final payPeriod = DateTime(now.year, now.month, 1);
+    final payrollKey =
+        '${_email.trim().toLowerCase()}_${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    final record = <String, dynamic>{
       'name': _name,
       'email': _email,
       'position': _position,
@@ -200,69 +246,90 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'profileImage': _profileImage,
       'totalWorkDays': _workDaysCtrl.text.trim(),
       'absents': _absentsCtrl.text.trim(),
-      'leaves': _leavesCtrl.text.trim(),
+      'paidLeaves': _paidLeaves,
+      'unpaidLeaves': _leavesCtrl.text.trim(),
+      'leaves': (_paidLeaves + (int.tryParse(_leavesCtrl.text.trim()) ?? 0))
+          .toString(),
       'overtimeAmount': _overtimeAmountCtrl.text.trim(),
       'absentDeduction': _absentDeductionCtrl.text.trim(),
       'leaveDeduction': _leaveDeductionCtrl.text.trim(),
       'salary': _salaryStr,
       'netSalary': _calculatedNet,
-      'lastModified': DateTime.now(),
+      'payPeriod': payPeriod,
+      'payrollKey': payrollKey,
+      'lastModified': now,
     };
+
     setState(() => _isSaving = true);
+
     try {
+      // ── Persist payroll ──
       if (isGuest) {
-        final existingIdx = DummyData.payroll.indexWhere((p) {
-          final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-          return pEmail.isNotEmpty && pEmail == _email.trim().toLowerCase();
+        // ✅ Pure PreferencesService — DummyData sirf preview ke liye hai
+        final guestPayroll =
+            (await PreferencesService.getGuestPayroll()) ??
+            <Map<String, dynamic>>[];
+        final idx = guestPayroll.indexWhere((p) {
+          return (p['payrollKey'] ?? '').toString() == payrollKey;
         });
-        if (existingIdx != -1) {
-          DummyData.payroll[existingIdx] = {
-            ...DummyData.payroll[existingIdx],
-            ...record,
-          };
+        if (idx != -1) {
+          guestPayroll[idx] = {...guestPayroll[idx], ...record};
         } else {
-          DummyData.payroll.add(record);
+          guestPayroll.add(record);
         }
-        await DummyData.saveToPrefs();
+        await PreferencesService.setGuestPayroll(guestPayroll);
       } else {
-        final hasExistingRecord = widget.workerData['hasPayrollRecord'] == true;
+        final hasExisting = widget.workerData['hasPayrollRecord'] == true;
         final existingId = widget.workerData['id']?.toString() ?? '';
-        if (hasExistingRecord && existingId.isNotEmpty) {
+        if (hasExisting && existingId.isNotEmpty) {
           await _firestore.updatePayrollRecord(existingId, record);
         } else {
           await _firestore.addPayrollRecord(record);
         }
       }
 
+      // ── Persist expense ──
       final netAmount = PayrollService.extractSalary(_calculatedNet);
       if (netAmount > 0) {
-        final now = DateTime.now();
-        final expenseRecord = {
+        final expenseRecord = <String, dynamic>{
           'name': _name,
           'date': now,
           'category': 'Salary',
           'amount': netAmount,
           'description': 'Salary payment for $_name',
+          'payrollKey': payrollKey,
         };
         if (isGuest) {
-          final expenseId =
-              'dummy_e${DateTime.now().microsecondsSinceEpoch}_${record.hashCode.toString().replaceAll('-', '')}';
-          DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
+          final existingExpenseIndex = DummyData.expenses.indexWhere(
+            (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
+          );
+          if (existingExpenseIndex == -1) {
+            final id =
+                'dummy_e${DateTime.now().microsecondsSinceEpoch}'
+                '_${record.hashCode.abs()}';
+            DummyData.expenses.insert(0, {...expenseRecord, 'id': id});
+          } else {
+            DummyData.expenses[existingExpenseIndex] = {
+              ...DummyData.expenses[existingExpenseIndex],
+              ...expenseRecord,
+            };
+          }
           await DummyData.saveToPrefs();
+          if (mounted) setState(() {}); // ✅ UI UPDATE after expense add
         } else {
-          await _firestore.addExpense(expenseRecord);
+          await _firestore.upsertPayrollExpense(
+            expenseRecord,
+            payrollKey: payrollKey,
+          );
         }
       }
 
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'payroll_saved_successfully'.tr(),
-        );
-        await _generateAndShowInvoice();
-        widget.onBack?.call();
-      }
-    } catch (e) {
+      if (!mounted) return;
+
+      FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
+      await _generateAndShowInvoice();
+      widget.onBack?.call();
+    } catch (_) {
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -275,14 +342,21 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Invoice generation
+  // ─────────────────────────────────────────────────────────────
   Future<void> _generateAndShowInvoice() async {
-    final cr = _calcResult;
-    if (cr.isEmpty) return;
+    if (_calcResult.isEmpty) {
+      // ✅ Skip invoice if no calculation
+      return;
+    }
 
+    final cr = _calcResult;
     final now = DateTime.now();
     final payPeriod = '${now.month.toString().padLeft(2, '0')}/${now.year}';
     final fileName =
-        'payroll_${_name.replaceAll(' ', '_')}_${payPeriod.replaceAll('/', '-')}.pdf';
+        'payroll_${_name.replaceAll(' ', '_')}'
+        '_${payPeriod.replaceAll('/', '-')}.pdf';
 
     final bytes = await InvoiceService.generatePayrollInvoice(
       employeeName: _name,
@@ -290,26 +364,25 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       position: _position,
       payPeriod: payPeriod,
       totalWorkDays: _workDaysCtrl.text.trim(),
-      daysWorked: _workDaysCtrl.text.trim(),
+      daysWorked: (cr['workedDays'] ?? 0).toString(),
       absents: _absentsCtrl.text.trim(),
       leaves: _leavesCtrl.text.trim(),
       overtimeAmount: _overtimeAmountCtrl.text.trim(),
       salary: _salaryStr,
-      dailyRate: cr['formattedDailyRate'] as String? ?? '',
-      grossPay: cr['formattedGross'] as String? ?? '',
-      overtimePay: cr['formattedOvertime'] as String? ?? '',
-      absentDeduction: cr['formattedAbsentDeduct'] as String? ?? '',
-      leaveDeduction: cr['formattedLeaveDeduct'] as String? ?? '',
-      totalDeductions: cr['formattedTotalDeductions'] as String? ?? '',
-      netSalary: cr['formattedNet'] as String? ?? '',
+      dailyRate: (cr['formattedDailyRate'] as String?) ?? '',
+      grossPay: (cr['formattedGross'] as String?) ?? '',
+      overtimePay: (cr['formattedOvertime'] as String?) ?? '',
+      absentDeduction: (cr['formattedAbsentDeduct'] as String?) ?? '',
+      leaveDeduction: (cr['formattedLeaveDeduct'] as String?) ?? '',
+      totalDeductions: (cr['formattedTotalDeductions'] as String?) ?? '',
+      netSalary: (cr['formattedNet'] as String?) ?? '',
     );
 
-    if (mounted) {
-      _showInvoicePreviewDialog(bytes, fileName);
-    }
+    if (mounted) _showInvoicePreviewDialog(bytes, fileName);
   }
 
   void _showInvoicePreviewDialog(Uint8List pdfBytes, String fileName) {
+    bool disposed = false;
     final controller = pdfx.PdfController(
       document: pdfx.PdfDocument.openData(pdfBytes),
     );
@@ -328,6 +401,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           child: Column(
             children: [
+              // ── Dialog header ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
@@ -398,6 +472,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(height: 12),
               Container(height: 1, color: const Color(0xFFE5E7EB)),
               const SizedBox(height: 12),
+
+              // ── PDF viewer ──
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -411,21 +487,31 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
         ),
       ),
-    ).then((_) => controller.dispose());
+    ).then((_) {
+      if (!disposed) {
+        disposed = true;
+        try {
+          controller.dispose();
+        } catch (_) {}
+      }
+    });
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Notifications
+  // ─────────────────────────────────────────────────────────────
   void _toggleNotifications() {
     setState(() => _showNotifications = !_showNotifications);
-    if (_showNotifications) {
-      _firestore.markAllNotificationsRead();
-    }
+    if (_showNotifications) _firestore.markAllNotificationsRead();
   }
 
   void _onNotificationTap(String type) {
-
     setState(() => _showNotifications = false);
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Build
+  // ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -461,6 +547,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
           ),
         ),
+
+        // ── Notification overlay ──
         if (_showNotifications) ...[
           Positioned.fill(
             child: GestureDetector(
@@ -477,6 +565,49 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  App bar
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildAppBar() {
+    return Container(
+      height: 94,
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+            child: const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.arrow_back, color: _textDark, size: 24),
+            ),
+          ),
+          const Text(
+            'Workforce',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: _textDark,
+            ),
+          ),
+          const Spacer(),
+          NotificationBell(onTap: _toggleNotifications),
+          const SizedBox(width: 20),
+          GestureDetector(
+            onTap: widget.onProfileTap,
+            child: const UserAvatar(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Payroll data header row
+  // ─────────────────────────────────────────────────────────────
   Widget _buildPayrollDataHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -511,14 +642,17 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
             const SizedBox(width: 16),
             ElevatedButton(
-              onPressed: _isSaving ? null : () {
-                final isGuest = _authService.currentUser?.isAnonymous ?? false;
-                if (isGuest) {
-                  showGuestRestrictionDialog(context);
-                  return;
-                }
-                _handleSave();
-              },
+              onPressed: _isSaving
+                  ? null
+                  : () {
+                      final isGuest =
+                          _authService.currentUser?.isAnonymous ?? false;
+                      if (isGuest) {
+                        showGuestRestrictionDialog(context);
+                        return;
+                      }
+                      _handleSave();
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0B50C3),
                 foregroundColor: Colors.white,
@@ -551,44 +685,18 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  Widget _buildAppBar() {
-    return Container(
-      height: 94,
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-            child: const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(Icons.arrow_back, color: _textDark, size: 24),
-            ),
-          ),
-          Text(
-            'Workforce',
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: _textDark,
-            ),
-          ),
-          const Spacer(),
-          NotificationBell(onTap: _toggleNotifications),
-          const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            child: const UserAvatar(),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ─────────────────────────────────────────────────────────────
+  //  Employee banner
+  // ─────────────────────────────────────────────────────────────
   Widget _buildEmployeeBanner() {
+    final now = DateTime.now();
+    final firstDay = DateTime(now.year, now.month, 1);
+    final lastDay = DateTime(now.year, now.month + 1, 0);
+    final monthFmt = DateFormat('MMM');
+    final period =
+        '${monthFmt.format(firstDay)} ${firstDay.day} – '
+        '${monthFmt.format(lastDay)} ${lastDay.day}, ${now.year}';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -603,6 +711,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // ── Avatar + status badge ──
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -638,6 +747,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ],
           ),
           const SizedBox(width: 24),
+
+          // ── Name + ID + position ──
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,6 +761,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -661,7 +773,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'ID: EMP-${_email.hashCode.toString().substring(0, 5)}',
+                      'ID: EMP-${_email.hashCode.abs().toString().padLeft(5, '0').substring(0, 5)}',
+
                       style: const TextStyle(
                         color: Color(0xB3FFFFFF),
                         fontSize: 14,
@@ -681,7 +794,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                           color: Color(0xB3FFFFFF),
                           fontSize: 14,
                         ),
-                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -689,44 +802,39 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ],
             ),
           ),
-          Builder(
-            builder: (_) {
-              final now = DateTime.now();
-              final firstDay = DateTime(now.year, now.month, 1);
-              final lastDay = DateTime(now.year, now.month + 1, 0);
-              final monthFmt = DateFormat('MMM');
-              final period =
-                  '${monthFmt.format(firstDay)} ${firstDay.day} - ${monthFmt.format(lastDay)} ${lastDay.day}, ${now.year}';
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'current_pay_period'.tr(),
-                    style: const TextStyle(
-                      color: Color(0xB3FFFFFF),
-                      fontSize: 11,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    period,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              );
-            },
+
+          // ── Pay period ──
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'current_pay_period'.tr(),
+                style: const TextStyle(
+                  color: Color(0xB3FFFFFF),
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                period,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Details card
+  // ─────────────────────────────────────────────────────────────
   Widget _buildDetailsCard() {
     final cr = _calcResult;
 
@@ -740,6 +848,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Section title ──
           Row(
             children: [
               Container(width: 4, height: 24, color: _darkBlue),
@@ -755,6 +864,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ],
           ),
           const SizedBox(height: 32),
+
+          // ── Row 1 ──
           Row(
             children: [
               Expanded(
@@ -769,7 +880,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
-                  'leaves_label'.tr(),
+                  'unpaid_leaves_label'.tr(),
                   '0',
                   _leavesCtrl,
                   readOnly: true,
@@ -797,11 +908,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ],
           ),
           const SizedBox(height: 24),
+
+          // ── Row 2 ──
           Row(
             children: [
               Expanded(
                 child: _buildInput(
-                  'leave_deduction_per_day'.tr(),
+                  'unpaid_leave_deduction_per_day'.tr(),
                   '0',
                   _leaveDeductionCtrl,
                   isCurrency: true,
@@ -818,14 +931,17 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(child: _buildCalculatedInput(cr)),
+              Expanded(child: _buildCalculatedInput()),
             ],
           ),
           const SizedBox(height: 32),
+
+          // ── Breakdown ──
           if (cr.isNotEmpty) ...[
             _buildCalcBreakdown(cr),
             const SizedBox(height: 16),
           ],
+
           Divider(color: _borderLight, thickness: 1),
           const SizedBox(height: 24),
         ],
@@ -833,6 +949,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Input field builder
+  // ─────────────────────────────────────────────────────────────
   Widget _buildInput(
     String label,
     String hint,
@@ -841,7 +960,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     bool isCurrency = false,
     Color? focusedBorderColor,
   }) {
-    final isDaysInput = !readOnly && !isCurrency && label != 'salary'.tr();
+    final isDaysInput = !readOnly && !isCurrency;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -905,7 +1025,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  Widget _buildCalculatedInput(Map<String, dynamic> cr) {
+  // ─────────────────────────────────────────────────────────────
+  //  Net pay (calculated) field
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildCalculatedInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -919,8 +1042,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         ),
         const SizedBox(height: 8),
         TextField(
-          readOnly: true,
           controller: _netCtrl,
+          readOnly: true,
           style: const TextStyle(
             fontSize: 16,
             color: _darkBlue,
@@ -947,7 +1070,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Calculation breakdown
+  // ─────────────────────────────────────────────────────────────
   Widget _buildCalcBreakdown(Map<String, dynamic> cr) {
+    String fmt(String key) => (cr[key] as String?) ?? '';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -959,34 +1087,30 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         children: [
           _breakdownRow(
             'daily_rate'.tr(),
-            (cr['formattedDailyRate'] ?? '').toString(),
+            fmt('formattedDailyRate'),
             '${cr['totalWorkDaysPerYear'] ?? 0} ${'days_per_year'.tr()}',
           ),
           const Divider(height: 16),
           _breakdownRow(
             'gross_pay'.tr(),
-            (cr['formattedGross'] ?? '').toString(),
+            fmt('formattedGross'),
             '${cr['workedDays'] ?? 0} ${'days'.tr()}',
           ),
-          _breakdownRow(
-            'overtime_pay'.tr(),
-            (cr['formattedOvertime'] ?? '').toString(),
-            null,
-          ),
+          _breakdownRow('overtime_pay'.tr(), fmt('formattedOvertime'), null),
           _breakdownRow(
             'absent_deduction'.tr(),
-            (cr['formattedAbsentDeduct'] ?? '').toString(),
+            fmt('formattedAbsentDeduct'),
             '${cr['absentDays'] ?? 0} ${'days'.tr()}',
           ),
           _breakdownRow(
-            'leave_deduction'.tr(),
-            (cr['formattedLeaveDeduct'] ?? '').toString(),
+            'unpaid_leave_deduction'.tr(),
+            fmt('formattedLeaveDeduct'),
             '${cr['leaveDays'] ?? 0} ${'days'.tr()}',
           ),
           const Divider(height: 16, thickness: 1.5),
           _breakdownRow(
             'salary_after_deduction'.tr(),
-            (cr['formattedNet'] ?? '').toString(),
+            fmt('formattedNet'),
             null,
             isTotal: true,
           ),

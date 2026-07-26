@@ -41,6 +41,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
   }
 
@@ -192,6 +197,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _submitted = false;
       if (step != _PasswordResetStep.password) _resetToken = null;
     });
+    // ✅ Clear controllers so old data doesn't show when going back
+    _otpController.clear();
+    _newPasswordController.clear();
+    _confirmPasswordController.clear();
   }
 
   void _handleBack() {

@@ -47,6 +47,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   StreamSubscription? _holidaysSub;
   late AuthService _authService;
   late FirestoreService _firestore;
+  bool _initialized = false;
 
   @override
   void dispose() {
@@ -57,6 +58,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -352,7 +361,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   void _showAddHolidayModal(BuildContext parentContext) {
     final holidayNameController = TextEditingController();
-    int? selectedDay;
+    int? selectedDay = DateTime.now().day;
     DateTime calendarDate = DateTime.now();
     const months = [
       'January',
@@ -468,7 +477,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               final existingInMonth =
                                   _holidaysByMonth[selectedMonthName] ?? [];
                               final alreadyExists = existingInMonth.any(
-                                (h) => h.day == selectedDay,
+                                (h) => h.day == selectedDay && h.name == holidayNameController.text.trim(),
                               );
                               if (alreadyExists) {
                                 setModalState(() => isSaving = false);
@@ -1212,15 +1221,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           );
           if (monthList.isEmpty) _holidaysByMonth.remove(item.month);
         }
-        final dummyMonthList = DummyData.holidays[item.month];
-        if (dummyMonthList != null) {
-          dummyMonthList.removeWhere(
-            (h) => h['day'] == item.day && h['name'] == item.name,
-          );
-          if (dummyMonthList.isEmpty) DummyData.holidays.remove(item.month);
-        }
-        DummyData.saveToPrefs();
       });
+      final dummyMonthList = DummyData.holidays[item.month];
+      if (dummyMonthList != null) {
+        dummyMonthList.removeWhere(
+          (h) => h['day'] == item.day && h['name'] == item.name,
+        );
+        if (dummyMonthList.isEmpty) DummyData.holidays.remove(item.month);
+      }
+      await DummyData.saveToPrefs();
     } else {
       if (item.id != null) {
         await _firestore.deleteHoliday(item.id!);

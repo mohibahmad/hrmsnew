@@ -20,7 +20,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final Color primaryBlue = const Color(0xFF0247C4);
   final Color leftPanelBlue = const Color(0xFF0247C4);
   final Color cardLightBlue = const Color(0xFFE5EEFC);
-  int _selectedPlanIndex = 1;
+  int _selectedPlanIndex = 0;
   bool _isSaving = false;
   late AuthService _authService;
   late FirestoreService _firestore;
@@ -28,6 +28,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   @override
   void initState() {
     super.initState();
+    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
   }
@@ -170,8 +176,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 SizedBox(
                                   width: double.infinity,
                                   height: 50,
-                                  child: ElevatedButton(
-                                    onPressed: _isSaving
+                                  child: ElevatedButton(                                          onPressed: _isSaving
                                         ? null
                                         : () async {
                                             setState(() => _isSaving = true);
@@ -192,14 +197,15 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                                       });
                                                 } catch (_) {}
                                               }
-                                              if (context.mounted) {
-                                                Navigator.of(context).pop(true);
-                                              }
                                             } finally {
-                                              if (mounted)
+                                              if (mounted) {
                                                 setState(
                                                   () => _isSaving = false,
                                                 );
+                                              }
+                                            }
+                                            if (context.mounted) {
+                                              Navigator.of(context).pop(true);
                                             }
                                           },
                                     style: ElevatedButton.styleFrom(
@@ -260,6 +266,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
+                            
                                 const SizedBox(height: 24),
 
                                 Wrap(

@@ -20,7 +20,7 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      
+
       _setupErrorHandling();
 
       try {
@@ -44,6 +44,9 @@ Future<void> main() async {
         );
 
         await DummyData.loadFromPrefs();
+        if (PreferencesService.cachedIsGuest) {
+          await DummyData.resetToDefaults();
+        }
 
         await _initializeMacOSWindow();
 

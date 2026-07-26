@@ -53,4 +53,68 @@ void main() {
     final june = series.points.singleWhere((point) => point.date.month == 6);
     expect(june.value, 75);
   });
+
+  test('dummy salary graph has the exact normalized Expenses shape', () {
+    final expenses = [
+      {'date': '05/01/2026', 'amount': 100.0},
+      {'date': '10/02/2026', 'amount': 250.0},
+      {'date': '15/03/2026', 'amount': 50.0},
+      {'date': '07/07/2026', 'amount': 200.0},
+      {'date': '15/07/2026', 'amount': 400.0},
+    ];
+    final expenseSeries = DashboardChartService.buildSeries(
+      records: expenses,
+      valueOf: (record) => (record['amount'] as num).toDouble(),
+      period: 'Yearly',
+      dateOf: DashboardChartService.expenseRecordDate,
+      now: DateTime(2026, 7, 21),
+    );
+    final salarySeries = DashboardChartService.buildDummySalarySeries(
+      expenses: expenses,
+      totalSalary: 250000,
+      period: 'Yearly',
+      now: DateTime(2026, 7, 21),
+    );
+
+    expect(salarySeries.points, hasLength(expenseSeries.points.length));
+    for (var index = 0; index < expenseSeries.points.length; index++) {
+      final expenseRatio =
+          expenseSeries.points[index].value / expenseSeries.total;
+      final salaryRatio = salarySeries.points[index].value / salarySeries.total;
+      expect(salaryRatio, closeTo(expenseRatio, 0.0000001));
+    }
+    expect(salarySeries.total, closeTo(250000, 0.000001));
+  });
+
+  test('guest salary uses Expenses shape only for Yearly', () {
+    final salaryRecords = [
+      {'payrollDate': '15/07/2026', 'netSalary': 1000.0},
+    ];
+    final expenses = [
+      {'date': '05/01/2026', 'amount': 100.0},
+      {'date': '10/02/2026', 'amount': 200.0},
+    ];
+
+    final yearly = DashboardChartService.buildGuestSalarySeries(
+      salaryRecords: salaryRecords,
+      expenses: expenses,
+      totalSalary: 1000,
+      period: 'Yearly',
+      now: DateTime(2026, 7, 21),
+    );
+    final monthly = DashboardChartService.buildGuestSalarySeries(
+      salaryRecords: salaryRecords,
+      expenses: expenses,
+      totalSalary: 1000,
+      period: 'Month',
+      now: DateTime(2026, 7, 21),
+    );
+
+    expect(yearly.points[0].value, closeTo(1000 / 3, 0.000001));
+    expect(yearly.points[1].value, closeTo(2000 / 3, 0.000001));
+    expect(yearly.points[6].value, 0);
+    expect(monthly.points[13].value, 0);
+    expect(monthly.points[14].value, 1000);
+    expect(monthly.points.last.value, 1000);
+  });
 }

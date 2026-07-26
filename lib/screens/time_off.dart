@@ -86,97 +86,58 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     }
 
     final combined = <Map<String, dynamic>>[];
-    for (var worker in _workersList) {
+    for (final worker in _workersList) {
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
-
-      final timeoffRecord = _rawTimeoffDocs.firstWhere((t) {
-        final tEmail = (t['email'] ?? '').toString().trim().toLowerCase();
-        final tName = (t['name'] ?? '').toString().trim().toLowerCase();
+      final matchingRecords = _rawTimeoffDocs.where((record) {
+        final tEmail = (record['email'] ?? '').toString().trim().toLowerCase();
+        final tName = (record['name'] ?? record['workerName'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         return (email.isNotEmpty && tEmail == email) ||
-            (name.isNotEmpty && tName == name);
-      }, orElse: () => {});
+            (email.isEmpty && name.isNotEmpty && tName == name);
+      }).toList();
+      final remaining = TimeOffService.remainingPaidLeave(
+        worker,
+        _rawTimeoffDocs,
+      );
 
-      if (timeoffRecord.isNotEmpty) {
-        combined.add({
-          ...worker,
-          ...timeoffRecord,
-          'profileImage':
-              worker['profileImage'] ?? timeoffRecord['profileImage'],
-          'phone': worker['phone'] ?? timeoffRecord['phone'] ?? '',
-          'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
-        });
-      } else {
+      if (matchingRecords.isEmpty) {
         combined.add({
           ...worker,
           'action': '',
           'startDate': '',
           'endDate': '',
           'requestedDays': 0,
+          'remainingLeaves': remaining.toString(),
+        });
+        continue;
+      }
+
+      for (final timeoffRecord in matchingRecords) {
+        combined.add({
+          ...worker,
+          ...timeoffRecord,
+          'workerId': worker['id'],
+          'profileImage':
+              worker['profileImage'] ?? timeoffRecord['profileImage'],
+          'phone': worker['phone'] ?? timeoffRecord['phone'] ?? '',
+          'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
+          'remainingLeaves': remaining.toString(),
         });
       }
     }
 
-    for (var doc in combined) {
-      final action = (doc['action'] ?? '').toString();
-      final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
-
-      int usedDays = 0;
-      for (final record in _rawTimeoffDocs) {
-        final rEmail = (record['email'] ?? '').toString().trim().toLowerCase();
-        if (rEmail != workerEmail) continue;
-        final rAction = (record['action'] ?? record['type'] ?? '').toString();
-        if (rAction != action) continue;
-        final rDays =
-            int.tryParse((record['requestedDays'] ?? '0').toString()) ?? 0;
-        usedDays += rDays;
-      }
-
-      int remaining;
-      switch (action) {
-        case 'Sick Leave':
-          final avail = doc['availableSickLeaves']?.toString() ?? '';
-          if (avail.isNotEmpty && int.tryParse(avail) != null) {
-            remaining = int.parse(avail);
-          } else {
-            final total =
-                int.tryParse((doc['sickLeaves'] ?? '0').toString()) ?? 0;
-            remaining = (total - usedDays).clamp(0, 999999);
-          }
-          break;
-        case 'Casual Leave':
-          final avail = doc['availableCasualLeaves']?.toString() ?? '';
-          if (avail.isNotEmpty && int.tryParse(avail) != null) {
-            remaining = int.parse(avail);
-          } else {
-            final total =
-                int.tryParse((doc['casualLeaves'] ?? '0').toString()) ?? 0;
-            remaining = (total - usedDays).clamp(0, 999999);
-          }
-          break;
-        case 'Medical Leave':
-          final avail = doc['availableMedicalLeaves']?.toString() ?? '';
-          if (avail.isNotEmpty && int.tryParse(avail) != null) {
-            remaining = int.parse(avail);
-          } else {
-            final total =
-                int.tryParse((doc['medicalLeaves'] ?? '0').toString()) ?? 0;
-            remaining = (total - usedDays).clamp(0, 999999);
-          }
-          break;
-        default:
-          final avail = doc['availableAnnualLeaves']?.toString() ?? '';
-          if (avail.isNotEmpty && int.tryParse(avail) != null) {
-            remaining = int.parse(avail);
-          } else {
-            final total =
-                int.tryParse((doc['annualLeaves'] ?? '0').toString()) ?? 0;
-            remaining = (total - usedDays).clamp(0, 999999);
-          }
-      }
-
-      doc['remainingLeaves'] = remaining.toString();
-    }
+    combined.sort((a, b) {
+      final aHasRecord = (a['action'] ?? '').toString().isNotEmpty;
+      final bHasRecord = (b['action'] ?? '').toString().isNotEmpty;
+      if (aHasRecord != bHasRecord) return aHasRecord ? -1 : 1;
+      final aStart = TimeOffService.parseDate(a['startDate']);
+      final bStart = TimeOffService.parseDate(b['startDate']);
+      if (aStart == null || bStart == null) return 0;
+      return bStart.compareTo(aStart);
+    });
 
     _timeoffDocs = combined;
     _isLoading = false;
@@ -350,78 +311,58 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
 
-      final leaveType = (doc['action'] ?? '').toString();
-      final requestedDays =
-          int.tryParse((doc['requestedDays'] ?? '0').toString()) ?? 0;
-
-      final balanceKey = switch (leaveType) {
-        'Annual Leave' => 'availableAnnualLeaves',
-        'Sick Leave' => 'availableSickLeaves',
-        'Casual Leave' => 'availableCasualLeaves',
-        'Medical Leave' => 'availableMedicalLeaves',
-        _ => null,
+      final recordId = doc['id']?.toString() ?? '';
+      final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
+      final worker = _workersList.firstWhere(
+        (candidate) =>
+            (candidate['email'] ?? '').toString().trim().toLowerCase() ==
+            workerEmail,
+        orElse: () => <String, dynamic>{},
+      );
+      final projectedRecords = _rawTimeoffDocs
+          .where((record) => record['id']?.toString() != recordId)
+          .map(Map<String, dynamic>.from)
+          .toList();
+      final usedPaidDays = worker.isEmpty
+          ? 0
+          : TimeOffService.paidDaysUsedForWorker(worker, projectedRecords);
+      final totalPaidDays = worker.isEmpty
+          ? 0
+          : TimeOffService.configuredPaidLeaveAllowance(worker);
+      final balanceUpdate = <String, dynamic>{
+        'availableAnnualLeaves': (totalPaidDays - usedPaidDays)
+            .clamp(0, totalPaidDays)
+            .toString(),
+        'leavesUsed': usedPaidDays.toString(),
       };
 
       if (isGuest) {
-        if (balanceKey != null && requestedDays > 0) {
-          final workerIndex = DummyData.workers.indexWhere((w) {
-            final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
-            final docEmail = (doc['email'] ?? '')
-                .toString()
-                .trim()
-                .toLowerCase();
-            return wEmail.isNotEmpty && wEmail == docEmail;
-          });
-          if (workerIndex != -1) {
-            final current =
-                int.tryParse(
-                  DummyData.workers[workerIndex][balanceKey]?.toString() ?? '0',
-                ) ??
-                0;
-            DummyData.workers[workerIndex][balanceKey] =
-                current + requestedDays;
-          }
+        final workerIndex = DummyData.workers.indexWhere(
+          (candidate) =>
+              (candidate['email'] ?? '').toString().trim().toLowerCase() ==
+              workerEmail,
+        );
+        if (workerIndex != -1) {
+          DummyData.workers[workerIndex].addAll(balanceUpdate);
         }
-        setState(() {
-          DummyData.timeoff.removeWhere(
-            (e) =>
-                e['id'] == doc['id'] &&
-                e['name'] == doc['name'] &&
-                e['action'] == doc['action'],
-          );
-          DummyData.saveToPrefs();
-          _rawTimeoffDocs.removeWhere(
-            (e) =>
-                e['id'] == doc['id'] &&
-                e['name'] == doc['name'] &&
-                e['action'] == doc['action'],
-          );
-
-          _combineTimeOff();
-        });
+        DummyData.timeoff.removeWhere((record) => record['id'] == doc['id']);
+        await DummyData.saveToPrefs();
+        if (mounted) {
+          setState(() {
+            _rawTimeoffDocs.removeWhere((record) => record['id'] == doc['id']);
+            _combineTimeOff();
+          });
+        }
       } else {
-        if (balanceKey != null && requestedDays > 0) {
-          final workerEmail = (doc['email'] ?? '')
-              .toString()
-              .trim()
-              .toLowerCase();
-          final workerIndex = _workersList.indexWhere((w) {
-            final wEmail = (w['email'] ?? '').toString().trim().toLowerCase();
-            return wEmail.isNotEmpty && wEmail == workerEmail;
-          });
-          if (workerIndex != -1) {
-            final worker = _workersList[workerIndex];
-            final workerId = (worker['id'] ?? '').toString();
-            final current =
-                int.tryParse(worker[balanceKey]?.toString() ?? '0') ?? 0;
-            await _firestore.updateWorker(workerId, {
-              balanceKey: current + requestedDays,
-            });
-          }
-        }
-        final id = doc['id'] as String?;
-        if (id != null && id.isNotEmpty) {
-          await _firestore.deleteTimeOffRecord(id);
+        final workerId = (worker['id'] ?? doc['workerId'] ?? '').toString();
+        if (recordId.isNotEmpty && workerId.isNotEmpty) {
+          await _firestore.deleteTimeOffWithWorkerBalance(
+            timeOffId: recordId,
+            workerId: workerId,
+            balance: balanceUpdate,
+          );
+        } else if (recordId.isNotEmpty) {
+          await _firestore.deleteTimeOffRecord(recordId);
         }
       }
       if (mounted) {
@@ -630,11 +571,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final allFilters = ['All', ...positionsToShow];
 
     return Container(
-      width: 570,
+      width: 650,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
       child: SingleChildScrollView(
@@ -994,7 +935,9 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         .toString();
     final String notes = (data['notes'] ?? '').toString();
     final String remainingLeaves = (data['remainingLeaves'] ?? '0').toString();
-    final String annualLeavesBalance = (data['availableAnnualLeaves'] ?? data['annualLeaves'] ?? '0').toString();
+    final String annualLeavesBalance =
+        (data['availableAnnualLeaves'] ?? data['annualLeaves'] ?? '0')
+            .toString();
 
     String localizedAction = action;
     if (action == 'Annual Leave') {
@@ -1009,6 +952,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       localizedAction = 'maternity_leave'.tr();
     } else if (action == 'Custom Leave') {
       localizedAction = 'custom_leave_type'.tr();
+    } else if (action == 'Unpaid Leave') {
+      localizedAction = 'unpaid_leave_type'.tr();
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1049,24 +994,30 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       topRight: Radius.circular(6),
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // ── Close icon (left) ──
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
-                        child: const MouseRegion(
+                        child: MouseRegion(
                           cursor: SystemMouseCursors.click,
-                          child: Icon(
-                            Icons.close,
-                            color: Color(0xFFFFFFFF),
-                            size: 24,
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close,
+                              color: Color(0xFFFFFFFF),
+                              size: 22,
+                            ),
                           ),
                         ),
                       ),
-                      Flexible(
+                      const SizedBox(width: 12),
+                      // ── Title (center) ──
+                      Expanded(
                         child: Text(
                           'assign_time_off'.tr(),
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Color(0xFFFFFFFF),
                             fontSize: 18,
@@ -1075,17 +1026,22 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      // ── Edit icon (right) ──
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop('edit'),
                         child: MouseRegion(
                           cursor: SystemMouseCursors.click,
-                          child: SvgPicture.asset(
-                            'assets/edit_icon.svg',
-                            height: 20,
-                            width: 20,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFFFFFFFF),
-                              BlendMode.srcIn,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: SvgPicture.asset(
+                              'assets/edit_icon.svg',
+                              height: 22,
+                              width: 22,
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFFFFFFFF),
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),

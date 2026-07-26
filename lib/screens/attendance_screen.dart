@@ -122,6 +122,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   int _presentCount = 0;
   int _absentCount = 0;
   int _leaveCount = 0;
+  bool _initialized = false;
   StreamSubscription? _attendanceSub;
   StreamSubscription? _workersSub;
   StreamSubscription? _timeOffSub;
@@ -189,14 +190,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _attendanceDocs = [];
     _workersList = [];
     _rawAttendanceDocs = [];
     _isLoading = true;
     _workersLoaded = false;
     _attendanceLoaded = false;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _workersSub = _firestore.workersStream.listen(
@@ -281,6 +289,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   bool _matchesPeriod(Map<String, dynamic> doc) {
     final createdAt = doc['createdAt'];
+    // null createdAt = worker without attendance — always show in table
     if (createdAt == null) return true;
     return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedTimeframe);
   }
@@ -676,6 +685,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         onTap: () {
           setState(() {
             _selectedTab = filterKey;
+            _cachedFiltered = null;
+            _filterCacheKey = '';
           });
         },
         child: Container(
@@ -746,10 +757,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       attendanceRecords: _rawAttendanceDocs,
     );
 
-    int totalWorkingDays = workerRecords.length;
-    int absents = workerRecords.where((d) => d['status'] == 'Absent').length;
-    int leaves = workerRecords.where((d) => d['status'] == 'Leave').length;
-    int presents = workerRecords.where((d) => d['status'] == 'Present').length;
+    // Get approved time off dates for this worker
+    final timeOffDates = TimeOffService.allLeaveDatesForWorker(
+          doc,
+          _timeOffRecords,
+        ) ??
+        <DateTime>[];
+
+    // Filter out attendance records that fall on approved time off days
+    final filteredRecords = workerRecords.where((record) {
+      final createdAt = record['createdAt'];
+      if (createdAt == null) return true;
+      DateTime? recordDate;
+      if (createdAt is Timestamp) {
+        recordDate = createdAt.toDate();
+      } else if (createdAt is DateTime) {
+        recordDate = createdAt;
+      } else {
+        final parsed = DateTime.tryParse(createdAt.toString());
+        if (parsed != null) recordDate = parsed;
+      }
+      if (recordDate == null) return true;
+      final normalized = DateTime(
+        recordDate.year,
+        recordDate.month,
+        recordDate.day,
+      );
+      return !timeOffDates.contains(normalized);
+    }).toList();
+
+    int totalWorkingDays = filteredRecords.length;
+    int absents = filteredRecords.where((d) => d['status'] == 'Absent').length;
+    int leaves = filteredRecords.where((d) => d['status'] == 'Leave').length;
+    int presents = filteredRecords.where((d) => d['status'] == 'Present').length;
     double percentage = totalWorkingDays > 0
         ? (presents / totalWorkingDays) * 100
         : 0.0;
@@ -780,7 +820,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           absents: absents,
           leaves: leaves,
           percentage: percentage,
-          workerRecords: workerRecords,
+          workerRecords: filteredRecords,
         ),
       ),
     );
@@ -1116,29 +1156,31 @@ class _WorkerAttendancePreviewCardState
                   letterSpacing: 0.5,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: IconButton(
-                    icon: SvgPicture.asset(
-                      'assets/share1.svg',
-                      height: 18,
-                      width: 18,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFFFFFFFF),
-                        BlendMode.srcIn,
+        
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: IconButton(
+                      icon: SvgPicture.asset(
+                        'assets/share1.svg',
+                        height: 18,
+                        width: 18,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFFFFFFFF),
+                          BlendMode.srcIn,
+                        ),
                       ),
+                      onPressed: () => _exportCsv(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                    onPressed: () => _exportCsv(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
                   ),
                 ),
-              ),
+            
             ],
-          ),
-        ),
+        
+          )),
         Container(
           color: const Color(0xFFFFFFFF),
           padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
@@ -1583,7 +1625,7 @@ class _WorkerAttendancePreviewCardState
       rows.add([dateStr, status, model, type, notes]);
     }
 
-    final csvString = const CsvEncoder().convert(rows);
+    final csvString = '\ufeff${const CsvEncoder().convert(rows)}';
 
     try {
       String? outputFile = await FilePicker.saveFile(

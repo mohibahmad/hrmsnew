@@ -64,6 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _getScreen(int index) {
     switch (index) {
+      case 0:
+        return const SizedBox.shrink(); // Dashboard handled via IndexedStack
       case 1:
         return WorkersScreen(
           onLogout: _handleLogout,
@@ -127,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return SettingsScreen(
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
-                    isGuest: _authService.currentUser?.isAnonymous ?? false,
+          isGuest: _authService.currentUser?.isAnonymous ?? false,
           onNotificationTap: _toggleNotifications,
         );
       case 9:
@@ -199,6 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _selectedTimeOffWorker;
   bool _isPremium = false;
   bool _dashboardReady = false;
+  bool _initialized = false;
 
   @override
   void dispose() {
@@ -250,29 +253,35 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     _selectedIndex = widget.initialIndex;
     _selectedSubIndex = widget.initialSubIndex;
     final stackIdx = _getStackIndex();
     _activatedScreens[stackIdx] = true;
     _activatedScreens[0] = true;
-    final currentUser = _authService.currentUser;
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
+
+    final currentUser = _authService.currentUser;
     _restoreProfilePic(currentUser);
     _loadDashboardData();
+    _startPremiumListener();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _dashboardReady = true);
     });
 
-    _startPremiumListener();
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkProfileExistsOrLogout();
       await _loadPremiumStatus();
     });
-
   }
 
   Future<void> _restoreProfilePic(User? currentUser) async {
@@ -323,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadDashboardData() {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
         final workersList = DummyData.workers;
@@ -346,7 +355,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherWorkersCount = oCount;
         _workersList = List<Map<String, dynamic>>.from(workersList);
 
-        _allAttendanceDocs = List<Map<String, dynamic>>.from(DummyData.attendance);
+        _allAttendanceDocs = List<Map<String, dynamic>>.from(
+          DummyData.attendance,
+        );
         _attendanceDocs = _allAttendanceDocs;
 
         _totalAttendanceCount = _attendanceDocs.length;
@@ -506,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       if (isGuest) {
         _recalculateDummyTotals(period);
       } else {
@@ -553,11 +564,15 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return {...item, 'netSalary': result['netSalary'] as double};
     }).toList();
-    final salarySeries = DashboardChartService.buildSeries(
-      records: payrollRecords,
-      valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
+    final totalDummySalary = payrollRecords.fold<double>(
+      0,
+      (sum, record) => sum + ((record['netSalary'] ?? 0) as num).toDouble(),
+    );
+    final salarySeries = DashboardChartService.buildGuestSalarySeries(
+      salaryRecords: payrollRecords,
+      expenses: DummyData.expenses,
+      totalSalary: totalDummySalary,
       period: period,
-      placeUndatedInCurrentPeriod: true,
     );
 
     _expenseChartPoints = expenseSeries.points;
@@ -580,13 +595,14 @@ class _HomeScreenState extends State<HomeScreen> {
           dt = createdAt.toDate();
         }
       } else {
-        // Fallback for DummyData that lacks createdAt: 
+        // Fallback for DummyData that lacks createdAt:
         // deterministically distribute over the last 90 days based on ID
         final id = att['id']?.toString() ?? '';
-        final num = int.tryParse(id.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        final numericPart = id.replaceAll(RegExp(r'[^0-9]'), '');
+        final num = numericPart.isNotEmpty ? int.tryParse(numericPart) ?? 0 : 0;
         dt = now.subtract(Duration(days: num % 90));
       }
-      
+
       if (dt == null) return true;
       final diff = now.difference(dt);
       switch (period) {
@@ -696,7 +712,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     key: ValueKey('sidebar_${context.locale.languageCode}'),
                     selectedIndex: _showProfile ? -1 : _selectedIndex,
                     selectedSubIndex: _selectedSubIndex,
-          isGuest: _authService.currentUser?.isAnonymous ?? false,
+                    isGuest: _authService.currentUser?.isAnonymous ?? false,
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) => setState(() {
                       _selectedIndex = index;
@@ -949,7 +965,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               isEmpty:
                                   _totalAttendanceCount == 0 ||
                                   _totalWorkersCount == 0,
-                              attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
+                              attendanceDocs: _getFilteredAttendanceDocs(
+                                _selectedPeriod,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -958,7 +976,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             isEmpty:
                                 _totalTimeoffCount == 0 ||
                                 _totalWorkersCount == 0,
-                            attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
+                            attendanceDocs: _getFilteredAttendanceDocs(
+                              _selectedPeriod,
+                            ),
                           ),
                         ],
                       );
@@ -975,7 +995,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   isEmpty:
                                       _totalAttendanceCount == 0 ||
                                       _totalWorkersCount == 0,
-                                  attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
+                                  attendanceDocs: _getFilteredAttendanceDocs(
+                                    _selectedPeriod,
+                                  ),
                                 ),
                               ),
                             ),
@@ -986,7 +1008,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 isEmpty:
                                     _totalTimeoffCount == 0 ||
                                     _totalWorkersCount == 0,
-                                attendanceDocs: _getFilteredAttendanceDocs(_selectedPeriod),
+                                attendanceDocs: _getFilteredAttendanceDocs(
+                                  _selectedPeriod,
+                                ),
                               ),
                             ),
                           ],

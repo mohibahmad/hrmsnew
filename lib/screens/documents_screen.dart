@@ -53,9 +53,18 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     super.dispose();
   }
 
+  bool _initialized = false;
+
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -481,19 +490,28 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
     if (lower.endsWith('.png')) return 'image/png';
-    return 'image/jpeg';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.bmp')) return 'image/bmp';
+    return 'application/octet-stream';
   }
 
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     final existingCv = _existingCv;
     if (existingCv != null && existingCv.isNotEmpty) {
       _isCvUploaded = true;
       _cvName = _cleanFileName(existingCv);
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
   }
 
   Future<void> _pickFile(String field) async {
@@ -506,6 +524,18 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
     final file = result.files.first;
     if (file.bytes == null) return;
+
+    // File size limit: 10 MB for guest base64 uploads (avoids memory overflow)
+    if (file.bytes!.length > 10 * 1024 * 1024) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+          isError: true,
+        );
+      }
+      return;
+    }
 
     setState(() {
       if (field == 'frontId') {
@@ -676,7 +706,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     if (url == null || url.isEmpty) return;
     if (!isPdf) {
       final lower = url.toLowerCase();
-      isPdf = lower.endsWith('.pdf') || lower.contains('pdf');
+      isPdf = lower.endsWith('.pdf') ||
+          lower.contains('application/pdf') ||
+          lower.contains('/pdf/');
     }
     showGeneralDialog(
       context: context,
@@ -1399,6 +1431,7 @@ class _FullScreenDocumentViewer extends StatefulWidget {
 class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   Uint8List _base64ToBytes(String dataUrl) {
     try {
+      if (!dataUrl.contains(',')) return Uint8List(0);
       final base64 = dataUrl.split(',').last;
       return base64Decode(base64);
     } catch (_) {

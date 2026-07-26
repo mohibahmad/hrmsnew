@@ -20,11 +20,11 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
   late AuthService _authService;
+  bool _navigationScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    _authService = context.read<AuthService>();
 
     _animationController = AnimationController(
       vsync: this,
@@ -32,25 +32,48 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animationController.forward();
+  }
 
-    _navigateWhenReady();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_navigationScheduled) return;
+    _navigationScheduled = true;
+
+    _authService = context.read<AuthService>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigateWhenReady();
+    });
   }
 
   Future<void> _navigateWhenReady() async {
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-    final isGuest = await PreferencesService.isGuest();
-    AuthService.isGuestUser = isGuest;
+    // Preferences check with timeout (prevent macOS disk I/O delay from blocking)
+    bool isGuest = false;
+    try {
+      isGuest = await PreferencesService.isGuest().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => false,
+      );
+    } catch (_) {
+      // Disk I/O or other error — keep false, user will see login
+      isGuest = false;
+    }
 
     User? user;
 
     try {
       user = await _authService.authStateChanges.first.timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 10),
         onTimeout: () => _authService.currentUser,
       );
-    } catch (_) {
+    } on TimeoutException {
+      // Network slow — retry with currentUser
       user = _authService.currentUser;
+    } catch (_) {
+      // Unexpected error — force login
+      user = null;
     }
 
     await minimumSplash;

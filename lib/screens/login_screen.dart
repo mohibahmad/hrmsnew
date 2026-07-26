@@ -47,22 +47,25 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestoreService = Provider.of<FirestoreService>(context, listen: false);
+
+    _googleSub?.cancel();
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')
         .doc('google')
         .snapshots()
         .listen((doc) {
-          if (doc.exists && mounted) {
-            setState(() {
-              _googleEnabled = doc.data()?['googleEnable'] == true;
-            });
-          } else if (mounted) {
-            setState(() {
-              _googleEnabled = true;
-            });
-          }
+          if (!mounted) return;
+          setState(() {
+            _googleEnabled = doc.data()?['googleEnable'] ?? true;
+          });
         });
   }
 
@@ -82,7 +85,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
-        if (await _handleDeletedAccountIfNeeded()) return;
+        // ✅ DELETED ACCOUNT CHECK
+        if (await _firestoreService.isCurrentUserDeleted()) {
+          await _authService.signOut();
+          if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
+          return;
+        }
         if (!mounted) return;
 
         final profile = await _firestoreService.getUserProfile();
@@ -139,7 +147,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithApple();
       if (userCredential != null && mounted) {
-        if (await _handleDeletedAccountIfNeeded()) return;
+        // ✅ DELETED ACCOUNT CHECK
+        if (await _firestoreService.isCurrentUserDeleted()) {
+          await _authService.signOut();
+          if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
+          return;
+        }
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -209,6 +222,13 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (mounted) {
+        // ✅ DELETED ACCOUNT CHECK PEHLE KARO
+        if (await _firestoreService.isCurrentUserDeleted()) {
+          await _authService.signOut();
+          if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
+          return;
+        }
+
         final loggedInEmail = _authService.currentUser?.email
             ?.trim()
             .toLowerCase();
@@ -236,7 +256,6 @@ class _LoginScreenState extends State<LoginScreen> {
             await _authService.currentUser?.updateDisplayName(username);
           }
         }
-        if (await _handleDeletedAccountIfNeeded()) return;
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -298,35 +317,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showErrorSnackBar(String message) {
     FlashySnackBar.show(context, message: message, isError: true);
-  }
-
-  Future<bool> _handleDeletedAccountIfNeeded() async {
-    final user = _authService.currentUser;
-    if (user == null) return false;
-
-    if (user.isAnonymous || user.uid.startsWith('guest_')) return false;
-
-    final email = user.email;
-    if (email == null || email.isEmpty) return false;
-
-    try {
-      final isDeleted = await _firestoreService.isCurrentUserDeleted();
-      if (isDeleted) {
-        await _authService.signOut();
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'account_deleted_contact'.tr(),
-            isError: true,
-          );
-        }
-        return true;
-      }
-    } catch (e, st) {
-      ErrorReporter.report(e, st, context: 'handleDeletedAccount');
-    }
-
-    return false;
   }
 
   List<Widget> _buildFormContent(BuildContext context) {

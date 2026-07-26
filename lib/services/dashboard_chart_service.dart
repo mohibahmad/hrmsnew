@@ -119,6 +119,68 @@ class DashboardChartService {
     return enteredDate ?? PayrollService.payrollRecordDate(record);
   }
 
+  /// Builds guest salary points with the same normalized curve as Expenses.
+  ///
+  /// The visual trend follows expense dates and proportions while tooltip
+  /// values remain salary amounts scaled to [totalSalary].
+  static DashboardChartSeries buildDummySalarySeries({
+    required List<Map<String, dynamic>> expenses,
+    required double totalSalary,
+    required String period,
+    DateTime? now,
+  }) {
+    final expenseTotal = expenses.fold<double>(0, (sum, record) {
+      final amount = record['amount'];
+      return sum + (amount is num ? amount.toDouble() : 0);
+    });
+    if (expenseTotal <= 0 || totalSalary <= 0) {
+      return buildSeries(
+        records: const [],
+        valueOf: (_) => 0,
+        period: period,
+        now: now,
+      );
+    }
+
+    return buildSeries(
+      records: expenses,
+      valueOf: (record) {
+        final amount = record['amount'];
+        final expenseValue = amount is num ? amount.toDouble() : 0;
+        return totalSalary * (expenseValue / expenseTotal);
+      },
+      period: period,
+      dateOf: expenseRecordDate,
+      now: now,
+      placeUndatedInCurrentPeriod: true,
+    );
+  }
+
+  static DashboardChartSeries buildGuestSalarySeries({
+    required List<Map<String, dynamic>> salaryRecords,
+    required List<Map<String, dynamic>> expenses,
+    required double totalSalary,
+    required String period,
+    DateTime? now,
+  }) {
+    if (period == 'Yearly') {
+      return buildDummySalarySeries(
+        expenses: expenses,
+        totalSalary: totalSalary,
+        period: period,
+        now: now,
+      );
+    }
+
+    return buildSeries(
+      records: salaryRecords,
+      valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
+      period: period,
+      now: now,
+      placeUndatedInCurrentPeriod: true,
+    );
+  }
+
   static double _sum(List<DashboardChartPoint> points) =>
       points.fold<double>(0, (sum, point) => sum + point.value);
 }

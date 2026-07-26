@@ -14,7 +14,7 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
-  testWidgets('last chart point tooltip is forced inside card bounds', (
+  testWidgets('tooltip stays anchored above the touched chart point', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 240));
@@ -66,7 +66,7 @@ void main() {
     final chart = tester.widget<LineChart>(find.byType(LineChart));
     final tooltip = chart.data.lineTouchData.touchTooltipData;
     expect(tooltip.fitInsideHorizontally, isTrue);
-    expect(tooltip.fitInsideVertically, isTrue);
+    expect(tooltip.fitInsideVertically, isFalse);
     expect(tooltip.maxContentWidth, lessThanOrEqualTo(180));
   });
 }

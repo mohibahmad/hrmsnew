@@ -896,11 +896,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     final allFilters = ['All', ...positionsToShow];
 
                     return Container(
-                      width: 580,
+                      width: 650,
                       height: 46,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: Color(0xFFFFFFFF),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: SingleChildScrollView(
@@ -1481,7 +1481,7 @@ class _WorkerProfilePreviewDialogState
                             ),
                           ),
                           Align(
-                            alignment: Alignment.centerRight,
+                            alignment: Alignment(1.0, 0),
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: IconButton(
@@ -1544,16 +1544,18 @@ class _WorkerProfilePreviewDialogState
                                               _v(worker, 'relationshipStatus'),
                                             ),
                                             address: _na(_v(worker, 'address')),
+                                            profileImageUrl: profileImage,
                                           );
                                           final safeName = name.replaceAll(
                                             RegExp(r'[^a-zA-Z0-9_-]'),
                                             '_',
                                           );
-                                          await WorkerProfileService.downloadWorkerProfile(
-                                            bytes,
-                                            '${safeName}_profile.pdf',
-                                          );
-                                          if (mounted) {
+                                          final saved =
+                                              await WorkerProfileService.downloadWorkerProfile(
+                                                bytes,
+                                                '${safeName}_profile.pdf',
+                                              );
+                                          if (saved && mounted) {
                                             FlashySnackBar.show(
                                               context,
                                               message:

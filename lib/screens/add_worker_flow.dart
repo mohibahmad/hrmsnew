@@ -18,6 +18,7 @@ import '../services/upload_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
+import '../services/preferences_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
@@ -135,7 +136,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   bool _isSaving = false;
 
   bool get _hasUnsavedChanges {
-    if (widget.workerToEdit != null) return false;
+    if (widget.workerToEdit != null) return _hasChanges();
     if (_nameController.text.trim().isNotEmpty) return true;
     if (_fatherNameController.text.trim().isNotEmpty) return true;
     if (_emailController.text.trim().isNotEmpty) return true;
@@ -304,11 +305,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     return result ?? false;
   }
 
+  bool _initialized = false;
+
   @override
   void initState() {
     super.initState();
-    _authService = Provider.of<AuthService>(context, listen: false);
-    _firestore = Provider.of<FirestoreService>(context, listen: false);
     if (widget.workerToEdit != null) {
       _nameController.text = (widget.workerToEdit!['name'] ?? '').toString();
       _fatherNameController.text = (widget.workerToEdit!['fatherName'] ?? '')
@@ -429,7 +430,15 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       }
       _joiningDate = widget.workerToEdit!['joiningDate']?.toString();
     }
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
 
     _nameController.addListener(_onControllerChanged);
     _nameController.addListener(() {
@@ -915,8 +924,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
     if (!isEditing) {
       try {
-        Iterable<Map<String, dynamic>> existingWorkers = DummyData.workers;
-        if (!isGuest) {
+        Iterable<Map<String, dynamic>> existingWorkers;
+        if (isGuest) {
+          final guestWorkers = await PreferencesService.getGuestWorkers();
+          existingWorkers = guestWorkers ?? DummyData.workers;
+        } else {
           final snapshot = await _firestore.getWorkersOnce();
           existingWorkers = snapshot.docs.map(
             (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
@@ -924,8 +936,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
 
         final duplicateField = WorkerIdentity.duplicateField({
-          'name': name,
-          'email': email,
+          'name': name.toLowerCase(),
+          'email': email.toLowerCase(),
           'nationalId': nationalId,
         }, existingWorkers);
         if (duplicateField != null && mounted) {
@@ -1125,6 +1137,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           final newId = 'dummy_${DateTime.now().millisecondsSinceEpoch}';
           DummyData.workers.insert(0, {...data, 'id': newId});
           await DummyData.saveToPrefs();
+          if (mounted) setState(() {});
         } else {
           await _firestore.addWorker(data);
         }
@@ -1245,8 +1258,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
     if (!isEditing) {
       try {
-        Iterable<Map<String, dynamic>> existingWorkers = DummyData.workers;
-        if (!isGuest) {
+        Iterable<Map<String, dynamic>> existingWorkers;
+        if (isGuest) {
+          final guestWorkers = await PreferencesService.getGuestWorkers();
+          existingWorkers = guestWorkers ?? DummyData.workers;
+        } else {
           final snapshot = await _firestore.getWorkersOnce();
           existingWorkers = snapshot.docs.map(
             (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
@@ -1254,8 +1270,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
 
         final duplicateField = WorkerIdentity.duplicateField({
-          'name': name,
-          'email': email,
+          'name': name.toLowerCase(),
+          'email': email.toLowerCase(),
           'nationalId': nationalId,
         }, existingWorkers);
         if (duplicateField != null && mounted) {
