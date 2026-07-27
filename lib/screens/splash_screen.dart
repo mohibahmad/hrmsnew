@@ -37,6 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/splashscreenbg.png'), context);
     if (_navigationScheduled) return;
     _navigationScheduled = true;
 

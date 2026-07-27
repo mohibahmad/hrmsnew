@@ -876,5 +876,12 @@
   "guest_feature_locked": "Feature Not Available",
   "guest_feature_desc": "This feature is only available for registered users. Please sign in with your account to access it.",
   "sign_in": "Sign In",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "selected": "Selected",
+  "select_all": "Select All",
+  "deselect_all": "Deselect All",
+  "total_disbursement": "TOTAL DISBURSEMENT",
+  "processing_for_cycle": "Processing for {period} cycle",
+  "all_filter": "All",
+  "pay_all_count": "Pay All ({count})"
 }

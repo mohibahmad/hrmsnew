@@ -864,6 +864,13 @@
   "guest_feature_desc": "Esta función solo está disponible para usuarios registrados. Inicie sesión para acceder.",
   "payroll_operation_timeout": "La operación de nómina agotó el tiempo de espera. Inténtalo de nuevo.",
   "pay_all": "Pagar Todo",
+  "payroll_run_review": "Revisión de Nómina",
+  "selected": "Seleccionados",
+  "select_all": "Seleccionar Todo",
+  "deselect_all": "Deseleccionar Todo",
+  "total_disbursement": "DESEMBOLSO TOTAL",
+  "processing_for_cycle": "Procesando para el ciclo {period}",
+  "pay_all_count": "Pagar Todo ({count})",
   "sign_in": "Iniciar sesión",
   "cancel": "Cancelar"
 }

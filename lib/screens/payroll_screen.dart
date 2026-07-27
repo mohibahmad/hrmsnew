@@ -387,9 +387,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-                  const SizedBox(height: 10),
-
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   _buildFilterTabs(),
                   const SizedBox(height: 20),
                   Row(
@@ -723,11 +721,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
         _selectedFilter = filterKey;
       }),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 12 : 16,
-          vertical: 8,
-        ),
+        height: 38,
         margin: const EdgeInsets.only(right: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CC6) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
@@ -737,7 +734,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
           style: TextStyle(
-            color: isSelected ? Color(0xFFFFFFFF) : const Color(0xFF000000),
+            color: isSelected ? Colors.white : Colors.black,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
             fontFamily: 'SF Pro Display',

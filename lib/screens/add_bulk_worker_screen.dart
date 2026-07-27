@@ -1289,6 +1289,30 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         dialogError =
                                             'This field cannot be empty';
                                       });
+                                    } else if (fieldKey == 'gender') {
+                                      final normalized = val.toLowerCase();
+                                      const valid = {
+                                        'male',
+                                        'female',
+                                        'other',
+                                        'others',
+                                      };
+                                      if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'Only Male, Female, or Other is allowed';
+                                        });
+                                      } else {
+                                        Navigator.of(ctx).pop(
+                                          normalized == 'others'
+                                              ? 'Other'
+                                              : normalized == 'male'
+                                                  ? 'Male'
+                                                  : normalized == 'female'
+                                                      ? 'Female'
+                                                      : val,
+                                        );
+                                      }
                                     } else {
                                       Navigator.of(ctx).pop(val);
                                     }
@@ -1336,7 +1360,18 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
         final errors = _validWorkers[workerIndex]['_fieldErrors'];
-        if (errors is Map<String, String>) errors.remove(fieldKey);
+        if (errors is Map<String, String>) {
+          errors.remove(fieldKey);
+          // Re-validate gender to ensure consistency
+          if (fieldKey == 'gender') {
+            final normalized = result.toLowerCase();
+            const validGenders = {'male', 'female', 'other', 'others'};
+            if (!validGenders.contains(normalized)) {
+              errors['gender'] =
+                  'Only Male, Female, or Other is allowed';
+            }
+          }
+        }
       });
     }
   }

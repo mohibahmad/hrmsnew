@@ -4217,44 +4217,41 @@ class DocumentationSection extends StatelessWidget {
                 bottom: 12,
                 left: sidePadding,
                 right: sidePadding,
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
-                  child: Container(
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: 16,
-                            width: 200,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 10,
-                            width: 150,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 40),
-                          ...List.generate(
-                            8,
-                            (index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Container(
-                                height: 12,
-                                width: double.infinity,
-                                color: Colors.grey.shade300,
-                              ),
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          height: 16,
+                          width: 200,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 10,
+                          width: 150,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 40),
+                        ...List.generate(
+                          8,
+                          (index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Container(
+                              height: 12,
+                              width: double.infinity,
+                              color: Colors.grey.shade300,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -4575,15 +4572,12 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
     if (_pageImages.isNotEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
-        child: ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
-          child: SizedBox.expand(
-            child: Image.memory(
-              _pageImages[0],
-              fit: BoxFit.cover,
-              filterQuality: FilterQuality.high,
-              width: double.infinity,
-            ),
+        child: SizedBox.expand(
+          child: Image.memory(
+            _pageImages[0],
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
+            width: double.infinity,
           ),
         ),
       );

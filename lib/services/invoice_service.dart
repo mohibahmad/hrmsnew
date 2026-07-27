@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
@@ -27,10 +27,19 @@ class InvoiceService {
     final pdf = pw.Document();
 
     final PdfColor primaryNavy = PdfColor.fromHex('#16215B');
-    final PdfColor accentRed = PdfColor.fromHex('#DA291C');
+    final PdfColor appBlue = PdfColor.fromHex('#0247C4');
     final PdfColor textColor = PdfColor.fromHex('#16215B');
     final PdfColor lineColor = PdfColor.fromHex('#8B93B8');
     const double fontSize = 10;
+
+    // Load app logo
+    pw.Image? appLogo;
+    try {
+      final byteData = await rootBundle.load('assets/app_icon.png');
+      final bytes = byteData.buffer.asUint8List();
+      final image = pw.MemoryImage(bytes);
+      appLogo = pw.Image(image, width: 40, height: 40);
+    } catch (_) {}
 
     pdf.addPage(
       pw.MultiPage(
@@ -43,14 +52,10 @@ class InvoiceService {
             children: [
               pw.Row(
                 children: [
-                  pw.Container(
-                    width: 32,
-                    height: 32,
-                    color: accentRed,
-                  ),
+                  if (appLogo != null) appLogo,
                   pw.SizedBox(width: 12),
                   pw.Text(
-                    'logo',
+                    'HRMS',
                     style: pw.TextStyle(
                       fontSize: 28,
                       color: primaryNavy,
@@ -63,7 +68,7 @@ class InvoiceService {
                 'INVOICE',
                 style: pw.TextStyle(
                   fontSize: 24,
-                  color: accentRed,
+                  color: appBlue,
                   fontWeight: pw.FontWeight.normal,
                 ),
               ),
@@ -229,28 +234,18 @@ class InvoiceService {
           ),
           pw.SizedBox(height: 50),
 
-          // ── 6. FOOTER (Thank you & Terms) ──
+          // ── 6. FOOTER (Thank you) ──
+          pw.SizedBox(height: 40),
           pw.Padding(
             padding: const pw.EdgeInsets.only(left: 10),
             child: pw.Text(
               'Thank you!',
               style: pw.TextStyle(
                 fontSize: 26,
-                color: accentRed,
+                color: appBlue,
                 fontWeight: pw.FontWeight.normal,
               ),
             ),
-          ),
-          pw.SizedBox(height: 25),
-          pw.Text(
-            'Terms and conditions',
-            style: pw.TextStyle(color: primaryNavy, fontSize: fontSize, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 6),
-          pw.Text(
-            'This invoice is for payroll services rendered for the period of $payPeriod. '
-            'Payment is due immediately upon receipt. Please contact HR for any discrepancies.',
-            style: pw.TextStyle(color: primaryNavy, fontSize: 9.5, height: 1.4),
           ),
         ],
       ),
@@ -355,22 +350,22 @@ class InvoiceService {
   /// Extracts numeric portion preserving the original currency symbol.
   static String _extractNumeric(String formatted) {
     if (formatted.isEmpty) return r'$0.00';
-    // Determine currency symbol from original string
+    // Detect currency symbol: everything before the first digit
     String currency = r'$';
-    if (formatted.startsWith('Rs') || formatted.startsWith('rs') || formatted.startsWith('RS')) {
-      currency = 'Rs ';
-    } else if (formatted.startsWith(r'$')) {
-      currency = r'$';
+    final digitMatch = RegExp(r'\d').firstMatch(formatted);
+    if (digitMatch != null && digitMatch.start > 0) {
+      currency = formatted.substring(0, digitMatch.start).trim();
+      if (currency.isEmpty) currency = r'$';
     }
     // Remove currency symbols and commas, keep the number
     final cleaned = formatted.replaceAll(RegExp(r'[^0-9.]'), '');
-    if (cleaned.isEmpty) return '${currency}0.00';
+    if (cleaned.isEmpty) return '$currency 0.00';
     final value = double.tryParse(cleaned);
-    if (value == null) return '${currency}0.00';
+    if (value == null) return '$currency 0.00';
     if (value == value.roundToDouble()) {
-      return '$currency${value.round()}';
+      return '$currency ${value.round()}';
     }
-    return '$currency${value.toStringAsFixed(2)}';
+    return '$currency ${value.toStringAsFixed(2)}';
   }
 
   static Future<void> shareInvoice(Uint8List bytes, String fileName) async {

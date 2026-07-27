@@ -856,6 +856,13 @@
   "guest_feature_desc": "Cette fonctionnalité est uniquement disponible pour les utilisateurs inscrits. Veuillez vous connecter pour y accéder.",
   "payroll_operation_timeout": "L'opération de paie a expiré. Veuillez réessayer.",
   "pay_all": "Tout Payer",
+  "payroll_run_review": "Examen de la Paie",
+  "selected": "Sélectionnés",
+  "select_all": "Tout Sélectionner",
+  "deselect_all": "Tout Désélectionner",
+  "total_disbursement": "DÉBOURS TOTAL",
+  "processing_for_cycle": "Traitement pour le cycle {period}",
+  "pay_all_count": "Tout Payer ({count})",
   "sign_in": "Se connecter",
   "cancel": "Annuler"
 }

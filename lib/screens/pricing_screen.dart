@@ -22,7 +22,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final Color cardLightBlue = const Color(0xFFE5EEFC);
   int _selectedPlanIndex = 1;
   bool _isSaving = false;
-  bool _imageLoaded = false;
   late AuthService _authService;
   late FirestoreService _firestore;
 
@@ -36,14 +35,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
-
-    if (!_imageLoaded) {
-      _imageLoaded = true;
-      precacheImage(const AssetImage('assets/splashscreenbg.png'), context)
-          .then((_) {
-        if (mounted) setState(() {});
-      });
-    }
   }
 
   @override

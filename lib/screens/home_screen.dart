@@ -312,9 +312,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startPremiumListener() {
     final user = _authService.currentUser;
     if (user == null || user.isAnonymous) return;
-    _profileSub = _firestore.userProfileStream.listen((profile) {
+    _profileSub = _firestore.userProfileStream.listen((profile) async {
       if (profile == null) {
-        _authService.signOut();
+        try {
+          await _authService.signOut();
+        } catch (_) {}
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -324,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
       final isPremium = profile['isPremium'] == true;
-      PreferencesService.setPremium(isPremium);
+      await PreferencesService.setPremium(isPremium);
       if (mounted && _isPremium != isPremium) {
         setState(() => _isPremium = isPremium);
       }

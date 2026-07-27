@@ -864,6 +864,13 @@
   "guest_feature_desc": "Este recurso está disponível apenas para usuários registrados. Faça login para acessar.",
   "payroll_operation_timeout": "A operação da folha de pagamento expirou. Tente novamente.",
   "pay_all": "Pagar Tudo",
+  "payroll_run_review": "Revisão da Folha de Pagamento",
+  "selected": "Selecionados",
+  "select_all": "Selecionar Tudo",
+  "deselect_all": "Desmarcar Tudo",
+  "total_disbursement": "DESEMBOLSO TOTAL",
+  "processing_for_cycle": "Processando para o ciclo {period}",
+  "pay_all_count": "Pagar Tudo ({count})",
   "sign_in": "Entrar",
   "cancel": "Cancelar"
 }
