@@ -865,6 +865,7 @@
   "payroll_success_count": "{count} Success",
   "payroll_fail_count": "{count} Failed",
   "confirm_and_process": "Confirm & Process",
+  "payroll_operation_timeout": "Payroll operation timed out. Please try again.",
   "payroll_run_complete": "Payroll run complete! {count} workers processed.",
   "no_results": "No results",
   "payroll_auto_triggered": "Today is salary day! Review the payroll run below.",

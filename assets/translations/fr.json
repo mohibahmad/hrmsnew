@@ -854,6 +854,8 @@
   "profile_share_failed": "Échec du partage du profil : {error}",
   "guest_feature_locked": "Fonctionnalité non disponible",
   "guest_feature_desc": "Cette fonctionnalité est uniquement disponible pour les utilisateurs inscrits. Veuillez vous connecter pour y accéder.",
+  "payroll_operation_timeout": "L'opération de paie a expiré. Veuillez réessayer.",
+  "pay_all": "Tout Payer",
   "sign_in": "Se connecter",
   "cancel": "Annuler"
 }

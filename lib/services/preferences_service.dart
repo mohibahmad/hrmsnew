@@ -100,12 +100,20 @@ class PreferencesService {
     return day != null && day >= 1 && day <= 31 ? day : null;
   }
 
-  static Future<void> setCompanySalaryDay(int day) async {
-    if (day < 1 || day > 31) {
-      throw ArgumentError.value(day, 'day', 'Salary day must be from 1 to 31');
-    }
+  static Future<void> setCompanySalaryDay(int? day) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_companySalaryDayKey, day);
+    if (day == null) {
+      await prefs.remove(_companySalaryDayKey);
+    } else {
+      if (day < 1 || day > 31) {
+        throw ArgumentError.value(
+          day,
+          'day',
+          'Salary day must be from 1 to 31',
+        );
+      }
+      await prefs.setInt(_companySalaryDayKey, day);
+    }
   }
 
   static Future<void> setGuestProfileData(Map<String, String> data) async {

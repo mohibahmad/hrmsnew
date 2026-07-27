@@ -20,15 +20,15 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final Color primaryBlue = const Color(0xFF0247C4);
   final Color leftPanelBlue = const Color(0xFF0247C4);
   final Color cardLightBlue = const Color(0xFFE5EEFC);
-  int _selectedPlanIndex = 0;
+  int _selectedPlanIndex = 1;
   bool _isSaving = false;
+  bool _imageLoaded = false;
   late AuthService _authService;
   late FirestoreService _firestore;
 
   @override
   void initState() {
     super.initState();
-    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
   }
 
   @override
@@ -36,6 +36,14 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
+
+    if (!_imageLoaded) {
+      _imageLoaded = true;
+      precacheImage(const AssetImage('assets/splashscreenbg.png'), context)
+          .then((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
@@ -121,11 +129,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           color: Color(0xFFFFFFFF),
                           width: double.infinity,
                           height: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(48, 16, 48, 24),
-                          child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
+                          padding: const EdgeInsets.fromLTRB(48, 16, 48, 18),
+                          child: SingleChildScrollView(
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: Text(
@@ -248,10 +257,10 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 26),
+                                const SizedBox(height: 16),
 
                                 Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  padding: EdgeInsets.zero,
                                   child: Text(
                                     'subscription_disclaimer'.tr(),
                                     textAlign: TextAlign.center,
@@ -266,41 +275,48 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   ),
                                 ),
                             
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 36),
 
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  children: [
-                                    _buildFooterLink(
-                                      'privacy_policy'.tr(),
-                                      onTap: () => launchUrl(
-                                        Uri.parse(
-                                          'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 10),
+                                    child: Wrap(
+                                      alignment: WrapAlignment.spaceBetween,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      _buildFooterLink(
+                                        'privacy_policy'.tr(),
+                                        onTap: () => launchUrl(
+                                          Uri.parse(
+                                            'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    _buildFooterDivider(),
-                                    _buildFooterLink(
-                                      'restore'.tr(),
-                                      onTap: () {},
-                                    ),
-                                    _buildFooterDivider(),
-                                    GestureDetector(
-                                      onTap: () => launchUrl(
-                                        Uri.parse(
-                                          'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                      _buildFooterDivider(),
+                                      _buildFooterLink(
+                                        'restore'.tr(),
+                                        onTap: () {},
+                                      ),
+                                      _buildFooterDivider(),
+                                      GestureDetector(
+                                        onTap: () => launchUrl(
+                                          Uri.parse(
+                                            'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                          ),
+                                        ),
+                                        behavior: HitTestBehavior.opaque,
+                                        child: _buildFooterLink(
+                                          'terms_of_use'.tr(),
                                         ),
                                       ),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: _buildFooterLink(
-                                        'terms_of_use'.tr(),
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ],
+                                ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

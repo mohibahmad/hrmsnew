@@ -862,6 +862,8 @@
   "profile_share_failed": "Falha ao compartilhar o perfil: {error}",
   "guest_feature_locked": "Recurso indisponível",
   "guest_feature_desc": "Este recurso está disponível apenas para usuários registrados. Faça login para acessar.",
+  "payroll_operation_timeout": "A operação da folha de pagamento expirou. Tente novamente.",
+  "pay_all": "Pagar Tudo",
   "sign_in": "Entrar",
   "cancel": "Cancelar"
 }

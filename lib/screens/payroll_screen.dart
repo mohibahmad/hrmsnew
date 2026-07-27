@@ -110,7 +110,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (mounted) setState(() => _salaryPaymentDay = salaryDay);
   }
 
-  Future<void> _saveCompanySalaryDay(int day) async {
+  Future<void> _saveCompanySalaryDay(int? day) async {
     if (_isSalaryDaySaving) return;
     setState(() => _isSalaryDaySaving = true);
     try {
@@ -118,7 +118,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
       if (isGuest) {
         await PreferencesService.setCompanySalaryDay(day);
       } else {
-        await _firestore.updateUserProfile({'salaryPaymentDay': day});
+        if (day == null) {
+          await _firestore.updateUserProfile({'salaryPaymentDay': null});
+        } else {
+          await _firestore.updateUserProfile({'salaryPaymentDay': day});
+        }
       }
       if (!mounted) return;
       setState(() => _salaryPaymentDay = day);
@@ -139,9 +143,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Future<void> _showSalaryDayDialog() async {
     final now = DateTime.now();
     final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
-    var selectedDay = (_salaryPaymentDay ?? 1)
-        .clamp(1, daysInCurrentMonth)
-        .toInt();
+    // -1 represents "None" — instead of nullable, so we can distinguish
+    // between "Save with None" (pop -1) and "Cancel" (pop null).
+    int selectedDay = _salaryPaymentDay ?? -1;
     final result = await showDialog<int>(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -208,13 +212,22 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  items: List.generate(
-                    daysInCurrentMonth,
-                    (index) => DropdownMenuItem<int>(
-                      value: index + 1,
-                      child: Text('${index + 1}'),
+                  items: [
+                    DropdownMenuItem<int>(
+                      value: -1,
+                      child: Text(
+                        'none'.tr(),
+                        style: const TextStyle(color: Colors.grey),
+                      ),
                     ),
-                  ),
+                    ...List.generate(
+                      daysInCurrentMonth,
+                      (index) => DropdownMenuItem<int>(
+                        value: index + 1,
+                        child: Text('${index + 1}'),
+                      ),
+                    ),
+                  ],
                   onChanged: (value) {
                     if (value != null) {
                       setDialogState(() => selectedDay = value);
@@ -222,27 +235,28 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   },
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'salary_day_schedule'.tr(
-                      namedArgs: {'day': '$selectedDay'},
+                if (selectedDay != -1)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                    style: const TextStyle(
-                      color: Color(0xFF334155),
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'salary_day_schedule'.tr(
+                        namedArgs: {'day': '$selectedDay'},
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -266,7 +280,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
         ),
       ),
     );
-    if (result != null && mounted) await _saveCompanySalaryDay(result);
+    if (result != null && mounted) {
+      await _saveCompanySalaryDay(result == -1 ? null : result);
+    }
   }
 
   @override
@@ -329,21 +345,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_isRunningPayroll) return;
     setState(() => _isRunningPayroll = true);
     try {
-      final summary = await SalaryDayScheduler()
-          .payAll(context)
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              if (mounted) {
-                FlashySnackBar.show(
-                  context,
-                  message: 'payroll_operation_timeout'.tr(),
-                  isError: true,
-                );
-              }
-              return null;
-            },
-          );
+      final summary = await SalaryDayScheduler().payAll(context);
       if (summary != null && mounted) {
         FlashySnackBar.show(
           context,
