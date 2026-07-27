@@ -813,6 +813,8 @@
   "notif_msg_expense": "Une nouvelle dépense a été enregistrée.",
   "notif_msg_asset_type": "{type} a été attribué à {name}.",
   "notif_msg_asset": "Un actif a été attribué à {name}.",
+  "delete_all_notifications": "Effacer toutes les notifications ?",
+  "delete_all_notifications_desc": "Êtes-vous sûr de vouloir effacer toutes les notifications ? Cette action est irréversible.",
   "Present": "Présent",
   "Absent": "Absent",
   "On leave": "En congé",

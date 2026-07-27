@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../services/dummy_data.dart';
+import '../utils/delete_dialog.dart';
 
 class NotificationSidebar extends StatefulWidget {
   final VoidCallback onClose;
@@ -405,14 +406,22 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () async {
-                      final isGuest =
-                          _authService.currentUser?.isAnonymous ?? false;
-                      if (!isGuest) {
-                        await _firestore.clearAllNotifications();
+                      final confirmed = await DeleteDialog.show(
+                        context: context,
+                        title: 'delete_all_notifications'.tr(),
+                        content: 'delete_all_notifications_desc'.tr(),
+                        confirmButtonText: 'clear_all',
+                      );
+                      if (confirmed) {
+                        final isGuest =
+                            _authService.currentUser?.isAnonymous ?? false;
+                        if (!isGuest) {
+                          await _firestore.clearAllNotifications();
+                        }
+                        setState(() {
+                          _notifications.clear();
+                        });
                       }
-                      setState(() {
-                        _notifications.clear();
-                      });
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(

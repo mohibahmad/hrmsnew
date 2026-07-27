@@ -821,6 +821,8 @@
   "notif_msg_expense": "Uma nova despesa foi registrada.",
   "notif_msg_asset_type": "{type} foi atribuído a {name}.",
   "notif_msg_asset": "Um ativo foi atribuído a {name}.",
+  "delete_all_notifications": "Limpar todas as notificações?",
+  "delete_all_notifications_desc": "Tem certeza de que deseja limpar todas as notificações? Esta ação não pode ser desfeita.",
   "Present": "Presente",
   "Absent": "Ausente",
   "On leave": "De licença",

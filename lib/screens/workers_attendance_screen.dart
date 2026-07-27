@@ -25,8 +25,8 @@ const Color cardLightGray = Color(0xFFF3F5F8);
 const Color textDark = Color(0xFF000000);
 const Color textMuted = Color(0xFF64748B);
 
-const Color greenPresent = Color(0xFF00FF2A);
-const Color redAbsent = Color(0xFFFF0004);
+const Color greenPresent = Color(0xFF00C853);
+const Color redAbsent = Color(0xFFF44336);
 const Color orangeLeave = Color(0xFFFF7B00);
 const Color pillGray = Color(0xFFE2E5EA);
 
@@ -258,7 +258,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     for (final worker in _workers) {
       final leave = TimeOffService.activeLeaveForWorker(
         worker,
-        _timeOffRecords,
+        _plannedTimeOffRecords,
       );
       if (leave != null) active.add({...leave, 'workerName': worker['name']});
     }
@@ -279,6 +279,193 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             : 'This worker is on leave today$extra',
       );
     });
+  }
+
+  bool _isAttendanceManagedTimeOff(Map<String, dynamic> record) {
+    return (record['source'] ?? '').toString().trim().toLowerCase() ==
+        'attendance';
+  }
+
+  List<Map<String, dynamic>> get _plannedTimeOffRecords => _timeOffRecords
+      .where((record) => !_isAttendanceManagedTimeOff(record))
+      .toList();
+
+  bool _isWorkerOnPlannedTimeOff(Map<String, dynamic> worker) {
+    return TimeOffService.isWorkerOnLeave(worker, _plannedTimeOffRecords);
+  }
+
+  Map<String, dynamic>? _attendanceManagedTimeOffForWorker(
+    Map<String, dynamic> worker,
+    DateTime date,
+  ) {
+    final target = DateTime(date.year, date.month, date.day);
+    final workerEmail = (worker['email'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final workerName = (worker['name'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    for (final record in _timeOffRecords) {
+      if (!_isAttendanceManagedTimeOff(record) ||
+          !TimeOffService.isApproved(record)) {
+        continue;
+      }
+      final recordEmail = (record['email'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final recordName = (record['name'] ?? record['workerName'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final belongsToWorker =
+          workerEmail.isNotEmpty && recordEmail.isNotEmpty
+          ? workerEmail == recordEmail
+          : workerName.isNotEmpty && workerName == recordName;
+      if (!belongsToWorker) continue;
+      if (TimeOffService.selectedDatesForRecord(record).contains(target)) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _syncAttendanceAnnualLeave({
+    required Map<String, dynamic> worker,
+    required String selectedStatus,
+    required String leaveType,
+    required String reason,
+  }) async {
+    final today = DateTime.now();
+    final normalizedToday = DateTime(today.year, today.month, today.day);
+    final existing = _attendanceManagedTimeOffForWorker(
+      worker,
+      normalizedToday,
+    );
+    final shouldHaveLeave = selectedStatus == 'Leave';
+
+    if (!shouldHaveLeave && existing == null) return true;
+    if (shouldHaveLeave &&
+        existing == null &&
+        TimeOffService.remainingPaidLeave(worker, _timeOffRecords) <= 0) {
+      return false;
+    }
+
+    final existingId = (existing?['id'] ?? '').toString();
+    final projectedRecords = _timeOffRecords
+        .where(
+          (record) =>
+              existing == null ||
+              (existingId.isNotEmpty
+                  ? record['id']?.toString() != existingId
+                  : !identical(record, existing)),
+        )
+        .map(Map<String, dynamic>.from)
+        .toList();
+
+    Map<String, dynamic>? attendanceTimeOff;
+    if (shouldHaveLeave) {
+      final dateKey =
+          '${normalizedToday.year}-'
+          '${normalizedToday.month.toString().padLeft(2, '0')}-'
+          '${normalizedToday.day.toString().padLeft(2, '0')}';
+      attendanceTimeOff = <String, dynamic>{
+        'name': worker['name'] ?? 'Worker',
+        'workerName': worker['name'] ?? 'Worker',
+        'email': worker['email'] ?? '',
+        'position': worker['position'] ?? worker['role'] ?? 'Worker',
+        'contact': worker['phone'] ?? worker['contact'] ?? '',
+        'action': leaveType,
+        'type': leaveType,
+        'startDate': dateKey,
+        'endDate': dateKey,
+        'selectedDates': [normalizedToday],
+        'notes': reason,
+        'requestedDays': 1,
+        'status': 'Approved',
+        'isPaidLeave': true,
+        'source': 'attendance',
+        'attendanceDate': dateKey,
+        'workerAvatar': worker['profileImage'] ?? '',
+      };
+      projectedRecords.add({
+        ...attendanceTimeOff,
+        'id': existingId.isNotEmpty ? existingId : 'pending_attendance_leave',
+      });
+    }
+
+    final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(worker);
+    final usedPaidDays = TimeOffService.paidDaysUsedForWorker(
+      worker,
+      projectedRecords,
+    );
+    final balanceUpdate = <String, dynamic>{
+      'availableAnnualLeaves': (totalPaidDays - usedPaidDays)
+          .clamp(0, totalPaidDays)
+          .toString(),
+      'leavesUsed': usedPaidDays.toString(),
+    };
+    final workerId = (worker['id'] ?? '').toString();
+
+    String savedTimeOffId = existingId;
+    if (shouldHaveLeave) {
+      if (workerId.isNotEmpty) {
+        savedTimeOffId = await _firestore.saveTimeOffWithWorkerBalance(
+          timeOffId: existingId.isEmpty ? null : existingId,
+          record: attendanceTimeOff!,
+          workerId: workerId,
+          balance: balanceUpdate,
+        );
+      } else if (existingId.isNotEmpty) {
+        await _firestore.updateTimeOffRecord(existingId, attendanceTimeOff!);
+      } else {
+        savedTimeOffId = await _firestore.addTimeOffRecord(
+          attendanceTimeOff!,
+        );
+      }
+    } else if (existingId.isNotEmpty) {
+      if (workerId.isNotEmpty) {
+        await _firestore.deleteTimeOffWithWorkerBalance(
+          timeOffId: existingId,
+          workerId: workerId,
+          balance: balanceUpdate,
+        );
+      } else {
+        await _firestore.deleteTimeOffRecord(existingId);
+      }
+    }
+
+    if (!mounted) return true;
+    setState(() {
+      _timeOffRecords = projectedRecords
+          .where(
+            (record) =>
+                record['id']?.toString() != 'pending_attendance_leave',
+          )
+          .toList();
+      if (shouldHaveLeave && attendanceTimeOff != null) {
+        _timeOffRecords.insert(0, {
+          ...attendanceTimeOff,
+          'id': savedTimeOffId,
+        });
+      }
+      final workerIndex = _workers.indexWhere(
+        (item) =>
+            (workerId.isNotEmpty && item['id']?.toString() == workerId) ||
+            (item['email'] ?? '').toString().trim().toLowerCase() ==
+                (worker['email'] ?? '').toString().trim().toLowerCase(),
+      );
+      if (workerIndex != -1) {
+        _workers[workerIndex] = {
+          ..._workers[workerIndex],
+          ...balanceUpdate,
+        };
+      }
+    });
+    return true;
   }
 
   String _getWorkerStatus(Map<String, dynamic> worker) {
@@ -367,7 +554,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   List<Map<String, dynamic>> get _filteredWorkers {
     return _workers.where((worker) {
-      if (TimeOffService.isWorkerOnLeave(worker, _timeOffRecords)) {
+      if (_isWorkerOnPlannedTimeOff(worker)) {
         return false;
       }
       final name = (worker["name"] ?? "").toString().toLowerCase();
@@ -385,7 +572,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   List<Map<String, dynamic>> get _visibleTodayAttendance {
     return _todayAttendance
         .where(
-          (record) => !TimeOffService.isWorkerOnLeave(record, _timeOffRecords),
+          (record) => !_isWorkerOnPlannedTimeOff(record),
         )
         .toList();
   }
@@ -592,7 +779,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       );
       return;
     }
-    if (TimeOffService.isWorkerOnLeave(data, _timeOffRecords)) {
+    if (_isWorkerOnPlannedTimeOff(data)) {
       FlashySnackBar.show(
         context,
         message: 'worker_on_time_off_attendance_blocked'.tr(),
@@ -737,7 +924,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       orElse: () => <String, dynamic>{},
     );
 
-    const validStatuses = {'Present', 'Absent'};
+    const validStatuses = {'Present', 'Absent', 'Leave'};
 
     final recordStatus = todayRecord['status'];
     final initialStatus =
@@ -756,8 +943,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       barrierDismissible: false,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext dialogContext) {
-        String selectedStatus =
-            (initialStatus == 'Present' || initialStatus == 'Absent')
+        String selectedStatus = validStatuses.contains(initialStatus)
             ? initialStatus
             : 'Present';
         final initialType = (todayRecord['type'] ?? '').toString();
@@ -767,20 +953,31 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           'Family Emergency',
           'Other',
         };
-        String selectedLeaveType = absentTypes.contains(initialType)
-            ? initialType
-            : 'Without Notice';
+        const leaveTypes = {'Sick Leave', 'Casual Leave', 'Medical Leave'};
+        String selectedLeaveType = selectedStatus == 'Leave'
+            ? (leaveTypes.contains(initialType) ? initialType : 'Sick Leave')
+            : (absentTypes.contains(initialType)
+                  ? initialType
+                  : 'Without Notice');
 
         List<Map<String, String>> reasonOptions() {
+          if (selectedStatus == 'Absent') {
+            return const [
+              {'value': 'Without Notice', 'key': 'absent_without_notice'},
+              {'value': 'Sick', 'key': 'absent_sick'},
+              {'value': 'Family Emergency', 'key': 'absent_emergency'},
+              {'value': 'Other', 'key': 'absent_other'},
+            ];
+          }
           return const [
-            {'value': 'Without Notice', 'key': 'absent_without_notice'},
-            {'value': 'Sick', 'key': 'absent_sick'},
-            {'value': 'Family Emergency', 'key': 'absent_emergency'},
-            {'value': 'Other', 'key': 'absent_other'},
+            {'value': 'Sick Leave', 'key': 'sick_leave_type'},
+            {'value': 'Casual Leave', 'key': 'casual_leave_type'},
+            {'value': 'Medical Leave', 'key': 'medical_leave_type'},
           ];
         }
 
-        String reasonLabelKey() => 'absent_reason';
+        String reasonLabelKey() =>
+            selectedStatus == 'Absent' ? 'absent_reason' : 'leave_type';
         final reasonController = TextEditingController(text: initialReason);
 
         return StatefulBuilder(
@@ -886,9 +1083,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setDialogState(() {
+                                          selectedStatus = 'Leave';
+                                          selectedLeaveType = 'Sick Leave';
+                                        });
+                                      },
+                                      child: _buildToggleChip(
+                                        'leave'.tr(),
+                                        'assets/leave.svg',
+                                        isSelected: selectedStatus == 'Leave',
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                              if (selectedStatus == 'Absent') ...[
+                              if (selectedStatus == 'Absent' ||
+                                  selectedStatus == 'Leave') ...[
                                 const SizedBox(height: 16),
                                 Text(
                                   reasonLabelKey().tr(),
@@ -1058,15 +1272,44 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                       ?.isAnonymous ??
                                                   false;
                                               final type =
-                                                  selectedStatus == 'Absent'
-                                                  ? selectedLeaveType
-                                                  : null;
+                                                  selectedStatus == 'Present'
+                                                  ? null
+                                                  : selectedLeaveType;
                                               final desc =
                                                   selectedStatus == 'Present'
                                                   ? (reason.isEmpty
                                                         ? null
                                                         : reason)
                                                   : reason;
+
+                                              if (!isGuest) {
+                                                final leaveBalanceSynced =
+                                                    await _syncAttendanceAnnualLeave(
+                                                      worker: data,
+                                                      selectedStatus:
+                                                          selectedStatus,
+                                                      leaveType:
+                                                          selectedLeaveType,
+                                                      reason: reason,
+                                                    );
+                                                if (!leaveBalanceSynced) {
+                                                  if (context.mounted) {
+                                                    FlashySnackBar.show(
+                                                      context,
+                                                      message:
+                                                          'requested_leaves_exceed_available'
+                                                              .tr(),
+                                                      isError: true,
+                                                    );
+                                                  }
+                                                  if (mounted) {
+                                                    setState(
+                                                      () => _isSaving = false,
+                                                    );
+                                                  }
+                                                  return;
+                                                }
+                                              }
 
                                               if (isGuest) {
                                                 final wIdx = DummyData.workers
@@ -1667,7 +1910,7 @@ class WorkerListItem extends StatelessWidget {
               _AttendanceActionButton(
                 labelKey: 'present',
                 status: 'Present',
-                color: const Color(0xFF00C853),
+                color: greenPresent,
                 enabled: !isHoliday,
                 onTap: onMarkAttendance,
                 onDisabledTap: () {
@@ -1682,7 +1925,22 @@ class WorkerListItem extends StatelessWidget {
               _AttendanceActionButton(
                 labelKey: 'absent',
                 status: 'Absent',
-                color: const Color(0xFFF44336),
+                color: redAbsent,
+                enabled: !isHoliday,
+                onTap: onMarkAttendance,
+                onDisabledTap: () {
+                  FlashySnackBar.show(
+                    context,
+                    message: 'non_working_day'.tr(),
+                    isError: true,
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              _AttendanceActionButton(
+                labelKey: 'leave',
+                status: 'Leave',
+                color: orangeLeave,
                 enabled: !isHoliday,
                 onTap: onMarkAttendance,
                 onDisabledTap: () {
@@ -1747,7 +2005,10 @@ class _AttendanceActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: isEnabled ? () => onTap(status) : onDisabledTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        width: 72,
+        height: 36,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: isEnabled ? color : Colors.grey.shade400,
           borderRadius: BorderRadius.circular(6),
@@ -1808,7 +2069,7 @@ class TodayAttendanceItem extends StatelessWidget {
       onTap: onTap ?? onEdit,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFFF7F8FC),
           borderRadius: BorderRadius.circular(6),
@@ -1839,16 +2100,22 @@ class TodayAttendanceItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 StatusPill(status: (data["status"] ?? '').toString()),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: onEdit,
-                  child: SvgPicture.asset(
-                    'assets/edit_icon.svg',
-                    height: 20,
-                    width: 20,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFF000000),
-                      BlendMode.srcIn,
+                  child: SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/edit_icon.svg',
+                        height: 20,
+                        width: 20,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF000000),
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1917,10 +2184,9 @@ class StatusPill extends StatelessWidget {
     }
 
     return Container(
-      width: 80,
+      width: 72,
+      height: 36,
       alignment: Alignment.center,
-
-      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
@@ -1929,8 +2195,8 @@ class StatusPill extends StatelessWidget {
         displayStatus,
         style: TextStyle(
           color: textColor,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
           fontFamily: 'SF Pro Display',
         ),
         textAlign: TextAlign.center,

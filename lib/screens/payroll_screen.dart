@@ -678,13 +678,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
     }
     final sortedPositions = actualPositions.toList()..sort();
 
-    List<String> positionsToShow;
-    if (actualPositions.isEmpty) {
-      positionsToShow = defaultPositions;
-    } else if (actualPositions.length == 1) {
-      positionsToShow = [...defaultPositions, ...sortedPositions];
-    } else {
-      positionsToShow = sortedPositions;
+    final positionsToShow = <String>[...sortedPositions];
+    for (final position in defaultPositions) {
+      final alreadyIncluded = positionsToShow.any(
+        (item) => item.toLowerCase() == position.toLowerCase(),
+      );
+      if (!alreadyIncluded) {
+        positionsToShow.add(position);
+      }
     }
 
     final filters = <Map<String, String>>[

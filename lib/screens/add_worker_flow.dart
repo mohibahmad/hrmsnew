@@ -703,13 +703,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
   DateTime? _validateAndParseDob() {
     final dobStr = _dobController.text.trim();
-    if (dobStr.isEmpty) return DateTime.now();
+    if (dobStr.isEmpty) return null;
     final dob = AppDateUtils.parseDateString(dobStr);
     if (dob == null) {
       FlashySnackBar.show(
         context,
         message: 'invalid_date_format'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return null;
@@ -719,7 +718,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'worker_must_be_18'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return null;
@@ -823,12 +821,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
+    final nationalId = _nationalIdController.text.trim();
+    final religion = _religionController.text.trim();
+    final address = _addressController.text.trim();
 
     if (name.isEmpty) {
       FlashySnackBar.show(
         context,
         message: 'please_enter_worker_name'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -838,18 +838,59 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_contact_number'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
     }
 
-    if (email.isNotEmpty &&
-        !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    if (email.isNotEmpty && !Validators.isValidEmail(email)) {
       FlashySnackBar.show(
         context,
         message: 'please_enter_valid_email'.tr(),
-        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (nationalId.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'national_id_title'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
+    if (religion.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'religion_title'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
+    if (_dobController.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'date_of_birth'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
+    if (address.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'address_title'.tr()},
+        ),
         isError: true,
       );
       return;
@@ -874,7 +915,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_upload_profile_image'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -884,7 +924,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'upload_cnic_front_required'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -894,7 +933,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'upload_cnic_back_required'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -904,7 +942,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'upload_cv_required'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -918,7 +955,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     });
 
 
-    final nationalId = _nationalIdController.text.trim();
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
@@ -952,7 +988,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           FlashySnackBar.show(
             context,
             message: messageKey.tr(),
-            title: 'validation_error'.tr(),
             isError: true,
           );
           return;
@@ -1174,7 +1209,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         FlashySnackBar.show(
           context,
           message: messageKey.tr(),
-          title: 'validation_error'.tr(),
           isError: true,
         );
       }
@@ -1210,7 +1244,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_worker_name'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -1220,24 +1253,69 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_contact_number'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
     }
 
-    if (email.isNotEmpty &&
-        !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    if (email.isNotEmpty && !Validators.isValidEmail(email)) {
       FlashySnackBar.show(
         context,
         message: 'please_enter_valid_email'.tr(),
-        title: 'validation_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    final religion = _religionController.text.trim();
+    final address = _addressController.text.trim();
+    final dobStr = _dobController.text.trim();
+
+    if (nationalId.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'national_id_title'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
+    if (religion.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'religion_title'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
+    if (dobStr.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'date_of_birth'.tr()},
+        ),
         isError: true,
       );
       return;
     }
 
     if (_validateAndParseDob() == null) return;
+
+    if (address.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'field_is_required'.tr(
+          namedArgs: {'field': 'address_title'.tr()},
+        ),
+        isError: true,
+      );
+      return;
+    }
 
     final hasProfileImage =
         _profileImageBytes != null ||
@@ -1247,7 +1325,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_upload_profile_image'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -1285,7 +1362,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           FlashySnackBar.show(
             context,
             message: messageKey.tr(),
-            title: 'validation_error'.tr(),
             isError: true,
           );
           return;
@@ -1304,7 +1380,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_job_position'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -1314,7 +1389,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_salary_amount'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -1324,7 +1398,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_enter_annual_leaves'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -1334,7 +1407,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: 'please_select_a_joining_date'.tr(),
-        title: 'validation_error'.tr(),
         isError: true,
       );
       return;
@@ -2764,7 +2836,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           children: [
 
             Expanded(
-              flex: 5,
+              flex: 6,
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -2897,65 +2969,65 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF000000).withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _calendarMonth = DateTime(
-                                    _calendarMonth.year,
-                                    _calendarMonth.month - 1,
-                                    1,
-                                  );
-                                });
-                              },
-                              child: const Icon(
-                                Icons.keyboard_arrow_left,
-                                size: 20,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF000000).withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _calendarMonth = DateTime(
+                                      _calendarMonth.year,
+                                      _calendarMonth.month - 1,
+                                      1,
+                                    );
+                                  });
+                                },
+                                child: const Icon(
+                                  Icons.keyboard_arrow_left,
+                                  size: 20,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            Text(
-                              '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()}${_calendarMonth.year}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                letterSpacing: 1.0,
-                                fontFamily: 'SF Pro Display',
+                              const SizedBox(width: 20),
+                              Text(
+                                '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()}${_calendarMonth.year}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  letterSpacing: 1.0,
+                                  fontFamily: 'SF Pro Display',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _calendarMonth = DateTime(
-                                    _calendarMonth.year,
-                                    _calendarMonth.month + 1,
-                                    1,
-                                  );
-                                });
-                              },
-                              child: const Icon(
-                                Icons.keyboard_arrow_right,
-                                size: 20,
+                              const SizedBox(width: 20),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _calendarMonth = DateTime(
+                                      _calendarMonth.year,
+                                      _calendarMonth.month + 1,
+                                      1,
+                                    );
+                                  });
+                                },
+                                child: const Icon(
+                                  Icons.keyboard_arrow_right,
+                                  size: 20,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -3010,12 +3082,15 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             final padCount = firstWeekday == 7
                                 ? 0
                                 : firstWeekday;
+                            final trailingPadCount =
+                                42 - (padCount + daysInMonth);
 
                             return GridView.count(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               crossAxisCount: 7,
-                              mainAxisSpacing: 8,
+                              mainAxisExtent: 28,
+                              mainAxisSpacing: 6,
                               crossAxisSpacing: 4,
                               children: [
                                 for (int i = 0; i < padCount; i++)
@@ -3118,6 +3193,8 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                       },
                                     ),
                                   ),
+                                for (int i = 0; i < trailingPadCount; i++)
+                                  const SizedBox.shrink(),
                               ],
                             );
                           },
@@ -3132,7 +3209,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         ),
         const SizedBox(height: 16),
 
-
         Text(
           'salary_section'.tr(),
           style: TextStyle(
@@ -3143,71 +3219,81 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
           ),
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: formBgGrey,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDropdownField(
-                      label: 'salary_type_label'.tr(),
-                      selectedValue: widget.salaryTypeController.text,
-                      hint: 'enter_your_salary_type'.tr(),
-                      items: const ['Monthly', 'Hourly', 'Contract'],
-                      itemLabelBuilder: (val) => _localizeSalaryType(val),
-                      onChanged: (val) {
-                        if (val != null) {
-                          widget.salaryTypeController.text = val;
-                        }
-                      },
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 6,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: formBgGrey,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdownField(
+                            label: 'salary_type_label'.tr(),
+                            selectedValue: widget.salaryTypeController.text,
+                            hint: 'enter_your_salary_type'.tr(),
+                            items: const ['Monthly', 'Hourly', 'Contract'],
+                            itemLabelBuilder: (val) => _localizeSalaryType(val),
+                            onChanged: (val) {
+                              if (val != null) {
+                                widget.salaryTypeController.text = val;
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                           child: _buildDropdownField(
+                             label: 'currency_label'.tr(),
+                             selectedValue: widget.currencyController.text.isEmpty
+                                 ? 'USD'
+                                 : widget.currencyController.text,
+                             hint: 'enter_your_currency'.tr(),
+                             items: CurrencyUtils.supportedCodes,
+                            itemLabelBuilder: (val) => _localizeCurrency(val),
+                            onChanged: (val) {
+                              if (val != null) {
+                                widget.currencyController.text = val;
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                     child: _buildDropdownField(
-                       label: 'currency_label'.tr(),
-                       selectedValue: widget.currencyController.text.isEmpty
-                           ? 'USD'
-                           : widget.currencyController.text,
-                       hint: 'enter_your_currency'.tr(),
-                       items: CurrencyUtils.supportedCodes,
-                      itemLabelBuilder: (val) => _localizeCurrency(val),
-                      onChanged: (val) {
-                        if (val != null) {
-                          widget.currencyController.text = val;
-                        }
-                      },
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildInputField(
+                            'salary_amount_label'.tr(),
+                            'enter_your_amount'.tr(),
+                            controller: widget.salaryAmountController,
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: _buildInputField(
+                            'annual_leaves_days'.tr(),
+                            'hint_annual_leaves'.tr(),
+                            controller: widget.annualLeavesController,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInputField(
-                      'salary_amount_label'.tr(),
-                      'enter_your_amount'.tr(),
-                      controller: widget.salaryAmountController,
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: _buildInputField(
-                      'annual_leaves_days'.tr(),
-                      'hint_annual_leaves'.tr(),
-                      controller: widget.annualLeavesController,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 32),
+            const Expanded(flex: 2, child: SizedBox()),
+          ],
         ),
         const SizedBox(height: 60),
       ],
@@ -4240,7 +4326,7 @@ Widget _buildInputField(
                     isAmount
                         ? RegExp(r'^\d*\.?\d*')
                         : (isNationalId
-                              ? RegExp(r'^[\d_-]*')
+                              ? RegExp(r'^[\d-]*')
                               : RegExp(r'^\d*')),
                   ),
                   if (isAmount) LengthLimitingTextInputFormatter(15),

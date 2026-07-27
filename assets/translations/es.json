@@ -821,6 +821,8 @@
   "notif_msg_expense": "Se ha registrado un nuevo gasto.",
   "notif_msg_asset_type": "{type} ha sido asignado a {name}.",
   "notif_msg_asset": "Se ha asignado un activo a {name}.",
+  "delete_all_notifications": "¿Limpiar todas las notificaciones?",
+  "delete_all_notifications_desc": "¿Estás seguro de que deseas limpiar todas las notificaciones? Esta acción no se puede deshacer.",
   "Present": "Presente",
   "Absent": "Ausente",
   "On leave": "De permiso",

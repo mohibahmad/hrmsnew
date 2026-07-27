@@ -822,6 +822,8 @@
   "notif_msg_expense": "A new expense has been recorded.",
   "notif_msg_asset_type": "{type} has been assigned to {name}.",
   "notif_msg_asset": "An asset has been assigned to {name}.",
+  "delete_all_notifications": "Clear All Notifications?",
+  "delete_all_notifications_desc": "Are you sure you want to clear all notifications? This action cannot be undone.",
   "Present": "Present",
   "Absent": "Absent",
   "On leave": "On leave",

@@ -19,6 +19,7 @@ import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
 import '../utils/image_utils.dart';
+import '../utils/validators.dart';
 import '../widgets/amount_text.dart';
 import 'package:provider/provider.dart';
 
@@ -35,9 +36,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   // ─────────────────────────────────────────────────────────────
   //  Constants
   // ─────────────────────────────────────────────────────────────
-  static final RegExp _emailRegex =
-      RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-
   static const List<String> _requiredFields = [
     'name',
     'phone',
@@ -611,7 +609,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       // ── Email format validation ──
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
-      if (email.isNotEmpty && !_emailRegex.hasMatch(email)) {
+      if (email.isNotEmpty && !Validators.isValidEmail(email)) {
         fieldErrors['email'] = 'Invalid email address';
       }
 

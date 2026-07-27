@@ -352,16 +352,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              _getTimeframeTitle(),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                            Row(
+                              children: [
+                                Text(
+                                  _getTimeframeTitle(),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: textDark,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                                const Spacer(),
+                                CustomTimeframeDropdown(
+                                  selectedPeriod: _selectedTimeframe,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedTimeframe = value;
+                                      _cachedFiltered = null;
+                                      _filterCacheKey = '';
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 20),
                             if (_isLoading)
@@ -757,6 +772,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       attendanceRecords: _rawAttendanceDocs,
     );
 
+    // Filter worker records by the selected timeframe from main screen
+    final periodFilteredRecords = workerRecords.where((record) {
+      final createdAt = record['createdAt'];
+      if (createdAt == null) return true;
+      return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedTimeframe);
+    }).toList();
+
     // Get approved time off dates for this worker
     final timeOffDates = TimeOffService.allLeaveDatesForWorker(
           doc,
@@ -764,8 +786,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ) ??
         <DateTime>[];
 
-    // Filter out attendance records that fall on approved time off days
-    final filteredRecords = workerRecords.where((record) {
+    // Also filter out attendance records that fall on approved time off days
+    final filteredRecords = periodFilteredRecords.where((record) {
       final createdAt = record['createdAt'];
       if (createdAt == null) return true;
       DateTime? recordDate;
@@ -953,23 +975,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             flex: 2,
                             child: Padding(
                               padding: const EdgeInsets.only(right: 24.0),
-                              child: Text(
-                                status.isEmpty ? '-' : status.toLowerCase().tr(),
-                                style: TextStyle(
-                                  color: status == 'Present'
-                                      ? greenPresent
-                                      : (status == 'Absent'
-                                            ? redAbsent
-                                            : (status.isEmpty
-                                                  ? Colors.grey
-                                                  : orangeLeave)),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              child: _buildStatusText(status),
                             ),
                           ),
                           Expanded(
@@ -1028,6 +1034,40 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  Widget _buildStatusText(String status) {
+    final bool isToday = _selectedTimeframe == 'Today';
+    if (!isToday) {
+      return Text(
+        '-',
+        style: const TextStyle(
+          color: Colors.grey,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'SF Pro Display',
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+    return Text(
+      status.isEmpty ? '-' : status.toLowerCase().tr(),
+      style: TextStyle(
+        color: status == 'Present'
+            ? greenPresent
+            : (status == 'Absent'
+                  ? redAbsent
+                  : (status.isEmpty
+                        ? Colors.grey
+                        : orangeLeave)),
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        fontFamily: 'SF Pro Display',
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
   Widget _tableHeader(String title) {
     return Text(
       title,
@@ -1068,26 +1108,15 @@ class WorkerAttendancePreviewCard extends StatefulWidget {
 
 class _WorkerAttendancePreviewCardState
     extends State<WorkerAttendancePreviewCard> {
-  String _selectedPeriod = 'All';
-
-  List<Map<String, dynamic>> get _filteredRecords {
-    if (_selectedPeriod == 'All') return widget.workerRecords;
-    return widget.workerRecords.where((att) {
-      final createdAt = att['createdAt'];
-      if (createdAt == null) return true;
-      return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedPeriod);
-    }).toList();
-  }
-
-  int get _filteredTotal => _filteredRecords.length;
-  int get _filteredPresents =>
-      _filteredRecords.where((d) => d['status'] == 'Present').length;
-  int get _filteredAbsents =>
-      _filteredRecords.where((d) => d['status'] == 'Absent').length;
-  int get _filteredLeaves =>
-      _filteredRecords.where((d) => d['status'] == 'Leave').length;
-  double get _filteredPercentage =>
-      _filteredTotal > 0 ? (_filteredPresents / _filteredTotal) * 100 : 0.0;
+  int get _totalRecords => widget.workerRecords.length;
+  int get _presents =>
+      widget.workerRecords.where((d) => d['status'] == 'Present').length;
+  int get _absents =>
+      widget.workerRecords.where((d) => d['status'] == 'Absent').length;
+  int get _leaves =>
+      widget.workerRecords.where((d) => d['status'] == 'Leave').length;
+  double get _percentage =>
+      _totalRecords > 0 ? (_presents / _totalRecords) * 100 : 0.0;
 
   static const Color primaryBlue = Color(0xFF0A51D0);
 
@@ -1241,21 +1270,7 @@ class _WorkerAttendancePreviewCardState
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Align(
-                  alignment: Alignment.center,
-                  child: CustomTimeframeDropdown(
-                    selectedPeriod: _selectedPeriod,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedPeriod = value;
-                      });
-                    },
-                    options: const ['All', 'Monthly', '3 Month', 'Yearly'],
-                  ),
-                ),
-              ),
+              const SizedBox(width: 16),
             ],
           ),
         ),
@@ -1273,7 +1288,7 @@ class _WorkerAttendancePreviewCardState
             width: 140,
             child: _buildSummaryCard(
               title: 'total_presents'.tr(),
-              value: '$_filteredPresents',
+              value: '$_presents',
               bgColor: lightGreenBg,
               iconColor: darkGreen,
               iconBuilder: (color) => _buildPresentIcon(color),
@@ -1284,7 +1299,7 @@ class _WorkerAttendancePreviewCardState
             width: 140,
             child: _buildSummaryCard(
               title: 'total_absent'.tr(),
-              value: '$_filteredAbsents',
+              value: '$_absents',
               bgColor: lightRedBg,
               iconColor: darkRed,
               iconBuilder: (color) => _buildAbsentIcon(color),
@@ -1295,7 +1310,7 @@ class _WorkerAttendancePreviewCardState
             width: 140,
             child: _buildSummaryCard(
               title: 'total_leaves'.tr(),
-              value: '$_filteredLeaves',
+              value: '$_leaves',
               bgColor: lightOrangeBg,
               iconColor: darkOrange,
               iconBuilder: (color) => _buildLeaveIcon(color),
@@ -1437,27 +1452,27 @@ class _WorkerAttendancePreviewCardState
                 rows: [
                   _buildDetailRow(
                     'total_working_days'.tr(),
-                    '$_filteredTotal ${'days_unit'.tr()}',
+                    '$_totalRecords ${'days_unit'.tr()}',
                     Color(0xFF000000),
                   ),
                   _buildDetailRow(
                     'total_presents'.tr(),
-                    '$_filteredPresents ${'days_unit'.tr()}',
+                    '$_presents ${'days_unit'.tr()}',
                     darkGreen,
                   ),
                   _buildDetailRow(
                     'total_absents'.tr(),
-                    '$_filteredAbsents ${'days_unit'.tr()}',
+                    '$_absents ${'days_unit'.tr()}',
                     darkRed,
                   ),
                   _buildDetailRow(
                     'total_leaves'.tr(),
-                    '$_filteredLeaves ${'days_unit'.tr()}',
+                    '$_leaves ${'days_unit'.tr()}',
                     darkOrange,
                   ),
                   _buildDetailRow(
                     'attendance_percentage'.tr(),
-                    '${_filteredPercentage.toStringAsFixed(1)}%',
+                    '${_percentage.toStringAsFixed(1)}%',
                     primaryBlue,
                   ),
                 ],
@@ -1565,13 +1580,13 @@ class _WorkerAttendancePreviewCardState
     rows.add(['Work Type', widget.record.workType]);
     rows.add(['Attendance Type', widget.record.attendanceType]);
     rows.add([]);
-    rows.add(['Total Working Days', '$_filteredTotal ${'days_unit'.tr()}']);
-    rows.add(['Total Presents', '$_filteredPresents ${'days_unit'.tr()}']);
-    rows.add(['Total Absents', '$_filteredAbsents ${'days_unit'.tr()}']);
-    rows.add(['Total Leaves', '$_filteredLeaves ${'days_unit'.tr()}']);
+    rows.add(['Total Working Days', '$_totalRecords ${'days_unit'.tr()}']);
+    rows.add(['Total Presents', '$_presents ${'days_unit'.tr()}']);
+    rows.add(['Total Absents', '$_absents ${'days_unit'.tr()}']);
+    rows.add(['Total Leaves', '$_leaves ${'days_unit'.tr()}']);
     rows.add([
       'Attendance Percentage',
-      '${_filteredPercentage.toStringAsFixed(1)}%',
+      '${_percentage.toStringAsFixed(1)}%',
     ]);
     rows.add([]);
 
@@ -1586,7 +1601,7 @@ class _WorkerAttendancePreviewCardState
     ]);
 
 
-    final sortedRecords = List<Map<String, dynamic>>.from(_filteredRecords);
+    final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);
     sortedRecords.sort((a, b) {
       final aTime = a['createdAt'];
       final bTime = b['createdAt'];

@@ -26,10 +26,11 @@ class ValidationException implements Exception {
 class Validators {
   Validators._();
 
-  // Reasonable, permissive email shape. Intentionally not RFC-5322 strict —
-  // the goal is to catch typos and empty/garbage values, not to reject valid
-  // but unusual addresses.
-  static final RegExp _email = RegExp(r'^[^@\s]+@[^@\s]+(\.[^@\s]+)?$');
+  // Validates a reasonable email shape. Requires a local part, an @, a domain
+  // with at least one dot (validating the TLD), and a TLD of 2-4 characters.
+  // Intentionally not RFC-5322 strict — the goal is to catch typos and
+  // garbage values, not to reject valid but unusual addresses.
+  static final RegExp _email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
   static bool isValidEmail(String? value) {
     if (value == null) return false;

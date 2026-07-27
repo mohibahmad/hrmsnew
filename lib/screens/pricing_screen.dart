@@ -122,8 +122,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           width: double.infinity,
                           height: double.infinity,
                           padding: const EdgeInsets.fromLTRB(48, 16, 48, 24),
-                          child: SingleChildScrollView(
-                            child: Column(
+                          child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -150,7 +149,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 20),
 
                                 _buildPlanCard(
                                   index: 0,
@@ -305,7 +304,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                             ),
                           ),
                         ),
-                      ),
+
                     ],
                   ),
                 ),
