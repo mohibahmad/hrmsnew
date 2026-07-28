@@ -30,17 +30,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
-  bool _isAppleLoading = false;
   bool _isGuestLoading = false;
   bool _obscurePassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
 
   bool get _anyLoading =>
-      _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
+      _isLoading || _isGoogleLoading || _isGuestLoading;
 
-  late final AuthService _authService;
-  late final FirestoreService _firestoreService;
+  late AuthService _authService;
+  late FirestoreService _firestoreService;
 
   StreamSubscription? _googleSub;
 
@@ -135,48 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) {
         setState(() => _isGoogleLoading = false);
-      }
-    }
-  }
-
-  Future<void> _handleAppleLogin() async {
-    setState(() {
-      _isAppleLoading = true;
-    });
-
-    try {
-      final userCredential = await _authService.signInWithApple();
-      if (userCredential != null && mounted) {
-        // ✅ DELETED ACCOUNT CHECK
-        if (await _firestoreService.isCurrentUserDeleted()) {
-          await _authService.signOut();
-          if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
-          return;
-        }
-        if (!mounted) return;
-        FlashySnackBar.show(
-          context,
-          title: 'success'.tr(),
-          message: 'welcome_back'.tr(),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
-        return;
-      }
-      if (mounted) {
-        _showErrorSnackBar('apple_login_failed'.tr());
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorSnackBar('apple_login_failed'.tr());
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isAppleLoading = false);
       }
     }
   }

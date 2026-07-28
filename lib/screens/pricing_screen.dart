@@ -272,39 +272,37 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                   width: double.infinity,
                                   child: Padding(
                                     padding: EdgeInsets.symmetric(horizontal: 10),
-                                    child: Wrap(
-                                      alignment: WrapAlignment.spaceBetween,
-                                    spacing: 8,
-                                    runSpacing: 4,
-                                    children: [
-                                      _buildFooterLink(
-                                        'privacy_policy'.tr(),
-                                        onTap: () => launchUrl(
-                                          Uri.parse(
-                                            'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _buildFooterLink(
+                                          'privacy_policy'.tr(),
+                                          onTap: () => launchUrl(
+                                            Uri.parse(
+                                              'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      _buildFooterDivider(),
-                                      _buildFooterLink(
-                                        'restore'.tr(),
-                                        onTap: () {},
-                                      ),
-                                      _buildFooterDivider(),
-                                      GestureDetector(
-                                        onTap: () => launchUrl(
-                                          Uri.parse(
-                                            'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                        _buildFooterDivider(),
+                                        _buildFooterLink(
+                                          'restore'.tr(),
+                                          onTap: () {},
+                                        ),
+                                        _buildFooterDivider(),
+                                        GestureDetector(
+                                          onTap: () => launchUrl(
+                                            Uri.parse(
+                                              'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+                                            ),
+                                          ),
+                                          behavior: HitTestBehavior.opaque,
+                                          child: _buildFooterLink(
+                                            'terms_of_use'.tr(),
                                           ),
                                         ),
-                                        behavior: HitTestBehavior.opaque,
-                                        child: _buildFooterLink(
-                                          'terms_of_use'.tr(),
-                                        ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
                                 ),
                                 ],
                               ),
@@ -464,7 +462,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
         text,
         style: TextStyle(
           color: primaryBlue,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w500,
           fontFamily: 'SF Pro Display',
         ),
@@ -474,12 +472,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   Widget _buildFooterDivider() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Text(
         '|',
         style: TextStyle(
           color: primaryBlue.withValues(alpha: 0.5),
-          fontSize: 14,
+          fontSize: 11,
         ),
       ),
     );

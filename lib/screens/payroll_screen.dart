@@ -217,7 +217,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                       value: -1,
                       child: Text(
                         'none'.tr(),
-                        style: const TextStyle(color: Colors.grey),
                       ),
                     ),
                     ...List.generate(
@@ -693,7 +692,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ...positionsToShow.map((p) => {'key': p, 'label': p}),
     ];
     return Container(
-      width: 650,
+      width: 550,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

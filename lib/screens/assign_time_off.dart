@@ -33,7 +33,6 @@ class AssignTimeOffScreen extends StatefulWidget {
 
 class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
   static const List<Map<String, String>> _leaveTypeOptions = [
-    {'value': 'Annual Leave', 'labelKey': 'annual_leave'},
     {'value': 'Sick Leave', 'labelKey': 'sick_leave_type'},
     {'value': 'Casual Leave', 'labelKey': 'casual_leave_type'},
     {'value': 'Medical Leave', 'labelKey': 'medical_leave_type'},
@@ -1015,7 +1014,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           if (candidate.contains(date)) continue;
           if (_isNonWorkingDate(date)) continue;
           if (candidate.length >= _availableDays) {
-            exceededAvailableDays = true;
+            // Silently stop selecting — the save handler will validate
             break;
           }
           candidate.add(date);
@@ -1205,6 +1204,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   : _timeOffType == 'Casual Leave'
                   ? 'available_casual_leave'.tr()
                   : 'available_annual_leave'.tr(),
+              // Medical Leave & all other paid types use annual leave pool
               '$_availableDays',
               _availableDays > 0 ? Colors.black : Colors.red,
             ),

@@ -895,7 +895,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     final allFilters = ['All', ...positionsToShow];
 
                     return Container(
-                      width: 650,
+                      width: 550,
                       height: 46,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
@@ -911,7 +911,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             for (final f in allFilters)
                               _buildFilterTab(
                                 f,
-                                f == 'All' ? 'all_filter'.tr() : f,
+                                f == 'All'
+                                    ? 'all_filter'.tr()
+                                    : '${f.toLowerCase().replaceAll(' ', '_')}'.tr(),
                               ),
                           ],
                         ),

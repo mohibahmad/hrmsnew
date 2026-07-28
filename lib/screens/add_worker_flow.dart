@@ -2682,8 +2682,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
       LocalizationHelper.localizeSalaryType(value);
   String _localizeCurrency(String value) =>
       LocalizationHelper.localizeCurrency(value);
-  String _localizeLeavePolicy(String value) =>
-      LocalizationHelper.localizeLeavePolicy(value);
+  
 
   void _parseSelectedDate() {
     if (widget.selectedJoiningDate != null &&

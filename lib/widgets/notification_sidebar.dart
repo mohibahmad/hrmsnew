@@ -942,6 +942,7 @@ class _NotifStyle {
     required this.label,
     this.isWelcome = false,
     this.iconAsset,
+    // ignore: unused_element_parameter
     this.iconSize = 22,
   });
 }

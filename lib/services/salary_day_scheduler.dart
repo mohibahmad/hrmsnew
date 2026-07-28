@@ -139,7 +139,7 @@ class SalaryDayScheduler {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'Failed to load worker data: $e',
+            message: 'failed_to_load_worker_data'.tr(namedArgs: {'error': '$e'}),
             isError: true,
           );
         }
@@ -483,7 +483,7 @@ class SalaryDayScheduler {
 
     // Show loading snackbar
     if (context.mounted) {
-      FlashySnackBar.show(context, message: 'Generating invoices...');
+      FlashySnackBar.show(context, message: 'generating_invoices'.tr());
     }
 
     try {
@@ -545,7 +545,7 @@ class SalaryDayScheduler {
       final fileName = 'payroll_invoices_$payPeriod.zip';
 
       final result = await FilePicker.saveFile(
-        dialogTitle: 'Save Payroll Invoices ZIP',
+        dialogTitle: 'save_payroll_invoices_zip'.tr(),
         fileName: fileName,
         type: FileType.custom,
         allowedExtensions: ['zip'],
@@ -556,14 +556,14 @@ class SalaryDayScheduler {
         final file = File(result);
         await file.writeAsBytes(zipData);
         if (context.mounted) {
-          FlashySnackBar.show(context, message: 'ZIP saved: $fileName');
+          FlashySnackBar.show(context, message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}));
         }
       }
     } catch (e) {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Failed to generate ZIP: $e',
+          message: 'failed_to_generate_zip'.tr(namedArgs: {'error': '$e'}),
           isError: true,
         );
       }
@@ -800,17 +800,16 @@ class SalaryDayScheduler {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
                       child: Container(
-                        width: double.infinity,
-                        height: 40,
+                        width: 550,
+                        height: 46,
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
+                          color: const Color(0xFFFFFFFF),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
                         ),
                         child: ListView(
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           physics: const ClampingScrollPhysics(),
                           children: [
                             buildFilterButton('all_filter'.tr(), positionFilter == 'All', () {
@@ -988,7 +987,7 @@ class SalaryDayScheduler {
                                     stLower.contains('contract') || 
                                     stLower.contains('freelance') || 
                                     (stLower != 'monthly' && stLower.isNotEmpty);
-                                final typeLabel = isContractorWorker ? 'CONTRACTOR' : 'FULL-TIME';
+                                final typeLabel = isContractorWorker ? 'type_contractor'.tr() : 'type_full_time'.tr();
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
@@ -1138,7 +1137,7 @@ class SalaryDayScheduler {
                                                       const SizedBox(width: 4),
                                                       Flexible(
                                                         child: Text(
-                                                          r.email.isNotEmpty ? r.email : 'No email',
+                                                          r.email.isNotEmpty ? r.email : 'no_email'.tr(),
                                                           style: const TextStyle(
                                                             fontSize: 13,
                                                             color: Color(0xFF6B7280),
@@ -1158,8 +1157,8 @@ class SalaryDayScheduler {
                                             Column(
                                               crossAxisAlignment: CrossAxisAlignment.end,
                                               children: [
-                                                const Text(
-                                                  'NET SALARY',
+                                                Text(
+                                                  'net_salary'.tr(),
                                                   style: TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.w600,
@@ -1247,12 +1246,11 @@ class SalaryDayScheduler {
                                       }
                                     }
                                   }
-                                  if (total >= 1000000) {
-                                    return '$prefix${(total / 1000000).toStringAsFixed(1)}M Total Value';
-                                  } else if (total >= 1000) {
-                                    return '$prefix${(total / 1000).toStringAsFixed(1)}K Total Value';
-                                  }
-                                  return '$prefix${total.toStringAsFixed(0)} Total Value';
+                                  final formatted = total.toStringAsFixed(0).replaceAllMapped(
+                                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                    (Match m) => '${m[1]},',
+                                  );
+                                  return '$prefix$formatted';
                                 }(),
                                 style: const TextStyle(
                                   fontSize: 16,
@@ -1415,29 +1413,24 @@ class SalaryDayScheduler {
                             children: [
                               GestureDetector(
                                 onTap: () => Navigator.of(detailContext).pop(),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F70FF), size: 20),
-                                ),
+                                child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF000000), size: 22),
                               ),
-                              const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  'Payroll Details: ${result.workerName}',
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF111827),
-                                    fontFamily: 'SF Pro Display',
+                                child: Center(
+                                  child: Text(
+                                    'payroll_details_title'.tr(namedArgs: {'name': ''}).trim(),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF111827),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 22),
                             ],
                           ),
 
@@ -1453,16 +1446,9 @@ class SalaryDayScheduler {
                                   Container(
                                     width: 60,
                                     height: 60,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0F70FF),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF0F70FF),
                                       shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF0F70FF).withValues(alpha: 0.3),
-                                          blurRadius: 15,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
                                     ),
                                     child: result.imageUrl != null && result.imageUrl!.isNotEmpty
                                         ? ClipRRect(
@@ -1526,7 +1512,7 @@ class SalaryDayScheduler {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        result.email.isNotEmpty ? result.email : 'No email',
+                                        result.email.isNotEmpty ? result.email : 'no_email'.tr(),
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
@@ -1542,7 +1528,7 @@ class SalaryDayScheduler {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   const Text(
-                                    'TOTAL NET PAYMENT',
+                                    'total_net_payment',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -1575,38 +1561,38 @@ class SalaryDayScheduler {
                             children: [
                               Expanded(
                                 child: _metricColumn(
-                                  title: 'ATTENDANCE',
+                                  title: 'attendance'.tr(),
                                   icon: Icons.calendar_today_outlined,
                                   iconColor: const Color(0xFF3B82F6),
                                   rows: [
-                                    _metricRow('Presents', '$presents Days', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('Absents', '${result.absents} Days', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('Leaves', '${result.leaves} Days', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
+                                    _metricRow('presents'.tr(), '$presents ${'days_suffix'.tr()}', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
+                                    _metricRow('absents'.tr(), '${result.absents} ${'days_suffix'.tr()}', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
+                                    _metricRow('leaves'.tr(), '${result.leaves} ${'days_suffix'.tr()}', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 20),
                               Expanded(
                                 child: _metricColumn(
-                                  title: 'EARNINGS',
+                                  title: 'earnings'.tr(),
                                   icon: Icons.payments_outlined,
                                   iconColor: const Color(0xFF10B981),
                                   rows: [
-                                    _metricRow('Base Salary', result.salary.isNotEmpty ? result.salary : '\$0', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('Working Days', result.totalWorkDays, const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('Overtime Bonus', result.overtimeAmount.isNotEmpty ? result.overtimeAmount : '\$0.00', const Color(0xFFECFDF5), const Color(0xFF10B981), const Color(0xFF10B981)),
+                                    _metricRow('base_salary'.tr(), result.salary.isNotEmpty ? result.salary : '\$0', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
+                                    _metricRow('working_days'.tr(), result.totalWorkDays, const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
+                                    _metricRow('overtime_bonus'.tr(), result.overtimeAmount.isNotEmpty ? result.overtimeAmount : '\$0.00', const Color(0xFFECFDF5), const Color(0xFF10B981), const Color(0xFF10B981)),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 20),
                               Expanded(
                                 child: _metricColumn(
-                                  title: 'DEDUCTIONS',
+                                  title: 'deductions'.tr(),
                                   icon: Icons.remove_circle_outline,
                                   iconColor: const Color(0xFFEF4444),
                                   rows: [
-                                    _metricRow('Absent Deduction', result.absentDeduction.isNotEmpty ? '-${result.absentDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
-                                    _metricRow('Leave Deduction', result.leaveDeduction.isNotEmpty ? '-${result.leaveDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
+                                    _metricRow('absent_deduction'.tr(), result.absentDeduction.isNotEmpty ? '-${result.absentDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
+                                    _metricRow('leave_deduction'.tr(), result.leaveDeduction.isNotEmpty ? '-${result.leaveDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
                                   ],
                                 ),
                               ),
@@ -1644,10 +1630,10 @@ class SalaryDayScheduler {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: const [
-                                      Text('Adjust Overtime', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF111827), fontFamily: 'SF Pro Display')),
-                                      SizedBox(height: 3),
-                                      Text('Apply additional hours', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), fontFamily: 'SF Pro Display')),
+                                    children: [
+                                      Text('adjust_overtime'.tr(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF111827), fontFamily: 'SF Pro Display')),
+                                      const SizedBox(height: 3),
+                                      Text('apply_additional_hours'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), fontFamily: 'SF Pro Display')),
                                     ],
                                   ),
                                 ),
@@ -1690,13 +1676,13 @@ class SalaryDayScheduler {
                                   ),
                                 ],
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                                  SizedBox(width: 8),
+                                  const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Confirm Review',
+                                    'confirm_review'.tr(),
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 15,
@@ -1823,7 +1809,7 @@ class SalaryDayScheduler {
               color: Color(0xFF111827),
             ),
             decoration: InputDecoration(
-              hintText: 'Amount in USD',
+              hintText: 'amount_in_usd'.tr(),
               hintStyle: TextStyle(
                 color: const Color(0xFF6B7280).withValues(alpha: 0.6),
                 fontSize: 14,
@@ -1867,8 +1853,8 @@ class SalaryDayScheduler {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 24),
             ),
-            child: const Text(
-              'Apply',
+            child: Text(
+              'apply'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,

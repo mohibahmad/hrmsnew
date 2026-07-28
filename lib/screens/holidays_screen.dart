@@ -377,16 +377,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       'November',
       'December',
     ];
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-
     var isSaving = false;
     showDialog(
       context: parentContext,
@@ -460,13 +450,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             }
                             final holidayName = holidayNameController.text.trim();
                             if (holidayName.isNotEmpty) {
-                              final dateObj = DateTime(
-                                calendarDate.year,
-                                calendarDate.month,
-                                selectedDay!,
+                              final dateObj = DateTime(        calendarDate.year,
+        calendarDate.month,
+        selectedDay!,
                               );
-                              final dayOfWeekName =
-                                  weekdays[dateObj.weekday - 1];
+                              final dayOfWeekName = _weekdayLabel(dateObj.weekday);
                               final remainingDaysVal = dateObj
                                   .difference(DateTime.now())
                                   .inDays;
@@ -653,16 +641,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       (newDate) {
                         setModalState(() {
                           calendarDate = newDate;
-                          if (selectedDay != null) {
-                            int daysInNewMonth = DateTime(
-                              newDate.year,
-                              newDate.month + 1,
-                              0,
-                            ).day;
-                            if (selectedDay! > daysInNewMonth) {
+                          int daysInNewMonth = DateTime(
+                            newDate.year,
+                            newDate.month + 1,
+                            0,
+                          ).day;                          if (selectedDay! > daysInNewMonth) {
                               selectedDay = daysInNewMonth;
                             }
-                          }
                         });
                       },
                     ),
@@ -1256,15 +1241,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       'November',
       'December',
     ];
-    const weekdays = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
     int selectedDay = item.day;
     int monthIndex = months.indexOf(item.month);
     if (monthIndex < 0) monthIndex = DateTime.now().month - 1;
@@ -1361,12 +1337,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                       'isEnabled': item.isEnabled,
                                     };
 
-                                    updatedHoliday!['name'] = holidayNameController.text.trim();
-                                    updatedHoliday!['day'] = selectedDay;
-                                    updatedHoliday!['month'] = selectedMonthName;
+                                    updatedHoliday['name'] = holidayNameController.text.trim();
+                                    updatedHoliday['day'] = selectedDay;
+                                    updatedHoliday['month'] = selectedMonthName;
 
                                     DummyData.holidays.putIfAbsent(selectedMonthName, () => []);
-                                    DummyData.holidays[selectedMonthName]!.insert(0, updatedHoliday!);
+                                    DummyData.holidays[selectedMonthName]!.insert(0, updatedHoliday);
 
                                     DummyData.saveToPrefs();
 
@@ -1499,16 +1475,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       (newDate) {
                         setModalState(() {
                           calendarDate = newDate;
-                          if (selectedDay != null) {
-                            int daysInNewMonth = DateTime(
-                              newDate.year,
-                              newDate.month + 1,
-                              0,
-                            ).day;
-                            if (selectedDay! > daysInNewMonth) {
+                          int daysInNewMonth = DateTime(
+                            newDate.year,
+                            newDate.month + 1,
+                            0,
+                          ).day;                          if (selectedDay! > daysInNewMonth) {
                               selectedDay = daysInNewMonth;
                             }
-                          }
                         });
                       },
                     ),

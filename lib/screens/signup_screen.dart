@@ -38,8 +38,8 @@ class _SignupScreenState extends State<SignupScreen> {
   bool get _anyLoading =>
       _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
 
-  late final AuthService _authService;
-  late final FirestoreService _firestoreService;
+  late AuthService _authService;
+  late FirestoreService _firestoreService;
 
   StreamSubscription? _googleSub;
 

@@ -1549,60 +1549,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     });
   }
 
-  Widget _buildHolidayBanner(String name) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B51C1), Color(0xFF1E5EE0)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            'assets/holidays_icon.svg',
-            width: 32,
-            height: 32,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'today_is_holiday'.tr(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                if (name.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHolidayNotice(String name, {bool isCompanyOffDay = false}) {
     return Center(
       child: Column(
@@ -1985,7 +1931,6 @@ class _AttendanceActionButton extends StatelessWidget {
   final String status;
   final Color color;
   final bool enabled;
-  final bool selected;
   final ValueChanged<String> onTap;
   final VoidCallback? onDisabledTap;
 
@@ -1994,7 +1939,6 @@ class _AttendanceActionButton extends StatelessWidget {
     required this.status,
     required this.color,
     this.enabled = true,
-    this.selected = false,
     required this.onTap,
     this.onDisabledTap,
   });
@@ -2012,27 +1956,13 @@ class _AttendanceActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: isEnabled ? color : Colors.grey.shade400,
           borderRadius: BorderRadius.circular(6),
-          border: selected
-              ? Border.all(color: Color(0xFFFFFFFF), width: 2)
-              : null,
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          border: null,
+          boxShadow: null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (selected)
-              const Padding(
-                padding: EdgeInsets.only(right: 6),
-                child: Icon(Icons.check, color: Color(0xFFFFFFFF), size: 14),
-              ),
+
             Text(
               labelKey.tr(),
               style: const TextStyle(

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../services/preferences_service.dart';
 import '../services/auth_service.dart';
 import '../screens/pricing_screen.dart';
-import '../screens/login_screen.dart';
 
 class PremiumGate {
   static const int freeEntryLimit = 2;

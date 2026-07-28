@@ -923,7 +923,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
-                  'salary'.tr(),
+                  'base_salary'.tr(),
                   '',
                   _salaryCtrl,
                   readOnly: true,

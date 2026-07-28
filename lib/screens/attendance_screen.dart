@@ -783,8 +783,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final timeOffDates = TimeOffService.allLeaveDatesForWorker(
           doc,
           _timeOffRecords,
-        ) ??
-        <DateTime>[];
+        );
 
     // Also filter out attendance records that fall on approved time off days
     final filteredRecords = periodFilteredRecords.where((record) {

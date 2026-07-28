@@ -12,15 +12,12 @@ import 'package:csv/csv.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
-import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
 import '../utils/worker_identity.dart';
-import '../utils/image_utils.dart';
 import '../utils/validators.dart';
-import '../widgets/amount_text.dart';
 import 'package:provider/provider.dart';
 
 class AddBulkWorkerScreen extends StatefulWidget {
@@ -62,32 +59,35 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     'cv',
   ];
 
-  static const Map<String, String> _fieldLabels = {
-    'name': 'Full Name',
-    'phone': 'Contact Number',
-    'email': 'Email Address',
-    'fatherName': 'Father Name',
-    'nationalId': 'National ID',
-    'religion': 'Religion',
-    'dob': 'Date of Birth',
-    'gender': 'Gender',
-    'address': 'Address',
-    'relationshipStatus': 'Relationship Status',
-    'position': 'Job Position',
-    'type1': 'Employee Type',
-    'type2': 'Work Model',
-    'experienceLevel': 'Experience Level',
-    'education': 'Education',
-    'salaryType': 'Salary Type',
-    'currency': 'Currency',
-    'salaryAmount': 'Salary Amount',
-    'annualLeaves': 'Annual Leaves',
-    'joiningDate': 'Joining Date',
-    'profileImage': 'Profile Image URL',
-    'frontId': 'Front ID Image URL',
-    'backId': 'Back ID Image URL',
-    'cv': 'CV URL',
+  static const Map<String, String> _fieldKeys = {
+    'name': 'field_full_name',
+    'phone': 'field_contact_number',
+    'email': 'field_email_address',
+    'fatherName': 'field_father_name',
+    'nationalId': 'field_national_id',
+    'religion': 'field_religion',
+    'dob': 'field_date_of_birth',
+    'gender': 'field_gender',
+    'address': 'field_address',
+    'relationshipStatus': 'field_relationship_status',
+    'position': 'field_job_position',
+    'type1': 'field_employee_type',
+    'type2': 'field_work_model',
+    'experienceLevel': 'field_experience_level',
+    'education': 'field_education',
+    'salaryType': 'field_salary_type',
+    'currency': 'field_currency',
+    'salaryAmount': 'field_salary_amount',
+    'annualLeaves': 'field_annual_leaves',
+    'joiningDate': 'field_joining_date',
+    'profileImage': 'field_profile_image_url',
+    'frontId': 'field_front_id_image_url',
+    'backId': 'field_back_id_image_url',
+    'cv': 'field_cv_url',
   };
+
+  static Map<String, String> get _fieldLabels =>
+      _fieldKeys.map((k, v) => MapEntry(k, v.tr()));
 
   static const Map<String, String> _headerMap = {
     'full name': 'name',
@@ -195,7 +195,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   bool _hasWorkerErrors(Map<String, dynamic> worker) {
     final errors = worker['_fieldErrors'];
-    return errors is Map && (errors as Map).isNotEmpty;
+    return errors is Map && errors.isNotEmpty;
   }
 
   List<Map<String, dynamic>> get _workersReadyToSave =>
@@ -563,7 +563,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (missingForWorker.isNotEmpty) {
         _missingRequiredCount++;
         for (final f in missingForWorker) {
-          fieldErrors[f] = 'Required';
+          fieldErrors[f] = 'validation_required'.tr();
         }
       }
 
@@ -582,13 +582,13 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
         if (dob == null) {
-          fieldErrors['dob'] = 'Invalid date';
+          fieldErrors['dob'] = 'validation_invalid_date'.tr();
           _invalidDobCount++;
         } else {
           final cutoff =
               DateTime.now().subtract(const Duration(days: 365 * 18));
           if (dob.isAfter(cutoff)) {
-            fieldErrors['dob'] = 'Worker must be at least 18';
+            fieldErrors['dob'] = 'validation_min_age'.tr();
             _invalidDobCount++;
           }
         }
@@ -600,7 +600,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (gender.isNotEmpty) {
         const validGenders = {'male', 'female', 'other', 'others'};
         if (!validGenders.contains(normalizedGender)) {
-          fieldErrors['gender'] = 'Only Male, Female, or Other is allowed';
+          fieldErrors['gender'] = 'validation_invalid_gender'.tr();
           _invalidGenderCount++;
         } else if (normalizedGender == 'others') {
           workerData['gender'] = 'Other';
@@ -610,7 +610,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       // ── Email format validation ──
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty && !Validators.isValidEmail(email)) {
-        fieldErrors['email'] = 'Invalid email address';
+        fieldErrors['email'] = 'validation_invalid_email'.tr();
       }
 
       // ── Duplicate checks ──
@@ -624,23 +624,23 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (name.isNotEmpty &&
           (existingNames.contains(name) || csvNames.contains(name))) {
-        fieldErrors['name'] = 'Duplicate worker name';
+        fieldErrors['name'] = 'validation_duplicate_name'.tr();
       }
       if (email.isNotEmpty &&
           (existingEmails.contains(email) || csvEmails.contains(email))) {
-        fieldErrors['email'] = 'Duplicate email address';
+        fieldErrors['email'] = 'validation_duplicate_email'.tr();
       }
       if (nationalId.isNotEmpty &&
           (existingNationalIds.contains(nationalId) ||
               csvNationalIds.contains(nationalId))) {
-        fieldErrors['nationalId'] = 'Duplicate National ID';
+        fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
       }
       if (frontId.isNotEmpty &&
           (existingFrontIds.contains(frontId) ||
               existingBackIds.contains(frontId) ||
               csvFrontIds.contains(frontId) ||
               csvBackIds.contains(frontId))) {
-        fieldErrors['frontId'] = 'Duplicate front ID card image';
+        fieldErrors['frontId'] = 'validation_duplicate_front_id'.tr();
       }
       if (backId.isNotEmpty &&
           (backId == frontId ||
@@ -648,10 +648,12 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               existingBackIds.contains(backId) ||
               csvFrontIds.contains(backId) ||
               csvBackIds.contains(backId))) {
-        fieldErrors['backId'] = 'Duplicate back ID card image';
+        fieldErrors['backId'] = 'validation_duplicate_back_id'.tr();
       }
 
-      if (fieldErrors.values.any((r) => r.startsWith('Duplicate'))) {
+      final duplicateFields = {'name', 'email', 'nationalId', 'frontId', 'backId'};
+      if (fieldErrors.keys.any((k) =>
+          duplicateFields.contains(k) && fieldErrors[k] != null)) {
         _duplicateCount++;
       }
 
@@ -701,21 +703,21 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     if (hasAnyIssue) {
       final snackParts = <String>[
-        '${parsedWorkers.length} worker(s) found in CSV',
+        'csv_workers_found'.tr(namedArgs: {'count': '${parsedWorkers.length}'}),
       ];
       if (missingColumns.isNotEmpty) {
         final cols =
             missingColumns.map((f) => _fieldLabels[f] ?? f).join(', ');
-        snackParts.add('⚠ Missing columns: $cols');
+        snackParts.add('csv_missing_columns'.tr(namedArgs: {'columns': cols}));
       }
       if (allMissingFieldNames.isNotEmpty) {
         final fields =
             allMissingFieldNames.map((f) => _fieldLabels[f] ?? f).join(', ');
-        snackParts.add('❌ Empty fields found: $fields');
+        snackParts.add('csv_empty_fields'.tr(namedArgs: {'fields': fields}));
       }
       if (duplicateWorkers > 0) {
         snackParts.add(
-          '🔁 $duplicateWorkers duplicate(s) — same Email or National ID already exists',
+          'csv_duplicates_found'.tr(namedArgs: {'count': '$duplicateWorkers'}),
         );
       }
       FlashySnackBar.show(
@@ -1117,7 +1119,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           const EdgeInsets.symmetric(
                                         vertical: 14,
                                       ),
-                                      hintText: 'Enter $label',
+                                      hintText: 'edit_cell_enter_value'.tr(namedArgs: {'label': label}),
                                       hintStyle: const TextStyle(
                                         color: Color(0xFF9CA3AF),
                                         fontSize: 15,
@@ -1287,7 +1289,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     if (val.isEmpty) {
                                       setDialogState(() {
                                         dialogError =
-                                            'This field cannot be empty';
+                                            'edit_cell_cannot_be_empty'.tr();
                                       });
                                     } else if (fieldKey == 'gender') {
                                       final normalized = val.toLowerCase();
@@ -1300,7 +1302,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       if (!valid.contains(normalized)) {
                                         setDialogState(() {
                                           dialogError =
-                                              'Only Male, Female, or Other is allowed';
+                                              'validation_invalid_gender'.tr();
                                         });
                                       } else {
                                         Navigator.of(ctx).pop(
@@ -1380,33 +1382,34 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   //  Field hints
   // ─────────────────────────────────────────────────────────────
   String _fieldHint(String fieldKey) {
-    const hints = <String, String>{
-      'name': 'Enter the full name of the worker',
-      'email': 'e.g., worker@example.com',
-      'phone': 'e.g., +1 234 567 8900',
-      'fatherName': 'e.g., John Doe Sr.',
-      'nationalId': 'e.g., 37405-1234567-1',
-      'religion': 'e.g., Christianity, Islam, Hinduism',
-      'gender': 'Male, Female, or Other',
-      'dob': 'e.g., YYYY-MM-DD or DD/MM/YYYY',
-      'address': 'e.g., 123 Main Street, City',
-      'relationshipStatus': 'e.g., Single, Married',
-      'position': 'e.g., Software Engineer',
-      'type1': 'e.g., Full-Time, Part-Time, Contract',
-      'type2': 'e.g., On-Site, Remote, Hybrid',
-      'experienceLevel': 'e.g., Junior, Mid-Level, Senior',
-      'education': 'e.g., Bachelor, Master, PhD',
-      'salaryType': 'e.g., Monthly, Annual, Hourly',
-      'currency': 'e.g., USD, EUR, PKR, INR',
-      'salaryAmount': 'e.g., 50000',
-      'annualLeaves': 'e.g., 15',
-      'joiningDate': 'e.g., MM/DD/YYYY',
-      'profileImage': 'e.g., https://example.com/photo.jpg',
-      'frontId': 'e.g., https://example.com/front_id.jpg',
-      'backId': 'e.g., https://example.com/back_id.jpg',
-      'cv': 'e.g., https://example.com/cv.pdf',
+    const hintKeys = <String, String>{
+      'name': 'hint_enter_full_name',
+      'email': 'hint_enter_email',
+      'phone': 'hint_enter_phone',
+      'fatherName': 'hint_enter_father_name',
+      'nationalId': 'hint_enter_national_id',
+      'religion': 'hint_enter_religion',
+      'gender': 'hint_enter_gender',
+      'dob': 'hint_enter_dob',
+      'address': 'hint_enter_address',
+      'relationshipStatus': 'hint_enter_relationship',
+      'position': 'hint_enter_position',
+      'type1': 'hint_enter_type1',
+      'type2': 'hint_enter_type2',
+      'experienceLevel': 'hint_enter_experience',
+      'education': 'hint_enter_education',
+      'salaryType': 'hint_enter_salary_type',
+      'currency': 'hint_enter_currency',
+      'salaryAmount': 'hint_enter_salary_amount',
+      'annualLeaves': 'hint_enter_annual_leaves',
+      'joiningDate': 'hint_enter_joining_date',
+      'profileImage': 'hint_enter_profile_image',
+      'frontId': 'hint_enter_front_id',
+      'backId': 'hint_enter_back_id',
+      'cv': 'hint_enter_cv',
     };
-    return hints[fieldKey] ?? '';
+    final key = hintKeys[fieldKey];
+    return key != null ? key.tr() : '';
   }
 
   // ─────────────────────────────────────────────────────────────

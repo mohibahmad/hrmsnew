@@ -196,8 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _unreadNotifCount = 0;
   List<Map<String, dynamic>> _allAttendanceDocs = [];
   List<Map<String, dynamic>> _attendanceDocs = [];
-  List<Map<String, dynamic>> _timeoffDocs = [];
-  List<Map<String, dynamic>> _workersList = [];
+
   Map<String, dynamic>? _selectedTimeOffWorker;
   bool _isPremium = false;
   bool _dashboardReady = false;
@@ -355,15 +354,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
         _otherWorkersCount = oCount;
-        _workersList = List<Map<String, dynamic>>.from(workersList);
-
         _allAttendanceDocs = List<Map<String, dynamic>>.from(
           DummyData.attendance,
         );
         _attendanceDocs = _allAttendanceDocs;
 
         _totalAttendanceCount = _attendanceDocs.length;
-        _timeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
         _holidays = DummyData.holidays.values
@@ -415,7 +411,6 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
           setState(() {
-            _workersList = list;
             _totalWorkersCount = snap.docs.length;
             _maleWorkersCount = mCount;
             _femaleWorkersCount = fCount;
@@ -455,9 +450,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _timeoffSub = _firestore.timeoffStream.listen((snap) {
         if (mounted) {
           setState(() {
-            _timeoffDocs = snap.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                .toList();
             _totalTimeoffCount = snap.docs.length;
           });
         }
@@ -867,8 +859,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'dashboard'.tr(),
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF000000),
                     fontFamily: 'SF Pro Display',
                   ),
@@ -921,8 +913,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         'attendance_overview'.tr(),
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
@@ -935,8 +927,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             'leave_types'.tr(),
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1030,8 +1022,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       'upcoming_holidays'.tr(),
                       style: TextStyle(
                         color: Color(0xFF000000),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
