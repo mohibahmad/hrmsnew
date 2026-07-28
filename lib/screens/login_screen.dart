@@ -338,8 +338,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 50),
 
-      const Text(
-        'Welcome Back!',
+       Text(
+        'Welcome Back!'.tr(),
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
@@ -351,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 4),
       Text(
-        'Sign in to continue your HR journey',
+        'sign_in_subtitle'.tr(),
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
@@ -370,14 +370,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildFieldLabel('E-mail'),
+            _buildFieldLabel('email_label'.tr()),
             TextFormField(
               controller: _emailController,
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
-              decoration: _buildCustomInputDecoration('Enter your e-mail'),
+              decoration: _buildCustomInputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) return 'email_required'.tr();
                 if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
@@ -388,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 16),
             
-            _buildFieldLabel('Password'),
+            _buildFieldLabel('password_label'.tr()),
             TextFormField(
               controller: _passwordController,
               enabled: !_anyLoading,
@@ -401,7 +401,7 @@ class _LoginScreenState extends State<LoginScreen> {
               },
               style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
               decoration: _buildCustomInputDecoration(
-                'Enter your password',
+                'password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscurePassword,
                 onToggleVisibility: () {
@@ -430,8 +430,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
         behavior: HitTestBehavior.opaque,
-        child: const Text(
-          'Forget password',
+        child:  Text(
+          'forget_password'.tr(),
           style: TextStyle(
             color: Color(0xFFFF0000), 
             fontSize: 13,
@@ -466,8 +466,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
                   ),
                 )
-              : const Text(
-                  'Log in',
+              :  Text(
+                  'log_in'.tr(),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -541,7 +541,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Center(
         child: RichText(
           text: TextSpan(
-            text: "Don't have an account? ", 
+            text: 'dont_have_account'.tr(), 
             style: const TextStyle(
               color: Colors.black87,
               fontSize: 14,
@@ -550,7 +550,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             children: [
               TextSpan(
-                text: 'Sign Up',
+                text: 'sign_up'.tr(),
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -602,64 +602,63 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Welcome to HRMS',
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
+Text(
+                                  'welcome_to_hrms'.tr(),
+                                  style: TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
                                 ),
-                              ),
-                              const Text(
-                                'Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                  height: 1.4,
+                              Text(
+                                  'welcome_banner_subtitle'.tr(),
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                    fontFamily: 'SF Pro Display',
+                                    height: 1.4,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
                         
-                        // ✅ Yahan Tablet Frame aur Tilt (Rotation) ka logic add kia gaya hai!
                         Positioned(
-                          top: 240, // Text se fasla
-                          left: -520,
-                          right: 30, // Thoda screen se bahar ta k real effect aaye
-                          bottom: -250, 
+                          top: 280,
+                          left: -460,
+                          
                           child: Transform.rotate(
-                            angle: -0.12, // Counter-Clockwise tilt/terha karne ke liye (-0.12 radians)
+                            angle: -0.15,
                             child: Container(
+                              width: 1200,
+                              height: 800,
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(28), // Tablet ki round shape
+                                borderRadius: BorderRadius.circular(28),
                                 border: const Border(
                                   left: BorderSide(color: Color(0xFF000000), width: 20),
                                   right: BorderSide(color: Color(0xFF000000), width: 20),
                                   bottom: BorderSide(color: Color(0xFF000000), width: 20),
                                 ),
                                 boxShadow: [
-                                  // ✅ White bold outline using spreadRadius
                                   const BoxShadow(
                                     color: Colors.white,
                                     blurRadius: 0,
-                                    spreadRadius: 4,
+                                    spreadRadius: 3,
                                   ),
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.3),
                                     blurRadius: 30,
-                                    offset: const Offset(10, 15),
+                                    offset: const Offset(10, 9),
                                   ),
                                 ],
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12), // andar wali screen ka curve
+                                borderRadius: BorderRadius.circular(10),
                                 child: Image.asset(
-                                  'assets/dashboard_mockup.png', // Apki flat image
+                                  'assets/dashboard_mockup.png',
                                   fit: BoxFit.cover,
                                   alignment: Alignment.topLeft,
                                 ),

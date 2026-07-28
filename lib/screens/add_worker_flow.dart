@@ -101,7 +101,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _type1Controller = TextEditingController(text: 'Full-Time');
   final _type2Controller = TextEditingController(text: 'On-Site');
 
-
   final _experienceLevelController = TextEditingController(text: 'Mid-Level');
   final _educationController = TextEditingController(text: 'Bachelor');
   final _salaryTypeController = TextEditingController(text: 'Monthly');
@@ -112,7 +111,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   final _sickLeavesController = TextEditingController();
   final _casualLeavesController = TextEditingController();
   String _relationshipStatus = 'Single';
-
 
   Uint8List? _profileImageBytes;
   String? _profileImageName;
@@ -272,8 +270,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFEF4444)
-                                          .withValues(alpha: 0.2),
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -379,8 +378,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
       _existingProfileImageUrl = widget.workerToEdit!['profileImage']
           ?.toString();
-
-
 
       String? _firstNonEmpty(List<String?> values) {
         for (final v in values) {
@@ -578,7 +575,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+          'bmp',
+          'webp',
+        ],
         allowMultiple: false,
         withData: true,
       );
@@ -618,7 +625,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+          'bmp',
+          'webp',
+        ],
         allowMultiple: false,
         withData: true,
       );
@@ -658,7 +675,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+          'bmp',
+          'webp',
+        ],
         allowMultiple: false,
         withData: true,
       );
@@ -954,7 +981,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _isSaving = true;
     });
 
-
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
@@ -985,11 +1011,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             DuplicateWorkerField.frontId => 'duplicate_front_id',
             DuplicateWorkerField.backId => 'duplicate_back_id',
           };
-          FlashySnackBar.show(
-            context,
-            message: messageKey.tr(),
-            isError: true,
-          );
+          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
           return;
         }
       } catch (_) {}
@@ -1121,7 +1143,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'joiningDate': _joiningDate ?? '',
         'profileImage': profileImageUrl,
 
-
         'frontId': frontIdUrl,
         'backId': backIdUrl,
 
@@ -1206,11 +1227,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           DuplicateWorkerField.frontId => 'duplicate_front_id',
           DuplicateWorkerField.backId => 'duplicate_back_id',
         };
-        FlashySnackBar.show(
-          context,
-          message: messageKey.tr(),
-          isError: true,
-        );
+        FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
       }
     } on ValidationException catch (e) {
       if (mounted) {
@@ -1238,7 +1255,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
     final nationalId = _nationalIdController.text.trim();
-
 
     if (name.isEmpty) {
       FlashySnackBar.show(
@@ -1359,11 +1375,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             DuplicateWorkerField.frontId => 'duplicate_front_id',
             DuplicateWorkerField.backId => 'duplicate_back_id',
           };
-          FlashySnackBar.show(
-            context,
-            message: messageKey.tr(),
-            isError: true,
-          );
+          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
           return;
         }
       } catch (_) {}
@@ -1498,7 +1510,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Container(
               height: 94,
               padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -1611,7 +1622,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
               ),
             ),
 
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -1621,7 +1631,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     Container(
                       height: 56,
                       decoration: BoxDecoration(
@@ -1656,7 +1665,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
                       ),
                     ),
                     const SizedBox(height: 32),
-
 
                     if (_activeTabIndex == 0)
                       WorkerDetailFormSection(
@@ -2082,7 +2090,6 @@ class WorkerDetailFormSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -2269,13 +2276,11 @@ class WorkerDetailFormSection extends StatelessWidget {
             ),
             const SizedBox(width: 32),
 
-
             Expanded(
               flex: 1,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Text(
                     'worker_profile'.tr(),
                     style: TextStyle(
@@ -2309,7 +2314,6 @@ class WorkerDetailFormSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-
 
                   Text(
                     'relationship_status'.tr(),
@@ -2682,13 +2686,11 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
       LocalizationHelper.localizeSalaryType(value);
   String _localizeCurrency(String value) =>
       LocalizationHelper.localizeCurrency(value);
-  
 
   void _parseSelectedDate() {
     if (widget.selectedJoiningDate != null &&
         widget.selectedJoiningDate!.isNotEmpty) {
       final dateStr = widget.selectedJoiningDate!;
-
 
       try {
         final parts = dateStr.split(' ');
@@ -2736,7 +2738,6 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -2829,11 +2830,9 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
         ),
         const SizedBox(height: 24),
 
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Expanded(
               flex: 6,
               child: Container(
@@ -2940,9 +2939,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                           ),
                         ),
                         const SizedBox(width: 24),
-                        const Expanded(
-                          child: SizedBox(),
-                        ),
+                        const Expanded(child: SizedBox()),
                       ],
                     ),
                   ],
@@ -2968,65 +2965,65 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0xFF000000).withValues(alpha: 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _calendarMonth = DateTime(
-                                      _calendarMonth.year,
-                                      _calendarMonth.month - 1,
-                                      1,
-                                    );
-                                  });
-                                },
-                                child: const Icon(
-                                  Icons.keyboard_arrow_left,
-                                  size: 20,
-                                ),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF000000).withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _calendarMonth = DateTime(
+                                    _calendarMonth.year,
+                                    _calendarMonth.month - 1,
+                                    1,
+                                  );
+                                });
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_left,
+                                size: 20,
                               ),
-                              const SizedBox(width: 20),
-                              Text(
-                                '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()}${_calendarMonth.year}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  letterSpacing: 1.0,
-                                  fontFamily: 'SF Pro Display',
-                                ),
+                            ),
+                            const SizedBox(width: 20),
+                            Text(
+                              '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()}${_calendarMonth.year}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                letterSpacing: 1.0,
+                                fontFamily: 'SF Pro Display',
                               ),
-                              const SizedBox(width: 20),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _calendarMonth = DateTime(
-                                      _calendarMonth.year,
-                                      _calendarMonth.month + 1,
-                                      1,
-                                    );
-                                  });
-                                },
-                                child: const Icon(
-                                  Icons.keyboard_arrow_right,
-                                  size: 20,
-                                ),
+                            ),
+                            const SizedBox(width: 20),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _calendarMonth = DateTime(
+                                    _calendarMonth.year,
+                                    _calendarMonth.month + 1,
+                                    1,
+                                  );
+                                });
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_right,
+                                size: 20,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -3249,13 +3246,14 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                         ),
                         const SizedBox(width: 24),
                         Expanded(
-                           child: _buildDropdownField(
-                             label: 'currency_label'.tr(),
-                             selectedValue: widget.currencyController.text.isEmpty
-                                 ? 'USD'
-                                 : widget.currencyController.text,
-                             hint: 'enter_your_currency'.tr(),
-                             items: CurrencyUtils.supportedCodes,
+                          child: _buildDropdownField(
+                            label: 'currency_label'.tr(),
+                            selectedValue:
+                                widget.currencyController.text.isEmpty
+                                ? 'USD'
+                                : widget.currencyController.text,
+                            hint: 'enter_your_currency'.tr(),
+                            items: CurrencyUtils.supportedCodes,
                             itemLabelBuilder: (val) => _localizeCurrency(val),
                             onChanged: (val) {
                               if (val != null) {
@@ -3421,7 +3419,6 @@ class DocumentationSection extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Expanded(
               flex: 1,
               child: Column(
@@ -3658,11 +3655,11 @@ class DocumentationSection extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                     'delete'.tr(),
-                                     style: const TextStyle(
-                                       color: Colors.white,
-                                       fontWeight: FontWeight.w600,
-                                       fontSize: 14,
+                                    'delete'.tr(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
                                       fontFamily: 'SF Pro Display',
                                     ),
                                   ),
@@ -3725,10 +3722,7 @@ class DocumentationSection extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (isPdf)
-                    PdfPagePreview(
-                      cvBytes: bytes,
-                      existingCvUrl: existingUrl,
-                    )
+                    PdfPagePreview(cvBytes: bytes, existingCvUrl: existingUrl)
                   else if (bytes != null)
                     Image.memory(bytes, fit: BoxFit.cover)
                   else if (existingUrl != null &&
@@ -3923,8 +3917,10 @@ class DocumentationSection extends StatelessWidget {
       context: context,
       barrierColor: Colors.black87,
       builder: (ctx) {
-        final dialogWidth =
-            (MediaQuery.of(ctx).size.width * 0.85).clamp(450.0, 720.0);
+        final dialogWidth = (MediaQuery.of(ctx).size.width * 0.85).clamp(
+          450.0,
+          720.0,
+        );
 
         return Dialog(
           backgroundColor: Colors.white,
@@ -3990,24 +3986,24 @@ class DocumentationSection extends StatelessWidget {
                                       fit: BoxFit.contain,
                                       placeholder: (context, url) =>
                                           const SizedBox(
-                                        height: 200,
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            color: Color(0xFF0247C4),
+                                            height: 200,
+                                            child: Center(
+                                              child: CircularProgressIndicator(
+                                                color: Color(0xFF0247C4),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
                                       errorWidget: (context, url, error) =>
                                           const Padding(
-                                        padding: EdgeInsets.all(32),
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 48,
-                                            color: Color(0xFF9E9E9E),
+                                            padding: EdgeInsets.all(32),
+                                            child: Center(
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                size: 48,
+                                                color: Color(0xFF9E9E9E),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
                                     ),
                             ),
                           )
@@ -4076,7 +4072,7 @@ class DocumentationSection extends StatelessWidget {
                   ),
                   child: isImage
                       ? GestureDetector(
-                          onTap: () => _openDocumentPreview(buildContext),
+                          onTap: null,
                           child: cvBytes != null
                               ? Image.memory(
                                   cvBytes!,
@@ -4100,7 +4096,7 @@ class DocumentationSection extends StatelessWidget {
                         )
                       : (isPdf || isDoc)
                       ? GestureDetector(
-                          onTap: () => _openDocumentPreview(buildContext),
+                          onTap: null,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -4161,7 +4157,7 @@ class DocumentationSection extends StatelessWidget {
                           ),
                         )
                       : GestureDetector(
-                          onTap: () => _openDocumentPreview(buildContext),
+                          onTap: null,
                           child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -4321,9 +4317,7 @@ Widget _buildInputField(
                   FilteringTextInputFormatter.allow(
                     isAmount
                         ? RegExp(r'^\d*\.?\d*')
-                        : (isNationalId
-                              ? RegExp(r'^[\d-]*')
-                              : RegExp(r'^\d*')),
+                        : (isNationalId ? RegExp(r'^[\d-]*') : RegExp(r'^\d*')),
                   ),
                   if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),

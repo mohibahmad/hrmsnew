@@ -296,8 +296,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFEF4444)
-                                          .withValues(alpha: 0.2),
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -532,12 +533,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
         csvString = csvString.substring(1);
       }
-      csvString =
-          csvString.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+      csvString = csvString.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 
-      final rows = Csv(
-        dynamicTyping: false,
-      ).decode(csvString);
+      final rows = Csv(dynamicTyping: false).decode(csvString);
 
       if (!mounted) return;
       await _processCsvData(rows);
@@ -576,8 +574,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final mapped = _headerMap[h] ?? h;
       if (_requiredFields.contains(mapped)) foundFields.add(mapped);
     }
-    final List<String> missingColumns =
-        _requiredFields.where((f) => !foundFields.contains(f)).toList();
+    final List<String> missingColumns = _requiredFields
+        .where((f) => !foundFields.contains(f))
+        .toList();
 
     // ── Fetch existing workers for duplicate checks ──
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -611,8 +610,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     } else {
       try {
         final snapshot = await _firestore.getWorkersOnce();
-        Map<String, dynamic> d(doc) =>
-            doc.data() as Map<String, dynamic>;
+        Map<String, dynamic> d(doc) => doc.data() as Map<String, dynamic>;
         existingEmails = snapshot.docs
             .map((doc) => WorkerIdentity.normalizeEmail(d(doc)['email']))
             .where((e) => e.isNotEmpty)
@@ -622,18 +620,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             .where((n) => n.isNotEmpty)
             .toSet();
         existingNationalIds = snapshot.docs
-            .map((doc) =>
-                WorkerIdentity.normalizeNationalId(d(doc)['nationalId']))
+            .map(
+              (doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']),
+            )
             .where((n) => n.isNotEmpty)
             .toSet();
         existingFrontIds = snapshot.docs
-            .map((doc) =>
-                WorkerIdentity.normalizeDocumentUrl(d(doc)['frontId']))
+            .map(
+              (doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['frontId']),
+            )
             .where((u) => u.isNotEmpty)
             .toSet();
         existingBackIds = snapshot.docs
-            .map((doc) =>
-                WorkerIdentity.normalizeDocumentUrl(d(doc)['backId']))
+            .map((doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['backId']))
             .where((u) => u.isNotEmpty)
             .toSet();
       } catch (_) {
@@ -660,8 +659,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
-      if (row.isEmpty ||
-          row.every((e) => e.toString().trim().isEmpty)) {
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) {
         continue;
       }
 
@@ -717,9 +715,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       // ── Required field check ──
       final missingForWorker = _requiredFields
-          .where((f) =>
-              workerData[f] == null ||
-              workerData[f].toString().trim().isEmpty)
+          .where(
+            (f) =>
+                workerData[f] == null ||
+                workerData[f].toString().trim().isEmpty,
+          )
           .toList();
       if (missingForWorker.isNotEmpty) {
         _missingRequiredCount++;
@@ -746,8 +746,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           fieldErrors['dob'] = 'validation_invalid_date'.tr();
           _invalidDobCount++;
         } else {
-          final cutoff =
-              DateTime.now().subtract(const Duration(days: 365 * 18));
+          final cutoff = DateTime.now().subtract(
+            const Duration(days: 365 * 18),
+          );
           if (dob.isAfter(cutoff)) {
             fieldErrors['dob'] = 'validation_min_age'.tr();
             _invalidDobCount++;
@@ -776,12 +777,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       // ── Duplicate checks ──
       final name = WorkerIdentity.normalizeName(workerData['name']);
-      final nationalId =
-          WorkerIdentity.normalizeNationalId(workerData['nationalId']);
-      final frontId =
-          WorkerIdentity.normalizeDocumentUrl(workerData['frontId']);
-      final backId =
-          WorkerIdentity.normalizeDocumentUrl(workerData['backId']);
+      final nationalId = WorkerIdentity.normalizeNationalId(
+        workerData['nationalId'],
+      );
+      final frontId = WorkerIdentity.normalizeDocumentUrl(
+        workerData['frontId'],
+      );
+      final backId = WorkerIdentity.normalizeDocumentUrl(workerData['backId']);
 
       if (name.isNotEmpty &&
           (existingNames.contains(name) || csvNames.contains(name))) {
@@ -812,9 +814,16 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         fieldErrors['backId'] = 'validation_duplicate_back_id'.tr();
       }
 
-      final duplicateFields = {'name', 'email', 'nationalId', 'frontId', 'backId'};
-      if (fieldErrors.keys.any((k) =>
-          duplicateFields.contains(k) && fieldErrors[k] != null)) {
+      final duplicateFields = {
+        'name',
+        'email',
+        'nationalId',
+        'frontId',
+        'backId',
+      };
+      if (fieldErrors.keys.any(
+        (k) => duplicateFields.contains(k) && fieldErrors[k] != null,
+      )) {
         _duplicateCount++;
       }
 
@@ -859,7 +868,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return _fieldErrors(w).values.any((r) => r.startsWith('Duplicate'));
     }).length;
 
-    final bool hasAnyIssue = allMissingFieldNames.isNotEmpty ||
+    final bool hasAnyIssue =
+        allMissingFieldNames.isNotEmpty ||
         missingColumns.isNotEmpty ||
         duplicateWorkers > 0;
 
@@ -868,13 +878,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'csv_workers_found'.tr(namedArgs: {'count': '${parsedWorkers.length}'}),
       ];
       if (missingColumns.isNotEmpty) {
-        final cols =
-            missingColumns.map((f) => _fieldLabels[f] ?? f).join(', ');
+        final cols = missingColumns.map((f) => _fieldLabels[f] ?? f).join(', ');
         snackParts.add('csv_missing_columns'.tr(namedArgs: {'columns': cols}));
       }
       if (allMissingFieldNames.isNotEmpty) {
-        final fields =
-            allMissingFieldNames.map((f) => _fieldLabels[f] ?? f).join(', ');
+        final fields = allMissingFieldNames
+            .map((f) => _fieldLabels[f] ?? f)
+            .join(', ');
         snackParts.add('csv_empty_fields'.tr(namedArgs: {'fields': fields}));
       }
       if (duplicateWorkers > 0) {
@@ -905,6 +915,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   //  Save bulk workers
   // ─────────────────────────────────────────────────────────────
   Future<void> _saveBulkWorkers() async {
+    // Reset stuck saving state
+    if (_isSaving && mounted) {
+      setState(() => _isSaving = false);
+    }
+
     if (_validWorkers.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -914,32 +929,39 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
-    final workersWithErrors =
-        _validWorkers.where(_hasWorkerErrors).toList();
+    final workersWithErrors = _validWorkers.where(_hasWorkerErrors).toList();
     final workersReadyToSave = _workersReadyToSave;
 
     if (workersReadyToSave.isEmpty) {
       // Nothing uploadable — show per-issue breakdown
       final parts = <String>[];
       if (_missingRequiredCount > 0) {
-        parts.add('skipped_missing_required_message'.tr(
-          namedArgs: {'count': _missingRequiredCount.toString()},
-        ));
+        parts.add(
+          'skipped_missing_required_message'.tr(
+            namedArgs: {'count': _missingRequiredCount.toString()},
+          ),
+        );
       }
       if (_invalidDobCount > 0) {
-        parts.add('skipped_invalid_dob_message'.tr(
-          namedArgs: {'count': _invalidDobCount.toString()},
-        ));
+        parts.add(
+          'skipped_invalid_dob_message'.tr(
+            namedArgs: {'count': _invalidDobCount.toString()},
+          ),
+        );
       }
       if (_invalidGenderCount > 0) {
-        parts.add('skipped_invalid_gender_message'.tr(
-          namedArgs: {'count': _invalidGenderCount.toString()},
-        ));
+        parts.add(
+          'skipped_invalid_gender_message'.tr(
+            namedArgs: {'count': _invalidGenderCount.toString()},
+          ),
+        );
       }
       if (_duplicateCount > 0) {
-        parts.add('skipped_duplicates_message'.tr(
-          namedArgs: {'count': _duplicateCount.toString()},
-        ));
+        parts.add(
+          'skipped_duplicates_message'.tr(
+            namedArgs: {'count': _duplicateCount.toString()},
+          ),
+        );
       }
       if (mounted) {
         FlashySnackBar.show(
@@ -984,15 +1006,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (isGuest) {
         for (int i = 0; i < workersReadyToSave.length; i++) {
           final newId = 'dummy_${DateTime.now().microsecondsSinceEpoch}_$i';
-          DummyData.workers
-              .insert(0, {...workersReadyToSave[i], 'id': newId});
+          DummyData.workers.insert(0, {...workersReadyToSave[i], 'id': newId});
         }
         await DummyData.saveToPrefs();
       } else {
-        bulkResult =
-            await _firestore.addBulkWorkers(workersReadyToSave);
+        bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
         importedCount = bulkResult.imported;
-        if (bulkResult.skipped > 0) finalSkippedDuplicates += bulkResult.skipped;
+        if (bulkResult.skipped > 0)
+          finalSkippedDuplicates += bulkResult.skipped;
       }
 
       if (!mounted) return;
@@ -1005,9 +1026,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         ),
       ];
       if (bulkResult != null && bulkResult.skipReasons.isNotEmpty) {
-        summaryParts.add('skipped_duplicates_message'.tr(
-          namedArgs: {'count': '${bulkResult.skipReasons.length}'},
-        ));
+        summaryParts.add(
+          'skipped_duplicates_message'.tr(
+            namedArgs: {'count': '${bulkResult.skipReasons.length}'},
+          ),
+        );
         final reasonCounts = <String, int>{};
         for (final reason in bulkResult.skipReasons) {
           final key = reason.contains('Duplicate') ? 'Duplicate' : 'Validation';
@@ -1017,27 +1040,36 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           summaryParts.add('  • $count $key');
         });
       } else if (finalSkippedDuplicates > 0) {
-        summaryParts.add('skipped_duplicates_message'.tr(
-          namedArgs: {'count': finalSkippedDuplicates.toString()},
-        ));
+        summaryParts.add(
+          'skipped_duplicates_message'.tr(
+            namedArgs: {'count': finalSkippedDuplicates.toString()},
+          ),
+        );
       }
       if (localMissingCount > 0) {
-        summaryParts.add('skipped_missing_required_message'.tr(
-          namedArgs: {'count': localMissingCount.toString()},
-        ));
+        summaryParts.add(
+          'skipped_missing_required_message'.tr(
+            namedArgs: {'count': localMissingCount.toString()},
+          ),
+        );
       }
       if (localInvalidDobCount > 0) {
-        summaryParts.add('skipped_invalid_dob_message'.tr(
-          namedArgs: {'count': localInvalidDobCount.toString()},
-        ));
+        summaryParts.add(
+          'skipped_invalid_dob_message'.tr(
+            namedArgs: {'count': localInvalidDobCount.toString()},
+          ),
+        );
       }
       if (localInvalidGenderCount > 0) {
-        summaryParts.add('skipped_invalid_gender_message'.tr(
-          namedArgs: {'count': localInvalidGenderCount.toString()},
-        ));
+        summaryParts.add(
+          'skipped_invalid_gender_message'.tr(
+            namedArgs: {'count': localInvalidGenderCount.toString()},
+          ),
+        );
       }
 
-      final hasSkipped = finalSkippedDuplicates > 0 ||
+      final hasSkipped =
+          finalSkippedDuplicates > 0 ||
           localMissingCount > 0 ||
           localInvalidDobCount > 0 ||
           localInvalidGenderCount > 0;
@@ -1096,9 +1128,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       barrierDismissible: false,
       builder: (_) => Dialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
@@ -1141,7 +1171,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         String? dialogError;
 
         // For media fields: store actual data URL separately, show filename in text field
-        final isMediaField = fieldKey == 'profileImage' ||
+        final isMediaField =
+            fieldKey == 'profileImage' ||
             fieldKey == 'frontId' ||
             fieldKey == 'backId' ||
             fieldKey == 'cv';
@@ -1156,18 +1187,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               controller.text = storedName.toString();
             } else {
               final mime = currentValue.split(';').first.split(':').last;
-              controller.text = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
+              controller.text = mime == 'application/pdf'
+                  ? 'document.pdf'
+                  : 'image.jpg';
             }
           }
-          controller.selection = TextSelection.collapsed(offset: controller.text.length);
+          controller.selection = TextSelection.collapsed(
+            offset: controller.text.length,
+          );
         }
 
         // ── Per-field input configuration ──
         TextInputType? keyboardTypeForField() {
           if (fieldKey == 'phone') return TextInputType.phone;
           if (fieldKey == 'email') return TextInputType.emailAddress;
-          if (fieldKey == 'salaryAmount' ||
-              fieldKey == 'annualLeaves') {
+          if (fieldKey == 'salaryAmount' || fieldKey == 'annualLeaves') {
             return const TextInputType.numberWithOptions(decimal: true);
           }
           if (fieldKey == 'nationalId') return TextInputType.number;
@@ -1177,8 +1211,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         List<TextInputFormatter>? inputFormattersForField() {
           if (fieldKey == 'phone') {
             return [
-              FilteringTextInputFormatter.allow(
-                  RegExp(r'^[\d+\-\s()]*')),
+              FilteringTextInputFormatter.allow(RegExp(r'^[\d+\-\s()]*')),
               LengthLimitingTextInputFormatter(20),
             ];
           }
@@ -1223,8 +1256,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               fieldKey == 'cv') {
             return [LengthLimitingTextInputFormatter(500)];
           }
-          if (fieldKey == 'salaryAmount' ||
-              fieldKey == 'annualLeaves') {
+          if (fieldKey == 'salaryAmount' || fieldKey == 'annualLeaves') {
             return [
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
               LengthLimitingTextInputFormatter(15),
@@ -1264,18 +1296,30 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 builder: (_, setDialogState) {
                   Future<void> _pickMediaFile() async {
                     try {
-                      final isImage = fieldKey != 'cv';
                       final result = await FilePicker.pickFiles(
-                        type: isImage ? FileType.image : FileType.custom,
+                        type: FileType.custom,
                         allowMultiple: false,
                         withData: true,
-                        allowedExtensions: isImage ? null : ['pdf', 'doc', 'docx'],
+                        allowedExtensions: [
+                          'pdf',
+                          'doc',
+                          'docx',
+                          'jpg',
+                          'jpeg',
+                          'png',
+                          'gif',
+                          'bmp',
+                          'webp',
+                        ],
                       );
                       if (result != null && result.files.isNotEmpty) {
                         final file = result.files.first;
-                        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+                        if (file.bytes != null &&
+                            file.bytes!.length > 10 * 1024 * 1024) {
                           setDialogState(() {
-                            dialogError = 'file_too_large'.tr(namedArgs: {'size': '10MB'});
+                            dialogError = 'file_too_large'.tr(
+                              namedArgs: {'size': '10MB'},
+                            );
                           });
                           return;
                         }
@@ -1288,16 +1332,20 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           const mimeMap = {
                             'pdf': 'application/pdf',
                             'doc': 'application/msword',
-                            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            'docx':
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                           };
                           final mime = mimeMap[ext] ?? 'image/jpeg';
-                          final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+                          final dataUrl =
+                              'data:$mime;base64,${base64Encode(bytes)}';
                           setDialogState(() {
                             mediaDataUrl = dataUrl;
                             mediaFileName = file.name;
                             hasExistingUpload = true;
                             controller.text = file.name;
-                            controller.selection = TextSelection.collapsed(offset: controller.text.length);
+                            controller.selection = TextSelection.collapsed(
+                              offset: controller.text.length,
+                            );
                           });
                         }
                       }
@@ -1318,8 +1366,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         children: [
                           // ── Input ──
                           Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 24, 24, 6),
+                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 6),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1347,7 +1394,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   ),
                                   child: TextField(
                                     controller: controller,
-                                    readOnly: isMediaField && (mediaDataUrl != null || hasExistingUpload),
+                                    readOnly:
+                                        isMediaField &&
+                                        (mediaDataUrl != null ||
+                                            hasExistingUpload),
                                     autofocus: !isMediaField,
                                     maxLines: isMediaField ? 1 : null,
                                     minLines: 1,
@@ -1357,7 +1407,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontFamily: 'SF Pro Display',
-                                      color: (isMediaField && (mediaDataUrl != null || hasExistingUpload))
+                                      color:
+                                          (isMediaField &&
+                                              (mediaDataUrl != null ||
+                                                  hasExistingUpload))
                                           ? const Color(0xFF9CA3AF)
                                           : const Color(0xFF111827),
                                       overflow: TextOverflow.ellipsis,
@@ -1367,67 +1420,103 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       isDense: true,
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                        vertical: 14,
+                                            vertical: 14,
+                                          ),
+                                      hintText: 'edit_cell_enter_value'.tr(
+                                        namedArgs: {'label': label},
                                       ),
-                                      hintText: 'edit_cell_enter_value'.tr(namedArgs: {'label': label}),
                                       hintStyle: const TextStyle(
                                         color: Color(0xFF9CA3AF),
                                         fontSize: 15,
                                         fontFamily: 'SF Pro Display',
                                       ),
-                                      suffixIcon: (fieldKey == 'profileImage' ||
+                                      suffixIcon:
+                                          (fieldKey == 'profileImage' ||
                                               fieldKey == 'frontId' ||
                                               fieldKey == 'backId' ||
                                               fieldKey == 'cv')
                                           ? GestureDetector(
                                               onTap: () => _pickMediaFile(),
                                               child: Container(
-                                                margin: const EdgeInsets.symmetric(vertical: 8),
-                                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                    ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: (mediaDataUrl != null || hasExistingUpload)
+                                                  color:
+                                                      (mediaDataUrl != null ||
+                                                          hasExistingUpload)
                                                       ? const Color(0xFFDCFCE7)
                                                       : const Color(0xFFEEF2FF),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
                                                 child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     Icon(
-                                                      (mediaDataUrl != null || hasExistingUpload)
-                                                          ? Icons.check_circle_rounded
+                                                      (mediaDataUrl != null ||
+                                                              hasExistingUpload)
+                                                          ? Icons
+                                                                .check_circle_rounded
                                                           : fieldKey == 'cv'
-                                                              ? Icons.attach_file_rounded
-                                                              : fieldKey == 'profileImage'
-                                                                  ? Icons.add_a_photo_rounded
-                                                                  : Icons.badge_rounded,
+                                                          ? Icons
+                                                                .attach_file_rounded
+                                                          : fieldKey ==
+                                                                'profileImage'
+                                                          ? Icons
+                                                                .add_a_photo_rounded
+                                                          : Icons.badge_rounded,
                                                       size: 18,
-                                                      color: (mediaDataUrl != null || hasExistingUpload)
-                                                          ? const Color(0xFF16A34A)
-                                                          : const Color(0xFF0247C4),
+                                                      color:
+                                                          (mediaDataUrl !=
+                                                                  null ||
+                                                              hasExistingUpload)
+                                                          ? const Color(
+                                                              0xFF16A34A,
+                                                            )
+                                                          : const Color(
+                                                              0xFF0247C4,
+                                                            ),
                                                     ),
                                                     const SizedBox(width: 4),
                                                     Text(
-                                                      (mediaDataUrl != null || hasExistingUpload)
+                                                      (mediaDataUrl != null ||
+                                                              hasExistingUpload)
                                                           ? 'uploaded'.tr()
                                                           : fieldKey == 'cv'
-                                                              ? 'upload_cv'.tr()
-                                                              : 'upload_image'.tr(),
+                                                          ? 'upload_cv'.tr()
+                                                          : 'upload_image'.tr(),
                                                       style: TextStyle(
                                                         fontSize: 11,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: (mediaDataUrl != null || hasExistingUpload)
-                                                            ? const Color(0xFF16A34A)
-                                                            : const Color(0xFF0247C4),
-                                                        fontFamily: 'SF Pro Display',
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color:
+                                                            (mediaDataUrl !=
+                                                                    null ||
+                                                                hasExistingUpload)
+                                                            ? const Color(
+                                                                0xFF16A34A,
+                                                              )
+                                                            : const Color(
+                                                                0xFF0247C4,
+                                                              ),
+                                                        fontFamily:
+                                                            'SF Pro Display',
                                                       ),
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       maxLines: 1,
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                              )
+                                            )
                                           : null,
                                     ),
                                   ),
@@ -1439,13 +1528,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           // ── Hint ──
                           if (_fieldHint(fieldKey).isNotEmpty)
                             Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.lightbulb_outline,
-                                      size: 13,
-                                      color: Color(0xFF9CA3AF)),
+                                  const Icon(
+                                    Icons.lightbulb_outline,
+                                    size: 13,
+                                    color: Color(0xFF9CA3AF),
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -1464,8 +1554,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           // ── Inline error ──
                           if (dialogError != null)
                             Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                               child: Row(
                                 children: [
                                   const Icon(
@@ -1500,24 +1589,20 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 ),
                               ),
                             ),
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(ctx).pop(),
+                                  onPressed: () => Navigator.of(ctx).pop(),
                                   style: TextButton.styleFrom(
-                                    foregroundColor:
-                                        const Color(0xFF6B7280),
+                                    foregroundColor: const Color(0xFF6B7280),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 10,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
                                   child: Text(
@@ -1532,15 +1617,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 const SizedBox(width: 8),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color(0xFF0247C4),
+                                    backgroundColor: const Color(0xFF0247C4),
                                     foregroundColor: Colors.white,
                                     elevation: 0,
                                     shadowColor: Colors.transparent,
                                     minimumSize: const Size(0, 42),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 24,
@@ -1554,46 +1637,71 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         dialogError =
                                             'edit_cell_cannot_be_empty'.tr();
                                       });
-                                    } else if (isMediaField && val.isEmpty && (mediaDataUrl == null || mediaDataUrl!.isEmpty)) {
+                                    } else if (isMediaField &&
+                                        val.isEmpty &&
+                                        (mediaDataUrl == null ||
+                                            mediaDataUrl!.isEmpty)) {
                                       setDialogState(() {
                                         dialogError =
                                             'edit_cell_cannot_be_empty'.tr();
                                       });
-                                    } else if (fieldKey == 'email' && val.isNotEmpty) {
-                                      final normalizedEmail = WorkerIdentity.normalizeEmail(val);
-                                      if (!Validators.isValidEmail(normalizedEmail)) {
+                                    } else if (fieldKey == 'email' &&
+                                        val.isNotEmpty) {
+                                      final normalizedEmail =
+                                          WorkerIdentity.normalizeEmail(val);
+                                      if (!Validators.isValidEmail(
+                                        normalizedEmail,
+                                      )) {
                                         setDialogState(() {
                                           dialogError =
                                               'validation_invalid_email'.tr();
                                         });
                                       } else {
-                                        final isDuplicate = _validWorkers.asMap().entries.any((entry) {
-                                          return entry.key != workerIndex &&
-                                              WorkerIdentity.normalizeEmail(
-                                                      entry.value['email']?.toString() ?? '') ==
-                                                  normalizedEmail;
-                                        });
+                                        final isDuplicate = _validWorkers
+                                            .asMap()
+                                            .entries
+                                            .any((entry) {
+                                              return entry.key != workerIndex &&
+                                                  WorkerIdentity.normalizeEmail(
+                                                        entry.value['email']
+                                                                ?.toString() ??
+                                                            '',
+                                                      ) ==
+                                                      normalizedEmail;
+                                            });
                                         if (isDuplicate) {
                                           setDialogState(() {
                                             dialogError =
-                                                'validation_duplicate_email'.tr();
+                                                'validation_duplicate_email'
+                                                    .tr();
                                           });
                                         } else {
                                           Navigator.of(ctx).pop(val);
                                         }
                                       }
-                                    } else if (fieldKey == 'nationalId' && val.isNotEmpty) {
-                                      final normalizedId = WorkerIdentity.normalizeNationalId(val);
-                                      final isDuplicate = _validWorkers.asMap().entries.any((entry) {
-                                        return entry.key != workerIndex &&
-                                            WorkerIdentity.normalizeNationalId(
-                                                    entry.value['nationalId']?.toString() ?? '') ==
-                                                normalizedId;
-                                      });
+                                    } else if (fieldKey == 'nationalId' &&
+                                        val.isNotEmpty) {
+                                      final normalizedId =
+                                          WorkerIdentity.normalizeNationalId(
+                                            val,
+                                          );
+                                      final isDuplicate = _validWorkers
+                                          .asMap()
+                                          .entries
+                                          .any((entry) {
+                                            return entry.key != workerIndex &&
+                                                WorkerIdentity.normalizeNationalId(
+                                                      entry.value['nationalId']
+                                                              ?.toString() ??
+                                                          '',
+                                                    ) ==
+                                                    normalizedId;
+                                          });
                                       if (isDuplicate) {
                                         setDialogState(() {
                                           dialogError =
-                                              'validation_duplicate_national_id'.tr();
+                                              'validation_duplicate_national_id'
+                                                  .tr();
                                         });
                                       } else {
                                         Navigator.of(ctx).pop(val);
@@ -1616,13 +1724,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           normalized == 'others'
                                               ? 'Other'
                                               : normalized == 'male'
-                                                  ? 'Male'
-                                                  : normalized == 'female'
-                                                      ? 'Female'
-                                                      : val,
+                                              ? 'Male'
+                                              : normalized == 'female'
+                                              ? 'Female'
+                                              : val,
                                         );
                                       }
-                                    } else if (fieldKey == 'relationshipStatus') {
+                                    } else if (fieldKey ==
+                                        'relationshipStatus') {
                                       final normalized = val.toLowerCase();
                                       const valid = {
                                         'single',
@@ -1633,10 +1742,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       if (!valid.contains(normalized)) {
                                         setDialogState(() {
                                           dialogError =
-                                              'validation_invalid_relationship'.tr();
+                                              'validation_invalid_relationship'
+                                                  .tr();
                                         });
                                       } else {
-                                        final display = normalized[0].toUpperCase() + normalized.substring(1);
+                                        final display =
+                                            normalized[0].toUpperCase() +
+                                            normalized.substring(1);
                                         Navigator.of(ctx).pop(display);
                                       }
                                     } else if (fieldKey == 'type1') {
@@ -1652,10 +1764,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       if (!valid.contains(normalized)) {
                                         setDialogState(() {
                                           dialogError =
-                                              'validation_invalid_employee_type'.tr();
+                                              'validation_invalid_employee_type'
+                                                  .tr();
                                         });
                                       } else {
-                                        final display = normalized.replaceAll(' ', '-');
+                                        final display = normalized.replaceAll(
+                                          ' ',
+                                          '-',
+                                        );
                                         Navigator.of(ctx).pop(display);
                                       }
                                     } else if (fieldKey == 'type2') {
@@ -1670,14 +1786,20 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       if (!valid.contains(normalized)) {
                                         setDialogState(() {
                                           dialogError =
-                                              'validation_invalid_work_model'.tr();
+                                              'validation_invalid_work_model'
+                                                  .tr();
                                         });
                                       } else {
-                                        final display = normalized.replaceAll(' ', '-');
+                                        final display = normalized.replaceAll(
+                                          ' ',
+                                          '-',
+                                        );
                                         Navigator.of(ctx).pop(display);
                                       }
                                     } else if (fieldKey == 'salaryType') {
-                                      final normalized = val.toLowerCase().trim();
+                                      final normalized = val
+                                          .toLowerCase()
+                                          .trim();
                                       const valid = {
                                         'monthly',
                                         'hourly',
@@ -1692,26 +1814,32 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       } else if (!valid.contains(normalized)) {
                                         setDialogState(() {
                                           dialogError =
-                                              'validation_invalid_salary_type'.tr();
+                                              'validation_invalid_salary_type'
+                                                  .tr();
                                         });
                                       } else {
-                                        final display = normalized[0].toUpperCase() + normalized.substring(1);
+                                        final display =
+                                            normalized[0].toUpperCase() +
+                                            normalized.substring(1);
                                         Navigator.of(ctx).pop(display);
                                       }
                                     } else if (fieldKey == 'dob') {
-                                      final dob = AppDateUtils.parseDateString(val);
+                                      final dob = AppDateUtils.parseDateString(
+                                        val,
+                                      );
                                       if (dob == null) {
                                         setDialogState(() {
                                           dialogError =
                                               'validation_invalid_date'.tr();
                                         });
                                       } else {
-                                        final cutoff =
-                                            DateTime.now().subtract(const Duration(days: 365 * 18));
+                                        final cutoff = DateTime.now().subtract(
+                                          const Duration(days: 365 * 18),
+                                        );
                                         if (dob.isAfter(cutoff)) {
                                           setDialogState(() {
-                                            dialogError =
-                                                'validation_min_age'.tr();
+                                            dialogError = 'validation_min_age'
+                                                .tr();
                                           });
                                         } else {
                                           Navigator.of(ctx).pop(val);
@@ -1720,45 +1848,73 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     } else {
                                       if (isMediaField) {
                                         if (mediaDataUrl != null) {
-                                          worker['${fieldKey}_name'] = mediaFileName ?? '';
+                                          worker['${fieldKey}_name'] =
+                                              mediaFileName ?? '';
                                           Navigator.of(ctx).pop(mediaDataUrl);
-                                      } else if (hasExistingUpload) {
-                                        // Update display name but keep existing data URL
-                                        worker['${fieldKey}_name'] = val.split('/').last;
-                                        Navigator.of(ctx).pop(currentValue);
-                                      } else if (val.isNotEmpty && !val.startsWith('data:')) {
-                                        // Manually typed URL - validate file extension
-                                        final ext = val.split('.').last.split('?').first.toLowerCase();
-                                        const imageExts = {'png', 'jpeg', 'jpg'};
-                                        const docExts = {'pdf', 'doc', 'docx'};
-                                        if (fieldKey == 'cv' && !docExts.contains(ext)) {
-                                          setDialogState(() {
-                                            dialogError = 'Only PDF, DOC, DOCX formats are accepted for CV';
-                                          });
-                                        } else if (fieldKey != 'cv' && !imageExts.contains(ext)) {
-                                          setDialogState(() {
-                                            dialogError = 'Only PNG, JPEG, JPG formats are accepted for images';
-                                          });
+                                        } else if (hasExistingUpload) {
+                                          // Update display name but keep existing data URL
+                                          worker['${fieldKey}_name'] = val
+                                              .split('/')
+                                              .last;
+                                          Navigator.of(ctx).pop(currentValue);
+                                        } else if (val.isNotEmpty &&
+                                            !val.startsWith('data:')) {
+                                          // Manually typed URL - validate file extension
+                                          final ext = val
+                                              .split('.')
+                                              .last
+                                              .split('?')
+                                              .first
+                                              .toLowerCase();
+                                          const imageExts = {
+                                            'png',
+                                            'jpeg',
+                                            'jpg',
+                                          };
+                                          const cvExts = {
+                                            'pdf',
+                                            'doc',
+                                            'docx',
+                                            'jpg',
+                                            'jpeg',
+                                            'png',
+                                            'gif',
+                                            'bmp',
+                                            'webp',
+                                          };
+                                          if (fieldKey == 'cv' &&
+                                              !cvExts.contains(ext)) {
+                                            setDialogState(() {
+                                              dialogError =
+                                                  'Only PDF, DOC, DOCX and image formats (JPG, JPEG, PNG, etc.) are accepted for CV';
+                                            });
+                                          } else if (fieldKey != 'cv' &&
+                                              !imageExts.contains(ext)) {
+                                            setDialogState(() {
+                                              dialogError =
+                                                  'Only PNG, JPEG, JPG formats are accepted for images';
+                                            });
+                                          } else {
+                                            worker['${fieldKey}_name'] = val
+                                                .split('/')
+                                                .last;
+                                            Navigator.of(ctx).pop(val);
+                                          }
                                         } else {
-                                          worker['${fieldKey}_name'] = val.split('/').last;
+                                          worker['${fieldKey}_name'] = val
+                                              .split('/')
+                                              .last;
                                           Navigator.of(ctx).pop(val);
                                         }
                                       } else {
-                                        worker['${fieldKey}_name'] = val.split('/').last;
                                         Navigator.of(ctx).pop(val);
                                       }
-                                    } else {
-                                      Navigator.of(ctx).pop(val);
-                                    }
                                     }
                                   },
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.check_rounded,
-                                        size: 18,
-                                      ),
+                                      const Icon(Icons.check_rounded, size: 18),
                                       const SizedBox(width: 8),
                                       Text(
                                         'save'.tr(),
@@ -1803,8 +1959,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             final normalized = result.toLowerCase();
             const validGenders = {'male', 'female', 'other', 'others'};
             if (!validGenders.contains(normalized)) {
-              errors['gender'] =
-                  'Only Male, Female, or Other is allowed';
+              errors['gender'] = 'Only Male, Female, or Other is allowed';
             }
           }
         }
@@ -1812,7 +1967,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
   String _fieldHint(String fieldKey) {
     const hintKeys = <String, String>{
       'name': 'hint_enter_full_name',
@@ -1864,29 +2018,29 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTopBar(),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 40,
-                vertical: 24,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildActionButtons(),
-                  const SizedBox(height: 32),
-                  if (_hasParsedFile) ...[
-                    _buildSummaryCard(),
-                    const SizedBox(height: 0),
-                    Expanded(child: _buildWorkerTable()),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildActionButtons(),
+                    const SizedBox(height: 32),
+                    if (_hasParsedFile) ...[
+                      _buildSummaryCard(),
+                      const SizedBox(height: 0),
+                      Expanded(child: _buildWorkerTable()),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -1899,9 +2053,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1966,21 +2118,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   Widget _buildSaveAllButton() {
-    final bool canSave = !_isSaving;
+    final bool isCurrentlySaving = _isSaving;
     return GestureDetector(
-      onTap: canSave ? _saveBulkWorkers : null,
+      onTap: () => _saveBulkWorkers(),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
-          color: canSave
-              ? const Color(0xFF0B50C3)
-              : const Color(0xFFE6EAEF),
+          color: isCurrentlySaving
+              ? const Color(0xFFE6EAEF)
+              : const Color(0xFF0B50C3),
           borderRadius: BorderRadius.circular(6),
         ),
         alignment: Alignment.center,
-        child: _isSaving
+        child: isCurrentlySaving
             ? const SizedBox(
                 width: 20,
                 height: 20,
@@ -1991,10 +2143,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               )
             : Text(
                 'save_all'.tr(),
-                style: TextStyle(
-                  color: canSave
-                      ? Colors.white
-                      : const Color(0xFF000000),
+                style: const TextStyle(
+                  color: Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
                   fontFamily: 'SF Pro Display',
@@ -2019,10 +2169,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             foregroundColor: const Color(0xFF0B50C3),
             elevation: 0,
             side: const BorderSide(color: Color(0xFF0B50C3)),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -2039,10 +2186,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             backgroundColor: const Color(0xFF0B50C3),
             foregroundColor: Colors.white,
             elevation: 0,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -2071,10 +2215,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFD0E5FF),
-          width: 1.5,
-        ),
+        border: Border.all(color: const Color(0xFFD0E5FF), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF000000).withValues(alpha: 0.02),
@@ -2088,10 +2229,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (anyErrors
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF34D399))
-                  .withValues(alpha: 0.15),
+              color:
+                  (anyErrors
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF34D399))
+                      .withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -2197,54 +2339,57 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
         ),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
       ),
       child: Row(
         children: [
           _buildHeaderCell('full_name'.tr(), 150, fieldKey: 'name'),
-          _buildHeaderCell('contact_number'.tr(), 130,
-              fieldKey: 'phone'),
-          _buildHeaderCell('email_address'.tr(), 150,
-              fieldKey: 'email'),
-          _buildHeaderCell('job_position'.tr(), 130,
-              fieldKey: 'position'),
-          _buildHeaderCell('salary_type'.tr(), 130,
-              fieldKey: 'salaryType'),
-          _buildHeaderCell('currency_title'.tr(), 100,
-              fieldKey: 'currency'),
-          _buildHeaderCell('salary_amount'.tr(), 130,
-              fieldKey: 'salaryAmount'),
-          _buildHeaderCell('father_name'.tr(), 150,
-              fieldKey: 'fatherName'),
-          _buildHeaderCell('national_id_title'.tr(), 130,
-              fieldKey: 'nationalId'),
-          _buildHeaderCell('religion_title'.tr(), 120,
-              fieldKey: 'religion'),
+          _buildHeaderCell('contact_number'.tr(), 130, fieldKey: 'phone'),
+          _buildHeaderCell('email_address'.tr(), 150, fieldKey: 'email'),
+          _buildHeaderCell('job_position'.tr(), 130, fieldKey: 'position'),
+          _buildHeaderCell('salary_type'.tr(), 130, fieldKey: 'salaryType'),
+          _buildHeaderCell('currency_title'.tr(), 100, fieldKey: 'currency'),
+          _buildHeaderCell('salary_amount'.tr(), 130, fieldKey: 'salaryAmount'),
+          _buildHeaderCell('father_name'.tr(), 150, fieldKey: 'fatherName'),
+          _buildHeaderCell(
+            'national_id_title'.tr(),
+            130,
+            fieldKey: 'nationalId',
+          ),
+          _buildHeaderCell('religion_title'.tr(), 120, fieldKey: 'religion'),
           _buildHeaderCell('date_of_birth'.tr(), 120, fieldKey: 'dob'),
-          _buildHeaderCell('gender_title'.tr(), 100,
-              fieldKey: 'gender'),
-          _buildHeaderCell('address_title'.tr(), 130,
-              fieldKey: 'address'),
-          _buildHeaderCell('relationship_status_title'.tr(), 130,
-              fieldKey: 'relationshipStatus'),
+          _buildHeaderCell('gender_title'.tr(), 100, fieldKey: 'gender'),
+          _buildHeaderCell('address_title'.tr(), 130, fieldKey: 'address'),
+          _buildHeaderCell(
+            'relationship_status_title'.tr(),
+            130,
+            fieldKey: 'relationshipStatus',
+          ),
           _buildHeaderCell('employee_type'.tr(), 130, fieldKey: 'type1'),
           _buildHeaderCell('work_model'.tr(), 130, fieldKey: 'type2'),
-          _buildHeaderCell('experience_level_title'.tr(), 130,
-              fieldKey: 'experienceLevel'),
-          _buildHeaderCell('education_title'.tr(), 130,
-              fieldKey: 'education'),
-          _buildHeaderCell('annual_leaves_title'.tr(), 120,
-              fieldKey: 'annualLeaves'),
-          _buildHeaderCell('joining_date_title'.tr(), 130,
-              fieldKey: 'joiningDate'),
-          _buildHeaderCell('profile_image_url'.tr(), 130,
-              fieldKey: 'profileImage'),
-          _buildHeaderCell('front_id_image_url'.tr(), 130,
-              fieldKey: 'frontId'),
-          _buildHeaderCell('back_id_image_url'.tr(), 130,
-              fieldKey: 'backId'),
+          _buildHeaderCell(
+            'experience_level_title'.tr(),
+            130,
+            fieldKey: 'experienceLevel',
+          ),
+          _buildHeaderCell('education_title'.tr(), 130, fieldKey: 'education'),
+          _buildHeaderCell(
+            'annual_leaves_title'.tr(),
+            120,
+            fieldKey: 'annualLeaves',
+          ),
+          _buildHeaderCell(
+            'joining_date_title'.tr(),
+            130,
+            fieldKey: 'joiningDate',
+          ),
+          _buildHeaderCell(
+            'profile_image_url'.tr(),
+            130,
+            fieldKey: 'profileImage',
+          ),
+          _buildHeaderCell('front_id_image_url'.tr(), 130, fieldKey: 'frontId'),
+          _buildHeaderCell('back_id_image_url'.tr(), 130, fieldKey: 'backId'),
           _buildHeaderCell('cv_url'.tr(), 130, fieldKey: 'cv'),
         ],
       ),
@@ -2255,9 +2400,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return ListView.builder(
       itemCount: _validWorkers.length,
       itemExtent: _rowHeight,
-      itemBuilder: (_, index) => RepaintBoundary(
-        child: _buildWorkerRow(_validWorkers[index], index),
-      ),
+      itemBuilder: (_, index) =>
+          RepaintBoundary(child: _buildWorkerRow(_validWorkers[index], index)),
     );
   }
 
@@ -2266,116 +2410,184 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   // ─────────────────────────────────────────────────────────────
   Widget _buildWorkerRow(Map<String, dynamic> worker, int index) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       color: index.isEven ? const Color(0xFFFAFBFC) : Colors.white,
       child: Row(
         children: [
-          _buildDataCell(worker['name']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'name'),
-              fieldKey: 'name',
-              workerIndex: index),
-          _buildDataCell(worker['phone']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'phone'),
-              fieldKey: 'phone',
-              workerIndex: index),
-          _buildDataCell(worker['email']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'email'),
-              fieldKey: 'email',
-              workerIndex: index),
-          _buildDataCell(worker['position']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'position'),
-              fieldKey: 'position',
-              workerIndex: index),
-          _buildDataCell(worker['salaryType']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'salaryType'),
-              fieldKey: 'salaryType',
-              workerIndex: index),
-          _buildDataCell(worker['currency']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'currency'),
-              fieldKey: 'currency',
-              workerIndex: index),
-          _buildDataCell(worker['salaryAmount']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'salaryAmount'),
-              fieldKey: 'salaryAmount',
-              workerIndex: index),
-          _buildDataCell(worker['fatherName']?.toString() ?? '', 150,
-              hasError: _hasFieldError(worker, 'fatherName'),
-              fieldKey: 'fatherName',
-              workerIndex: index),
-          _buildDataCell(worker['nationalId']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'nationalId'),
-              fieldKey: 'nationalId',
-              workerIndex: index),
-          _buildDataCell(worker['religion']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'religion'),
-              fieldKey: 'religion',
-              workerIndex: index),
-          _buildDataCell(worker['dob']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'dob'),
-              fieldKey: 'dob',
-              workerIndex: index),
-          _buildDataCell(worker['gender']?.toString() ?? '', 100,
-              hasError: _hasFieldError(worker, 'gender'),
-              fieldKey: 'gender',
-              workerIndex: index),
-          _buildDataCell(worker['address']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'address'),
-              fieldKey: 'address',
-              workerIndex: index),
           _buildDataCell(
-              worker['relationshipStatus']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'relationshipStatus'),
-              fieldKey: 'relationshipStatus',
-              workerIndex: index),
-          _buildDataCell(worker['type1']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'type1'),
-              fieldKey: 'type1',
-              workerIndex: index),
-          _buildDataCell(worker['type2']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'type2'),
-              fieldKey: 'type2',
-              workerIndex: index),
+            worker['name']?.toString() ?? '',
+            150,
+            hasError: _hasFieldError(worker, 'name'),
+            fieldKey: 'name',
+            workerIndex: index,
+          ),
           _buildDataCell(
-              worker['experienceLevel']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'experienceLevel'),
-              fieldKey: 'experienceLevel',
-              workerIndex: index),
-          _buildDataCell(worker['education']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'education'),
-              fieldKey: 'education',
-              workerIndex: index),
-          _buildDataCell(worker['annualLeaves']?.toString() ?? '', 120,
-              hasError: _hasFieldError(worker, 'annualLeaves'),
-              fieldKey: 'annualLeaves',
-              workerIndex: index),
-          _buildDataCell(worker['joiningDate']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'joiningDate'),
-              fieldKey: 'joiningDate',
-              workerIndex: index),
-          _buildDataCell(worker['profileImage']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'profileImage'),
-              fieldKey: 'profileImage',
-              workerIndex: index),
-          _buildDataCell(worker['frontId']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'frontId'),
-              fieldKey: 'frontId',
-              workerIndex: index),
-          _buildDataCell(worker['backId']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'backId'),
-              fieldKey: 'backId',
-              workerIndex: index),
-          _buildDataCell(worker['cv']?.toString() ?? '', 130,
-              hasError: _hasFieldError(worker, 'cv'),
-              fieldKey: 'cv',
-              workerIndex: index),
+            worker['phone']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'phone'),
+            fieldKey: 'phone',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['email']?.toString() ?? '',
+            150,
+            hasError: _hasFieldError(worker, 'email'),
+            fieldKey: 'email',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['position']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'position'),
+            fieldKey: 'position',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['salaryType']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'salaryType'),
+            fieldKey: 'salaryType',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['currency']?.toString() ?? '',
+            100,
+            hasError: _hasFieldError(worker, 'currency'),
+            fieldKey: 'currency',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['salaryAmount']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'salaryAmount'),
+            fieldKey: 'salaryAmount',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['fatherName']?.toString() ?? '',
+            150,
+            hasError: _hasFieldError(worker, 'fatherName'),
+            fieldKey: 'fatherName',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['nationalId']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'nationalId'),
+            fieldKey: 'nationalId',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['religion']?.toString() ?? '',
+            120,
+            hasError: _hasFieldError(worker, 'religion'),
+            fieldKey: 'religion',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['dob']?.toString() ?? '',
+            120,
+            hasError: _hasFieldError(worker, 'dob'),
+            fieldKey: 'dob',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['gender']?.toString() ?? '',
+            100,
+            hasError: _hasFieldError(worker, 'gender'),
+            fieldKey: 'gender',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['address']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'address'),
+            fieldKey: 'address',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['relationshipStatus']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'relationshipStatus'),
+            fieldKey: 'relationshipStatus',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['type1']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'type1'),
+            fieldKey: 'type1',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['type2']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'type2'),
+            fieldKey: 'type2',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['experienceLevel']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'experienceLevel'),
+            fieldKey: 'experienceLevel',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['education']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'education'),
+            fieldKey: 'education',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['annualLeaves']?.toString() ?? '',
+            120,
+            hasError: _hasFieldError(worker, 'annualLeaves'),
+            fieldKey: 'annualLeaves',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['joiningDate']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'joiningDate'),
+            fieldKey: 'joiningDate',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['profileImage']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'profileImage'),
+            fieldKey: 'profileImage',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['frontId']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'frontId'),
+            fieldKey: 'frontId',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['backId']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'backId'),
+            fieldKey: 'backId',
+            workerIndex: index,
+          ),
+          _buildDataCell(
+            worker['cv']?.toString() ?? '',
+            130,
+            hasError: _hasFieldError(worker, 'cv'),
+            fieldKey: 'cv',
+            workerIndex: index,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(String text, double width,
-      {String? fieldKey}) {
+  Widget _buildHeaderCell(String text, double width, {String? fieldKey}) {
     final bool hasError =
         fieldKey != null && _errorFieldNames().contains(fieldKey);
     return Container(
@@ -2383,27 +2595,27 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       margin: const EdgeInsets.only(right: 16),
       child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: hasError
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF475569),
-                  fontFamily: 'SF Pro Display',
-                ),
-                overflow: TextOverflow.ellipsis,
+        children: [
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: hasError
+                    ? const Color(0xFFDC2626)
+                    : const Color(0xFF475569),
+                fontFamily: 'SF Pro Display',
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            if (hasError) ...[
-              const SizedBox(width: 4),
-              const Icon(Icons.error, size: 14, color: Color(0xFFDC2626)),
-            ],
+          ),
+          if (hasError) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.error, size: 14, color: Color(0xFFDC2626)),
           ],
-        ),
+        ],
+      ),
     );
   }
 
@@ -2415,7 +2627,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     String? fieldKey,
     int workerIndex = -1,
   }) {
-    final isMediaField = fieldKey == 'profileImage' ||
+    final isMediaField =
+        fieldKey == 'profileImage' ||
         fieldKey == 'frontId' ||
         fieldKey == 'backId' ||
         fieldKey == 'cv';
@@ -2433,7 +2646,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           displayText = storedName.toString();
         } else if (text.startsWith('data:')) {
           final mime = text.split(';').first.split(':').last;
-          displayText = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
+          displayText = mime == 'application/pdf'
+              ? 'document.pdf'
+              : 'image.jpg';
         } else {
           displayText = text.split('/').last;
         }
@@ -2460,13 +2675,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               displayText,
               style: TextStyle(
                 fontSize: 14,
-                fontWeight:
-                    isBold ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
                 color: hasError
                     ? const Color(0xFFDC2626)
                     : isBold
-                        ? const Color(0xFF0F172A)
-                        : const Color(0xFF334155),
+                    ? const Color(0xFF0F172A)
+                    : const Color(0xFF334155),
                 fontFamily: 'SF Pro Display',
               ),
               overflow: TextOverflow.ellipsis,

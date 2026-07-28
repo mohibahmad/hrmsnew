@@ -507,6 +507,11 @@ class FirestoreService {
       (date) =>
           TimeOffService.isWorkerOnLeave(worker, timeOffRecords, onDate: date),
     );
+
+    // ── Remove absents that fall on holidays or company off-days ──
+    final holidayDates = await _getHolidayDatesForMonth(now.year, now.month);
+    absentDates.removeWhere((date) => holidayDates.contains(date));
+
     final paidLeaves = (planned['paidLeaves'] ?? 0) + nonDuplicateLegacyPaid;
     final unpaidLeaves = planned['unpaidLeaves'] ?? 0;
     return {
@@ -515,6 +520,73 @@ class FirestoreService {
       'unpaidLeaves': unpaidLeaves,
       'leaves': paidLeaves + unpaidLeaves,
     };
+  }
+
+  /// Calculates actual working days in a month excluding Sundays and enabled holidays.
+  Future<int> getMonthlyWorkingDays({DateTime? month}) async {
+    final now = month ?? DateTime.now();
+    final year = now.year;
+    final m = now.month;
+    final daysInMonth = DateTime(year, m + 1, 0).day;
+
+    // 1. Count weekdays (Mon–Sat) — Sunday = 7 is excluded.
+    int weekdays = 0;
+    for (int d = 1; d <= daysInMonth; d++) {
+      final date = DateTime(year, m, d);
+      if (date.weekday != DateTime.sunday) weekdays++;
+    }
+
+    // 2. Subtract enabled holidays that fall on a weekday.
+    final coll = _holidays;
+    if (coll == null) return weekdays;
+    try {
+      final snap = await coll.get();
+      int holidayCount = 0;
+      for (final doc in snap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        if (data['isEnabled'] == false) continue;
+        final hDay = int.tryParse((data['day'] ?? '').toString());
+        final hMonthStr = (data['month'] ?? '').toString();
+        final hMonth = _parseMonthString(hMonthStr);
+        if (hMonth == m && hDay != null && hDay >= 1 && hDay <= daysInMonth) {
+          final hDate = DateTime(year, m, hDay);
+          if (hDate.weekday != DateTime.sunday) holidayCount++;
+        }
+      }
+      return (weekdays - holidayCount).clamp(0, weekdays);
+    } catch (_) {
+      return weekdays;
+    }
+  }
+
+  static int _parseMonthString(String month) {
+    const months = {
+      'january': 1, 'february': 2, 'march': 3, 'april': 4,
+      'may': 5, 'june': 6, 'july': 7, 'august': 8,
+      'september': 9, 'october': 10, 'november': 11, 'december': 12,
+      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
+      'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+    };
+    return months[month.toLowerCase()] ?? 0;
+  }
+
+  Future<Set<DateTime>> _getHolidayDatesForMonth(int year, int month) async {
+    final dates = <DateTime>{};
+    final coll = _holidays;
+    if (coll == null) return dates;
+    try {
+      final snap = await coll.get();
+      for (final doc in snap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        if (data['isEnabled'] == false) continue;
+        final hDay = int.tryParse((data['day'] ?? '').toString());
+        final hMonth = _parseMonthString((data['month'] ?? '').toString());
+        if (hMonth == month && hDay != null && hDay >= 1 && hDay <= 31) {
+          dates.add(DateTime(year, month, hDay));
+        }
+      }
+    } catch (_) {}
+    return dates;
   }
 
   Stream<QuerySnapshot> get attendanceStream {

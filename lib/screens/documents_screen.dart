@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
+import 'dart:io' as io;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,6 +18,7 @@ import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdfx/pdfx.dart';
 import 'add_worker_flow.dart' show PdfPagePreview;
 import '../utils/guest_restriction.dart';
 
@@ -1407,6 +1409,167 @@ String _cleanDocumentFileName(String rawName) {
   return name.trim().isNotEmpty ? name.trim() : 'Document';
 }
 
+class _FullScreenPdfPreview extends StatefulWidget {
+  final String? url;
+
+  const _FullScreenPdfPreview({this.url});
+
+  @override
+  State<_FullScreenPdfPreview> createState() => _FullScreenPdfPreviewState();
+}
+
+class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
+  List<Uint8List> _pageImages = [];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _renderAllPages();
+  }
+
+  Future<void> _renderAllPages() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _pageImages = [];
+    });
+
+    try {
+      PdfDocument? document;
+      if (widget.url != null && widget.url!.isNotEmpty) {
+        if (widget.url!.startsWith('http')) {
+          final request = await io.HttpClient().getUrl(Uri.parse(widget.url!));
+          final response = await request.close();
+          final bytesBuilder = BytesBuilder();
+          await for (var chunk in response) {
+            bytesBuilder.add(chunk);
+          }
+          final bytes = bytesBuilder.takeBytes();
+          document = await PdfDocument.openData(bytes);
+        } else if (widget.url!.startsWith('data:application/pdf')) {
+          final base64Content = widget.url!.split(',').last;
+          final bytes = base64Decode(base64Content);
+          document = await PdfDocument.openData(bytes);
+        }
+      }
+
+      if (document != null) {
+        final pages = <Uint8List>[];
+        final totalPages = document.pagesCount;
+
+        for (int i = 1; i <= totalPages; i++) {
+          final page = await document.getPage(i);
+          final pageImage = await page.render(
+            width: page.width * 3,
+            height: page.height * 3,
+            format: PdfPageImageFormat.png,
+          );
+          if (pageImage != null) {
+            pages.add(pageImage.bytes);
+          }
+          await page.close();
+        }
+
+        if (mounted) {
+          setState(() {
+            _pageImages = pages;
+            _isLoading = false;
+          });
+        }
+        await document.close();
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Color(0xFF0247C4),
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Loading PDF...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
+            const SizedBox(height: 12),
+            Text(
+              'Failed to load PDF',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_pageImages.isEmpty) {
+      return const Center(
+        child: Text(
+          'No pages found',
+          style: TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display'),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: _pageImages.length,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Image.memory(
+            _pageImages[index],
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            width: double.infinity,
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _FullScreenDocumentViewer extends StatefulWidget {
   final String url;
   final String label;
@@ -1546,7 +1709,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                       color: const Color(0xFF000000),
                       width: double.infinity,
                       constraints: BoxConstraints(
-                        maxHeight: size.height * 0.70,
+                        maxHeight: size.height * 0.85,
                       ),
                       child: InteractiveViewer(
                         minScale: 0.5,
@@ -1555,9 +1718,13 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                       ),
                     )
                   : widget.isPdf
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: PdfPagePreview(existingCvUrl: widget.url),
+                  ? Container(
+                      color: const Color(0xFF000000),
+                      width: double.infinity,
+                      constraints: BoxConstraints(
+                        maxHeight: size.height * 0.85,
+                      ),
+                      child: _FullScreenPdfPreview(url: widget.url),
                     )
                   : SizedBox(
                       height: 280,

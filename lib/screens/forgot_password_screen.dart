@@ -315,7 +315,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       children: [
                         Positioned(
                           top: 40,
-                          left: 200,
+                          left: 20,
                           right: 40,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +323,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               const Text(
                                 'Welcome to HRMS',
                                 style: TextStyle(
-                                  fontSize: 48,
+                                  fontSize: 55,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   fontFamily: 'SF Pro Display',
@@ -343,13 +343,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         Positioned(
-                          top: 240,
-                          left: -520,
-                          right: 30,
-                          bottom: -250,
+                          top: 280,
+                          left: -460,
+                          
                           child: Transform.rotate(
-                            angle: -0.12,
+                            angle: -0.15,
                             child: Container(
+                              width: 1200,
+                              height: 800,
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(28),
@@ -362,17 +363,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   const BoxShadow(
                                     color: Colors.white,
                                     blurRadius: 0,
-                                    spreadRadius: 4,
+                                    spreadRadius: 3,
                                   ),
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.3),
                                     blurRadius: 30,
-                                    offset: const Offset(10, 15),
+                                    offset: const Offset(10, 9),
                                   ),
                                 ],
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Image.asset(
                                   'assets/dashboard_mockup.png',
                                   fit: BoxFit.cover,

@@ -30,6 +30,8 @@ class AutoPayrollResult {
   final String absentDeduction;
   final String leaveDeduction;
   String overtimeAmount;
+  String customDeduction;
+  double rawNetSalaryValue;
   final String salary;
   final String totalWorkDays;
   final String position;
@@ -47,6 +49,8 @@ class AutoPayrollResult {
     this.absentDeduction = '',
     this.leaveDeduction = '',
     this.overtimeAmount = '',
+    this.customDeduction = '',
+    this.rawNetSalaryValue = 0,
     this.salary = '',
     this.totalWorkDays = '22',
     this.position = '',
@@ -180,6 +184,9 @@ class SalaryDayScheduler {
     }
     final attendanceResults = await Future.wait(attendanceFutures);
 
+    // 2b. Get auto-calculated working days for the month (Sundays + holidays excluded).
+    final autoWorkDays = await firestoreService.getMonthlyWorkingDays();
+
     // 3. Calculate payroll for each worker using pre-fetched attendance.
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
@@ -188,7 +195,7 @@ class SalaryDayScheduler {
       final email = (worker['email'] ?? '').toString();
       final salaryStr = PayrollService.currentSalaryDisplay(worker);
       final totalWorkDays = (worker['totalWorkDays'] ?? '').toString();
-      final workDays = int.tryParse(totalWorkDays) ?? 22;
+      final workDays = int.tryParse(totalWorkDays) ?? autoWorkDays;
 
       int absents = attendanceResults[i]['absents'] ?? 0;
       int leaves = attendanceResults[i]['leaves'] ?? 0;
@@ -222,6 +229,7 @@ class SalaryDayScheduler {
           workDays - absents - (hasLeaveDeduction ? leaves : 0);
 
       String netSalary;
+      double rawNetVal = 0;
       try {
         final calc = PayrollService.calculatePayroll(
           salary: salaryStr,
@@ -235,6 +243,7 @@ class SalaryDayScheduler {
           salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
         );
         netSalary = calc['formattedNet'] as String? ?? '0';
+        rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
       } catch (e) {
         results.add(
           AutoPayrollResult(
@@ -253,6 +262,7 @@ class SalaryDayScheduler {
           workerName: name,
           email: email,
           netSalary: netSalary,
+          rawNetSalaryValue: rawNetVal,
           success: true,
           absents: absents,
           leaves: leaves,
@@ -798,14 +808,15 @@ class SalaryDayScheduler {
 
                     // ── Filter Chips with visible container ───────────
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
                       child: Container(
-                        width: 550,
-                        height: 46,
+                        width: 420,
+                        height: 38,
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFFFFF),
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
                         ),
                         child: ListView(
                           scrollDirection: Axis.horizontal,
@@ -1239,18 +1250,14 @@ class SalaryDayScheduler {
                                   String prefix = '';
                                   for (int idx = 0; idx < summary.results.length; idx++) {
                                     if (selectedIndices.contains(idx)) {
-                                      total += PayrollService.extractSalary(summary.results[idx].netSalary);
+                                      total += summary.results[idx].rawNetSalaryValue;
                                       if (prefix.isEmpty) {
                                         prefix = PayrollService.getCurrencyPrefix(summary.results[idx].netSalary);
                                         if (prefix.isEmpty) prefix = '\$';
                                       }
                                     }
                                   }
-                                  final formatted = total.toStringAsFixed(0).replaceAllMapped(
-                                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                                    (Match m) => '${m[1]},',
-                                  );
-                                  return '$prefix$formatted';
+                                  return '$prefix${PayrollService.formatNumber(total)}';
                                 }(),
                                 style: const TextStyle(
                                   fontSize: 16,
@@ -1591,6 +1598,8 @@ class SalaryDayScheduler {
                                   icon: Icons.remove_circle_outline,
                                   iconColor: const Color(0xFFEF4444),
                                   rows: [
+                                    // ── Editable Custom Deduction ───────────────────
+                                    _customDeductionRow(result, originalIndex, setDetailState, overtimeControllers),
                                     _metricRow('absent_deduction'.tr(), result.absentDeduction.isNotEmpty ? '-${result.absentDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
                                     _metricRow('leave_deduction'.tr(), result.leaveDeduction.isNotEmpty ? '-${result.leaveDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
                                   ],
@@ -1760,13 +1769,102 @@ class SalaryDayScheduler {
               fontFamily: 'SF Pro Display',
             ),
           ),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: valueColor,
+                fontFamily: 'SF Pro Display',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Editable custom deduction row shown above Absent/Leave deduction.
+  Widget _customDeductionRow(
+    AutoPayrollResult r,
+    int index,
+    void Function(VoidCallback) setDialogState,
+    Map<int, TextEditingController> controllers,
+  ) {
+    final deductionKey = -index - 1000;
+    if (!controllers.containsKey(deductionKey)) {
+      controllers[deductionKey] = TextEditingController(
+        text: r.customDeduction.isNotEmpty
+            ? r.customDeduction.replaceAll(RegExp(r'[^0-9.]'), '')
+            : '',
+      );
+    }
+    final controller = controllers[deductionKey]!;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFFD6A5), width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
           Text(
-            value,
-            style: TextStyle(
+            'custom_deduction'.tr(),
+            style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: valueColor,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF9A5A00),
               fontFamily: 'SF Pro Display',
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'SF Pro Display',
+                color: Color(0xFF9A5A00),
+              ),
+              textAlign: TextAlign.end,
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(
+                  color: const Color(0xFF9A5A00).withValues(alpha: 0.4),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'SF Pro Display',
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: Color(0xFFFFD6A5), width: 1),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: Color(0xFFFFD6A5), width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.5),
+                ),
+              ),
+              onChanged: (val) {
+                _recalcWithDeductions(r, val, () => setDialogState(() {}));
+              },
             ),
           ),
         ],
@@ -1868,11 +1966,13 @@ class SalaryDayScheduler {
   }
 
 
-  void _recalcOvertime(
+  void _recalcWithDeductions(
     AutoPayrollResult r,
-    String overtimeVal,
+    String deductionVal,
     VoidCallback onUpdated,
   ) {
+    r.customDeduction = deductionVal;
+    final deduction = PayrollService.extractSalary(deductionVal);
     final workDays = int.tryParse(r.totalWorkDays) ?? 22;
     final hasLeaveDeduction = r.leaveDeduction.isNotEmpty;
     final effectiveDays = workDays - r.absents - (hasLeaveDeduction ? r.leaves : 0);
@@ -1884,17 +1984,31 @@ class SalaryDayScheduler {
         daysWorked: effectiveDays > 0 ? effectiveDays.toString() : '0',
         absents: r.absents.toString(),
         leaves: r.leaves.toString(),
-        overtimeAmount: overtimeVal,
+        overtimeAmount: r.overtimeAmount,
         absentDeductionPerDay: r.absentDeduction,
         leaveDeductionPerDay: r.leaveDeduction,
         salaryType: r.salaryType,
       );
-      r.netSalary = calc['formattedNet'] as String? ?? r.netSalary;
-      r.overtimeAmount = overtimeVal;
+      final baseNet = ((calc['netSalary'] as num?) ?? 0).toDouble();
+      final netAfterDeduction = (baseNet - deduction).clamp(0, double.infinity).toDouble();
+      final currency = PayrollService.getCurrencyPrefix(r.netSalary);
+      final p = currency.isNotEmpty ? '$currency ' : '';
+      r.netSalary = '$p${PayrollService.formatNumber(netAfterDeduction)}';
+      r.rawNetSalaryValue = netAfterDeduction;
     } catch (_) {
       // Keep old values if calculation fails
     }
     onUpdated();
+  }
+
+  void _recalcOvertime(
+    AutoPayrollResult r,
+    String overtimeVal,
+    VoidCallback onUpdated,
+  ) {
+    r.overtimeAmount = overtimeVal;
+    // Always re-apply custom deduction so the two don't conflict
+    _recalcWithDeductions(r, r.customDeduction, onUpdated);
   }
 
 

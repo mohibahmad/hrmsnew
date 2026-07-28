@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
+import 'package:intl/intl.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_file/open_file.dart';
@@ -130,8 +131,676 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>>? _cachedFiltered;
   String _filterCacheKey = '';
 
+  // ── Share Attendance dropdown ──
+  String _selectedSharePeriod = 'Today';
+  final LayerLink _shareDropdownLink = LayerLink();
+  final GlobalKey _shareButtonKey = GlobalKey();
+  OverlayEntry? _shareDropdownOverlay;
+  bool _isShareDropdownOpen = false;
+
+  static const List<String> _sharePeriodOptions = [
+    'Today',
+    'Weekly',
+    'Monthly',
+    '6 Monthly',
+    'Yearly',
+    'Custom',
+  ];
+
+  String _localizeSharePeriod(String period) {
+    switch (period) {
+      case 'Today':
+        return 'today'.tr();
+      case 'Weekly':
+        return 'weekly'.tr();
+      case 'Monthly':
+        return 'monthly'.tr();
+      case '6 Monthly':
+        return '6_month'.tr();
+      case 'Yearly':
+        return 'yearly'.tr();
+      case 'Custom':
+        return 'custom'.tr();
+      default:
+        return period;
+    }
+  }
+
+  Future<void> _showCustomDateRangePicker() async {
+    DateTime calendarDate = DateTime.now();
+    final selectedDates = <DateTime>{};
+    DateTime? rangeStart;
+
+    final result = await showDialog<List<DateTime>?>(
+      context: context,
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              backgroundColor: const Color(0xFFFFFFFF),
+              elevation: 10,
+              child: Container(
+                width: 400,
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 20,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        Text(
+                          'Select Dates',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0247C4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          onPressed: selectedDates.isEmpty
+                              ? null
+                              : () {
+                                  final sortedDates = selectedDates.toList()
+                                    ..sort();
+                                  Navigator.of(context).pop(sortedDates);
+                                },
+                          child: Text(
+                            'Generate (${selectedDates.length})',
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildCalendarWithWeekdays(
+                      calendarDate,
+                      selectedDates,
+                      (DateTime date) {
+                        setModalState(() {
+                          if (rangeStart == null) {
+                            rangeStart = date;
+                            selectedDates.add(date);
+                          } else {
+                            final start = rangeStart!.isBefore(date)
+                                ? rangeStart!
+                                : date;
+                            final end = rangeStart!.isAfter(date)
+                                ? rangeStart!
+                                : date;
+                            for (
+                              var d = start;
+                              !d.isAfter(end);
+                              d = d.add(const Duration(days: 1))
+                            ) {
+                              selectedDates.add(d);
+                            }
+                            rangeStart = null;
+                          }
+                        });
+                      },
+                      (DateTime newDate) {
+                        setModalState(() {
+                          calendarDate = newDate;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    if (selectedDates.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          '${selectedDates.length} date(s) selected',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF0247C4),
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && result.isNotEmpty) {
+      _dismissShareDropdown();
+      setState(() => _selectedSharePeriod = 'Custom');
+      await _generateAndShareAttendance(
+        'Custom',
+        startDate: result.first,
+        endDate: result.last,
+      );
+    }
+  }
+
+  void _showShareDropdown() {
+    final RenderBox buttonRenderBox = _shareButtonKey.currentContext!.findRenderObject() as RenderBox;
+    final size = buttonRenderBox.size;
+
+    _shareDropdownOverlay = OverlayEntry(
+      builder: (ctx) => Stack(
+        children: [
+          GestureDetector(
+            onTap: _dismissShareDropdown,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              color: Colors.transparent,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          ),
+          Positioned(
+            width: size.width,
+            child: CompositedTransformFollower(
+              link: _shareDropdownLink,
+              showWhenUnlinked: false,
+              offset: Offset(0, 50),
+              child: Material(
+                elevation: 4,
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFCFCFC),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(6),
+                      bottomRight: Radius.circular(6),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _sharePeriodOptions.map((option) {
+                      final isSelected = _selectedSharePeriod == option;
+                      final isCustom = option == 'Custom';
+                      return GestureDetector(
+                        onTap: () {
+                          if (isCustom) {
+                            _dismissShareDropdown();
+                            _showCustomDateRangePicker();
+                          } else {
+                            _dismissShareDropdown();
+                            setState(() => _selectedSharePeriod = option);
+                            _generateAndShareAttendance(option);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                          color: Colors.transparent,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFF0247C4)
+                                        : Colors.grey.shade400,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: isSelected
+                                    ? Center(
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF0247C4),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _localizeSharePeriod(option),
+                                  style: TextStyle(
+                                    fontSize: 17.0,
+                                    color: isSelected
+                                        ? const Color(0xFF0247C4)
+                                        : Colors.grey.shade400,
+                                    fontWeight: FontWeight.w500,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Overlay.of(context).insert(_shareDropdownOverlay!);
+    setState(() => _isShareDropdownOpen = true);
+  }
+
+  Widget _buildCalendarWithWeekdays(
+    DateTime calendarDate,
+    Set<DateTime> selectedDates,
+    ValueChanged<DateTime> onDaySelected,
+    ValueChanged<DateTime> onMonthChanged,
+  ) {
+    String monthYearStr =
+        '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: () {
+                onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month - 1, 1),
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              ),
+            ),
+            Text(
+              monthYearStr,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                onMonthChanged(
+                  DateTime(calendarDate.year, calendarDate.month + 1, 1),
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_right, size: 20, color: Colors.black),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildWeekdayLabel('Sun', const Color(0xFFFF0004)),
+            const SizedBox(width: 8),
+            _buildWeekdayLabel('Mon', const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekdayLabel('Tue', const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekdayLabel('Wed', const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekdayLabel('Thu', const Color(0xFF0247C4)),
+            const SizedBox(width: 8),
+            _buildWeekdayLabel('Fri', const Color(0xFF4AC000)),
+            const SizedBox(width: 8),
+            _buildWeekdayLabel('Sat', const Color(0xFF0247C4)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected),
+      ],
+    );
+  }
+
+  Widget _buildWeekdayLabel(String day, Color color) {
+    return Expanded(
+      child: Container(
+        height: 18,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          day.toUpperCase(),
+          style: const TextStyle(
+            color: Color(0xFFFFFFFF),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDaysGridForRange(
+    DateTime calendarDate,
+    Set<DateTime> selectedDates,
+    ValueChanged<DateTime> onDaySelected,
+  ) {
+    int daysInMonth = DateTime(
+      calendarDate.year,
+      calendarDate.month + 1,
+      0,
+    ).day;
+    int firstWeekday = DateTime(
+      calendarDate.year,
+      calendarDate.month,
+      1,
+    ).weekday;
+    int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+
+    int currentDay = 1;
+    List<Widget> rows = [];
+
+    for (int i = 0; i < 6; i++) {
+      List<Widget> rowChildren = [];
+      for (int j = 0; j < 7; j++) {
+        int index = i * 7 + j;
+        if (index < startOffset) {
+          rowChildren.add(_buildDayCell('', false, null, null));
+        } else if (currentDay <= daysInMonth) {
+          final int tapDay = currentDay;
+          final date = DateTime(calendarDate.year, calendarDate.month, tapDay);
+          final isSelected = selectedDates.any(
+            (d) =>
+                d.year == date.year &&
+                d.month == date.month &&
+                d.day == date.day,
+          );
+          rowChildren.add(
+            _buildDayCell('$currentDay', isSelected, () {
+              onDaySelected(date);
+            }, date),
+          );
+          currentDay++;
+        } else {
+          rowChildren.add(_buildDayCell('', false, null, null));
+        }
+        if (j < 6) rowChildren.add(const SizedBox(width: 8));
+      }
+      rows.add(Row(children: rowChildren));
+      if (currentDay > daysInMonth && i >= 4) break;
+      if (i < 5) rows.add(const SizedBox(height: 8));
+    }
+    return Column(children: rows);
+  }
+
+  Widget _buildDayCell(
+    String day,
+    bool isSelected,
+    VoidCallback? onTap,
+    DateTime? date,
+  ) {
+    if (day.isEmpty) {
+      return const Expanded(
+        child: AspectRatio(aspectRatio: 1, child: SizedBox()),
+      );
+    }
+    final isSunday = date?.weekday == 7;
+    final isFriday = date?.weekday == 5;
+    final dayColor = isSunday
+        ? const Color(0xFFFF0004)
+        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
+    final selectedBg = isFriday
+        ? const Color(0xFF4AC000)
+        : const Color(0xFFFF0004);
+    return Expanded(
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? selectedBg : Colors.transparent,
+              border: Border.all(
+                color: isSelected
+                    ? selectedBg
+                    : (isSunday
+                          ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                          : (isFriday
+                                ? const Color(0xFF4AC000).withValues(alpha: 0.4)
+                                : Colors.grey.shade300)),
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              day,
+              style: TextStyle(
+                color: isSelected ? Color(0xFFFFFFFF) : dayColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _dismissShareDropdown() {
+    _shareDropdownOverlay?.remove();
+    _shareDropdownOverlay = null;
+    if (mounted) setState(() => _isShareDropdownOpen = false);
+  }
+
+  Future<void> _generateAndShareAttendance(
+    String period, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      // Determine date range
+      DateTime rangeStart;
+      DateTime rangeEnd = DateTime.now();
+
+      switch (period) {
+        case 'Today':
+          rangeStart = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+          break;
+        case 'Weekly':
+          rangeStart = rangeEnd.subtract(const Duration(days: 7));
+          break;
+        case 'Monthly':
+          rangeStart = DateTime(
+            rangeEnd.year,
+            rangeEnd.month - 1,
+            rangeEnd.day,
+          );
+          break;
+        case '6 Monthly':
+          rangeStart = DateTime(
+            rangeEnd.year,
+            rangeEnd.month - 6,
+            rangeEnd.day,
+          );
+          break;
+        case 'Yearly':
+          rangeStart = DateTime(
+            rangeEnd.year - 1,
+            rangeEnd.month,
+            rangeEnd.day,
+          );
+          break;
+        case 'Custom':
+          if (startDate != null && endDate != null) {
+            rangeStart = startDate;
+            rangeEnd = endDate;
+          } else {
+            FlashySnackBar.show(
+              context,
+              message: 'Please select a date range',
+              isError: true,
+            );
+            return;
+          }
+          break;
+        default:
+          rangeStart = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+      }
+
+      // Filter attendance records within date range
+      final filteredRecords = _rawAttendanceDocs.where((record) {
+        final createdAt = record['createdAt'];
+        if (createdAt == null) return false;
+        DateTime? recordDate;
+        if (createdAt is Timestamp) {
+          recordDate = createdAt.toDate();
+        } else if (createdAt is DateTime) {
+          recordDate = createdAt;
+        } else {
+          recordDate = DateTime.tryParse(createdAt.toString());
+        }
+        if (recordDate == null) return false;
+        return recordDate.isAfter(
+              rangeStart.subtract(const Duration(days: 1)),
+            ) &&
+            recordDate.isBefore(rangeEnd.add(const Duration(days: 1)));
+      }).toList();
+
+      if (filteredRecords.isEmpty) {
+        FlashySnackBar.show(
+          context,
+          message: 'no_attendance_records_for_period'.tr(),
+          isError: true,
+        );
+        return;
+      }
+
+      // Build CSV rows
+      final rows = <List<dynamic>>[];
+      rows.add([
+        'Worker Name',
+        'Email',
+        'Date',
+        'Status',
+        'Work Type',
+        'Attendance Type',
+      ]);
+
+      // Sort by date descending
+      final sorted = List<Map<String, dynamic>>.from(filteredRecords);
+      sorted.sort((a, b) {
+        final aTime = a['createdAt'];
+        final bTime = b['createdAt'];
+        if (aTime is Timestamp && bTime is Timestamp) {
+          return bTime.compareTo(aTime);
+        }
+        return 0;
+      });
+
+      for (final record in sorted) {
+        final name = (record['name'] ?? '').toString();
+        final email = (record['email'] ?? '').toString();
+        final status = (record['status'] ?? '').toString();
+        final workType = (record['workType'] ?? '').toString();
+        final attType = (record['attendanceType'] ?? '').toString();
+
+        String dateStr;
+        final createdAt = record['createdAt'];
+        if (createdAt is Timestamp) {
+          final d = createdAt.toDate();
+          dateStr =
+              '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        } else {
+          dateStr = createdAt?.toString() ?? '';
+        }
+
+        rows.add([name, email, dateStr, status, workType, attType]);
+      }
+
+      // Generate CSV
+      final csvString = const CsvEncoder().convert(rows);
+      final csvBytes = Uint8List.fromList(utf8.encode(csvString));
+
+      // Save to zip if multiple periods, else single CSV
+      final fileName =
+          'attendance_${period.replaceAll(' ', '_').toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}.csv';
+
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: 'save_attendance_report'.tr(),
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        bytes: csvBytes,
+      );
+
+      if (outputFile == null) return;
+
+      final file = File(outputFile);
+      await file.writeAsString(csvString);
+
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'error_generating_report'.tr(namedArgs: {'error': '$e'}),
+          isError: true,
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _dismissShareDropdown();
     _attendanceSub?.cancel();
     _workersSub?.cancel();
     _timeOffSub?.cancel();
@@ -154,10 +823,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _timeOffRecords,
           );
           if (isOnLeave) {
-            return {
-              ...record,
-              'status': 'Leave',
-            };
+            return {...record, 'status': 'Leave'};
           }
           return record;
         }).toList();
@@ -295,7 +961,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredRecords {
-    final key = '${_attendanceDocs.length}_$_searchQuery$_selectedTab$_selectedTimeframe';
+    final key =
+        '${_attendanceDocs.length}_$_searchQuery$_selectedTab$_selectedTimeframe';
     if (_cachedFiltered != null && _filterCacheKey == key) {
       return _cachedFiltered!;
     }
@@ -326,7 +993,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       backgroundColor: bgGray,
       body: Column(
         children: [
-
           _buildHeader(context),
 
           Expanded(
@@ -347,7 +1013,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,8 +1058,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ],
                         ),
                       ),
-
-
                     ],
                   ),
                   const SizedBox(height: 40),
@@ -480,9 +1143,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     onChanged: (val) {
                       _searchQuery = val;
                       _searchDebounce?.cancel();
-                      _searchDebounce = Timer(const Duration(milliseconds: 250), () {
-                        if (mounted) setState(() {});
-                      });
+                      _searchDebounce = Timer(
+                        const Duration(milliseconds: 250),
+                        () {
+                          if (mounted) setState(() {});
+                        },
+                      );
                     },
                     decoration: InputDecoration(
                       hintText: 'search_by_workers_name'.tr(),
@@ -521,6 +1187,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
         const SizedBox(width: 12),
+        // Workers Attendance Button
         SizedBox(
           height: 50,
           child: ElevatedButton(
@@ -560,6 +1227,64 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Share Attendance Dropdown — same style as CustomTimeframeDropdown
+        CompositedTransformTarget(
+          link: _shareDropdownLink,
+          child: GestureDetector(
+            key: _shareButtonKey,
+            onTap: () {
+              final isGuest = _authService.currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
+              if (_isShareDropdownOpen) {
+                _dismissShareDropdown();
+              } else {
+                _showShareDropdown();
+              }
+            },
+            child: Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+              decoration: BoxDecoration(
+                color: primaryBlue,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(6),
+                  topRight: const Radius.circular(6),
+                  bottomLeft: Radius.circular(_isShareDropdownOpen ? 0 : 6),
+                  bottomRight: Radius.circular(_isShareDropdownOpen ? 0 : 6),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text(
+                      'share_attendance'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.0,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_drop_down,
+                    color: Color(0xFFFFFFFF),
+                    size: 30,
+                  ),
+                ],
               ),
             ),
           ),
@@ -776,14 +1501,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final periodFilteredRecords = workerRecords.where((record) {
       final createdAt = record['createdAt'];
       if (createdAt == null) return true;
-      return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedTimeframe);
+      return AppDateUtils.isTimestampWithinPeriod(
+        createdAt,
+        _selectedTimeframe,
+      );
     }).toList();
 
     // Get approved time off dates for this worker
     final timeOffDates = TimeOffService.allLeaveDatesForWorker(
-          doc,
-          _timeOffRecords,
-        );
+      doc,
+      _timeOffRecords,
+    );
 
     // Also filter out attendance records that fall on approved time off days
     final filteredRecords = periodFilteredRecords.where((record) {
@@ -810,7 +1538,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     int totalWorkingDays = filteredRecords.length;
     int absents = filteredRecords.where((d) => d['status'] == 'Absent').length;
     int leaves = filteredRecords.where((d) => d['status'] == 'Leave').length;
-    int presents = filteredRecords.where((d) => d['status'] == 'Present').length;
+    int presents = filteredRecords
+        .where((d) => d['status'] == 'Present')
+        .length;
     double percentage = totalWorkingDays > 0
         ? (presents / totalWorkingDays) * 100
         : 0.0;
@@ -861,7 +1591,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       child: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -939,7 +1668,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           name,
@@ -1011,7 +1741,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
                               child: GestureDetector(
-                                onTap: () => _showAttendancePreview(context, doc),
+                                onTap: () =>
+                                    _showAttendancePreview(context, doc),
                                 child: const Icon(
                                   Icons.visibility,
                                   color: Colors.black,
@@ -1055,9 +1786,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ? greenPresent
             : (status == 'Absent'
                   ? redAbsent
-                  : (status.isEmpty
-                        ? Colors.grey
-                        : orangeLeave)),
+                  : (status.isEmpty ? Colors.grey : orangeLeave)),
         fontSize: 15,
         fontWeight: FontWeight.w600,
         fontFamily: 'SF Pro Display',
@@ -1184,31 +1913,30 @@ class _WorkerAttendancePreviewCardState
                   letterSpacing: 0.5,
                 ),
               ),
-        
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: IconButton(
-                      icon: SvgPicture.asset(
-                        'assets/share1.svg',
-                        height: 18,
-                        width: 18,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFFFFFFFF),
-                          BlendMode.srcIn,
-                        ),
+
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: IconButton(
+                    icon: SvgPicture.asset(
+                      'assets/share1.svg',
+                      height: 18,
+                      width: 18,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFFFFFFFF),
+                        BlendMode.srcIn,
                       ),
-                      onPressed: () => _exportCsv(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
+                    onPressed: () => _exportCsv(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ),
-            
+              ),
             ],
-        
-          )),
+          ),
+        ),
         Container(
           color: const Color(0xFFFFFFFF),
           padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
@@ -1571,7 +2299,6 @@ class _WorkerAttendancePreviewCardState
   Future<void> _exportCsv(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
-
     rows.add(['Worker Attendance Summary']);
     rows.add(['Name', widget.record.name]);
     rows.add(['Email', widget.record.email]);
@@ -1583,12 +2310,8 @@ class _WorkerAttendancePreviewCardState
     rows.add(['Total Presents', '$_presents ${'days_unit'.tr()}']);
     rows.add(['Total Absents', '$_absents ${'days_unit'.tr()}']);
     rows.add(['Total Leaves', '$_leaves ${'days_unit'.tr()}']);
-    rows.add([
-      'Attendance Percentage',
-      '${_percentage.toStringAsFixed(1)}%',
-    ]);
+    rows.add(['Attendance Percentage', '${_percentage.toStringAsFixed(1)}%']);
     rows.add([]);
-
 
     rows.add(['Daily Attendance Logs']);
     rows.add([
@@ -1598,7 +2321,6 @@ class _WorkerAttendancePreviewCardState
       'Attendance Type',
       'Reason/Notes',
     ]);
-
 
     final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);
     sortedRecords.sort((a, b) {

@@ -610,7 +610,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               const Text(
                                 'Welcome to HRMS',
                                 style: TextStyle(
-                                  fontSize: 48,
+                                  fontSize: 55,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   fontFamily: 'SF Pro Display',
@@ -631,13 +631,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         // Dashboard Mockup Image — styled as a tilted tablet (matching login screen)
                         Positioned(
-                          top: 240,
-                          left: -520,
-                          right: 30,
-                          bottom: -250,
+                          top: 280,
+                          left: -460,
+                          
                           child: Transform.rotate(
-                            angle: -0.12,
+                            angle: -0.15,
                             child: Container(
+                              width: 1200,
+                              height: 800,
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(28),
@@ -647,21 +648,20 @@ class _SignupScreenState extends State<SignupScreen> {
                                   bottom: BorderSide(color: Color(0xFF000000), width: 20),
                                 ),
                                 boxShadow: [
-                                  // ✅ White bold outline using spreadRadius
                                   const BoxShadow(
                                     color: Colors.white,
                                     blurRadius: 0,
-                                    spreadRadius: 4,
+                                    spreadRadius: 3,
                                   ),
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.3),
                                     blurRadius: 30,
-                                    offset: const Offset(10, 15),
+                                    offset: const Offset(10, 9),
                                   ),
                                 ],
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Image.asset(
                                   'assets/dashboard_mockup.png',
                                   fit: BoxFit.cover,

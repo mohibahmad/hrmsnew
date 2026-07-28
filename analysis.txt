@@ -1,0 +1,6 @@
+[info] 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss (/Users/macbookpro/hrms/lib/screens/login_screen.dart:454:62)
+[info] 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss (/Users/macbookpro/hrms/lib/screens/login_screen.dart:534:42)
+[info] 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss (/Users/macbookpro/hrms/lib/screens/login_screen.dart:652:57)
+[info] 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss (/Users/macbookpro/hrms/lib/screens/login_screen.dart:713:43)
+[info] Don't use 'BuildContext's across async gaps (/Users/macbookpro/hrms/lib/screens/login_screen.dart:108:11)
+[info] Don't use 'BuildContext's across async gaps (/Users/macbookpro/hrms/lib/screens/login_screen.dart:112:22)

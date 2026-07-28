@@ -200,12 +200,19 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) return;
     try {
-      final attendance = await _firestore.getWorkerMonthlyAttendance(_email);
+      final results = await Future<Map<String, int>>.value(
+        _firestore.getWorkerMonthlyAttendance(_email),
+      );
+      final workingDays = await _firestore.getMonthlyWorkingDays();
       if (!mounted) return;
       setState(() {
-        _absentsCtrl.text = (attendance['absents'] ?? 0).toString();
-        _paidLeaves = attendance['paidLeaves'] ?? 0;
-        _leavesCtrl.text = (attendance['unpaidLeaves'] ?? 0).toString();
+        _absentsCtrl.text = (results['absents'] ?? 0).toString();
+        _paidLeaves = results['paidLeaves'] ?? 0;
+        _leavesCtrl.text = (results['unpaidLeaves'] ?? 0).toString();
+        // Auto-fill totalWorkDays only if not already set by HR
+        if (_workDaysCtrl.text.trim().isEmpty && workingDays > 0) {
+          _workDaysCtrl.text = workingDays.toString();
+        }
       });
       _recalc();
     } catch (_) {
@@ -719,8 +726,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 imageUrl: _profileImage,
                 name: _name,
                 size: 80,
-                shape: BoxShape.rectangle,
-                borderRadius: BorderRadius.circular(12),
+                shape: BoxShape.circle,
               ),
               Positioned(
                 bottom: -8,
@@ -767,22 +773,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 Row(
                   children: [
                     const Icon(
-                      Icons.badge_outlined,
-                      color: Color(0xB3FFFFFF),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'ID: EMP-${_email.hashCode.abs().toString().padLeft(5, '0').substring(0, 5)}',
-
-                      style: const TextStyle(
-                        color: Color(0xB3FFFFFF),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    const Icon(
-                      Icons.corporate_fare_outlined,
+                      Icons.work_outline,
                       color: Color(0xB3FFFFFF),
                       size: 16,
                     ),
