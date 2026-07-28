@@ -119,7 +119,7 @@ class HolidayCard extends StatelessWidget {
                   day,
                   style: TextStyle(
                     color: mainTextColor,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'SF Pro Display',
                   ),
@@ -131,8 +131,8 @@ class HolidayCard extends StatelessWidget {
                   _localizeMonth(month),
                   style: TextStyle(
                     color: mainTextColor,
-                    fontSize: _localizeMonth(month) == 'Aug' ? 13 : 16,
-                    fontWeight: _localizeMonth(month) == 'Aug' ? FontWeight.w500 : FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
@@ -213,7 +213,7 @@ class HolidayCard extends StatelessWidget {
                       color: mainTextColor,
                       fontSize: 13,
                       height: 1.1,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       fontFamily: 'SF Pro Display',
                     ),
                   ),
