@@ -1087,7 +1087,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             : const Duration(seconds: 5),
       );
 
-      await tryShowFirstMilestoneRateUs(context, 'bulk_worker');
+      await tryShowFirstMilestoneRateUs('bulk_worker');
 
       setState(() {
         _validWorkers = [];

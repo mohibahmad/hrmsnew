@@ -263,7 +263,7 @@ class _AddNewWorkerScreenState extends State<AddNewWorkerScreen> {
         _clearForm();
       }
       if (context.mounted) {
-        tryShowFirstMilestoneRateUs(context, 'worker');
+        tryShowFirstMilestoneRateUs('worker');
       }
     } catch (e) {
       if (mounted) {

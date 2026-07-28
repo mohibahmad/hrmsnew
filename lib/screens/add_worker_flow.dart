@@ -1211,7 +1211,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
             ? '$workerName updated successfully!'
             : 'worker_added_successfully'.tr(),
       );
-      await tryShowFirstMilestoneRateUs(context, 'worker');
+      await tryShowFirstMilestoneRateUs('worker');
       if (context.mounted) {
         widget.onBack?.call();
       }

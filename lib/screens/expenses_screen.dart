@@ -704,7 +704,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   );
                                   if (parentContext.mounted) {
                                     tryShowFirstMilestoneRateUs(
-                                      parentContext,
                                       'expense',
                                     );
                                   }

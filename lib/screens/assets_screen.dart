@@ -384,7 +384,6 @@ onPressed: isSaving
                               );
                               if (parentContext.mounted) {
                                 tryShowFirstMilestoneRateUs(
-                                  parentContext,
                                   'asset',
                                 );
                               }

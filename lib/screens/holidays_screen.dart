@@ -560,7 +560,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               );
                               if (parentContext.mounted) {
                                 tryShowFirstMilestoneRateUs(
-                                  parentContext,
                                   'holiday',
                                 );
                               }

@@ -1299,30 +1299,23 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F3F6),
+          color: const Color(0xFF000000),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.grey.shade200, width: 1),
+          border: Border.all(color: Colors.grey.shade800, width: 1),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             Positioned(
-              top: 8,
-              bottom: 8,
-              left: 50,
-              right: 50,
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
+                  color: const Color(0xFF1A1A1A),
                   borderRadius: BorderRadius.circular(6),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
                 ),
                 child: isImage
                     ? (_cvBytes != null
@@ -1610,13 +1603,15 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
     final Widget imageContent = widget.url.startsWith('data:')
         ? Image.memory(
             _base64ToBytes(widget.url),
-            width: previewWidth,
-            fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
           )
         : CachedNetworkImage(
             imageUrl: widget.url,
-            width: previewWidth,
-            fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
             placeholder: (c, u) => const SizedBox(
               height: 200,
               child: Center(
