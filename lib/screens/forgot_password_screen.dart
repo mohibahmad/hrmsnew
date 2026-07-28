@@ -177,7 +177,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         'invalid_email_address_short'.tr(),
       'invalid-argument' => 'invalid_or_expired_otp'.tr(),
       'failed-precondition' => 'password_requirements_not_met'.tr(),
-      'deadline-exceeded' || 'unavailable' => 'network_error_short'.tr(),
+      'deadline-exceeded' => 'network_error_short'.tr(),
+      'unavailable' => 'network_error_short'.tr(),
       _ => 'password_reset_failed'.tr(),
     };
     _showMessage(message, isError: true);
@@ -239,7 +240,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     _PasswordResetStep.password => _confirmPasswordReset(),
   };
 
-  // ─── Decoration helpers (matching login/signup) ───
+  // ─── Decoration helpers ───────────────────────────────────────────────────
 
   InputDecoration _buildInputDecoration(
     String hint, {
@@ -296,7 +297,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ─── UI ───
+  // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -310,100 +311,115 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         children: [
           Row(
             children: [
-              // Left Blue Banner (desktop only)
+              // ─── Left Blue Banner ─────────────────────────────────────────
               if (isDesktop)
                 Expanded(
                   flex: 11,
                   child: Container(
                     color: const Color(0xFF165CDB),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: 40,
-                          left: 20,
-                          right: 40,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Welcome to HRMS',
-                                style: TextStyle(
-                                  fontSize: 55,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const Text(
-                                'Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Positioned(
-                          top: 300,
-                          left: -520,
-                          right: 90,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 880 = reference width at ~1600px window (1600 * 11/20)
+                        final scale = (constraints.maxWidth / 880.0).clamp(
+                          0.4,
+                          1.2,
+                        );
 
-                          child: Transform.rotate(
-                            angle: -0.18,
-                            child: Container(
-                              width: 1200,
-                              height: 800,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(28),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
+                        return Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            // Heading text — left padding scales with window
+                            Positioned(
+                              top: 40,
+                              left: 80,
+                              right: 40,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'welcome_to_hrms'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 63,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro Display',
+                                      letterSpacing: 3,
+                                    ),
                                   ),
-                                  right: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
-                                  ),
-                                ),
-                                boxShadow: [
-                                  const BoxShadow(
-                                    color: Colors.white,
-                                    blurRadius: 0,
-                                    spreadRadius: 3,
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 30,
-                                    offset: const Offset(10, 9),
+                                  Text(
+                                    'welcome_banner_subtitle'.tr(),
+                                    style: TextStyle(
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro Display',
+                                      height: 1.4,
+                                      letterSpacing: 2,
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.asset(
-                                  'assets/dashboard_mockup.png',
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topLeft,
+                            ),
+
+                            // Mockup — proportionally scaled with window
+                            Positioned(
+                              top: 380 * scale,
+                              left: -520 * scale,
+                              right: 90,
+                              child: Transform.rotate(
+                                angle: -0.18,
+                                child: Container(
+                                  width: 1200 * scale,
+                                  height: 800 * scale,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(28),
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                      right: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                      bottom: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                    ),
+                                    boxShadow: [
+                                      const BoxShadow(
+                                        color: Colors.white,
+                                        blurRadius: 0,
+                                        spreadRadius: 3,
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 30,
+                                        offset: const Offset(10, 9),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.asset(
+                                      'assets/dashboard_mockup.png',
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.topLeft,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
 
-              // Right Side Form
+              // ─── Right Side Form ──────────────────────────────────────────
               Expanded(
                 flex: 9,
                 child: Center(
@@ -541,7 +557,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ],
           ),
 
-          // Floating Language selector
+          // ─── Floating Language Selector ───────────────────────────────────
           Positioned(
             top: 40,
             right: 40,
@@ -577,6 +593,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
+  // ─── Step Indicator ───────────────────────────────────────────────────────
+
   Widget _buildStepIndicator() {
     final currentIndex = _step.index;
     return Row(
@@ -595,6 +613,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       }),
     );
   }
+
+  // ─── Step Forms ───────────────────────────────────────────────────────────
 
   Widget _buildCurrentForm() {
     switch (_step) {
@@ -628,6 +648,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ],
         );
+
       case _PasswordResetStep.otp:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,6 +709,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ],
         );
+
       case _PasswordResetStep.password:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

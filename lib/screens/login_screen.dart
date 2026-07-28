@@ -46,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
   }
 
   @override
@@ -84,7 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
-        // ✅ DELETED ACCOUNT CHECK
         if (await _firestoreService.isCurrentUserDeleted()) {
           await _authService.signOut();
           if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
@@ -179,7 +177,6 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (mounted) {
-        // ✅ DELETED ACCOUNT CHECK PEHLE KARO
         if (await _firestoreService.isCurrentUserDeleted()) {
           await _authService.signOut();
           if (mounted) _showErrorSnackBar('account_deleted_contact'.tr());
@@ -344,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Text(
         'Welcome Back!'.tr(),
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
           color: Colors.black,
@@ -444,8 +441,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
         behavior: HitTestBehavior.opaque,
-        child: Text(
-          'forget_password'.tr(),
+        child: const Text(
+          'forget_password',
           style: TextStyle(
             color: Color(0xFFFF0000),
             fontSize: 13,
@@ -484,7 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 )
               : Text(
                   'log_in'.tr(),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFFFFFF),
@@ -603,101 +600,114 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Row(
             children: [
-              // Left Blue Banner
+              // ─── Left Blue Banner ───────────────────────────────────────
               if (isDesktop)
                 Expanded(
                   flex: 11,
                   child: Container(
                     color: const Color(0xFF165CDB),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: 40,
-                          left: 200,
-                          right: 40,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'welcome_to_hrms'.tr(),
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              Text(
-                                'welcome_banner_subtitle'.tr(),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 880 = reference width at ~1600px window (1600 * 11/20)
+                        final scale = (constraints.maxWidth / 880.0).clamp(
+                          0.4,
+                          1.2,
+                        );
 
-                        Positioned(
-                          top: 300,
-                          left: -520,
-                          right: 90,
-
-                          child: Transform.rotate(
-                            angle: -0.18,
-                            child: Container(
-                              width: 1200,
-                              height: 800,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(28),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
+                        return Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            // Heading text — unchanged
+                            Positioned(
+                              top: 40,
+                              left: 80,
+                              right: 40,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'welcome_to_hrms'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 63,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro Display',
+                                      letterSpacing: 3,
+                                    ),
                                   ),
-                                  right: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
-                                  ),
-                                ),
-                                boxShadow: [
-                                  const BoxShadow(
-                                    color: Colors.white,
-                                    blurRadius: 0,
-                                    spreadRadius: 3,
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 30,
-                                    offset: const Offset(10, 9),
+                                  Text(
+                                    'welcome_banner_subtitle'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro Display',
+                                      height: 1.4,
+                                      letterSpacing: 2,
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.asset(
-                                  'assets/dashboard_mockup.png',
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topLeft,
+                            ),
+
+                            Positioned(
+                              top: 380 * scale,
+                              left: -520 * scale,
+                              right: 80,
+                              child: Transform.rotate(
+                                angle: -0.18,
+                                child: Container(
+                                  width: 1200 * scale,
+                                  height: 800 * scale,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(28),
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                      right: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                      bottom: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                    ),
+                                    boxShadow: [
+                                      const BoxShadow(
+                                        color: Colors.white,
+                                        blurRadius: 0,
+                                        spreadRadius: 3,
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 30,
+                                        offset: const Offset(10, 9),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.asset(
+                                      'assets/dashboard_mockup.png',
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.topLeft,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
 
-              // Right Side Form
+              // ─── Right Side Form ────────────────────────────────────────
               Expanded(
                 flex: 9,
                 child: Center(
@@ -723,7 +733,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
 
-          // Floating Language selector
+          // ─── Floating Language Selector ─────────────────────────────────
           Positioned(
             top: 40,
             right: 40,

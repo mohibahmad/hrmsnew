@@ -11,7 +11,7 @@ import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
-import '../shared/auth_widgets.dart'; // Retained for buildSocialButton & showLanguageModal
+import '../shared/auth_widgets.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -48,7 +48,6 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
-    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
   }
 
   @override
@@ -87,7 +86,6 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
-        // ✅ DELETED ACCOUNT CHECK
         if (await _firestoreService.isCurrentUserDeleted()) {
           await _authService.signOut();
           if (mounted) {
@@ -184,12 +182,10 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final email = _emailController.text.trim();
 
-      // ✅ EMAIL DELETED CHECK WITH ERROR HANDLING
       bool isDeleted = false;
       try {
         isDeleted = await _firestoreService.isEmailDeleted(email);
       } catch (_) {
-        // Network error — assume not deleted
         isDeleted = false;
       }
 
@@ -209,7 +205,6 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
       );
 
-      // Derive display name from email (local part before @)
       final emailLocalPart = _emailController.text.trim().split('@')[0];
       try {
         await credential.user?.updateDisplayName(emailLocalPart);
@@ -286,7 +281,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // Helper Custom Decoration to match the exact design borders
   InputDecoration _buildCustomInputDecoration(
     String hint, {
     bool isPassword = false,
@@ -347,15 +341,15 @@ class _SignupScreenState extends State<SignupScreen> {
       Center(
         child: SvgPicture.asset(
           'assets/HR_dark.svg',
-          height: 80, // Sized correctly as per design
+          height: 80,
           fit: BoxFit.contain,
         ),
       ),
       const SizedBox(height: 50),
 
-      Text(
+      const Text(
         'Create Account',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
           color: Colors.black,
@@ -527,7 +521,6 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 16),
 
-      // Kept social logins to preserve full functionality as requested
       if (_googleEnabled)
         buildSocialButton(
           context: context,
@@ -572,8 +565,7 @@ class _SignupScreenState extends State<SignupScreen> {
       Center(
         child: RichText(
           text: TextSpan(
-            text:
-                'Already have an account? ', // Preserved original routing text logic
+            text: 'Already have an account? ',
             style: const TextStyle(
               color: Colors.black87,
               fontSize: 14,
@@ -582,7 +574,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             children: [
               TextSpan(
-                text: 'Sign In', // Exact match for design
+                text: 'Sign In',
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -608,8 +600,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDesktop =
-        size.width > 800; // Perfect for M1, M1 Pro, 16-inch laptops
+    final isDesktop = size.width > 800;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -618,101 +609,116 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           Row(
             children: [
-              // Left Blue Banner (Only visible on large screens)
+              // ─── Left Blue Banner ───────────────────────────────────────
               if (isDesktop)
                 Expanded(
-                  flex: 11, // Adjusts width ratio visually
+                  flex: 11,
                   child: Container(
-                    color: const Color(0xFF165CDB), // Design exact matched blue
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: 40,
-                          left: 200,
-                          right: 40,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Welcome to HRMS',
-                                style: TextStyle(
-                                  fontSize: 55,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const Text(
-                                'Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                  fontFamily: 'SF Pro Display',
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Dashboard Mockup Image — styled as a tilted tablet (matching login screen)
-                        Positioned(
-                          top: 300,
-                          left: -520,
-                          right: 90,
+                    color: const Color(0xFF165CDB),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 880 = reference width at ~1600px window (1600 * 11/20)
+                        final scale = (constraints.maxWidth / 880.0).clamp(
+                          0.4,
+                          1.2,
+                        );
 
-                          child: Transform.rotate(
-                            angle: -0.18,
-                            child: Container(
-                              width: 1200,
-                              height: 800,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(28),
-                                border: const Border(
-                                  left: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
+                        return Stack(
+                          clipBehavior: Clip.hardEdge,
+                          children: [
+                            // Heading text — scales left padding with window
+                            Positioned(
+                              top: 40,
+                              left: 80,
+                              right: 40,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'welcome_to_hrms'.tr(),
+
+                                    style: TextStyle(
+                                      fontSize: 63,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro Display',
+                                      letterSpacing: 2,
+                                    ),
                                   ),
-                                  right: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Color(0xFF000000),
-                                    width: 20,
-                                  ),
-                                ),
-                                boxShadow: [
-                                  const BoxShadow(
-                                    color: Colors.white,
-                                    blurRadius: 0,
-                                    spreadRadius: 3,
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 30,
-                                    offset: const Offset(10, 9),
+                                  Text(
+                                    'welcome_banner_subtitle'.tr(),
+                                    style: TextStyle(
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro Display',
+                                      height: 1.4,
+                                      letterSpacing: 2,
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.asset(
-                                  'assets/dashboard_mockup.png',
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topLeft,
+                            ),
+
+                            // Mockup — proportionally scaled with window
+                            Positioned(
+                              top: 380 * scale,
+                              left: -520 * scale,
+                              right: 90,
+                              child: Transform.rotate(
+                                angle: -0.18,
+                                child: Container(
+                                  width: 1200 * scale,
+                                  height: 800 * scale,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(28),
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                      right: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                      bottom: BorderSide(
+                                        color: const Color(0xFF000000),
+                                        width: 20 * scale,
+                                      ),
+                                    ),
+                                    boxShadow: [
+                                      const BoxShadow(
+                                        color: Colors.white,
+                                        blurRadius: 0,
+                                        spreadRadius: 3,
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 30,
+                                        offset: const Offset(10, 9),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.asset(
+                                      'assets/dashboard_mockup.png',
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.topLeft,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
 
-              // Right Side Form
+              // ─── Right Side Form ────────────────────────────────────────
               Expanded(
                 flex: 9,
                 child: Center(
@@ -724,9 +730,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Transform.translate(
                       offset: const Offset(0, -16),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 420,
-                        ), // Locks width for perfectly readable form on laptops
+                        constraints: const BoxConstraints(maxWidth: 420),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -740,7 +744,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ],
           ),
 
-          // Floating Language selector at Top-Right
+          // ─── Floating Language Selector ─────────────────────────────────
           Positioned(
             top: 40,
             right: 40,
