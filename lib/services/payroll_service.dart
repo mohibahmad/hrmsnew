@@ -29,7 +29,7 @@ class PayrollService {
 
       final payrollRecord = monthlyPayrollDocs.firstWhere((p) {
         final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-        final pName = (p['name'] ?? '').toString().trim().toLowerCase();
+        final pName = (p['name'] ?? p['workerName'] ?? '').toString().trim().toLowerCase();
         return (email.isNotEmpty && pEmail == email) ||
             (name.isNotEmpty && pName == name);
       }, orElse: () => {});

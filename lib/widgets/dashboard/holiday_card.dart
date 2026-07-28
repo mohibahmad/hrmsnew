@@ -20,31 +20,32 @@ class HolidayCard extends StatelessWidget {
   });
 
   static String _localizeMonth(String month) {
+    // Return abbreviated 3-letter month names so they fit neatly in the card
     switch (month) {
       case 'January':
-        return 'month_january'.tr();
+        return 'Jan';
       case 'February':
-        return 'month_february'.tr();
+        return 'Feb';
       case 'March':
-        return 'month_march'.tr();
+        return 'Mar';
       case 'April':
-        return 'month_april'.tr();
+        return 'Apr';
       case 'May':
-        return 'month_may'.tr();
+        return 'May';
       case 'June':
-        return 'month_june'.tr();
+        return 'Jun';
       case 'July':
-        return 'month_july'.tr();
+        return 'Jul';
       case 'August':
-        return 'month_august'.tr();
+        return 'Aug';
       case 'September':
-        return 'month_september'.tr();
+        return 'Sep';
       case 'October':
-        return 'month_october'.tr();
+        return 'Oct';
       case 'November':
-        return 'month_november'.tr();
+        return 'Nov';
       case 'December':
-        return 'month_december'.tr();
+        return 'Dec';
       default:
         return month;
     }
@@ -109,7 +110,7 @@ class HolidayCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 50,
+            width: 65,
             color: leftBg,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -118,22 +119,25 @@ class HolidayCard extends StatelessWidget {
                   day,
                   style: TextStyle(
                     color: mainTextColor,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 Text(
                   _localizeMonth(month),
                   style: TextStyle(
                     color: mainTextColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     fontFamily: 'SF Pro Display',
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),

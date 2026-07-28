@@ -44,9 +44,8 @@ Future<void> main() async {
         );
 
         await DummyData.loadFromPrefs();
-        if (PreferencesService.cachedIsGuest) {
-          await DummyData.resetToDefaults();
-        }
+        // Guest data is only reset on fresh login (auth_service.dart),
+        // not on restart — so modifications survive app restarts.
 
         await _initializeMacOSWindow();
 

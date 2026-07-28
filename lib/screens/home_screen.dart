@@ -59,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showNotifications = false;
   bool _showWorkersAttendance = false;
   final List<bool> _activatedScreens = List.filled(13, false);
+  final GlobalKey<WorkersScreenState> _workersKey = GlobalKey<WorkersScreenState>();
   late AuthService _authService;
   late FirestoreService _firestore;
 
@@ -68,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return const SizedBox.shrink(); // Dashboard handled via IndexedStack
       case 1:
         return WorkersScreen(
+          key: _workersKey,
           onLogout: _handleLogout,
           onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
@@ -215,6 +217,21 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /// Parse an amount field that could be a String, num, or null into a num.
+  static num _parseAmount(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value;
+    if (value is String) {
+      final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+      return double.tryParse(cleaned) ?? 0;
+    }
+    return 0;
+  }
+
+  /// Parse a value to double, handling String or num types.
+  static double _parseNumToDouble(dynamic value) =>
+      _parseAmount(value).toDouble();
+
   Future<void> _loadPremiumStatus() async {
     bool isPremium = false;
     final user = _authService.currentUser;
@@ -354,18 +371,69 @@ class _HomeScreenState extends State<HomeScreen> {
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
         _otherWorkersCount = oCount;
-        _allAttendanceDocs = List<Map<String, dynamic>>.from(
-          DummyData.attendance,
-        );
-        _attendanceDocs = _allAttendanceDocs;
-
-        _totalAttendanceCount = _attendanceDocs.length;
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
-        _holidays = DummyData.holidays.values
+        // Transform dummy holidays: the raw data has 'date' (dd/MM/yyyy) and 'name',
+        // but the dashboard expects 'month', 'day', 'isEnabled', 'dayOfWeek', 'name'.
+        final rawHolidays = DummyData.holidays.values
             .expand((list) => list)
             .cast<Map<String, dynamic>>()
             .toList();
+        _holidays = rawHolidays.map((h) {
+          final dateStr = (h['date'] ?? '').toString();
+          final parts = dateStr.split('/');
+          final monthNames = [
+            '', 'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December',
+          ];
+          final weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          String day = '';
+          String month = '';
+          String dayOfWeek = '';
+          if (parts.length == 3) {
+            final dayNum = int.tryParse(parts[0]) ?? 0;
+            final monthNum = int.tryParse(parts[1]) ?? 0;
+            final year = int.tryParse(parts[2]) ?? DateTime.now().year;
+            day = dayNum.toString();
+            month = monthNum >= 1 && monthNum <= 12 ? monthNames[monthNum] : '';
+            if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+              final dt = DateTime(year, monthNum, dayNum);
+              dayOfWeek = weekDays[dt.weekday % 7]; // weekday: 1=Monday..7=Sunday
+            }
+          }
+          return {
+            'name': h['name'] ?? '',
+            'day': day,
+            'month': month,
+            'dayOfWeek': dayOfWeek,
+            'isEnabled': true,
+            'remainingDays': '0',
+          };
+        }).toList();
+
+        // Add 'type' field to attendance records that have status 'leave',
+        // mapping the 'reason' field to a leave type the pie chart expects.
+        final enrichedAttendance = List<Map<String, dynamic>>.from(
+          DummyData.attendance,
+        );
+        for (final att in enrichedAttendance) {
+          final status = (att['status'] ?? '').toString().trim().toLowerCase();
+          if (status == 'leave') {
+            final reason = (att['reason'] ?? '').toString().trim().toLowerCase();
+            if (reason == 'vacation') {
+              att['type'] = 'Casual Leave';
+            } else if (reason == 'medical') {
+              att['type'] = 'Medical Leave';
+            } else if (reason == 'sick') {
+              att['type'] = 'Sick Leave';
+            } else {
+              att['type'] = 'Annual Leave';
+            }
+          }
+        }
+        _allAttendanceDocs = enrichedAttendance;
+        _attendanceDocs = enrichedAttendance;
+        _totalAttendanceCount = _attendanceDocs.length;
 
         _unreadNotifCount = DummyData.notifications
             .where((n) => n['isRead'] != true)
@@ -463,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return {
                 ...?data,
                 'id': doc.id,
-                'amount': (data?['amount'] ?? 0.0) as num,
+                'amount': _parseAmount(data?['amount']),
               };
             }).toList();
             _recalculateSumsForPeriod(_selectedPeriod);
@@ -523,13 +591,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void _recalculateSumsForPeriod(String period) {
     final expenseSeries = DashboardChartService.buildSeries(
       records: _rawExpensesDocs,
-      valueOf: (record) => ((record['amount'] ?? 0) as num).toDouble(),
+      valueOf: (record) => _parseNumToDouble(record['amount']),
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
     );
     final salarySeries = DashboardChartService.buildSeries(
       records: _rawPayrollDocs,
-      valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
+      valueOf: (record) => _parseNumToDouble(record['netSalary']),
       period: period,
     );
 
@@ -542,7 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _recalculateDummyTotals(String period) {
     final expenseSeries = DashboardChartService.buildSeries(
       records: DummyData.expenses,
-      valueOf: (record) => ((record['amount'] ?? 0) as num).toDouble(),
+      valueOf: (record) => _parseNumToDouble(record['amount']),
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
       placeUndatedInCurrentPeriod: true,
@@ -560,7 +628,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
     final totalDummySalary = payrollRecords.fold<double>(
       0,
-      (sum, record) => sum + ((record['netSalary'] ?? 0) as num).toDouble(),
+      (sum, record) => sum + _parseNumToDouble(record['netSalary']),
     );
     final salarySeries = DashboardChartService.buildGuestSalarySeries(
       salaryRecords: payrollRecords,
@@ -708,18 +776,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedSubIndex: _selectedSubIndex,
                     isGuest: _authService.currentUser?.isAnonymous ?? false,
                     isPremium: _isPremium,
-                    onItemSelected: (index, {subIndex}) => setState(() {
-                      _selectedIndex = index;
-                      _activatedScreens[index] = true;
-                      if (subIndex != null) {
-                        _selectedSubIndex = subIndex;
+                    onItemSelected: (index, {subIndex}) async {
+                      // Check for unsaved bulk worker changes before navigating away
+                      if (_selectedIndex == 1 && _workersKey.currentState?.hasUnsavedBulkChanges == true) {
+                        final shouldDiscard = await _workersKey.currentState!.confirmDiscardBulkChanges();
+                        if (!shouldDiscard) return;
                       }
-                      _showProfile = false;
-                      _showWorkersAttendance = false;
-                      _showAssignTimeOff = false;
-                      _showNotifications = false;
-                      _selectedTimeOffWorker = null;
-                    }),
+                      setState(() {
+                        _selectedIndex = index;
+                        _activatedScreens[index] = true;
+                        if (subIndex != null) {
+                          _selectedSubIndex = subIndex;
+                        }
+                        _showProfile = false;
+                        _showWorkersAttendance = false;
+                        _showAssignTimeOff = false;
+                        _showNotifications = false;
+                        _selectedTimeOffWorker = null;
+                      });
+                    },
                     onBackToLogin: _handleBackToLogin,
                   ),
                   Expanded(
@@ -1091,6 +1166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             case '6 Month':
                               return daysUntilHoliday <= 180;
                             case 'Yearly':
+                              return daysUntilHoliday <= 365;
                             default:
                               return true;
                           }

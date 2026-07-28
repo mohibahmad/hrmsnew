@@ -98,6 +98,8 @@ class DummyData {
   }
 
   static Future<void> loadFromPrefs() async {
+    // Capture original static data BEFORE clearing lists
+    _captureSourceDefaults();
     final prefs = await SharedPreferences.getInstance();
 
     workers
@@ -748,56 +750,128 @@ class DummyData {
     {
       'name': 'Office Supplies',
       'category': 'Stationery',
-      'amount': '250.00',
+      'amount': 250.0,
       'createdAt': '15/01/2026',
     },
     {
       'name': 'Team Lunch - Q1 Planning',
       'category': 'Food & Beverage',
-      'amount': '475.00',
+      'amount': 475.0,
       'createdAt': '12/01/2026',
     },
     {
       'name': 'Cloud Server - January',
       'category': 'Software & IT',
-      'amount': '1,200.00',
+      'amount': 1200.0,
       'createdAt': '10/01/2026',
     },
     {
       'name': 'Office Rent - January',
       'category': 'Rent',
-      'amount': '5,000.00',
+      'amount': 5000.0,
       'createdAt': '05/01/2026',
     },
     {
       'name': 'Employee Training: Flutter',
       'category': 'Training & Development',
-      'amount': '850.00',
-      'createdAt': '08/01/2026',
+      'amount': 850.0,
+      'createdAt': '08/02/2026',
     },
     {
       'name': 'Internet & Phone Bills',
       'category': 'Utilities',
-      'amount': '320.00',
-      'createdAt': '03/01/2026',
+      'amount': 320.0,
+      'createdAt': '03/02/2026',
+    },
+    {
+      'name': 'Cloud Server - March',
+      'category': 'Software & IT',
+      'amount': 1200.0,
+      'createdAt': '10/03/2026',
+    },
+    {
+      'name': 'Office Rent - March',
+      'category': 'Rent',
+      'amount': 5000.0,
+      'createdAt': '05/03/2026',
+    },
+    {
+      'name': 'Team Outing',
+      'category': 'Food & Beverage',
+      'amount': 680.0,
+      'createdAt': '12/04/2026',
     },
     {
       'name': 'New Office Chairs',
       'category': 'Furniture',
-      'amount': '2,400.00',
-      'createdAt': '20/01/2026',
+      'amount': 2400.0,
+      'createdAt': '20/04/2026',
+    },
+    {
+      'name': 'Internet & Phone Bills',
+      'category': 'Utilities',
+      'amount': 320.0,
+      'createdAt': '03/05/2026',
+    },
+    {
+      'name': 'Cloud Server - May',
+      'category': 'Software & IT',
+      'amount': 1200.0,
+      'createdAt': '10/05/2026',
+    },
+    {
+      'name': 'Office Rent - June',
+      'category': 'Rent',
+      'amount': 5000.0,
+      'createdAt': '05/06/2026',
+    },
+    {
+      'name': 'Employee Training: Leadership',
+      'category': 'Training & Development',
+      'amount': 1200.0,
+      'createdAt': '08/06/2026',
     },
     {
       'name': 'Client Dinner',
       'category': 'Entertainment',
-      'amount': '340.00',
-      'createdAt': '22/01/2026',
+      'amount': 340.0,
+      'createdAt': '22/06/2026',
     },
     {
       'name': 'Freelance Graphic Design',
       'category': 'Professional Services',
-      'amount': '600.00',
-      'createdAt': '25/01/2026',
+      'amount': 600.0,
+      'createdAt': '10/07/2026',
+    },
+    {
+      'name': 'Office Rent - August',
+      'category': 'Rent',
+      'amount': 5000.0,
+      'createdAt': '05/08/2026',
+    },
+    {
+      'name': 'Cloud Server - September',
+      'category': 'Software & IT',
+      'amount': 1200.0,
+      'createdAt': '10/09/2026',
+    },
+    {
+      'name': 'Team Lunch - Q4 Planning',
+      'category': 'Food & Beverage',
+      'amount': 550.0,
+      'createdAt': '12/10/2026',
+    },
+    {
+      'name': 'Internet & Phone Bills',
+      'category': 'Utilities',
+      'amount': 320.0,
+      'createdAt': '03/11/2026',
+    },
+    {
+      'name': 'Year-end Party',
+      'category': 'Entertainment',
+      'amount': 1500.0,
+      'createdAt': '15/12/2026',
     },
   ];
 
@@ -859,8 +933,8 @@ class DummyData {
     {
       'name': 'Harper Garcia',
       'date': '27/01/2026',
-      'status': 'absent',
-      'reason': 'Personal',
+      'status': 'leave',
+      'reason': 'Vacation',
     },
     {
       'name': 'Benjamin Harris',
@@ -878,7 +952,7 @@ class DummyData {
       'name': 'Ethan Clark',
       'date': '27/01/2026',
       'status': 'leave',
-      'reason': 'Medical',
+      'reason': 'Sick',
     },
     {
       'name': 'Mia Robinson',
@@ -907,20 +981,20 @@ class DummyData {
     {
       'name': 'Noah Wilson',
       'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
+      'status': 'leave',
+      'reason': 'Medical',
     },
     {
       'name': 'Ava Turner',
       'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
+      'status': 'leave',
+      'reason': 'Sick',
     },
     {
       'name': 'Emma Wilson',
       'date': '27/01/2026',
-      'status': 'absent',
-      'reason': 'Training',
+      'status': 'leave',
+      'reason': 'Medical',
     },
   ];
 
@@ -933,6 +1007,7 @@ class DummyData {
       'status': 'paid',
       'period': 'Jan 2026',
       'currency': 'USD',
+      'createdAt': '05/01/2026',
     },
     {
       'workerId': '1',
@@ -942,6 +1017,7 @@ class DummyData {
       'status': 'paid',
       'period': 'Jan 2026',
       'currency': 'USD',
+      'createdAt': '12/01/2026',
     },
     {
       'workerId': '2',
@@ -951,6 +1027,7 @@ class DummyData {
       'status': 'unpaid',
       'period': 'Jan 2026',
       'currency': 'USD',
+      'createdAt': '20/01/2026',
     },
     {
       'workerId': '3',
@@ -958,8 +1035,9 @@ class DummyData {
       'salary': 78000,
       'amount': 6500.00,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Feb 2026',
       'currency': 'USD',
+      'createdAt': '03/02/2026',
     },
     {
       'workerId': '4',
@@ -967,8 +1045,9 @@ class DummyData {
       'salary': 110000,
       'amount': 9166.67,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'Feb 2026',
       'currency': 'USD',
+      'createdAt': '14/02/2026',
     },
     {
       'workerId': '5',
@@ -976,8 +1055,9 @@ class DummyData {
       'salary': 65000,
       'amount': 5416.67,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Feb 2026',
       'currency': 'USD',
+      'createdAt': '25/02/2026',
     },
     {
       'workerId': '6',
@@ -985,8 +1065,9 @@ class DummyData {
       'salary': 120000,
       'amount': 10000.00,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Mar 2026',
       'currency': 'USD',
+      'createdAt': '08/03/2026',
     },
     {
       'workerId': '7',
@@ -994,8 +1075,9 @@ class DummyData {
       'salary': 62000,
       'amount': 5166.67,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'Mar 2026',
       'currency': 'USD',
+      'createdAt': '15/03/2026',
     },
     {
       'workerId': '8',
@@ -1003,8 +1085,9 @@ class DummyData {
       'salary': 95000,
       'amount': 7916.67,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Mar 2026',
       'currency': 'USD',
+      'createdAt': '22/03/2026',
     },
     {
       'workerId': '9',
@@ -1012,8 +1095,9 @@ class DummyData {
       'salary': 72000,
       'amount': 6000.00,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'Apr 2026',
       'currency': 'USD',
+      'createdAt': '05/04/2026',
     },
     {
       'workerId': '10',
@@ -1021,8 +1105,9 @@ class DummyData {
       'salary': 85000,
       'amount': 7083.33,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Apr 2026',
       'currency': 'USD',
+      'createdAt': '20/04/2026',
     },
     {
       'workerId': '11',
@@ -1030,8 +1115,9 @@ class DummyData {
       'salary': 135000,
       'amount': 11250.00,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'May 2026',
       'currency': 'USD',
+      'createdAt': '10/05/2026',
     },
     {
       'workerId': '12',
@@ -1039,8 +1125,9 @@ class DummyData {
       'salary': 75000,
       'amount': 6250.00,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'May 2026',
       'currency': 'USD',
+      'createdAt': '25/05/2026',
     },
     {
       'workerId': '13',
@@ -1048,8 +1135,9 @@ class DummyData {
       'salary': 58000,
       'amount': 4833.33,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Jun 2026',
       'currency': 'USD',
+      'createdAt': '05/06/2026',
     },
     {
       'workerId': '14',
@@ -1057,8 +1145,9 @@ class DummyData {
       'salary': 140000,
       'amount': 11666.67,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Jun 2026',
       'currency': 'USD',
+      'createdAt': '20/06/2026',
     },
     {
       'workerId': '15',
@@ -1066,8 +1155,9 @@ class DummyData {
       'salary': 80000,
       'amount': 6666.67,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'Jul 2026',
       'currency': 'USD',
+      'createdAt': '10/07/2026',
     },
     {
       'workerId': '16',
@@ -1075,8 +1165,9 @@ class DummyData {
       'salary': 95000,
       'amount': 7916.67,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Jul 2026',
       'currency': 'USD',
+      'createdAt': '25/07/2026',
     },
     {
       'workerId': '17',
@@ -1084,8 +1175,9 @@ class DummyData {
       'salary': 125000,
       'amount': 10416.67,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'Aug 2026',
       'currency': 'USD',
+      'createdAt': '05/08/2026',
     },
     {
       'workerId': '18',
@@ -1093,8 +1185,9 @@ class DummyData {
       'salary': 105000,
       'amount': 8750.00,
       'status': 'paid',
-      'period': 'Jan 2026',
+      'period': 'Aug 2026',
       'currency': 'USD',
+      'createdAt': '20/08/2026',
     },
     {
       'workerId': '19',
@@ -1102,8 +1195,9 @@ class DummyData {
       'salary': 55000,
       'amount': 4583.33,
       'status': 'unpaid',
-      'period': 'Jan 2026',
+      'period': 'Sep 2026',
       'currency': 'USD',
+      'createdAt': '10/09/2026',
     },
   ];
 

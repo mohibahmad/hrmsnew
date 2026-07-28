@@ -572,7 +572,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final allFilters = ['All', ...positionsToShow];
 
     return Container(
-      width: 650,
+      width: 550,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

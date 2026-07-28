@@ -75,12 +75,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           month,
           list
               .map(
-                (h) => HolidayItem(
-                  h['day'] as int,
-                  h['name'] as String,
-                  h['isEnabled'] as bool,
-                  month: month,
-                ),
+                (h) {
+                  final dateStr = (h['date'] ?? '').toString();
+                  final parts = dateStr.split('/');
+                  int day = 1;
+                  if (parts.length == 3) {
+                    day = int.tryParse(parts[0]) ?? 1;
+                  }
+                  return HolidayItem(
+                    day,
+                    h['name'] as String,
+                    (h['isEnabled'] as bool?) ?? true,
+                    month: month,
+                  );
+                },
               )
               .toList(),
         );

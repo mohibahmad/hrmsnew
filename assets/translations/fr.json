@@ -958,5 +958,14 @@
   "generating_invoices": "Génération des factures...",
   "save_payroll_invoices_zip": "Enregistrer ZIP des Factures de Paie",
   "zip_saved": "ZIP enregistré: {fileName}",
-  "failed_to_generate_zip": "Échec de la génération ZIP: {error}"
+  "failed_to_generate_zip": "Échec de la génération ZIP: {error}",
+  "upload_image": "Uploader l'Image",
+  "upload_cv": "Uploader le CV",
+  "file_too_large": "Le fichier est trop volumineux. Taille max: {size}",
+  "failed_to_pick_image": "Échec de la sélection du fichier",
+  "validation_invalid_relationship": "Seuls Célibataire, Marié, Divorcé ou Veuf sont autorisés",
+  "validation_invalid_employee_type": "Seuls Temps plein, Temps partiel, Contrat ou Stagiaire sont autorisés",
+  "validation_invalid_work_model": "Seuls Sur site, À distance ou Hybride sont autorisés",
+  "validation_invalid_salary_type": "Seuls Mensuel, Horaire ou Contrat sont autorisés",
+  "uploaded": "Téléversé"
 }

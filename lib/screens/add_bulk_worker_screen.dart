@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io' as io;
+import 'dart:ui' as ui;
 import 'dart:math';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -26,10 +27,10 @@ class AddBulkWorkerScreen extends StatefulWidget {
   const AddBulkWorkerScreen({super.key, this.onBack});
 
   @override
-  State<AddBulkWorkerScreen> createState() => _AddBulkWorkerScreenState();
+  AddBulkWorkerScreenState createState() => AddBulkWorkerScreenState();
 }
 
-class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
+class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   // ─────────────────────────────────────────────────────────────
   //  Constants
   // ─────────────────────────────────────────────────────────────
@@ -127,7 +128,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     'currency': 'currency',
   };
 
-  static const double _tableContentWidth = 3574;
+  static const double _tableContentWidth = 3522;
   static const double _rowHeight = 65.0;
 
   // ─────────────────────────────────────────────────────────────
@@ -138,6 +139,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
   bool _isSaving = false;
   bool _hasParsedFile = false;
+  bool _hasUnsavedChanges = false;
 
   List<Map<String, dynamic>> _validWorkers = [];
 
@@ -166,6 +168,165 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     _hScrollController?.dispose();
     _workersSubscription?.cancel();
     super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Unsaved changes guard
+  // ─────────────────────────────────────────────────────────────
+  bool get hasUnsavedChanges => _hasUnsavedChanges;
+
+  Future<bool> confirmDiscard() => _onWillPop();
+
+  Future<bool> _onWillPop() async {
+    if (!_hasUnsavedChanges) return true;
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'UnsavedChangesDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  width: 380,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withValues(alpha: 0.15),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFEE2E2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.warning_rounded,
+                            color: Color(0xFFEF4444),
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'discard_changes'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'unsaved_changes_message'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context, false),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'cancel'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF000000),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context, true),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFEF4444)
+                                          .withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  'discard'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    return result ?? false;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -234,44 +395,44 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'Christianity,1990-05-15,Male,123 Street California,Single,'
         'Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,'
         'Monthly,USD,5000,15,1/15/2025,'
-        'https://i.pravatar.cc/150?u=john,https://example.com/front_id.jpg,'
-        'https://example.com/back_id.jpg,https://example.com/cv/john.pdf\n'
+        'https://i.pravatar.cc/150?u=john,https://picsum.photos/seed/john_front/400/300,'
+        'https://picsum.photos/seed/john_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
         'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,'
         'Islam,1995-10-20,Female,456 Avenue New York,Married,'
         'UI Designer,Part-Time,Remote,Senior,Bachelor\'s,'
         'Monthly,USD,6000,15,1/15/2025,'
-        'https://i.pravatar.cc/150?u=jane,https://example.com/front_id2.jpg,'
-        'https://example.com/back_id2.jpg,https://example.com/cv/jane.pdf\n'
+        'https://i.pravatar.cc/150?u=jane,https://picsum.photos/seed/jane_front/400/300,'
+        'https://picsum.photos/seed/jane_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
         'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,'
         'None,1988-02-28,Male,789 Road Texas,Single,'
         'Project Manager,Contract,Hybrid,Senior,Master\'s,'
         'Monthly,USD,7500,15,1/15/2025,'
-        'https://i.pravatar.cc/150?u=michael,https://example.com/front_id3.jpg,'
-        'https://example.com/back_id3.jpg,https://example.com/cv/michael.pdf\n'
+        'https://i.pravatar.cc/150?u=michael,https://picsum.photos/seed/michael_front/400/300,'
+        'https://picsum.photos/seed/michael_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
         'Emily Brown,5551234567,emily@example.com,Thomas Brown,37405-9988776-5,'
         'Christianity,1992-07-08,Female,321 Oak Avenue Chicago,Married,'
         'Marketing Manager,Full-Time,On-Site,Senior,Master\'s,'
         'Monthly,USD,8500,20,1/20/2025,'
-        'https://i.pravatar.cc/150?u=emily,https://example.com/front_id4.jpg,'
-        'https://example.com/back_id4.jpg,https://example.com/cv/emily.pdf\n'
+        'https://i.pravatar.cc/150?u=emily,https://picsum.photos/seed/emily_front/400/300,'
+        'https://picsum.photos/seed/emily_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
         'Carlos Garcia,5559876543,carlos@example.com,Luis Garcia,37405-4433221-4,'
         'Catholic,1985-03-22,Male,654 Pine Road Miami,Single,'
         'DevOps Engineer,Full-Time,On-Site,Senior,Bachelor\'s,'
         'Monthly,USD,9500,18,2/1/2025,'
-        'https://i.pravatar.cc/150?u=carlos,https://example.com/front_id5.jpg,'
-        'https://example.com/back_id5.jpg,https://example.com/cv/carlos.pdf\n'
+        'https://i.pravatar.cc/150?u=carlos,https://picsum.photos/seed/carlos_front/400/300,'
+        'https://picsum.photos/seed/carlos_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
         'Aisha Khan,5552468135,aisha@example.com,Imran Khan,37405-5566778-7,'
         'Islam,1993-11-12,Female,789 Maple Drive Houston,Single,'
         'Data Analyst,Full-Time,Hybrid,Mid-Level,Bachelor\'s,'
         'Monthly,USD,7000,15,2/5/2025,'
-        'https://i.pravatar.cc/150?u=aisha,https://example.com/front_id6.jpg,'
-        'https://example.com/back_id6.jpg,https://example.com/cv/aisha.pdf\n'
+        'https://i.pravatar.cc/150?u=aisha,https://picsum.photos/seed/aisha_front/400/300,'
+        'https://picsum.photos/seed/aisha_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
         'Robert Wilson,5553691479,robert@example.com,James Wilson,37405-1122334-8,'
         'None,1980-09-05,Male,147 Elm Street Seattle,Married,'
         'HR Director,Full-Time,On-Site,Senior,Master\'s,'
         'Annual,USD,110000,20,1/10/2025,'
-        'https://i.pravatar.cc/150?u=robert,https://example.com/front_id7.jpg,'
-        'https://example.com/back_id7.jpg,https://example.com/cv/robert.pdf';
+        'https://i.pravatar.cc/150?u=robert,https://picsum.photos/seed/robert_front/400/300,'
+        'https://picsum.photos/seed/robert_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
 
     const templateStr = '$headerRow\n$dataRows';
 
@@ -681,6 +842,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     setState(() {
       _validWorkers = parsedWorkers;
       _hasParsedFile = true;
+      _hasUnsavedChanges = true;
     });
 
     if (!mounted) return;
@@ -817,6 +979,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     try {
       int importedCount = workersReadyToSave.length;
       int finalSkippedDuplicates = localDuplicateCount;
+      BulkWorkerResult? bulkResult;
 
       if (isGuest) {
         for (int i = 0; i < workersReadyToSave.length; i++) {
@@ -826,22 +989,34 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
         await DummyData.saveToPrefs();
       } else {
-        final result =
+        bulkResult =
             await _firestore.addBulkWorkers(workersReadyToSave);
-        importedCount = result.imported;
-        if (result.skipped > 0) finalSkippedDuplicates += result.skipped;
+        importedCount = bulkResult.imported;
+        if (bulkResult.skipped > 0) finalSkippedDuplicates += bulkResult.skipped;
       }
 
       if (!mounted) return;
       Navigator.of(context).pop(); // close progress dialog
 
-      // Build result summary
+      // Build result summary with skip reasons
       final summaryParts = <String>[
         'workers_added_successfully'.tr(
           namedArgs: {'count': importedCount.toString()},
         ),
       ];
-      if (finalSkippedDuplicates > 0) {
+      if (bulkResult != null && bulkResult.skipReasons.isNotEmpty) {
+        summaryParts.add('skipped_duplicates_message'.tr(
+          namedArgs: {'count': '${bulkResult.skipReasons.length}'},
+        ));
+        final reasonCounts = <String, int>{};
+        for (final reason in bulkResult.skipReasons) {
+          final key = reason.contains('Duplicate') ? 'Duplicate' : 'Validation';
+          reasonCounts[key] = (reasonCounts[key] ?? 0) + 1;
+        }
+        reasonCounts.forEach((key, count) {
+          summaryParts.add('  • $count $key');
+        });
+      } else if (finalSkippedDuplicates > 0) {
         summaryParts.add('skipped_duplicates_message'.tr(
           namedArgs: {'count': finalSkippedDuplicates.toString()},
         ));
@@ -869,14 +1044,14 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       FlashySnackBar.show(
         context,
-        title: importedCount > 0
-            ? 'csv_uploaded_title'.tr()
-            : 'csv_uploaded_with_issues_title'.tr(),
+        title: hasSkipped
+            ? 'csv_uploaded_with_issues_title'.tr()
+            : 'csv_uploaded_title'.tr(),
         message: summaryParts.join('\n'),
-        isError: hasSkipped && importedCount == 0,
+        isError: hasSkipped,
         maxLines: null,
         displayDuration: hasSkipped
-            ? const Duration(seconds: 10)
+            ? const Duration(seconds: 12)
             : const Duration(seconds: 5),
       );
 
@@ -885,6 +1060,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       setState(() {
         _validWorkers = [];
         _hasParsedFile = false;
+        _hasUnsavedChanges = false;
       });
 
       if (!isGuest) {
@@ -963,6 +1139,28 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         //    is naturally tied to the dialog. No manual dispose needed.
         final controller = TextEditingController(text: currentValue);
         String? dialogError;
+
+        // For media fields: store actual data URL separately, show filename in text field
+        final isMediaField = fieldKey == 'profileImage' ||
+            fieldKey == 'frontId' ||
+            fieldKey == 'backId' ||
+            fieldKey == 'cv';
+        String? mediaDataUrl;
+        String? mediaFileName;
+        bool hasExistingUpload = false;
+        if (isMediaField && currentValue.isNotEmpty) {
+          hasExistingUpload = currentValue.startsWith('data:');
+          final storedName = worker['${fieldKey}_name'];
+          if (currentValue.startsWith('data:')) {
+            if (storedName != null && storedName.toString().isNotEmpty) {
+              controller.text = storedName.toString();
+            } else {
+              final mime = currentValue.split(';').first.split(':').last;
+              controller.text = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
+            }
+          }
+          controller.selection = TextSelection.collapsed(offset: controller.text.length);
+        }
 
         // ── Per-field input configuration ──
         TextInputType? keyboardTypeForField() {
@@ -1064,6 +1262,52 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               ),
               child: StatefulBuilder(
                 builder: (_, setDialogState) {
+                  Future<void> _pickMediaFile() async {
+                    try {
+                      final isImage = fieldKey != 'cv';
+                      final result = await FilePicker.pickFiles(
+                        type: isImage ? FileType.image : FileType.custom,
+                        allowMultiple: false,
+                        withData: true,
+                        allowedExtensions: isImage ? null : ['pdf', 'doc', 'docx'],
+                      );
+                      if (result != null && result.files.isNotEmpty) {
+                        final file = result.files.first;
+                        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+                          setDialogState(() {
+                            dialogError = 'file_too_large'.tr(namedArgs: {'size': '10MB'});
+                          });
+                          return;
+                        }
+                        Uint8List? bytes = file.bytes;
+                        if (bytes == null && file.path != null) {
+                          bytes = io.File(file.path!).readAsBytesSync();
+                        }
+                        if (bytes != null) {
+                          final ext = file.name.split('.').last.toLowerCase();
+                          const mimeMap = {
+                            'pdf': 'application/pdf',
+                            'doc': 'application/msword',
+                            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                          };
+                          final mime = mimeMap[ext] ?? 'image/jpeg';
+                          final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+                          setDialogState(() {
+                            mediaDataUrl = dataUrl;
+                            mediaFileName = file.name;
+                            hasExistingUpload = true;
+                            controller.text = file.name;
+                            controller.selection = TextSelection.collapsed(offset: controller.text.length);
+                          });
+                        }
+                      }
+                    } catch (e) {
+                      setDialogState(() {
+                        dialogError = 'failed_to_pick_image'.tr();
+                      });
+                    }
+                  }
+
                   return ConstrainedBox(
                     constraints: BoxConstraints(
                       maxHeight: MediaQuery.of(ctx).size.height * 0.75,
@@ -1090,6 +1334,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Container(
+                                  clipBehavior: Clip.hardEdge,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
@@ -1102,15 +1347,20 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   ),
                                   child: TextField(
                                     controller: controller,
-                                    autofocus: true,
-                                    maxLines: null,
+                                    readOnly: isMediaField && (mediaDataUrl != null || hasExistingUpload),
+                                    autofocus: !isMediaField,
+                                    maxLines: isMediaField ? 1 : null,
                                     minLines: 1,
+                                    expands: false,
                                     keyboardType: keyboardTypeForField(),
                                     inputFormatters: inputFormattersForField(),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 15,
                                       fontFamily: 'SF Pro Display',
-                                      color: Color(0xFF111827),
+                                      color: (isMediaField && (mediaDataUrl != null || hasExistingUpload))
+                                          ? const Color(0xFF9CA3AF)
+                                          : const Color(0xFF111827),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                     decoration: InputDecoration(
                                       border: InputBorder.none,
@@ -1125,6 +1375,60 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         fontSize: 15,
                                         fontFamily: 'SF Pro Display',
                                       ),
+                                      suffixIcon: (fieldKey == 'profileImage' ||
+                                              fieldKey == 'frontId' ||
+                                              fieldKey == 'backId' ||
+                                              fieldKey == 'cv')
+                                          ? GestureDetector(
+                                              onTap: () => _pickMediaFile(),
+                                              child: Container(
+                                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                                decoration: BoxDecoration(
+                                                  color: (mediaDataUrl != null || hasExistingUpload)
+                                                      ? const Color(0xFFDCFCE7)
+                                                      : const Color(0xFFEEF2FF),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      (mediaDataUrl != null || hasExistingUpload)
+                                                          ? Icons.check_circle_rounded
+                                                          : fieldKey == 'cv'
+                                                              ? Icons.attach_file_rounded
+                                                              : fieldKey == 'profileImage'
+                                                                  ? Icons.add_a_photo_rounded
+                                                                  : Icons.badge_rounded,
+                                                      size: 18,
+                                                      color: (mediaDataUrl != null || hasExistingUpload)
+                                                          ? const Color(0xFF16A34A)
+                                                          : const Color(0xFF0247C4),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      (mediaDataUrl != null || hasExistingUpload)
+                                                          ? 'uploaded'.tr()
+                                                          : fieldKey == 'cv'
+                                                              ? 'upload_cv'.tr()
+                                                              : 'upload_image'.tr(),
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: (mediaDataUrl != null || hasExistingUpload)
+                                                            ? const Color(0xFF16A34A)
+                                                            : const Color(0xFF0247C4),
+                                                        fontFamily: 'SF Pro Display',
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                      maxLines: 1,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              )
+                                          : null,
                                     ),
                                   ),
                                 ),
@@ -1139,7 +1443,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   const EdgeInsets.fromLTRB(24, 0, 24, 0),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.info_outline,
+                                  const Icon(Icons.lightbulb_outline,
                                       size: 13,
                                       color: Color(0xFF9CA3AF)),
                                   const SizedBox(width: 6),
@@ -1154,47 +1458,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
-                            ),
-
-                          // ── Current value ──
-                          if (currentValue.isNotEmpty)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(24, 10, 24, 0),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.swap_horiz_rounded,
-                                      size: 14,
-                                      color: Color(0xFF6B7280),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        currentValue,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF6B7280),
-                                          fontFamily: 'SF Pro Display',
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               ),
                             ),
 
@@ -1286,11 +1549,55 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   ),
                                   onPressed: () {
                                     final val = controller.text.trim();
-                                    if (val.isEmpty) {
+                                    if (!isMediaField && val.isEmpty) {
                                       setDialogState(() {
                                         dialogError =
                                             'edit_cell_cannot_be_empty'.tr();
                                       });
+                                    } else if (isMediaField && val.isEmpty && (mediaDataUrl == null || mediaDataUrl!.isEmpty)) {
+                                      setDialogState(() {
+                                        dialogError =
+                                            'edit_cell_cannot_be_empty'.tr();
+                                      });
+                                    } else if (fieldKey == 'email' && val.isNotEmpty) {
+                                      final normalizedEmail = WorkerIdentity.normalizeEmail(val);
+                                      if (!Validators.isValidEmail(normalizedEmail)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_email'.tr();
+                                        });
+                                      } else {
+                                        final isDuplicate = _validWorkers.asMap().entries.any((entry) {
+                                          return entry.key != workerIndex &&
+                                              WorkerIdentity.normalizeEmail(
+                                                      entry.value['email']?.toString() ?? '') ==
+                                                  normalizedEmail;
+                                        });
+                                        if (isDuplicate) {
+                                          setDialogState(() {
+                                            dialogError =
+                                                'validation_duplicate_email'.tr();
+                                          });
+                                        } else {
+                                          Navigator.of(ctx).pop(val);
+                                        }
+                                      }
+                                    } else if (fieldKey == 'nationalId' && val.isNotEmpty) {
+                                      final normalizedId = WorkerIdentity.normalizeNationalId(val);
+                                      final isDuplicate = _validWorkers.asMap().entries.any((entry) {
+                                        return entry.key != workerIndex &&
+                                            WorkerIdentity.normalizeNationalId(
+                                                    entry.value['nationalId']?.toString() ?? '') ==
+                                                normalizedId;
+                                      });
+                                      if (isDuplicate) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_duplicate_national_id'.tr();
+                                        });
+                                      } else {
+                                        Navigator.of(ctx).pop(val);
+                                      }
                                     } else if (fieldKey == 'gender') {
                                       final normalized = val.toLowerCase();
                                       const valid = {
@@ -1315,8 +1622,134 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                       : val,
                                         );
                                       }
+                                    } else if (fieldKey == 'relationshipStatus') {
+                                      final normalized = val.toLowerCase();
+                                      const valid = {
+                                        'single',
+                                        'married',
+                                        'divorced',
+                                        'widowed',
+                                      };
+                                      if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_relationship'.tr();
+                                        });
+                                      } else {
+                                        final display = normalized[0].toUpperCase() + normalized.substring(1);
+                                        Navigator.of(ctx).pop(display);
+                                      }
+                                    } else if (fieldKey == 'type1') {
+                                      final normalized = val.toLowerCase();
+                                      const valid = {
+                                        'full-time',
+                                        'full time',
+                                        'part-time',
+                                        'part time',
+                                        'contract',
+                                        'intern',
+                                      };
+                                      if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_employee_type'.tr();
+                                        });
+                                      } else {
+                                        final display = normalized.replaceAll(' ', '-');
+                                        Navigator.of(ctx).pop(display);
+                                      }
+                                    } else if (fieldKey == 'type2') {
+                                      final normalized = val.toLowerCase();
+                                      const valid = {
+                                        'on-site',
+                                        'on site',
+                                        'onsite',
+                                        'remote',
+                                        'hybrid',
+                                      };
+                                      if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_work_model'.tr();
+                                        });
+                                      } else {
+                                        final display = normalized.replaceAll(' ', '-');
+                                        Navigator.of(ctx).pop(display);
+                                      }
+                                    } else if (fieldKey == 'salaryType') {
+                                      final normalized = val.toLowerCase().trim();
+                                      const valid = {
+                                        'monthly',
+                                        'hourly',
+                                        'contract',
+                                        'annual',
+                                      };
+                                      if (normalized.isEmpty) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'edit_cell_cannot_be_empty'.tr();
+                                        });
+                                      } else if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_salary_type'.tr();
+                                        });
+                                      } else {
+                                        final display = normalized[0].toUpperCase() + normalized.substring(1);
+                                        Navigator.of(ctx).pop(display);
+                                      }
+                                    } else if (fieldKey == 'dob') {
+                                      final dob = AppDateUtils.parseDateString(val);
+                                      if (dob == null) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_date'.tr();
+                                        });
+                                      } else {
+                                        final cutoff =
+                                            DateTime.now().subtract(const Duration(days: 365 * 18));
+                                        if (dob.isAfter(cutoff)) {
+                                          setDialogState(() {
+                                            dialogError =
+                                                'validation_min_age'.tr();
+                                          });
+                                        } else {
+                                          Navigator.of(ctx).pop(val);
+                                        }
+                                      }
+                                    } else {
+                                      if (isMediaField) {
+                                        if (mediaDataUrl != null) {
+                                          worker['${fieldKey}_name'] = mediaFileName ?? '';
+                                          Navigator.of(ctx).pop(mediaDataUrl);
+                                      } else if (hasExistingUpload) {
+                                        // Update display name but keep existing data URL
+                                        worker['${fieldKey}_name'] = val.split('/').last;
+                                        Navigator.of(ctx).pop(currentValue);
+                                      } else if (val.isNotEmpty && !val.startsWith('data:')) {
+                                        // Manually typed URL - validate file extension
+                                        final ext = val.split('.').last.split('?').first.toLowerCase();
+                                        const imageExts = {'png', 'jpeg', 'jpg'};
+                                        const docExts = {'pdf', 'doc', 'docx'};
+                                        if (fieldKey == 'cv' && !docExts.contains(ext)) {
+                                          setDialogState(() {
+                                            dialogError = 'Only PDF, DOC, DOCX formats are accepted for CV';
+                                          });
+                                        } else if (fieldKey != 'cv' && !imageExts.contains(ext)) {
+                                          setDialogState(() {
+                                            dialogError = 'Only PNG, JPEG, JPG formats are accepted for images';
+                                          });
+                                        } else {
+                                          worker['${fieldKey}_name'] = val.split('/').last;
+                                          Navigator.of(ctx).pop(val);
+                                        }
+                                      } else {
+                                        worker['${fieldKey}_name'] = val.split('/').last;
+                                        Navigator.of(ctx).pop(val);
+                                      }
                                     } else {
                                       Navigator.of(ctx).pop(val);
+                                    }
                                     }
                                   },
                                   child: Row(
@@ -1361,6 +1794,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (result != null && mounted) {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
+        _hasUnsavedChanges = true;
         final errors = _validWorkers[workerIndex]['_fieldErrors'];
         if (errors is Map<String, String>) {
           errors.remove(fieldKey);
@@ -1378,9 +1812,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Field hints
-  // ─────────────────────────────────────────────────────────────
+  
   String _fieldHint(String fieldKey) {
     const hintKeys = <String, String>{
       'name': 'hint_enter_full_name',
@@ -1417,12 +1849,21 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   // ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF7F8FA),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTopBar(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          widget.onBack?.call();
+        }
+      },
+      child: Container(
+        color: const Color(0xFFF7F8FA),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTopBar(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -1445,6 +1886,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1470,7 +1912,10 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => widget.onBack?.call(),
+                onTap: () async {
+                  final shouldPop = await _onWillPop();
+                  if (shouldPop) widget.onBack?.call();
+                },
                 child: const Padding(
                   padding: EdgeInsets.all(8),
                   child: Icon(
@@ -1758,49 +2203,49 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       ),
       child: Row(
         children: [
-          _buildHeaderCell('full_name'.tr(), 200, fieldKey: 'name'),
-          _buildHeaderCell('contact_number'.tr(), 120,
+          _buildHeaderCell('full_name'.tr(), 150, fieldKey: 'name'),
+          _buildHeaderCell('contact_number'.tr(), 130,
               fieldKey: 'phone'),
-          _buildHeaderCell('email_address'.tr(), 200,
+          _buildHeaderCell('email_address'.tr(), 150,
               fieldKey: 'email'),
-          _buildHeaderCell('job_position'.tr(), 150,
+          _buildHeaderCell('job_position'.tr(), 130,
               fieldKey: 'position'),
-          _buildHeaderCell('salary_type'.tr(), 120,
+          _buildHeaderCell('salary_type'.tr(), 130,
               fieldKey: 'salaryType'),
           _buildHeaderCell('currency_title'.tr(), 100,
               fieldKey: 'currency'),
-          _buildHeaderCell('salary_amount'.tr(), 120,
+          _buildHeaderCell('salary_amount'.tr(), 130,
               fieldKey: 'salaryAmount'),
           _buildHeaderCell('father_name'.tr(), 150,
               fieldKey: 'fatherName'),
-          _buildHeaderCell('national_id_title'.tr(), 150,
+          _buildHeaderCell('national_id_title'.tr(), 130,
               fieldKey: 'nationalId'),
           _buildHeaderCell('religion_title'.tr(), 120,
               fieldKey: 'religion'),
           _buildHeaderCell('date_of_birth'.tr(), 120, fieldKey: 'dob'),
           _buildHeaderCell('gender_title'.tr(), 100,
               fieldKey: 'gender'),
-          _buildHeaderCell('address_title'.tr(), 140,
+          _buildHeaderCell('address_title'.tr(), 130,
               fieldKey: 'address'),
-          _buildHeaderCell('relationship_status_title'.tr(), 120,
+          _buildHeaderCell('relationship_status_title'.tr(), 130,
               fieldKey: 'relationshipStatus'),
-          _buildHeaderCell('employee_type'.tr(), 120, fieldKey: 'type1'),
-          _buildHeaderCell('work_model'.tr(), 120, fieldKey: 'type2'),
+          _buildHeaderCell('employee_type'.tr(), 130, fieldKey: 'type1'),
+          _buildHeaderCell('work_model'.tr(), 130, fieldKey: 'type2'),
           _buildHeaderCell('experience_level_title'.tr(), 130,
               fieldKey: 'experienceLevel'),
-          _buildHeaderCell('education_title'.tr(), 150,
+          _buildHeaderCell('education_title'.tr(), 130,
               fieldKey: 'education'),
-          _buildHeaderCell('annual_leaves_title'.tr(), 100,
+          _buildHeaderCell('annual_leaves_title'.tr(), 120,
               fieldKey: 'annualLeaves'),
-          _buildHeaderCell('joining_date_title'.tr(), 150,
+          _buildHeaderCell('joining_date_title'.tr(), 130,
               fieldKey: 'joiningDate'),
-          _buildHeaderCell('profile_image_url'.tr(), 200,
+          _buildHeaderCell('profile_image_url'.tr(), 130,
               fieldKey: 'profileImage'),
-          _buildHeaderCell('front_id_image_url'.tr(), 200,
+          _buildHeaderCell('front_id_image_url'.tr(), 130,
               fieldKey: 'frontId'),
-          _buildHeaderCell('back_id_image_url'.tr(), 200,
+          _buildHeaderCell('back_id_image_url'.tr(), 130,
               fieldKey: 'backId'),
-          _buildHeaderCell('cv_url'.tr(), 150, fieldKey: 'cv'),
+          _buildHeaderCell('cv_url'.tr(), 130, fieldKey: 'cv'),
         ],
       ),
     );
@@ -1826,24 +2271,23 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       color: index.isEven ? const Color(0xFFFAFBFC) : Colors.white,
       child: Row(
         children: [
-          _buildDataCell(worker['name']?.toString() ?? '', 200,
+          _buildDataCell(worker['name']?.toString() ?? '', 150,
               hasError: _hasFieldError(worker, 'name'),
-              isBold: true,
               fieldKey: 'name',
               workerIndex: index),
-          _buildDataCell(worker['phone']?.toString() ?? '', 120,
+          _buildDataCell(worker['phone']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'phone'),
               fieldKey: 'phone',
               workerIndex: index),
-          _buildDataCell(worker['email']?.toString() ?? '', 200,
+          _buildDataCell(worker['email']?.toString() ?? '', 150,
               hasError: _hasFieldError(worker, 'email'),
               fieldKey: 'email',
               workerIndex: index),
-          _buildDataCell(worker['position']?.toString() ?? '', 150,
+          _buildDataCell(worker['position']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'position'),
               fieldKey: 'position',
               workerIndex: index),
-          _buildDataCell(worker['salaryType']?.toString() ?? '', 120,
+          _buildDataCell(worker['salaryType']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'salaryType'),
               fieldKey: 'salaryType',
               workerIndex: index),
@@ -1851,7 +2295,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               hasError: _hasFieldError(worker, 'currency'),
               fieldKey: 'currency',
               workerIndex: index),
-          _buildDataCell(worker['salaryAmount']?.toString() ?? '', 120,
+          _buildDataCell(worker['salaryAmount']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'salaryAmount'),
               fieldKey: 'salaryAmount',
               workerIndex: index),
@@ -1859,7 +2303,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               hasError: _hasFieldError(worker, 'fatherName'),
               fieldKey: 'fatherName',
               workerIndex: index),
-          _buildDataCell(worker['nationalId']?.toString() ?? '', 150,
+          _buildDataCell(worker['nationalId']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'nationalId'),
               fieldKey: 'nationalId',
               workerIndex: index),
@@ -1875,20 +2319,20 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               hasError: _hasFieldError(worker, 'gender'),
               fieldKey: 'gender',
               workerIndex: index),
-          _buildDataCell(worker['address']?.toString() ?? '', 140,
+          _buildDataCell(worker['address']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'address'),
               fieldKey: 'address',
               workerIndex: index),
           _buildDataCell(
-              worker['relationshipStatus']?.toString() ?? '', 120,
+              worker['relationshipStatus']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'relationshipStatus'),
               fieldKey: 'relationshipStatus',
               workerIndex: index),
-          _buildDataCell(worker['type1']?.toString() ?? '', 120,
+          _buildDataCell(worker['type1']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'type1'),
               fieldKey: 'type1',
               workerIndex: index),
-          _buildDataCell(worker['type2']?.toString() ?? '', 120,
+          _buildDataCell(worker['type2']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'type2'),
               fieldKey: 'type2',
               workerIndex: index),
@@ -1897,31 +2341,31 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               hasError: _hasFieldError(worker, 'experienceLevel'),
               fieldKey: 'experienceLevel',
               workerIndex: index),
-          _buildDataCell(worker['education']?.toString() ?? '', 150,
+          _buildDataCell(worker['education']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'education'),
               fieldKey: 'education',
               workerIndex: index),
-          _buildDataCell(worker['annualLeaves']?.toString() ?? '', 100,
+          _buildDataCell(worker['annualLeaves']?.toString() ?? '', 120,
               hasError: _hasFieldError(worker, 'annualLeaves'),
               fieldKey: 'annualLeaves',
               workerIndex: index),
-          _buildDataCell(worker['joiningDate']?.toString() ?? '', 150,
+          _buildDataCell(worker['joiningDate']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'joiningDate'),
               fieldKey: 'joiningDate',
               workerIndex: index),
-          _buildDataCell(worker['profileImage']?.toString() ?? '', 200,
+          _buildDataCell(worker['profileImage']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'profileImage'),
               fieldKey: 'profileImage',
               workerIndex: index),
-          _buildDataCell(worker['frontId']?.toString() ?? '', 200,
+          _buildDataCell(worker['frontId']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'frontId'),
               fieldKey: 'frontId',
               workerIndex: index),
-          _buildDataCell(worker['backId']?.toString() ?? '', 200,
+          _buildDataCell(worker['backId']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'backId'),
               fieldKey: 'backId',
               workerIndex: index),
-          _buildDataCell(worker['cv']?.toString() ?? '', 150,
+          _buildDataCell(worker['cv']?.toString() ?? '', 130,
               hasError: _hasFieldError(worker, 'cv'),
               fieldKey: 'cv',
               workerIndex: index),
@@ -1934,11 +2378,11 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       {String? fieldKey}) {
     final bool hasError =
         fieldKey != null && _errorFieldNames().contains(fieldKey);
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: SizedBox(
-        width: width,
-        child: Row(
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      margin: const EdgeInsets.only(right: 16),
+      child: Row(
           children: [
             Flexible(
               child: Text(
@@ -1960,7 +2404,6 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             ],
           ],
         ),
-      ),
     );
   }
 
@@ -1972,14 +2415,44 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     String? fieldKey,
     int workerIndex = -1,
   }) {
-    final displayText = hasError && text.isEmpty
-        ? 'required_field'.tr()
-        : (text.isEmpty ? '-' : text);
+    final isMediaField = fieldKey == 'profileImage' ||
+        fieldKey == 'frontId' ||
+        fieldKey == 'backId' ||
+        fieldKey == 'cv';
+
+    final hasValue = text.isNotEmpty && text != '-';
+
+    String displayText;
+    if (hasError && text.isEmpty) {
+      displayText = 'required_field'.tr();
+    } else if (isMediaField && hasValue) {
+      // Use stored filename from worker data
+      if (workerIndex >= 0 && workerIndex < _validWorkers.length) {
+        final storedName = _validWorkers[workerIndex]['${fieldKey}_name'];
+        if (storedName != null && storedName.toString().isNotEmpty) {
+          displayText = storedName.toString();
+        } else if (text.startsWith('data:')) {
+          final mime = text.split(';').first.split(':').last;
+          displayText = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
+        } else {
+          displayText = text.split('/').last;
+        }
+      } else if (text.startsWith('data:')) {
+        final mime = text.split(';').first.split(':').last;
+        displayText = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
+      } else {
+        displayText = text.split('/').last;
+      }
+    } else if (text.isEmpty) {
+      displayText = '-';
+    } else {
+      displayText = text;
+    }
 
     return Container(
       width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      margin: const EdgeInsets.only(right: 16),
       child: Row(
         children: [
           Expanded(
@@ -1999,7 +2472,7 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (hasError && fieldKey != null && workerIndex >= 0)
+          if (workerIndex >= 0 && fieldKey != null)
             GestureDetector(
               onTap: () => _editCell(workerIndex, fieldKey),
               child: Container(
@@ -2007,13 +2480,17 @@ class _AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+                  color: hasError
+                      ? const Color(0xFFDC2626).withValues(alpha: 0.1)
+                      : const Color(0xFF6B7280).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.edit_rounded,
                   size: 13,
-                  color: Color(0xFFDC2626),
+                  color: hasError
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF6B7280),
                 ),
               ),
             ),

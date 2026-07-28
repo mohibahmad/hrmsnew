@@ -964,5 +964,14 @@
   "generating_invoices": "Генерация счетов...",
   "save_payroll_invoices_zip": "Сохранить ZIP счетов зарплаты",
   "zip_saved": "ZIP сохранён: {fileName}",
-  "failed_to_generate_zip": "Ошибка генерации ZIP: {error}"
+  "failed_to_generate_zip": "Ошибка генерации ZIP: {error}",
+  "upload_image": "Загрузить Изображение",
+  "upload_cv": "Загрузить CV",
+  "file_too_large": "Файл слишком большой. Макс. размер: {size}",
+  "failed_to_pick_image": "Ошибка выбора файла",
+  "validation_invalid_relationship": "Допускаются только Холост, Женат, Разведен или Вдова",
+  "validation_invalid_employee_type": "Допускаются только Полная занятость, Частичная, Контракт или Стажёр",
+  "validation_invalid_work_model": "Допускаются только В офисе, Удалённо или Гибрид",
+  "validation_invalid_salary_type": "Допускаются только Ежемесячно, Почасово или По контракту",
+  "uploaded": "Загружено"
 }

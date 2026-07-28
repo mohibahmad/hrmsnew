@@ -60,6 +60,17 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   final Color sidebarBlue = const Color(0xFF0B50C3);
   final Color activeTabBlue = const Color(0xFF4C84E0);
 
+  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey = GlobalKey<AddBulkWorkerScreenState>();
+
+  Future<void> _navigateTo(int index) async {
+    if (index == _currentMenuIndex) return;
+    if (_currentMenuIndex == 2 && _bulkWorkerKey.currentState?.hasUnsavedChanges == true) {
+      final shouldPop = await _bulkWorkerKey.currentState!.confirmDiscard();
+      if (!shouldPop) return;
+    }
+    setState(() => _currentMenuIndex = index);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -238,13 +249,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   Icons.grid_view_rounded,
                   'sidebar_dashboard'.tr(),
                   _currentMenuIndex == 0,
-                  onTap: () => setState(() => _currentMenuIndex = 0),
+                  onTap: () => _navigateTo(0),
                 ),
                 _buildNavItem(
                   Icons.people_alt,
                   'sidebar_workers'.tr(),
                   _currentMenuIndex == 1,
-                  onTap: () => setState(() => _currentMenuIndex = 1),
+                  onTap: () => _navigateTo(1),
                 ),
                 _buildNavItem(
                   Icons.engineering,
@@ -274,6 +285,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   onBack: () => setState(() => _currentMenuIndex = 0),
                 ),
                 AddBulkWorkerScreen(
+                  key: _bulkWorkerKey,
                   onBack: () => setState(() => _currentMenuIndex = 0),
                 ),
               ],
@@ -400,13 +412,24 @@ class WorkersScreen extends StatefulWidget {
   });
 
   @override
-  State<WorkersScreen> createState() => _WorkersScreenState();
+  State<WorkersScreen> createState() => WorkersScreenState();
 }
 
-class _WorkersScreenState extends State<WorkersScreen> {
+class WorkersScreenState extends State<WorkersScreen> {
   bool _isAddingWorker = false;
   bool _isAddingBulkWorker = false;
   Map<String, dynamic>? _workerToEdit;
+  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey = GlobalKey<AddBulkWorkerScreenState>();
+
+  /// Returns true if the bulk worker screen currently has unsaved changes.
+  bool get hasUnsavedBulkChanges =>
+      _isAddingBulkWorker && _bulkWorkerKey.currentState?.hasUnsavedChanges == true;
+
+  /// Shows the unsaved changes dialog if needed, returns true if user confirms discard.
+  Future<bool> confirmDiscardBulkChanges() async {
+    if (!hasUnsavedBulkChanges) return true;
+    return _bulkWorkerKey.currentState?.confirmDiscard() ?? true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -422,6 +445,7 @@ class _WorkersScreenState extends State<WorkersScreen> {
       );
     } else if (_isAddingBulkWorker) {
       return AddBulkWorkerScreen(
+        key: _bulkWorkerKey,
         onBack: () {
           setState(() {
             _isAddingBulkWorker = false;
@@ -911,9 +935,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                             for (final f in allFilters)
                               _buildFilterTab(
                                 f,
-                                f == 'All'
-                                    ? 'all_filter'.tr()
-                                    : '${f.toLowerCase().replaceAll(' ', '_')}'.tr(),
+                                f == 'All' ? 'all_filter'.tr() : f,
                               ),
                           ],
                         ),

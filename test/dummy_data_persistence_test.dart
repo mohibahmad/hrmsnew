@@ -34,8 +34,8 @@ void main() {
 
   test('load restores empty records and saved holidays exactly', () async {
     SharedPreferences.setMockInitialValues({
-      'dummy_timeoff': '[]',
-      'dummy_holidays': jsonEncode({
+      'timeoff': '[]',
+      'holidays': jsonEncode({
         'July': [
           {'day': 22, 'name': 'QA Day', 'isEnabled': true},
         ],
@@ -61,7 +61,7 @@ void main() {
     await DummyData.saveToPrefs();
 
     final prefs = await SharedPreferences.getInstance();
-    final saved = jsonDecode(prefs.getString('dummy_holidays')!) as Map;
+    final saved = jsonDecode(prefs.getString('holidays')!) as Map;
     expect((saved['August'] as List).single['name'], 'Company Day');
   });
 }

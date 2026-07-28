@@ -977,5 +977,14 @@
   "generating_invoices": "Generating invoices...",
   "save_payroll_invoices_zip": "Save Payroll Invoices ZIP",
   "zip_saved": "ZIP saved: {fileName}",
-  "failed_to_generate_zip": "Failed to generate ZIP: {error}"
+  "failed_to_generate_zip": "Failed to generate ZIP: {error}",
+  "upload_image": "Upload Image",
+  "upload_cv": "Upload CV",
+  "file_too_large": "File is too large. Max size: {size}",
+  "failed_to_pick_image": "Failed to pick file",
+  "validation_invalid_relationship": "Only Single, Married, Divorced, or Widowed is allowed",
+  "validation_invalid_employee_type": "Only Full-Time, Part-Time, Contract, or Intern is allowed",
+  "validation_invalid_work_model": "Only On-Site, Remote, or Hybrid is allowed",
+  "validation_invalid_salary_type": "Only Monthly, Hourly, or Contract is allowed",
+  "uploaded": "Uploaded"
 }

@@ -11,7 +11,12 @@ import 'time_off_service.dart';
 class BulkWorkerResult {
   final int imported;
   final int skipped;
-  BulkWorkerResult({required this.imported, required this.skipped});
+  final List<String> skipReasons;
+  BulkWorkerResult({
+    required this.imported,
+    required this.skipped,
+    this.skipReasons = const [],
+  });
 }
 
 class FirestoreService {
@@ -223,6 +228,7 @@ class FirestoreService {
         .toList();
     final acceptedWorkers = <Map<String, dynamic>>[];
 
+    final skipReasons = <String>[];
     for (var worker in workersList) {
       try {
         Validators.validateWorker(worker);
@@ -232,6 +238,7 @@ class FirestoreService {
         ]);
         if (duplicateField != null) {
           skipped++;
+          skipReasons.add('Duplicate ${duplicateField.name}: ${worker['name'] ?? worker['email'] ?? ''}');
           continue;
         }
         final docRef = coll.doc();
@@ -248,6 +255,7 @@ class FirestoreService {
         }
       } catch (e) {
         skipped++;
+        skipReasons.add('Validation error: ${e.toString().substring(0, 100)}');
         continue;
       }
     }
@@ -265,7 +273,7 @@ class FirestoreService {
       });
     }
 
-    return BulkWorkerResult(imported: count, skipped: skipped);
+    return BulkWorkerResult(imported: count, skipped: skipped, skipReasons: skipReasons);
   }
 
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {

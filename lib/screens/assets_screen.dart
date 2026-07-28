@@ -364,8 +364,6 @@ onPressed: isSaving
                                   await _firestore.addAsset(assetMap);
                                 } catch (e, st) {
                                   setModalState(() => isSaving = false);
-                                  print('❌ addAsset failed: $e');
-                                  print(st);
                                   if (!context.mounted) return;
                                   FlashySnackBar.show(
                                     context,
