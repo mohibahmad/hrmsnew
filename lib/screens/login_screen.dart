@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -276,39 +277,90 @@ class _LoginScreenState extends State<LoginScreen> {
     FlashySnackBar.show(context, message: message, isError: true);
   }
 
+  InputDecoration _buildCustomInputDecoration(String hint, {bool isPassword = false, bool obscureText = false, VoidCallback? onToggleVisibility}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: Colors.grey.shade400,
+        fontSize: 14,
+        fontFamily: 'SF Pro Display',
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      suffixIcon: isPassword
+          ? IconButton(
+              icon: Icon(
+                obscureText ? Icons.visibility_off : Icons.visibility,
+                color: Colors.grey.shade400,
+              ),
+              onPressed: onToggleVisibility,
+            )
+          : null,
+    );
+  }
+
+  Widget _buildFieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+          fontFamily: 'SF Pro Display',
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildFormContent(BuildContext context) {
     return [
       Center(
         child: SvgPicture.asset(
           'assets/HR_dark.svg',
-          height: 76,
+          height: 80,
           fit: BoxFit.contain,
         ),
       ),
-      const SizedBox(height: 32),
+      const SizedBox(height: 50),
 
-      Text(
-        'welcome_back'.tr(),
+      const Text(
+        'Welcome Back!',
         style: TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF000000),
+          fontWeight: FontWeight.w800,
+          color: Colors.black,
           fontFamily: 'SF Pro Display',
-          height: 1.0,
+          letterSpacing: -0.5,
+          height: 1.2,
         ),
       ),
       const SizedBox(height: 4),
       Text(
-        'sign_in_subtitle'.tr(),
+        'Sign in to continue your HR journey',
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF000000),
+          color: Colors.grey.shade800,
           fontFamily: 'SF Pro Display',
           height: 1.0,
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 24),
 
       Form(
         key: _formKey,
@@ -318,33 +370,25 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InputLabel(label: 'email_label'.tr()),
-            const SizedBox(height: 8),
+            _buildFieldLabel('E-mail'),
             TextFormField(
               controller: _emailController,
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: inputDecoration('email_hint'.tr()),
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildCustomInputDecoration('Enter your e-mail'),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'email_required'.tr();
-                }
-                if (!RegExp(
-                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                ).hasMatch(value.trim())) {
+                if (value == null || value.trim().isEmpty) return 'email_required'.tr();
+                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
                   return 'email_invalid'.tr();
                 }
                 return null;
               },
             ),
-            const SizedBox(height: 12),
-            InputLabel(label: 'password_label'.tr()),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            
+            _buildFieldLabel('Password'),
             TextFormField(
               controller: _passwordController,
               enabled: !_anyLoading,
@@ -355,12 +399,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   _handleLogin();
                 }
               },
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: inputDecoration(
-                'password_hint'.tr(),
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildCustomInputDecoration(
+                'Enter your password',
                 isPassword: true,
                 obscureText: _obscurePassword,
                 onToggleVisibility: () {
@@ -368,19 +409,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'password_required'.tr();
-                }
-                if (value.length < 6) {
-                  return 'password_too_short'.tr();
-                }
+                if (value == null || value.isEmpty) return 'password_required'.tr();
+                if (value.length < 6) return 'password_too_short'.tr();
                 return null;
               },
             ),
           ],
         ),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
+      
       GestureDetector(
         onTap: _anyLoading
             ? null
@@ -392,31 +430,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
         behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            'forget_password'.tr(),
-            style: TextStyle(
-              color: Color(0xFFFF1014),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
-            ),
+        child: const Text(
+          'Forget password',
+          style: TextStyle(
+            color: Color(0xFFFF0000), 
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'SF Pro Display',
           ),
         ),
       ),
-      const SizedBox(height: 12),
+      
+      const SizedBox(height: 24),
+      
       SizedBox(
         width: double.infinity,
-        height: 44,
+        height: 48,
         child: ElevatedButton(
           onPressed: _anyLoading ? null : _handleLogin,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
-            foregroundColor: Color(0xFFFFFFFF),
-            disabledBackgroundColor: const Color(
-              0xFF0044C9,
-            ).withValues(alpha: 0.6),
+            foregroundColor: const Color(0xFFFFFFFF),
+            disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -428,29 +463,27 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFFFFFFFF),
-                    ),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
                   ),
                 )
-              : Text(
-                  'log_in'.tr(),
+              : const Text(
+                  'Log in',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFFFFFF),
                     fontFamily: 'SF Pro Display',
-                    height: 1.0,
                   ),
                 ),
         ),
       ),
-      const SizedBox(height: 16),
+      
+      const SizedBox(height: 24),
       Row(
         children: [
           Expanded(child: Divider(color: Colors.grey.shade300)),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'or'.tr(),
               style: TextStyle(
@@ -471,25 +504,23 @@ class _LoginScreenState extends State<LoginScreen> {
           text: 'continue_with_google'.tr(),
           icon: SvgPicture.asset(
             'assets/google_icon.svg',
-            width: 16,
-            height: 16,
+            width: 18,
+            height: 18,
           ),
           isLoading: _isGoogleLoading,
           onPressed: _anyLoading ? null : _handleGoogleLogin,
           backgroundColor: Colors.white,
           textColor: const Color(0xFF000000),
         ),
-      if (_googleEnabled) const SizedBox(height: 8),
-
-      const SizedBox(height: 8),
+      if (_googleEnabled) const SizedBox(height: 12),
 
       buildSocialButton(
         context: context,
         text: 'continue_as_guest'.tr(),
         icon: SvgPicture.asset(
           'assets/guest_icon.svg',
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           colorFilter: const ColorFilter.mode(
             Color(0xFF0044C9),
             BlendMode.srcIn,
@@ -500,72 +531,175 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
-          width: 1.5,
+          color: const Color(0xFF0044C9).withOpacity(0.4),
+          width: 1.2,
         ),
       ),
+      
       const SizedBox(height: 24),
 
       Center(
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          children: [
-            Text(
-              'dont_have_account'.tr(),
-              style: const TextStyle(
-                color: Color(0xFF000000),
-                fontSize: 13,
-                fontFamily: 'SF Pro Display',
-              ),
+        child: RichText(
+          text: TextSpan(
+            text: "Don't have an account? ", 
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'SF Pro Display',
             ),
-            GestureDetector(
-              onTap: _anyLoading
-                  ? null
-                  : () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => const SignupScreen(),
-                        ),
-                      );
-                    },
-              child: Text(
-                'sign_up'.tr(),
+            children: [
+              TextSpan(
+                text: 'Sign Up',
                 style: const TextStyle(
                   color: Colors.red,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   fontFamily: 'SF Pro Display',
                 ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = _anyLoading
+                      ? null
+                      : () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) => const SignupScreen(),
+                            ),
+                          );
+                        },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+      const SizedBox(height: 20),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final cardDecoration = BoxDecoration(
-      color: Color(0xFFFFFFFF),
-      borderRadius: BorderRadius.circular(40),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 20,
-          offset: Offset(0, 10),
-        ),
-      ],
-    );
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 800; 
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/auth_bg.png', fit: BoxFit.cover),
+          Row(
+            children: [
+              // Left Blue Banner 
+              if (isDesktop)
+                Expanded(
+                  flex: 11,
+                  child: Container(
+                    color: const Color(0xFF165CDB), 
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 40,
+                          left: 200,
+                          right: 40,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Welcome to HRMS',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const Text(
+                                'Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // ✅ Yahan Tablet Frame aur Tilt (Rotation) ka logic add kia gaya hai!
+                        Positioned(
+                          top: 240, // Text se fasla
+                          left: -520,
+                          right: 30, // Thoda screen se bahar ta k real effect aaye
+                          bottom: -250, 
+                          child: Transform.rotate(
+                            angle: -0.12, // Counter-Clockwise tilt/terha karne ke liye (-0.12 radians)
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(28), // Tablet ki round shape
+                                border: const Border(
+                                  left: BorderSide(color: Color(0xFF000000), width: 20),
+                                  right: BorderSide(color: Color(0xFF000000), width: 20),
+                                  bottom: BorderSide(color: Color(0xFF000000), width: 20),
+                                ),
+                                boxShadow: [
+                                  // ✅ White bold outline using spreadRadius
+                                  const BoxShadow(
+                                    color: Colors.white,
+                                    blurRadius: 0,
+                                    spreadRadius: 4,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 30,
+                                    offset: const Offset(10, 15),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12), // andar wali screen ka curve
+                                child: Image.asset(
+                                  'assets/dashboard_mockup.png', // Apki flat image
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topLeft,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+              // Right Side Form 
+              Expanded(
+                flex: 9,
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 0,
+                    ),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: _buildFormContent(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          )],
+          ),
 
+          // Floating Language selector
           Positioned(
-            top: 50,
+            top: 40,
             right: 40,
             child: GestureDetector(
               onTap: () => showLanguageModal(context),
@@ -573,56 +707,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Color(0xFFFFFFFF),
+                  color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Center(
                   child: Image.asset(
                     'assets/langauge_icon.png',
-                    width: 28,
-                    height: 28,
-                    color: const Color(0xFF0247C4),
+                    width: 24,
+                    height: 24,
+                    color: const Color(0xFF0044C9),
                   ),
                 ),
               ),
             ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: cardDecoration,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: _buildFormContent(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const Expanded(flex: 6, child: SizedBox.shrink()),
-            ],
           ),
         ],
       ),

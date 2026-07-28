@@ -11,7 +11,7 @@ import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../utils/snackbar_utils.dart';
-import '../shared/auth_widgets.dart';
+import '../shared/auth_widgets.dart'; // Retained for buildSocialButton & showLanguageModal
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -23,15 +23,17 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   final bool _isAppleLoading = false;
   bool _isGuestLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
 
@@ -71,9 +73,9 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _googleSub?.cancel();
-    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -207,30 +209,29 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
       );
 
+      // Derive display name from email (local part before @)
+      final emailLocalPart = _emailController.text.trim().split('@')[0];
       try {
-        await credential.user?.updateDisplayName(
-          _usernameController.text.trim(),
-        );
+        await credential.user?.updateDisplayName(emailLocalPart);
       } catch (_) {}
 
       await _firestoreService.createUserProfile(
-        username: _usernameController.text.trim(),
+        username: emailLocalPart,
         email: _emailController.text.trim(),
-        phone: "",
+        phone: '',
       );
 
-      final userName = _usernameController.text.trim();
       await _firestoreService.addNotification({
         'type': 'welcome',
-        'title': 'notif_title_welcome'.tr(namedArgs: {'name': userName}),
+        'title': 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}),
         'message': 'notif_msg_welcome'.tr(),
-        'data': {'name': userName},
+        'data': {'name': emailLocalPart},
       });
 
       if (mounted) {
         FlashySnackBar.show(
           context,
-          title: 'Welcome $userName! 🎉',
+          title: 'Welcome $emailLocalPart! 🎉',
           message:
               'Your HRMS account has been created successfully. Welcome aboard!',
         );
@@ -285,39 +286,91 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // Helper Custom Decoration to match the exact design borders
+  InputDecoration _buildCustomInputDecoration(String hint, {bool isPassword = false, bool obscureText = false, VoidCallback? onToggleVisibility}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: Colors.grey.shade400,
+        fontSize: 14,
+        fontFamily: 'SF Pro Display',
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      suffixIcon: isPassword
+          ? IconButton(
+              icon: Icon(
+                obscureText ? Icons.visibility_off : Icons.visibility,
+                color: Colors.grey.shade400,
+              ),
+              onPressed: onToggleVisibility,
+            )
+          : null,
+    );
+  }
+
+  Widget _buildFieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+          fontFamily: 'SF Pro Display',
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildFormContent(BuildContext context) {
     return [
       Center(
         child: SvgPicture.asset(
           'assets/HR_dark.svg',
-          height: 76,
+          height: 80, // Sized correctly as per design
           fit: BoxFit.contain,
         ),
       ),
-      const SizedBox(height: 24),
-
+      const SizedBox(height: 50),
+      
       Text(
-        'create_account'.tr(),
-        style: TextStyle(
+        'Create Account',
+        style: const TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF000000),
+          fontWeight: FontWeight.w800,
+          color: Colors.black,
           fontFamily: 'SF Pro Display',
-          height: 1.0,
+          letterSpacing: -0.5,
+          height: 1.2,
         ),
       ),
       const SizedBox(height: 4),
       Text(
-        'signup_subtitle'.tr(),
+        'join us to get started on your journey',
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF000000),
+          color: Colors.grey.shade800,
           fontFamily: 'SF Pro Display',
           height: 1.0,
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 24),
 
       Form(
         key: _formKey,
@@ -327,68 +380,33 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InputLabel(label: 'username_label'.tr()),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _usernameController,
-              enabled: !_anyLoading,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: inputDecoration('username_hint'.tr()),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'username_required'.tr();
-                }
-                if (value.trim().length < 2) {
-                  return 'username_too_short'.tr();
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 10),
-            InputLabel(label: 'email_label'.tr()),
-            const SizedBox(height: 8),
+            _buildFieldLabel('E-mail'),
             TextFormField(
               controller: _emailController,
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: inputDecoration('email_hint'.tr()),
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildCustomInputDecoration('Enter your e-mail'),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'email_required'.tr();
-                }
-                if (!RegExp(
-                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                ).hasMatch(value.trim())) {
+                if (value == null || value.trim().isEmpty) return 'email_required'.tr();
+                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
                   return 'email_invalid'.tr();
                 }
                 return null;
               },
             ),
-            const SizedBox(height: 10),
-            InputLabel(label: 'password_label'.tr()),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+
+            _buildFieldLabel('Password'),
             TextFormField(
               controller: _passwordController,
               enabled: !_anyLoading,
               obscureText: _obscurePassword,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) {},
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: inputDecoration(
-                'password_hint'.tr(),
+              textInputAction: TextInputAction.next,
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildCustomInputDecoration(
+                'Enter your password',
                 isPassword: true,
                 obscureText: _obscurePassword,
                 onToggleVisibility: () {
@@ -396,30 +414,49 @@ class _SignupScreenState extends State<SignupScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'password_enter'.tr();
-                }
-                if (value.length < 6) {
-                  return 'password_too_short'.tr();
-                }
+                if (value == null || value.isEmpty) return 'password_enter'.tr();
+                if (value.length < 6) return 'password_too_short'.tr();
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            _buildFieldLabel('Confirm Password'),
+            TextFormField(
+              controller: _confirmPasswordController,
+              enabled: !_anyLoading,
+              obscureText: _obscureConfirmPassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {},
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildCustomInputDecoration(
+                'Confirm your password',
+                isPassword: true,
+                obscureText: _obscureConfirmPassword,
+                onToggleVisibility: () {
+                  setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                },
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Please confirm your password';
+                if (value != _passwordController.text) return 'Passwords do not match';
                 return null;
               },
             ),
           ],
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 24),
+      
       SizedBox(
         width: double.infinity,
-        height: 44,
+        height: 48,
         child: ElevatedButton(
           onPressed: _anyLoading ? null : _handleSignUp,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0044C9),
-            foregroundColor: Color(0xFFFFFFFF),
-            disabledBackgroundColor: const Color(
-              0xFF0044C9,
-            ).withValues(alpha: 0.6),
+            foregroundColor: const Color(0xFFFFFFFF),
+            disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
@@ -431,29 +468,27 @@ class _SignupScreenState extends State<SignupScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFFFFFFFF),
-                    ),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
                   ),
                 )
-              : Text(
-                  'create_account'.tr(),
+              : const Text(
+                  'Create Account',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                     color: Color(0xFFFFFFFF),
                     fontFamily: 'SF Pro Display',
-                    height: 1.0,
                   ),
                 ),
         ),
       ),
-      const SizedBox(height: 12),
+      
+      const SizedBox(height: 24),
       Row(
         children: [
           Expanded(child: Divider(color: Colors.grey.shade300)),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'or'.tr(),
               style: TextStyle(
@@ -466,33 +501,33 @@ class _SignupScreenState extends State<SignupScreen> {
           Expanded(child: Divider(color: Colors.grey.shade300)),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
 
+      // Kept social logins to preserve full functionality as requested
       if (_googleEnabled)
         buildSocialButton(
           context: context,
           text: 'continue_with_google'.tr(),
           icon: SvgPicture.asset(
             'assets/google_icon.svg',
-            width: 16,
-            height: 16,
+            width: 18,
+            height: 18,
           ),
           isLoading: _isGoogleLoading,
           onPressed: _anyLoading ? null : _handleGoogleLogin,
           backgroundColor: Colors.white,
           textColor: const Color(0xFF000000),
         ),
-      if (_googleEnabled) const SizedBox(height: 8),
-
-      const SizedBox(height: 8),
+      
+      if (_googleEnabled) const SizedBox(height: 12),
 
       buildSocialButton(
         context: context,
         text: 'continue_as_guest'.tr(),
         icon: SvgPicture.asset(
           'assets/guest_icon.svg',
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           colorFilter: const ColorFilter.mode(
             Color(0xFF0044C9),
             BlendMode.srcIn,
@@ -503,27 +538,29 @@ class _SignupScreenState extends State<SignupScreen> {
         backgroundColor: Colors.white,
         textColor: const Color(0xFF0044C9),
         border: BorderSide(
-          color: const Color(0xFF0044C9).withValues(alpha: 0.4),
-          width: 1.5,
+          color: const Color(0xFF0044C9).withOpacity(0.4),
+          width: 1.2,
         ),
       ),
+      
       const SizedBox(height: 24),
 
       Center(
         child: RichText(
           text: TextSpan(
-            text: 'already_have_account'.tr(),
+            text: 'Already have an account? ', // Preserved original routing text logic
             style: const TextStyle(
-              color: Color(0xFF000000),
-              fontSize: 13,
+              color: Colors.black87,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
               fontFamily: 'SF Pro Display',
             ),
             children: [
               TextSpan(
-                text: 'sign_in'.tr(),
+                text: 'Sign In', // Exact match for design
                 style: const TextStyle(
                   color: Colors.red,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   fontFamily: 'SF Pro Display',
                 ),
                 recognizer: TapGestureRecognizer()
@@ -539,31 +576,134 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
       ),
+      const SizedBox(height: 20),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final cardDecoration = BoxDecoration(
-      color: Color(0xFFFFFFFF),
-      borderRadius: BorderRadius.circular(40),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 20,
-          offset: Offset(0, 10),
-        ),
-      ],
-    );
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 800; // Perfect for M1, M1 Pro, 16-inch laptops
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/auth_bg.png', fit: BoxFit.cover),
+          Row(
+            children: [
+              // Left Blue Banner (Only visible on large screens)
+              if (isDesktop)
+                Expanded(
+                  flex: 11, // Adjusts width ratio visually
+                  child: Container(
+                    color: const Color(0xFF165CDB), // Design exact matched blue
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 40,
+                          left: 200,
+                          right: 40,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Welcome to HRMS',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const Text(
+                                'Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Dashboard Mockup Image — styled as a tilted tablet (matching login screen)
+                        Positioned(
+                          top: 240,
+                          left: -520,
+                          right: 30,
+                          bottom: -250,
+                          child: Transform.rotate(
+                            angle: -0.12,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(28),
+                                border: const Border(
+                                  left: BorderSide(color: Color(0xFF000000), width: 20),
+                                  right: BorderSide(color: Color(0xFF000000), width: 20),
+                                  bottom: BorderSide(color: Color(0xFF000000), width: 20),
+                                ),
+                                boxShadow: [
+                                  // ✅ White bold outline using spreadRadius
+                                  const BoxShadow(
+                                    color: Colors.white,
+                                    blurRadius: 0,
+                                    spreadRadius: 4,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 30,
+                                    offset: const Offset(10, 15),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.asset(
+                                  'assets/dashboard_mockup.png',
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topLeft,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+              // Right Side Form 
+              Expanded(
+                flex: 9,
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 0,
+                    ),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420), // Locks width for perfectly readable form on laptops
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: _buildFormContent(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          )],
+          ),
 
+          // Floating Language selector at Top-Right
           Positioned(
-            top: 50,
+            top: 40,
             right: 40,
             child: GestureDetector(
               onTap: () => showLanguageModal(context),
@@ -571,56 +711,26 @@ class _SignupScreenState extends State<SignupScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Color(0xFFFFFFFF),
+                  color: Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Center(
                   child: Image.asset(
                     'assets/langauge_icon.png',
-                    width: 28,
-                    height: 28,
-                    color: const Color(0xFF0247C4),
+                    width: 24,
+                    height: 24,
+                    color: const Color(0xFF0044C9),
                   ),
                 ),
               ),
             ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: cardDecoration,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: _buildFormContent(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const Expanded(flex: 6, child: SizedBox.shrink()),
-            ],
           ),
         ],
       ),

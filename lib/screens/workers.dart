@@ -543,6 +543,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
         for (int i = 0; i < _allWorkers.length; i++) {
           _allWorkers[i]['profileImage'] =
               i.isEven ? 'assets/boy.png' : 'assets/imageplaceholder.png';
+          // Map dummy fields (workType / attendanceType) to the display
+          // fields (type1 / type2) expected by the table rows.
+          _allWorkers[i]['type1'] = _allWorkers[i]['workType'] ?? '';
+          _allWorkers[i]['type2'] = _allWorkers[i]['attendanceType'] ?? '';
         }
         _isLoading = false;
       });

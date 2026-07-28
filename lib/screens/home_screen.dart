@@ -290,6 +290,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadDashboardData();
     _startPremiumListener();
 
+    if (currentUser?.isAnonymous ?? false) {
+      // For guest mode, defer chart computation via _handlePeriodChanged
+      // so the initial charts are rendered through exactly the same code
+      // pathway as when the user manually selects a period from the dropdown.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handlePeriodChanged(_selectedPeriod);
+      });
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _dashboardReady = true);
     });
