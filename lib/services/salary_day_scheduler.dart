@@ -807,11 +807,13 @@ class SalaryDayScheduler {
                     ),
 
                     // ── Filter Chips with visible container ───────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                      child: Container(
-                        width: 420,
-                        height: 38,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                        child: Container(
+                          width: 200,
+                          height: 38,
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFFFFF),
@@ -834,6 +836,7 @@ class SalaryDayScheduler {
                           ],
                         ),
                       ),
+                    ),
                     ),
 
                     // ── Selection Status ─────────────────────────────────

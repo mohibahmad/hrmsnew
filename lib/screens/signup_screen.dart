@@ -26,7 +26,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
@@ -287,7 +287,12 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   // Helper Custom Decoration to match the exact design borders
-  InputDecoration _buildCustomInputDecoration(String hint, {bool isPassword = false, bool obscureText = false, VoidCallback? onToggleVisibility}) {
+  InputDecoration _buildCustomInputDecoration(
+    String hint, {
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
+  }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -347,7 +352,7 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       ),
       const SizedBox(height: 50),
-      
+
       Text(
         'Create Account',
         style: const TextStyle(
@@ -386,11 +391,17 @@ class _SignupScreenState extends State<SignupScreen> {
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildCustomInputDecoration('Enter your e-mail'),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'email_required'.tr();
-                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
+                if (value == null || value.trim().isEmpty)
+                  return 'email_required'.tr();
+                if (!RegExp(
+                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                ).hasMatch(value.trim())) {
                   return 'email_invalid'.tr();
                 }
                 return null;
@@ -404,7 +415,10 @@ class _SignupScreenState extends State<SignupScreen> {
               enabled: !_anyLoading,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildCustomInputDecoration(
                 'Enter your password',
                 isPassword: true,
@@ -414,7 +428,8 @@ class _SignupScreenState extends State<SignupScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'password_enter'.tr();
+                if (value == null || value.isEmpty)
+                  return 'password_enter'.tr();
                 if (value.length < 6) return 'password_too_short'.tr();
                 return null;
               },
@@ -428,18 +443,25 @@ class _SignupScreenState extends State<SignupScreen> {
               obscureText: _obscureConfirmPassword,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) {},
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildCustomInputDecoration(
                 'Confirm your password',
                 isPassword: true,
                 obscureText: _obscureConfirmPassword,
                 onToggleVisibility: () {
-                  setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                  setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  );
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Please confirm your password';
-                if (value != _passwordController.text) return 'Passwords do not match';
+                if (value == null || value.isEmpty)
+                  return 'Please confirm your password';
+                if (value != _passwordController.text)
+                  return 'Passwords do not match';
                 return null;
               },
             ),
@@ -447,7 +469,7 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       ),
       const SizedBox(height: 24),
-      
+
       SizedBox(
         width: double.infinity,
         height: 48,
@@ -468,7 +490,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFFFFFF),
+                    ),
                   ),
                 )
               : const Text(
@@ -482,7 +506,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
         ),
       ),
-      
+
       const SizedBox(height: 24),
       Row(
         children: [
@@ -518,7 +542,7 @@ class _SignupScreenState extends State<SignupScreen> {
           backgroundColor: Colors.white,
           textColor: const Color(0xFF000000),
         ),
-      
+
       if (_googleEnabled) const SizedBox(height: 12),
 
       buildSocialButton(
@@ -542,13 +566,14 @@ class _SignupScreenState extends State<SignupScreen> {
           width: 1.2,
         ),
       ),
-      
+
       const SizedBox(height: 24),
 
       Center(
         child: RichText(
           text: TextSpan(
-            text: 'Already have an account? ', // Preserved original routing text logic
+            text:
+                'Already have an account? ', // Preserved original routing text logic
             style: const TextStyle(
               color: Colors.black87,
               fontSize: 14,
@@ -583,7 +608,8 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 800; // Perfect for M1, M1 Pro, 16-inch laptops
+    final isDesktop =
+        size.width > 800; // Perfect for M1, M1 Pro, 16-inch laptops
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -631,11 +657,12 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         // Dashboard Mockup Image — styled as a tilted tablet (matching login screen)
                         Positioned(
-                          top: 280,
-                          left: -460,
-                          
+                          top: 300,
+                          left: -520,
+                          right: 90,
+
                           child: Transform.rotate(
-                            angle: -0.15,
+                            angle: -0.18,
                             child: Container(
                               width: 1200,
                               height: 800,
@@ -643,9 +670,18 @@ class _SignupScreenState extends State<SignupScreen> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(28),
                                 border: const Border(
-                                  left: BorderSide(color: Color(0xFF000000), width: 20),
-                                  right: BorderSide(color: Color(0xFF000000), width: 20),
-                                  bottom: BorderSide(color: Color(0xFF000000), width: 20),
+                                  left: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
+                                  right: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
+                                  bottom: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
                                 ),
                                 boxShadow: [
                                   const BoxShadow(
@@ -675,8 +711,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                 ),
-                
-              // Right Side Form 
+
+              // Right Side Form
               Expanded(
                 flex: 9,
                 child: Center(
@@ -688,17 +724,20 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Transform.translate(
                       offset: const Offset(0, -16),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420), // Locks width for perfectly readable form on laptops
+                        constraints: const BoxConstraints(
+                          maxWidth: 420,
+                        ), // Locks width for perfectly readable form on laptops
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: _buildFormContent(context),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-          )],
+            ],
           ),
 
           // Floating Language selector at Top-Right

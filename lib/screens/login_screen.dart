@@ -36,8 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _submitted = false;
   bool _googleEnabled = true;
 
-  bool get _anyLoading =>
-      _isLoading || _isGoogleLoading || _isGuestLoading;
+  bool get _anyLoading => _isLoading || _isGoogleLoading || _isGuestLoading;
 
   late AuthService _authService;
   late FirestoreService _firestoreService;
@@ -277,7 +276,12 @@ class _LoginScreenState extends State<LoginScreen> {
     FlashySnackBar.show(context, message: message, isError: true);
   }
 
-  InputDecoration _buildCustomInputDecoration(String hint, {bool isPassword = false, bool obscureText = false, VoidCallback? onToggleVisibility}) {
+  InputDecoration _buildCustomInputDecoration(
+    String hint, {
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
+  }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -338,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 50),
 
-       Text(
+      Text(
         'Welcome Back!'.tr(),
         style: TextStyle(
           fontSize: 28,
@@ -376,18 +380,24 @@ class _LoginScreenState extends State<LoginScreen> {
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildCustomInputDecoration('email_hint'.tr()),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'email_required'.tr();
-                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
+                if (value == null || value.trim().isEmpty)
+                  return 'email_required'.tr();
+                if (!RegExp(
+                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                ).hasMatch(value.trim())) {
                   return 'email_invalid'.tr();
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            
+
             _buildFieldLabel('password_label'.tr()),
             TextFormField(
               controller: _passwordController,
@@ -399,7 +409,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   _handleLogin();
                 }
               },
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildCustomInputDecoration(
                 'password_hint'.tr(),
                 isPassword: true,
@@ -409,7 +422,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'password_required'.tr();
+                if (value == null || value.isEmpty)
+                  return 'password_required'.tr();
                 if (value.length < 6) return 'password_too_short'.tr();
                 return null;
               },
@@ -418,7 +432,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       const SizedBox(height: 10),
-      
+
       GestureDetector(
         onTap: _anyLoading
             ? null
@@ -430,19 +444,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
         behavior: HitTestBehavior.opaque,
-        child:  Text(
+        child: Text(
           'forget_password'.tr(),
           style: TextStyle(
-            color: Color(0xFFFF0000), 
+            color: Color(0xFFFF0000),
             fontSize: 13,
             fontWeight: FontWeight.w600,
             fontFamily: 'SF Pro Display',
           ),
         ),
       ),
-      
+
       const SizedBox(height: 24),
-      
+
       SizedBox(
         width: double.infinity,
         height: 48,
@@ -463,10 +477,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFFFFFF),
+                    ),
                   ),
                 )
-              :  Text(
+              : Text(
                   'log_in'.tr(),
                   style: TextStyle(
                     fontSize: 16,
@@ -477,7 +493,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
         ),
       ),
-      
+
       const SizedBox(height: 24),
       Row(
         children: [
@@ -535,13 +551,13 @@ class _LoginScreenState extends State<LoginScreen> {
           width: 1.2,
         ),
       ),
-      
+
       const SizedBox(height: 24),
 
       Center(
         child: RichText(
           text: TextSpan(
-            text: 'dont_have_account'.tr(), 
+            text: 'dont_have_account'.tr(),
             style: const TextStyle(
               color: Colors.black87,
               fontSize: 14,
@@ -578,7 +594,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 800; 
+    final isDesktop = size.width > 800;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -587,12 +603,12 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Row(
             children: [
-              // Left Blue Banner 
+              // Left Blue Banner
               if (isDesktop)
                 Expanded(
                   flex: 11,
                   child: Container(
-                    color: const Color(0xFF165CDB), 
+                    color: const Color(0xFF165CDB),
                     child: Stack(
                       children: [
                         Positioned(
@@ -602,35 +618,36 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-Text(
-                                  'welcome_to_hrms'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 48,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
                               Text(
-                                  'welcome_banner_subtitle'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                    fontFamily: 'SF Pro Display',
-                                    height: 1.4,
-                                  ),
+                                'welcome_to_hrms'.tr(),
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
                                 ),
+                              ),
+                              Text(
+                                'welcome_banner_subtitle'.tr(),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.4,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        
+
                         Positioned(
-                          top: 280,
-                          left: -460,
-                          
+                          top: 300,
+                          left: -520,
+                          right: 90,
+
                           child: Transform.rotate(
-                            angle: -0.15,
+                            angle: -0.18,
                             child: Container(
                               width: 1200,
                               height: 800,
@@ -638,9 +655,18 @@ Text(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(28),
                                 border: const Border(
-                                  left: BorderSide(color: Color(0xFF000000), width: 20),
-                                  right: BorderSide(color: Color(0xFF000000), width: 20),
-                                  bottom: BorderSide(color: Color(0xFF000000), width: 20),
+                                  left: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
+                                  right: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
+                                  bottom: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
                                 ),
                                 boxShadow: [
                                   const BoxShadow(
@@ -670,8 +696,8 @@ Text(
                     ),
                   ),
                 ),
-                
-              // Right Side Form 
+
+              // Right Side Form
               Expanded(
                 flex: 9,
                 child: Center(
@@ -688,12 +714,13 @@ Text(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: _buildFormContent(context),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-          )],
+            ],
           ),
 
           // Floating Language selector

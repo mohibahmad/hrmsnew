@@ -912,6 +912,168 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────
+  //  Revalidate all workers (re-checks duplicates against DB & CSV)
+  // ─────────────────────────────────────────────────────────────
+  Future<void> _revalidateAllWorkers() async {
+    final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
+    Set<String> existingEmails = {};
+    Set<String> existingNames = {};
+    Set<String> existingNationalIds = {};
+    Set<String> existingFrontIds = {};
+    Set<String> existingBackIds = {};
+
+    if (isGuest) {
+      existingEmails = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeEmail(w['email']))
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      existingNames = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeName(w['name']))
+          .where((n) => n.isNotEmpty)
+          .toSet();
+      existingNationalIds = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeNationalId(w['nationalId']))
+          .where((n) => n.isNotEmpty)
+          .toSet();
+      existingFrontIds = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['frontId']))
+          .where((u) => u.isNotEmpty)
+          .toSet();
+      existingBackIds = DummyData.workers
+          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['backId']))
+          .where((u) => u.isNotEmpty)
+          .toSet();
+    } else {
+      try {
+        final snapshot = await _firestore.getWorkersOnce();
+        Map<String, dynamic> d(doc) => doc.data() as Map<String, dynamic>;
+        existingEmails = snapshot.docs
+            .map((doc) => WorkerIdentity.normalizeEmail(d(doc)['email']))
+            .where((e) => e.isNotEmpty)
+            .toSet();
+        existingNames = snapshot.docs
+            .map((doc) => WorkerIdentity.normalizeName(d(doc)['name']))
+            .where((n) => n.isNotEmpty)
+            .toSet();
+        existingNationalIds = snapshot.docs
+            .map((doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']))
+            .where((n) => n.isNotEmpty)
+            .toSet();
+        existingFrontIds = snapshot.docs
+            .map((doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['frontId']))
+            .where((u) => u.isNotEmpty)
+            .toSet();
+        existingBackIds = snapshot.docs
+            .map((doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['backId']))
+            .where((u) => u.isNotEmpty)
+            .toSet();
+      } catch (_) {}
+    }
+
+    final Set<String> csvEmails = {};
+    final Set<String> csvNames = {};
+    final Set<String> csvNationalIds = {};
+    final Set<String> csvFrontIds = {};
+    final Set<String> csvBackIds = {};
+
+    int duplicateCount = 0;
+    int missingCount = 0;
+    int invalidDobCount = 0;
+    int invalidGenderCount = 0;
+
+    for (int i = 0; i < _validWorkers.length; i++) {
+      final workerData = _validWorkers[i];
+      final Map<String, String> fieldErrors = {};
+
+      // Required field check
+      for (final reqField in _requiredFields) {
+        final val = workerData[reqField]?.toString().trim() ?? '';
+        if (val.isEmpty) {
+          fieldErrors[reqField] = 'Required';
+          missingCount++;
+        }
+      }
+
+      // DOB validation
+      final dobStr = workerData['dob']?.toString().trim() ?? '';
+      if (dobStr.isNotEmpty) {
+        final dob = AppDateUtils.parseDateString(dobStr);
+        if (dob == null) {
+          fieldErrors['dob'] = 'validation_invalid_date'.tr();
+          invalidDobCount++;
+        } else {
+          final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+          if (dob.isAfter(cutoff)) {
+            fieldErrors['dob'] = 'validation_min_age'.tr();
+            invalidDobCount++;
+          }
+        }
+      }
+
+      // Gender validation
+      final gender = workerData['gender']?.toString().trim() ?? '';
+      final normalizedGender = gender.toLowerCase();
+      if (gender.isNotEmpty) {
+        const validGenders = {'male', 'female', 'other', 'others'};
+        if (!validGenders.contains(normalizedGender)) {
+          fieldErrors['gender'] = 'validation_invalid_gender'.tr();
+          invalidGenderCount++;
+        }
+      }
+
+      // Email format
+      final email = WorkerIdentity.normalizeEmail(workerData['email']);
+      if (email.isNotEmpty && !Validators.isValidEmail(email)) {
+        fieldErrors['email'] = 'validation_invalid_email'.tr();
+      }
+
+      // Duplicate checks
+      final name = WorkerIdentity.normalizeName(workerData['name']);
+      final nationalId = WorkerIdentity.normalizeNationalId(workerData['nationalId']);
+      final frontId = WorkerIdentity.normalizeDocumentUrl(workerData['frontId']);
+      final backId = WorkerIdentity.normalizeDocumentUrl(workerData['backId']);
+
+      if (name.isNotEmpty && (existingNames.contains(name) || csvNames.contains(name))) {
+        fieldErrors['name'] = 'validation_duplicate_name'.tr();
+      }
+      if (email.isNotEmpty && (existingEmails.contains(email) || csvEmails.contains(email))) {
+        fieldErrors['email'] = 'validation_duplicate_email'.tr();
+      }
+      if (nationalId.isNotEmpty && (existingNationalIds.contains(nationalId) || csvNationalIds.contains(nationalId))) {
+        fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
+      }
+      if (frontId.isNotEmpty && (existingFrontIds.contains(frontId) || existingBackIds.contains(frontId) || csvFrontIds.contains(frontId) || csvBackIds.contains(frontId))) {
+        fieldErrors['frontId'] = 'validation_duplicate_front_id'.tr();
+      }
+      if (backId.isNotEmpty && (backId == frontId || existingFrontIds.contains(backId) || existingBackIds.contains(backId) || csvFrontIds.contains(backId) || csvBackIds.contains(backId))) {
+        fieldErrors['backId'] = 'validation_duplicate_back_id'.tr();
+      }
+
+      const duplicateFields = {'name', 'email', 'nationalId', 'frontId', 'backId'};
+      if (fieldErrors.keys.any((k) => duplicateFields.contains(k) && fieldErrors[k] != null)) {
+        duplicateCount++;
+      }
+
+      if (email.isNotEmpty) csvEmails.add(email);
+      if (name.isNotEmpty) csvNames.add(name);
+      if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
+      if (frontId.isNotEmpty) csvFrontIds.add(frontId);
+      if (backId.isNotEmpty) csvBackIds.add(backId);
+
+      workerData['_fieldErrors'] = fieldErrors;
+    }
+
+    if (mounted) {
+      setState(() {
+        _duplicateCount = duplicateCount;
+        _missingRequiredCount = missingCount;
+        _invalidDobCount = invalidDobCount;
+        _invalidGenderCount = invalidGenderCount;
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
   //  Save bulk workers
   // ─────────────────────────────────────────────────────────────
   Future<void> _saveBulkWorkers() async {
@@ -919,6 +1081,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (_isSaving && mounted) {
       setState(() => _isSaving = false);
     }
+
+    await _revalidateAllWorkers();
 
     if (_validWorkers.isEmpty) {
       FlashySnackBar.show(
@@ -1951,19 +2115,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
         _hasUnsavedChanges = true;
-        final errors = _validWorkers[workerIndex]['_fieldErrors'];
-        if (errors is Map<String, String>) {
-          errors.remove(fieldKey);
-          // Re-validate gender to ensure consistency
-          if (fieldKey == 'gender') {
-            final normalized = result.toLowerCase();
-            const validGenders = {'male', 'female', 'other', 'others'};
-            if (!validGenders.contains(normalized)) {
-              errors['gender'] = 'Only Male, Female, or Other is allowed';
-            }
-          }
-        }
       });
+      await _revalidateAllWorkers();
     }
   }
 

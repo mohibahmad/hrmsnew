@@ -241,7 +241,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   // ─── Decoration helpers (matching login/signup) ───
 
-  InputDecoration _buildInputDecoration(String hint, {bool isPassword = false, bool obscureText = false, VoidCallback? onToggleVisibility}) {
+  InputDecoration _buildInputDecoration(
+    String hint, {
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
+  }) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -343,11 +348,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                         ),
                         Positioned(
-                          top: 280,
-                          left: -460,
-                          
+                          top: 300,
+                          left: -520,
+                          right: 90,
+
                           child: Transform.rotate(
-                            angle: -0.15,
+                            angle: -0.18,
                             child: Container(
                               width: 1200,
                               height: 800,
@@ -355,9 +361,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(28),
                                 border: const Border(
-                                  left: BorderSide(color: Color(0xFF000000), width: 20),
-                                  right: BorderSide(color: Color(0xFF000000), width: 20),
-                                  bottom: BorderSide(color: Color(0xFF000000), width: 20),
+                                  left: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
+                                  right: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
+                                  bottom: BorderSide(
+                                    color: Color(0xFF000000),
+                                    width: 20,
+                                  ),
                                 ),
                                 boxShadow: [
                                   const BoxShadow(
@@ -450,11 +465,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               width: double.infinity,
                               height: 48,
                               child: ElevatedButton(
-                                onPressed: _isLoading ? null : _handlePrimaryAction,
+                                onPressed: _isLoading
+                                    ? null
+                                    : _handlePrimaryAction,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF0044C9),
                                   foregroundColor: const Color(0xFFFFFFFF),
-                                  disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+                                  disabledBackgroundColor: const Color(
+                                    0xFF0044C9,
+                                  ).withOpacity(0.6),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(24),
                                   ),
@@ -466,7 +485,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                         height: 24,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Color(0xFFFFFFFF),
+                                              ),
                                         ),
                                       )
                                     : Text(
@@ -587,13 +609,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _handlePrimaryAction(),
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildInputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'email_required'.tr();
                 }
-                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
+                if (!RegExp(
+                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                ).hasMatch(value.trim())) {
                   return 'email_invalid'.tr();
                 }
                 return null;
@@ -672,7 +699,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               enabled: !_isLoading,
               obscureText: _obscureNewPassword,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildInputDecoration(
                 'new_password_hint'.tr(),
                 isPassword: true,
@@ -697,13 +727,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               obscureText: _obscureConfirmPassword,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _handlePrimaryAction(),
-              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              style: const TextStyle(
+                fontSize: 15,
+                fontFamily: 'SF Pro Display',
+              ),
               decoration: _buildInputDecoration(
                 'confirm_new_password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscureConfirmPassword,
-                onToggleVisibility: () =>
-                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                onToggleVisibility: () => setState(
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {

@@ -1442,6 +1442,75 @@ class _WorkerProfilePreviewDialogState
   String _v(Map<String, dynamic> w, String key) => (w[key] ?? '').toString();
   String _na(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
+  Future<void> _handlePdfExport({required bool isShare}) async {
+    if (_isSharing) return;
+    setState(() => _isSharing = true);
+    try {
+      final worker = widget.worker;
+      final name = _v(worker, 'name');
+      final email = _v(worker, 'email');
+      final phone = _v(worker, 'phone');
+      final profileImage = worker['profileImage'] as String?;
+      final currency = CurrencyUtils.normalize(_v(worker, 'currency'));
+      final salaryAmount = _v(worker, 'salaryAmount');
+      final rawSalary = salaryAmount.isNotEmpty
+          ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
+          : '';
+      final salary = rawSalary.isNotEmpty
+          ? AmountText.formatCompact(rawSalary)
+          : '';
+
+      final bytes = await WorkerProfileService.generateWorkerProfile(
+        name: name,
+        email: email,
+        phone: phone,
+        fatherHusbandName: _na(_v(worker, 'fatherName')),
+        position: _v(worker, 'position'),
+        nationalId: _na(_v(worker, 'nationalId')),
+        attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
+        workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
+        experienceLevel: _na(_v(worker, 'experienceLevel')),
+        gender: _na(LocalizationHelper.localizeGender(_v(worker, 'gender'))),
+        joiningDate: _na(_v(worker, 'joiningDate')),
+        salary: salary,
+        education: _na(_v(worker, 'education')),
+        salaryType: _na(_v(worker, 'salaryType')),
+        religion: _na(_v(worker, 'religion')),
+        dateOfBirth: _na(_v(worker, 'dob')),
+        relationshipStatus: _na(_v(worker, 'relationshipStatus')),
+        address: _na(_v(worker, 'address')),
+        profileImageUrl: profileImage,
+      );
+
+      final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final fileName = '${safeName}_profile.pdf';
+
+      if (isShare) {
+        await WorkerProfileService.shareWorkerProfile(bytes, fileName);
+      } else {
+        final saved = await WorkerProfileService.downloadWorkerProfile(bytes, fileName);
+        if (saved && mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'Profile PDF downloaded successfully',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSharing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final worker = widget.worker;
@@ -1531,90 +1600,7 @@ class _WorkerProfilePreviewDialogState
                                 ),
                                 onPressed: _isSharing
                                     ? null
-                                    : () async {
-                                        setState(() => _isSharing = true);
-                                        try {
-                                          final bytes = await WorkerProfileService.generateWorkerProfile(
-                                            name: name,
-                                            email: email,
-                                            phone: phone,
-                                            fatherHusbandName: _na(
-                                              _v(worker, 'fatherName'),
-                                            ),
-                                            position: _v(worker, 'position'),
-                                            nationalId: _na(
-                                              _v(worker, 'nationalId'),
-                                            ),
-                                            attendanceType:
-                                                LocalizationHelper.localizeType2(
-                                                  _v(worker, 'type2'),
-                                                ),
-                                            workType:
-                                                LocalizationHelper.localizeType1(
-                                                  _v(worker, 'type1'),
-                                                ),
-                                            experienceLevel: _na(
-                                              _v(worker, 'experienceLevel'),
-                                            ),
-                                            gender: _na(
-                                              LocalizationHelper.localizeGender(
-                                                _v(worker, 'gender'),
-                                              ),
-                                            ),
-                                            joiningDate: _na(
-                                              _v(worker, 'joiningDate'),
-                                            ),
-                                            salary: salary,
-                                            education: _na(
-                                              _v(worker, 'education'),
-                                            ),
-                                            salaryType: _na(
-                                              _v(worker, 'salaryType'),
-                                            ),
-                                            religion: _na(
-                                              _v(worker, 'religion'),
-                                            ),
-                                            dateOfBirth: _na(_v(worker, 'dob')),
-                                            relationshipStatus: _na(
-                                              _v(worker, 'relationshipStatus'),
-                                            ),
-                                            address: _na(_v(worker, 'address')),
-                                            profileImageUrl: profileImage,
-                                          );
-                                          final safeName = name.replaceAll(
-                                            RegExp(r'[^a-zA-Z0-9_-]'),
-                                            '_',
-                                          );
-                                          final saved =
-                                              await WorkerProfileService.downloadWorkerProfile(
-                                                bytes,
-                                                '${safeName}_profile.pdf',
-                                              );
-                                          if (saved && mounted) {
-                                            FlashySnackBar.show(
-                                              context,
-                                              message:
-                                                  'Profile PDF downloaded successfully',
-                                            );
-                                          }
-                                        } catch (e) {
-                                          if (mounted) {
-                                            FlashySnackBar.show(
-                                              context,
-                                              message: 'error_occurred'.tr(
-                                                namedArgs: {
-                                                  'error': e.toString(),
-                                                },
-                                              ),
-                                              isError: true,
-                                            );
-                                          }
-                                        } finally {
-                                          if (mounted) {
-                                            setState(() => _isSharing = false);
-                                          }
-                                        }
-                                      },
+                                    : () => _handlePdfExport(isShare: true),
                                 constraints: const BoxConstraints(),
                                 padding: const EdgeInsets.all(4),
                               ),
@@ -1830,6 +1816,82 @@ class _WorkerProfilePreviewDialogState
                       ),
                     ],
                   ),
+                ),
+              ),
+              // Bottom Action Bar for Share & Download PDF
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  border: Border(
+                    top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isSharing
+                            ? null
+                            : () => _handlePdfExport(isShare: true),
+                        icon: _isSharing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.share_rounded, size: 18),
+                        label: const Text(
+                          'Share PDF',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0247C4),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isSharing
+                            ? null
+                            : () => _handlePdfExport(isShare: false),
+                        icon: const Icon(Icons.file_download_outlined, size: 18),
+                        label: const Text(
+                          'Download PDF',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF0247C4),
+                          side: const BorderSide(
+                            color: Color(0xFF0247C4),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
