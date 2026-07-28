@@ -197,7 +197,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _submitted = false;
       if (step != _PasswordResetStep.password) _resetToken = null;
     });
-    // ✅ Clear controllers so old data doesn't show when going back
     _otpController.clear();
     _newPasswordController.clear();
     _confirmPasswordController.clear();
@@ -240,198 +239,317 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     _PasswordResetStep.password => _confirmPasswordReset(),
   };
 
+  // ─── Decoration helpers (matching login/signup) ───
+
+  InputDecoration _buildInputDecoration(String hint, {bool isPassword = false, bool obscureText = false, VoidCallback? onToggleVisibility}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: Colors.grey.shade400,
+        fontSize: 14,
+        fontFamily: 'SF Pro Display',
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(6),
+        borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      suffixIcon: isPassword
+          ? IconButton(
+              icon: Icon(
+                obscureText ? Icons.visibility_off : Icons.visibility,
+                color: Colors.grey.shade400,
+              ),
+              onPressed: onToggleVisibility,
+            )
+          : null,
+    );
+  }
+
+  Widget _buildFieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+          fontFamily: 'SF Pro Display',
+        ),
+      ),
+    );
+  }
+
+  // ─── UI ───
+
   @override
   Widget build(BuildContext context) {
-    final cardDecoration = BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(40),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 20,
-          offset: const Offset(0, 10),
-        ),
-      ],
-    );
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 800;
 
-    return PopScope(
-      canPop: _step == _PasswordResetStep.email,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _handleBack();
-      },
-      child: Scaffold(
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset('assets/auth_bg.png', fit: BoxFit.cover),
-            Positioned(
-              top: 50,
-              right: 40,
-              child: GestureDetector(
-                onTap: () => showLanguageModal(context),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Image.asset(
-                      'assets/langauge_icon.png',
-                      width: 28,
-                      height: 28,
-                      color: const Color(0xFF0247C4),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Row(
+            children: [
+              // Left Blue Banner (desktop only)
+              if (isDesktop)
+                Expanded(
+                  flex: 11,
+                  child: Container(
+                    color: const Color(0xFF165CDB),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 40,
+                          left: 200,
+                          right: 40,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Welcome to HRMS',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const Text(
+                                'Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  fontFamily: 'SF Pro Display',
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          top: 240,
+                          left: -520,
+                          right: 30,
+                          bottom: -250,
+                          child: Transform.rotate(
+                            angle: -0.12,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(28),
+                                border: const Border(
+                                  left: BorderSide(color: Color(0xFF000000), width: 20),
+                                  right: BorderSide(color: Color(0xFF000000), width: 20),
+                                  bottom: BorderSide(color: Color(0xFF000000), width: 20),
+                                ),
+                                boxShadow: [
+                                  const BoxShadow(
+                                    color: Colors.white,
+                                    blurRadius: 0,
+                                    spreadRadius: 4,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 30,
+                                    offset: const Offset(10, 15),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.asset(
+                                  'assets/dashboard_mockup.png',
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topLeft,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+
+              // Right Side Form
+              Expanded(
+                flex: 9,
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 0,
+                    ),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 480),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: cardDecoration,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Center(
-                                  child: SvgPicture.asset(
-                                    'assets/HR_dark.svg',
-                                    height: 76,
-                                    fit: BoxFit.contain,
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Center(
+                              child: SvgPicture.asset(
+                                'assets/HR_dark.svg',
+                                height: 80,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(height: 50),
+                            const Text(
+                              'Reset Password',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                                letterSpacing: -0.5,
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Secure your account with a new password',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade800,
+                                fontFamily: 'SF Pro Display',
+                                height: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildStepIndicator(),
+                            const SizedBox(height: 20),
+                            Form(
+                              key: _formKey,
+                              autovalidateMode: _submitted
+                                  ? AutovalidateMode.onUserInteraction
+                                  : AutovalidateMode.disabled,
+                              child: _buildCurrentForm(),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _handlePrimaryAction,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0044C9),
+                                  foregroundColor: const Color(0xFFFFFFFF),
+                                  disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
                                   ),
+                                  elevation: 0,
                                 ),
-                                const SizedBox(height: 24),
-                                _buildStepIndicator(),
-                                const SizedBox(height: 22),
-                                Text(
-                                  _title,
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                    height: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _subtitle,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                    height: 1.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Form(
-                                  key: _formKey,
-                                  autovalidateMode: _submitted
-                                      ? AutovalidateMode.always
-                                      : AutovalidateMode.disabled,
-                                  child: _buildCurrentForm(),
-                                ),
-                                const SizedBox(height: 20),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 44,
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading
-                                        ? null
-                                        : _handlePrimaryAction,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0044C9),
-                                      foregroundColor: Colors.white,
-                                      disabledBackgroundColor: const Color(
-                                        0xFF0044C9,
-                                      ).withValues(alpha: 0.6),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFFFFF)),
+                                        ),
+                                      )
+                                    : Text(
+                                        _buttonLabel,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFFFFFFF),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
                                       ),
-                                      elevation: 0,
-                                    ),
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : Text(
-                                            _buttonLabel,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                              fontFamily: 'SF Pro Display',
-                                              height: 1,
-                                            ),
-                                          ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Center(
+                              child: RichText(
+                                text: TextSpan(
+                                  text: '',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    fontFamily: 'SF Pro Display',
                                   ),
-                                ),
-                                const SizedBox(height: 18),
-                                Center(
-                                  child: RichText(
-                                    text: TextSpan(
-                                      text: 'dont_need_this'.tr(),
+                                  children: [
+                                    TextSpan(
+                                      text: _step == _PasswordResetStep.email
+                                          ? 'dont_need_this'.tr()
+                                          : 'back'.tr(),
                                       style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 13,
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
                                         fontFamily: 'SF Pro Display',
                                       ),
-                                      children: [
-                                        TextSpan(
-                                          text: 'back'.tr(),
-                                          style: const TextStyle(
-                                            color: Color(0xFFFF1014),
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                          recognizer: TapGestureRecognizer()
-                                            ..onTap = _handleBack,
-                                        ),
-                                      ],
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = _handleBack,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
-                              ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                const Expanded(flex: 6, child: SizedBox.shrink()),
-              ],
+              ),
+            ],
+          ),
+
+          // Floating Language selector
+          Positioned(
+            top: 40,
+            right: 40,
+            child: GestureDetector(
+              onTap: () => showLanguageModal(context),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/langauge_icon.png',
+                    width: 24,
+                    height: 24,
+                    color: const Color(0xFF0044C9),
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -461,26 +579,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _InputLabel(label: 'email_label'.tr()),
-            const SizedBox(height: 8),
+            _buildFieldLabel('email_label'.tr()),
             TextFormField(
               controller: _emailController,
               enabled: !_isLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _handlePrimaryAction(),
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _inputDecoration('email_hint'.tr()),
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildInputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'email_required'.tr();
                 }
-                if (!RegExp(
-                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                ).hasMatch(value.trim())) {
+                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
                   return 'email_invalid'.tr();
                 }
                 return null;
@@ -492,7 +604,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _InputLabel(label: 'otp_code'.tr()),
+            _buildFieldLabel('otp_code'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _otpController,
@@ -512,7 +624,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 letterSpacing: 10,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _inputDecoration('otp_hint'.tr()),
+              decoration: _buildInputDecoration('otp_hint'.tr()),
               validator: (value) {
                 if (value == null || value.length != 6) {
                   return 'enter_six_digit_otp'.tr();
@@ -552,21 +664,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _InputLabel(label: 'new_password'.tr()),
+            _buildFieldLabel('new_password'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _newPasswordController,
               enabled: !_isLoading,
               obscureText: _obscureNewPassword,
               textInputAction: TextInputAction.next,
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _passwordInputDecoration(
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildInputDecoration(
                 'new_password_hint'.tr(),
-                obscure: _obscureNewPassword,
-                onToggle: () =>
+                isPassword: true,
+                obscureText: _obscureNewPassword,
+                onToggleVisibility: () =>
                     setState(() => _obscureNewPassword = !_obscureNewPassword),
               ),
               validator: (value) {
@@ -577,8 +687,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 14),
-            _InputLabel(label: 'confirm_new_password'.tr()),
+            const SizedBox(height: 16),
+            _buildFieldLabel('confirm_new_password'.tr()),
             const SizedBox(height: 8),
             TextFormField(
               controller: _confirmPasswordController,
@@ -586,16 +696,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               obscureText: _obscureConfirmPassword,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _handlePrimaryAction(),
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _passwordInputDecoration(
+              style: const TextStyle(fontSize: 15, fontFamily: 'SF Pro Display'),
+              decoration: _buildInputDecoration(
                 'confirm_new_password_hint'.tr(),
-                obscure: _obscureConfirmPassword,
-                onToggle: () => setState(
-                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                ),
+                isPassword: true,
+                obscureText: _obscureConfirmPassword,
+                onToggleVisibility: () =>
+                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -611,76 +718,4 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         );
     }
   }
-}
-
-class _InputLabel extends StatelessWidget {
-  final String label;
-
-  const _InputLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: Colors.black,
-        fontFamily: 'SF Pro Display',
-        height: 1,
-      ),
-    );
-  }
-}
-
-InputDecoration _passwordInputDecoration(
-  String hintText, {
-  required bool obscure,
-  required VoidCallback onToggle,
-}) {
-  return _inputDecoration(hintText).copyWith(
-    suffixIcon: IconButton(
-      onPressed: onToggle,
-      icon: Icon(
-        obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-        color: const Color(0xFF64748B),
-      ),
-    ),
-  );
-}
-
-InputDecoration _inputDecoration(String hintText) {
-  return InputDecoration(
-    hintText: hintText,
-    hintStyle: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 14),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFFD4D4D8)),
-    ),
-    disabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFFD4D4D8)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFF0044C9), width: 1.5),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFFFF1014)),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(2),
-      borderSide: const BorderSide(color: Color(0xFFFF1014), width: 1.5),
-    ),
-    errorStyle: const TextStyle(
-      color: Color(0xFFFF1014),
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      fontFamily: 'SF Pro Display',
-      height: 1.3,
-    ),
-    errorMaxLines: 2,
-  );
 }
