@@ -131,8 +131,8 @@ class HolidayCard extends StatelessWidget {
                   _localizeMonth(month),
                   style: TextStyle(
                     color: mainTextColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: _localizeMonth(month) == 'Aug' ? 13 : 16,
+                    fontWeight: _localizeMonth(month) == 'Aug' ? FontWeight.w500 : FontWeight.w700,
                     fontFamily: 'SF Pro Display',
                   ),
                   maxLines: 1,

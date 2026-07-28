@@ -535,7 +535,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
-        _allWorkers = DummyData.workers;
+        // Create a clean copy so we don't mutate the static DummyData source
+        _allWorkers = DummyData.workers
+            .map((w) => Map<String, dynamic>.from(w))
+            .toList();
+        // Apply alternating profile images for guest mode
+        for (int i = 0; i < _allWorkers.length; i++) {
+          _allWorkers[i]['profileImage'] =
+              i.isEven ? 'assets/boy.png' : 'assets/imageplaceholder.png';
+        }
         _isLoading = false;
       });
     } else {
