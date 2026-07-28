@@ -170,6 +170,51 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime calendarDate = DateTime.now();
     final selectedDates = <DateTime>{};
     DateTime? rangeStart;
+    DateTime? dragStartDate;
+    final dragPreviewDates = <DateTime>{};
+    final gridKey = GlobalKey();
+
+    DateTime? _getDateFromPosition(Offset globalPosition) {
+      final RenderBox? gridBox =
+          gridKey.currentContext?.findRenderObject() as RenderBox?;
+      if (gridBox == null) return null;
+
+      final localPosition = gridBox.globalToLocal(globalPosition);
+
+      final gridWidth = gridBox.size.width;
+      final cellWidth = (gridWidth - 6 * 8) / 7;
+      final cellHeight = cellWidth;
+
+      final col = (localPosition.dx / (cellWidth + 8)).floor();
+      final row = (localPosition.dy / (cellHeight + 8)).floor();
+
+      if (col < 0 || col > 6 || row < 0 || row > 5) return null;
+
+      final cellIndex = row * 7 + col;
+      int firstWeekday =
+          DateTime(calendarDate.year, calendarDate.month, 1).weekday;
+      int startOffset = firstWeekday == 7 ? 0 : firstWeekday;
+      int day = cellIndex - startOffset + 1;
+      int daysInMonth =
+          DateTime(calendarDate.year, calendarDate.month + 1, 0).day;
+
+      if (day < 1 || day > daysInMonth) return null;
+      return DateTime(calendarDate.year, calendarDate.month, day);
+    }
+
+    void updateDragPreview(DateTime endDate) {
+      if (dragStartDate == null) return;
+      dragPreviewDates.clear();
+      final start =
+          dragStartDate!.isBefore(endDate) ? dragStartDate! : endDate;
+      final end =
+          dragStartDate!.isAfter(endDate) ? dragStartDate! : endDate;
+      for (var d = start;
+          !d.isAfter(end);
+          d = d.add(const Duration(days: 1))) {
+        dragPreviewDates.add(d);
+      }
+    }
 
     final result = await showDialog<List<DateTime>?>(
       context: context,
@@ -245,37 +290,74 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildCalendarWithWeekdays(
-                      calendarDate,
-                      selectedDates,
-                      (DateTime date) {
-                        setModalState(() {
-                          if (rangeStart == null) {
-                            rangeStart = date;
-                            selectedDates.add(date);
-                          } else {
-                            final start = rangeStart!.isBefore(date)
-                                ? rangeStart!
-                                : date;
-                            final end = rangeStart!.isAfter(date)
-                                ? rangeStart!
-                                : date;
-                            for (
-                              var d = start;
-                              !d.isAfter(end);
-                              d = d.add(const Duration(days: 1))
-                            ) {
-                              selectedDates.add(d);
-                            }
-                            rangeStart = null;
+                    GestureDetector(
+                      onPanStart: (details) {
+                        final date = _getDateFromPosition(
+                          details.globalPosition,
+                        );
+                        if (date != null) {
+                          setModalState(() {
+                            dragStartDate = date;
+                            dragPreviewDates.clear();
+                            dragPreviewDates.add(date);
+                          });
+                        }
+                      },
+                      onPanUpdate: (details) {
+                        if (dragStartDate != null) {
+                          final date = _getDateFromPosition(
+                            details.globalPosition,
+                          );
+                          if (date != null) {
+                            setModalState(() {
+                              updateDragPreview(date);
+                            });
                           }
-                        });
+                        }
                       },
-                      (DateTime newDate) {
-                        setModalState(() {
-                          calendarDate = newDate;
-                        });
+                      onPanEnd: (details) {
+                        if (dragStartDate != null && dragPreviewDates.isNotEmpty) {
+                          setModalState(() {
+                            selectedDates.addAll(dragPreviewDates);
+                            dragStartDate = null;
+                            dragPreviewDates.clear();
+                          });
+                        }
                       },
+                      child: _buildCalendarWithWeekdays(
+                        calendarDate,
+                        selectedDates,
+                        (DateTime date) {
+                          setModalState(() {
+                            if (rangeStart == null) {
+                              rangeStart = date;
+                              selectedDates.add(date);
+                            } else {
+                              final start = rangeStart!.isBefore(date)
+                                  ? rangeStart!
+                                  : date;
+                              final end = rangeStart!.isAfter(date)
+                                  ? rangeStart!
+                                  : date;
+                              for (
+                                var d = start;
+                                !d.isAfter(end);
+                                d = d.add(const Duration(days: 1))
+                              ) {
+                                selectedDates.add(d);
+                              }
+                              rangeStart = null;
+                            }
+                          });
+                        },
+                        (DateTime newDate) {
+                          setModalState(() {
+                            calendarDate = newDate;
+                          });
+                        },
+                        gridKey: gridKey,
+                        dragPreviewDates: dragPreviewDates,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     if (selectedDates.isNotEmpty)
@@ -432,8 +514,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime calendarDate,
     Set<DateTime> selectedDates,
     ValueChanged<DateTime> onDaySelected,
-    ValueChanged<DateTime> onMonthChanged,
-  ) {
+    ValueChanged<DateTime> onMonthChanged, {
+    GlobalKey? gridKey,
+    Set<DateTime>? dragPreviewDates,
+  }) {
     String monthYearStr =
         '${DateFormat('MMMM', context.locale.toString()).format(calendarDate).toUpperCase()} ${calendarDate.year}';
 
@@ -493,7 +577,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildDaysGridForRange(calendarDate, selectedDates, onDaySelected),
+        _buildDaysGridForRange(
+          calendarDate,
+          selectedDates,
+          onDaySelected,
+          gridKey: gridKey,
+          dragPreviewDates: dragPreviewDates,
+        ),
       ],
     );
   }
@@ -524,8 +614,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildDaysGridForRange(
     DateTime calendarDate,
     Set<DateTime> selectedDates,
-    ValueChanged<DateTime> onDaySelected,
-  ) {
+    ValueChanged<DateTime> onDaySelected, {
+    GlobalKey? gridKey,
+    Set<DateTime>? dragPreviewDates,
+  }) {
     int daysInMonth = DateTime(
       calendarDate.year,
       calendarDate.month + 1,
@@ -546,24 +638,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       for (int j = 0; j < 7; j++) {
         int index = i * 7 + j;
         if (index < startOffset) {
-          rowChildren.add(_buildDayCell('', false, null, null));
+          rowChildren.add(_buildDayCell('', false, false, null, null));
         } else if (currentDay <= daysInMonth) {
           final int tapDay = currentDay;
           final date = DateTime(calendarDate.year, calendarDate.month, tapDay);
-          final isSelected = selectedDates.any(
-            (d) =>
-                d.year == date.year &&
-                d.month == date.month &&
-                d.day == date.day,
-          );
+          final isDragPreview = dragPreviewDates != null &&
+              dragPreviewDates.any(
+                (d) =>
+                    d.year == date.year &&
+                    d.month == date.month &&
+                    d.day == date.day,
+              );
+          final isSelected = !isDragPreview &&
+              selectedDates.any(
+                (d) =>
+                    d.year == date.year &&
+                    d.month == date.month &&
+                    d.day == date.day,
+              );
           rowChildren.add(
-            _buildDayCell('$currentDay', isSelected, () {
+            _buildDayCell('$currentDay', isSelected, isDragPreview, () {
               onDaySelected(date);
             }, date),
           );
           currentDay++;
         } else {
-          rowChildren.add(_buildDayCell('', false, null, null));
+          rowChildren.add(_buildDayCell('', false, false, null, null));
         }
         if (j < 6) rowChildren.add(const SizedBox(width: 8));
       }
@@ -571,12 +671,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (currentDay > daysInMonth && i >= 4) break;
       if (i < 5) rows.add(const SizedBox(height: 8));
     }
-    return Column(children: rows);
+    return Column(key: gridKey, children: rows);
   }
 
   Widget _buildDayCell(
     String day,
     bool isSelected,
+    bool isDragPreview,
     VoidCallback? onTap,
     DateTime? date,
   ) {
@@ -593,6 +694,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final selectedBg = isFriday
         ? const Color(0xFF4AC000)
         : const Color(0xFFFF0004);
+    final dragBg = const Color(0xFF0247C4);
+
+    Color bgColor;
+    Color borderColor;
+
+    if (isDragPreview) {
+      bgColor = dragBg;
+      borderColor = dragBg;
+    } else if (isSelected) {
+      bgColor = selectedBg;
+      borderColor = selectedBg;
+    } else {
+      bgColor = Colors.transparent;
+      if (isSunday) {
+        borderColor = const Color(0xFFFF0004).withValues(alpha: 0.4);
+      } else if (isFriday) {
+        borderColor = const Color(0xFF4AC000).withValues(alpha: 0.4);
+      } else {
+        borderColor = Colors.grey.shade300;
+      }
+    }
+
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
@@ -601,23 +724,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isSelected ? selectedBg : Colors.transparent,
-              border: Border.all(
-                color: isSelected
-                    ? selectedBg
-                    : (isSunday
-                          ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                          : (isFriday
-                                ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                                : Colors.grey.shade300)),
-                width: 1,
-              ),
+              color: bgColor,
+              border: Border.all(color: borderColor, width: 1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               day,
               style: TextStyle(
-                color: isSelected ? Color(0xFFFFFFFF) : dayColor,
+                color: (isSelected || isDragPreview)
+                    ? const Color(0xFFFFFFFF)
+                    : dayColor,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'SF Pro Display',
@@ -709,16 +825,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             recordDate.isBefore(rangeEnd.add(const Duration(days: 1)));
       }).toList();
 
-      if (filteredRecords.isEmpty) {
-        FlashySnackBar.show(
-          context,
-          message: 'no_attendance_records_for_period'.tr(),
-          isError: true,
-        );
-        return;
-      }
-
-      // Build CSV rows
+      // Build CSV rows - include ALL workers
       final rows = <List<dynamic>>[];
       rows.add([
         'Worker Name',
@@ -729,35 +836,86 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         'Attendance Type',
       ]);
 
-      // Sort by date descending
-      final sorted = List<Map<String, dynamic>>.from(filteredRecords);
-      sorted.sort((a, b) {
-        final aTime = a['createdAt'];
-        final bTime = b['createdAt'];
-        if (aTime is Timestamp && bTime is Timestamp) {
-          return bTime.compareTo(aTime);
-        }
-        return 0;
-      });
-
-      for (final record in sorted) {
-        final name = (record['name'] ?? '').toString();
+      // Build a map of attendance records by worker email for quick lookup
+      final Map<String, List<Map<String, dynamic>>> workerAttendance = {};
+      for (final record in filteredRecords) {
         final email = (record['email'] ?? '').toString();
-        final status = (record['status'] ?? '').toString();
-        final workType = (record['workType'] ?? '').toString();
-        final attType = (record['attendanceType'] ?? '').toString();
+        workerAttendance.putIfAbsent(email, () => []).add(record);
+      }
 
-        String dateStr;
-        final createdAt = record['createdAt'];
-        if (createdAt is Timestamp) {
-          final d = createdAt.toDate();
-          dateStr =
-              '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        } else {
-          dateStr = createdAt?.toString() ?? '';
+      // If no filtered records but we have workers, add all workers with "No Record"
+      if (filteredRecords.isEmpty) {
+        for (final worker in _workersList) {
+          final name = (worker['name'] ?? worker['workerName'] ?? '').toString();
+          final email = (worker['email'] ?? '').toString();
+          final workType = (worker['workType'] ?? '').toString();
+          rows.add([
+            name,
+            email,
+            '${rangeStart.year}-${rangeStart.month.toString().padLeft(2, '0')}-${rangeStart.day.toString().padLeft(2, '0')} to ${rangeEnd.year}-${rangeEnd.month.toString().padLeft(2, '0')}-${rangeEnd.day.toString().padLeft(2, '0')}',
+            'No Record',
+            workType,
+            '',
+          ]);
+        }
+      } else {
+        // Add all workers - with their attendance or "No Record"
+        final Set<String> addedWorkers = {};
+        for (final worker in _workersList) {
+          final name = (worker['name'] ?? worker['workerName'] ?? '').toString();
+          final email = (worker['email'] ?? '').toString();
+          final workType = (worker['workType'] ?? '').toString();
+          final records = workerAttendance[email];
+
+          if (records != null && records.isNotEmpty) {
+            for (final record in records) {
+              final status = (record['status'] ?? '').toString();
+              final attType = (record['attendanceType'] ?? '').toString();
+              final createdAt = record['createdAt'];
+              String dateStr;
+              if (createdAt is Timestamp) {
+                final d = createdAt.toDate();
+                dateStr =
+                    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+              } else {
+                dateStr = createdAt?.toString() ?? '';
+              }
+              rows.add([name, email, dateStr, status, workType, attType]);
+            }
+          } else {
+            // Worker has no attendance in this period
+            rows.add([
+              name,
+              email,
+              '${rangeStart.year}-${rangeStart.month.toString().padLeft(2, '0')}-${rangeStart.day.toString().padLeft(2, '0')} to ${rangeEnd.year}-${rangeEnd.month.toString().padLeft(2, '0')}-${rangeEnd.day.toString().padLeft(2, '0')}',
+              'No Record',
+              workType,
+              '',
+            ]);
+          }
+          addedWorkers.add(email);
         }
 
-        rows.add([name, email, dateStr, status, workType, attType]);
+        // Add any attendance records for workers not in _workersList
+        for (final record in filteredRecords) {
+          final email = (record['email'] ?? '').toString();
+          if (!addedWorkers.contains(email)) {
+            final name = (record['name'] ?? '').toString();
+            final status = (record['status'] ?? '').toString();
+            final workType = (record['workType'] ?? '').toString();
+            final attType = (record['attendanceType'] ?? '').toString();
+            final createdAt = record['createdAt'];
+            String dateStr;
+            if (createdAt is Timestamp) {
+              final d = createdAt.toDate();
+              dateStr =
+                  '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+            } else {
+              dateStr = createdAt?.toString() ?? '';
+            }
+            rows.add([name, email, dateStr, status, workType, attType]);
+          }
+        }
       }
 
       // Generate CSV
