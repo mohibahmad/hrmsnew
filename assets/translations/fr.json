@@ -631,7 +631,7 @@
   "weekday_saturday": "Samedi",
   "weekday_sunday": "Dimanche",
   "add_company_work_days": "Ajouter les jours ouvrés",
-  "company_work_days": "Jours ouvrés de l’entreprise",
+  "company_work_days": "Définir les Jours Ouvrés",
   "company_work_days_help": "Sélectionnez les jours travaillés. Chaque jour non sélectionné sera toujours un jour de congé de l’entreprise.",
   "working_days": "Jours travaillés",
   "company_off_days": "Jours de congé de l’entreprise",
@@ -960,5 +960,6 @@
   "already_have_account_login": "Already have an account?",
   "forgot_password_link": "Forgot password?",
   "welcome_to_hrms": "Welcome to HRMS",
-  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform."
+  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.",
+  "save_attendance_report": "Enregistrer le Rapport d'Assiduité"
 }

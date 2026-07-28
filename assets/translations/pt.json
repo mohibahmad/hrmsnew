@@ -639,7 +639,7 @@
   "weekday_saturday": "Sábado",
   "weekday_sunday": "Domingo",
   "add_company_work_days": "Adicionar dias úteis",
-  "company_work_days": "Dias úteis da empresa",
+  "company_work_days": "Definir Dias Úteis",
   "company_work_days_help": "Selecione os dias de trabalho. Todos os dias não selecionados serão sempre dias de folga da empresa.",
   "working_days": "Dias trabalhados",
   "company_off_days": "Dias de folga da empresa",
@@ -968,5 +968,6 @@
   "already_have_account_login": "Already have an account?",
   "forgot_password_link": "Forgot password?",
   "welcome_to_hrms": "Welcome to HRMS",
-  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform."
+  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.",
+  "save_attendance_report": "Salvar Relatório de Presença"
 }

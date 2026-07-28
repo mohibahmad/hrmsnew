@@ -639,7 +639,7 @@
   "weekday_saturday": "Суббота",
   "weekday_sunday": "Воскресенье",
   "add_company_work_days": "Добавить рабочие дни",
-  "company_work_days": "Рабочие дни компании",
+  "company_work_days": "Установить Рабочие Дни",
   "company_work_days_help": "Выберите рабочие дни. Все невыбранные дни всегда будут выходными компании.",
   "working_days": "Рабочие дни",
   "company_off_days": "Выходные дни компании",
@@ -966,5 +966,6 @@
   "already_have_account_login": "Already have an account?",
   "forgot_password_link": "Forgot password?",
   "welcome_to_hrms": "Welcome to HRMS",
-  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform."
+  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.",
+  "save_attendance_report": "Сохранить Отчёт о Посещаемости"
 }

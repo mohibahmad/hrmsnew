@@ -1,4 +1,4 @@
-{
+ {
   "app_name": "HRMS",
   "human_resource_management_system": "Human Resource Management System",
   "welcome_back": "Welcome Back!",
@@ -643,7 +643,7 @@
   "weekday_saturday": "Saturday",
   "weekday_sunday": "Sunday",
   "add_company_work_days": "Add Company Work Days",
-  "company_work_days": "Company Work Days",
+  "company_work_days": "Set Workdays",
   "company_work_days_help": "Select the days your company works. Every unselected day will always be a company off day.",
   "working_days": "Working Days",
   "company_off_days": "Company Off Days",
@@ -967,6 +967,7 @@
   "adjust_overtime": "Adjust Overtime",
   "share": "Share",
   "share_attendance": "Share Attendance",
+  "save_attendance_report": "Save Attendance Report",
   "generate_report": "Generate Report",
   "no_attendance_records_for_period": "No attendance records found for the selected period",
   "attendance_report_saved": "Attendance report saved successfully",
