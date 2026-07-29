@@ -29,9 +29,7 @@ class DummyData {
     };
   }
 
-  /// Restores the complete demo dataset declared in this file.
-  ///
-  /// Guest mode starts from this source data and never needs Firebase.
+  
   static Future<void> resetToDefaults() async {
     _captureSourceDefaults();
     final defaults = _sourceDefaults!;
@@ -98,7 +96,7 @@ class DummyData {
   }
 
   static Future<void> loadFromPrefs() async {
-    // Capture original static data BEFORE clearing lists
+    
     _captureSourceDefaults();
     final prefs = await SharedPreferences.getInstance();
 
@@ -744,7 +742,7 @@ class DummyData {
       'cnicBackUrl': null,
       'cvUrl': null,
     },
-    // ── 10 additional workers for guest mode ──
+    
     {
       'name': 'Jordan Casey',
       'position': 'IT Support Specialist',
@@ -1038,7 +1036,7 @@ class DummyData {
   ];
 
   static final List<Map<String, dynamic>> expenses = [
-    // January
+    
     {
       'name': 'Office Supplies',
       'category': 'Stationery',
@@ -1069,7 +1067,7 @@ class DummyData {
       'amount': 180.0,
       'createdAt': '02/01/2026',
     },
-    // February
+    
     {
       'name': 'Employee Training: Flutter',
       'category': 'Training & Development',
@@ -1094,7 +1092,7 @@ class DummyData {
       'amount': 1200.0,
       'createdAt': '12/02/2026',
     },
-    // March
+    
     {
       'name': 'Cloud Server - March',
       'category': 'Software & IT',
@@ -1119,7 +1117,7 @@ class DummyData {
       'amount': 890.0,
       'createdAt': '20/03/2026',
     },
-    // April
+    
     {
       'name': 'Team Outing',
       'category': 'Food & Beverage',
@@ -1144,7 +1142,7 @@ class DummyData {
       'amount': 5000.0,
       'createdAt': '05/04/2026',
     },
-    // May
+    
     {
       'name': 'Internet & Phone Bills',
       'category': 'Utilities',
@@ -1169,7 +1167,7 @@ class DummyData {
       'amount': 3500.0,
       'createdAt': '15/05/2026',
     },
-    // June
+    
     {
       'name': 'Office Rent - June',
       'category': 'Rent',
@@ -1194,7 +1192,7 @@ class DummyData {
       'amount': 1200.0,
       'createdAt': '10/06/2026',
     },
-    // July
+    
     {
       'name': 'Freelance Graphic Design',
       'category': 'Professional Services',
@@ -1219,7 +1217,7 @@ class DummyData {
       'amount': 320.0,
       'createdAt': '03/07/2026',
     },
-    // August
+    
     {
       'name': 'Office Rent - August',
       'category': 'Rent',
@@ -1244,7 +1242,7 @@ class DummyData {
       'amount': 450.0,
       'createdAt': '18/08/2026',
     },
-    // September
+    
     {
       'name': 'Cloud Server - September',
       'category': 'Software & IT',
@@ -1269,7 +1267,7 @@ class DummyData {
       'amount': 750.0,
       'createdAt': '22/09/2026',
     },
-    // October
+    
     {
       'name': 'Team Lunch - Q4 Planning',
       'category': 'Food & Beverage',
@@ -1294,7 +1292,7 @@ class DummyData {
       'amount': 200.0,
       'createdAt': '28/10/2026',
     },
-    // November
+    
     {
       'name': 'Internet & Phone Bills',
       'category': 'Utilities',
@@ -1319,7 +1317,7 @@ class DummyData {
       'amount': 620.0,
       'createdAt': '25/11/2026',
     },
-    // December
+    
     {
       'name': 'Year-end Party',
       'category': 'Entertainment',
@@ -1670,7 +1668,7 @@ class DummyData {
       'currency': 'USD',
       'createdAt': '10/09/2026',
     },
-    // October
+    
     {
       'workerId': '0',
       'workerName': 'Michael Johnson',
@@ -1711,7 +1709,7 @@ class DummyData {
       'currency': 'USD',
       'createdAt': '25/10/2026',
     },
-    // November
+    
     {
       'workerId': '1',
       'workerName': 'Sophia Martinez',
@@ -1752,7 +1750,7 @@ class DummyData {
       'currency': 'USD',
       'createdAt': '25/11/2026',
     },
-    // December
+    
     {
       'workerId': '2',
       'workerName': 'Daniel Anderson',

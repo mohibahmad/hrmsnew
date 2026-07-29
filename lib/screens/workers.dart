@@ -421,11 +421,11 @@ class WorkersScreenState extends State<WorkersScreen> {
   Map<String, dynamic>? _workerToEdit;
   final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey = GlobalKey<AddBulkWorkerScreenState>();
 
-  /// Returns true if the bulk worker screen currently has unsaved changes.
+  
   bool get hasUnsavedBulkChanges =>
       _isAddingBulkWorker && _bulkWorkerKey.currentState?.hasUnsavedChanges == true;
 
-  /// Shows the unsaved changes dialog if needed, returns true if user confirms discard.
+  
   Future<bool> confirmDiscardBulkChanges() async {
     if (!hasUnsavedBulkChanges) return true;
     return _bulkWorkerKey.currentState?.confirmDiscard() ?? true;
@@ -535,16 +535,16 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
-        // Create a clean copy so we don't mutate the static DummyData source
+        
         _allWorkers = DummyData.workers
             .map((w) => Map<String, dynamic>.from(w))
             .toList();
-        // Apply alternating profile images for guest mode
+        
         for (int i = 0; i < _allWorkers.length; i++) {
           _allWorkers[i]['profileImage'] =
               i.isEven ? 'assets/boy.png' : 'assets/imageplaceholder.png';
-          // Map dummy fields (workType / attendanceType) to the display
-          // fields (type1 / type2) expected by the table rows.
+          
+          
           _allWorkers[i]['type1'] = _allWorkers[i]['workType'] ?? '';
           _allWorkers[i]['type2'] = _allWorkers[i]['attendanceType'] ?? '';
         }
@@ -1480,6 +1480,7 @@ class _WorkerProfilePreviewDialogState
         relationshipStatus: _na(_v(worker, 'relationshipStatus')),
         address: _na(_v(worker, 'address')),
         profileImageUrl: profileImage,
+        generatedOnText: '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
       );
 
       final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');

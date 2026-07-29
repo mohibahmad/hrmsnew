@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _getScreen(int index) {
     switch (index) {
       case 0:
-        return const SizedBox.shrink(); // Dashboard handled via IndexedStack
+        return const SizedBox.shrink(); 
       case 1:
         return WorkersScreen(
           key: _workersKey,
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// Parse an amount field that could be a String, num, or null into a num.
+  
   static num _parseAmount(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value;
@@ -228,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0;
   }
 
-  /// Parse a value to double, handling String or num types.
+  
   static double _parseNumToDouble(dynamic value) =>
       _parseAmount(value).toDouble();
 
@@ -291,9 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _startPremiumListener();
 
     if (currentUser?.isAnonymous ?? false) {
-      // For guest mode, defer chart computation via _handlePeriodChanged
-      // so the initial charts are rendered through exactly the same code
-      // pathway as when the user manually selects a period from the dropdown.
+      
+      
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _handlePeriodChanged(_selectedPeriod);
       });
@@ -382,8 +381,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherWorkersCount = oCount;
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
-        // Transform dummy holidays: the raw data has 'date' (dd/MM/yyyy) and 'name',
-        // but the dashboard expects 'month', 'day', 'isEnabled', 'dayOfWeek', 'name'.
+        
+        
         final rawHolidays = DummyData.holidays.values
             .expand((list) => list)
             .cast<Map<String, dynamic>>()
@@ -407,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
             month = monthNum >= 1 && monthNum <= 12 ? monthNames[monthNum] : '';
             if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
               final dt = DateTime(year, monthNum, dayNum);
-              dayOfWeek = weekDays[dt.weekday % 7]; // weekday: 1=Monday..7=Sunday
+              dayOfWeek = weekDays[dt.weekday % 7]; 
             }
           }
           return {
@@ -420,8 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
           };
         }).toList();
 
-        // Add 'type' field to attendance records that have status 'leave',
-        // mapping the 'reason' field to a leave type the pie chart expects.
+        
         final enrichedAttendance = List<Map<String, dynamic>>.from(
           DummyData.attendance,
         );
@@ -666,8 +664,8 @@ class _HomeScreenState extends State<HomeScreen> {
           dt = createdAt.toDate();
         }
       } else {
-        // Fallback for DummyData that lacks createdAt:
-        // deterministically distribute over the last 90 days based on ID
+        
+        
         final id = att['id']?.toString() ?? '';
         final numericPart = id.replaceAll(RegExp(r'[^0-9]'), '');
         final num = numericPart.isNotEmpty ? int.tryParse(numericPart) ?? 0 : 0;
@@ -786,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     isGuest: _authService.currentUser?.isAnonymous ?? false,
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) async {
-                      // Check for unsaved bulk worker changes before navigating away
+                      
                       if (_selectedIndex == 1 && _workersKey.currentState?.hasUnsavedBulkChanges == true) {
                         final shouldDiscard = await _workersKey.currentState!.confirmDiscardBulkChanges();
                         if (!shouldDiscard) return;

@@ -129,7 +129,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       _notesController.clear();
     }
 
-    // Update calendar months to show the selected dates' month
+    
     if (_selectedDates.isNotEmpty) {
       _calendarMonth = DateTime(_startDate.year, _startDate.month, 1);
       _calendarMonth2 = DateTime(
@@ -139,11 +139,11 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       );
     }
 
-    // Migrate the old unlimited Custom Leave option to explicit unpaid leave.
+    
     if (_timeOffType == 'Custom Leave') {
       _timeOffType = 'Unpaid Leave';
     }
-    // Sanitize: if the stored type isn't valid, fall back to paid sick leave.
+    
     if (!_leaveTypeOptions.any((o) => o['value'] == _timeOffType)) {
       _timeOffType = 'Sick Leave';
     }
@@ -1014,7 +1014,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           if (candidate.contains(date)) continue;
           if (_isNonWorkingDate(date)) continue;
           if (candidate.length >= _availableDays) {
-            // Silently stop selecting — the save handler will validate
+            
             break;
           }
           candidate.add(date);
@@ -1204,7 +1204,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   : _timeOffType == 'Casual Leave'
                   ? 'available_casual_leave'.tr()
                   : 'available_annual_leave'.tr(),
-              // Medical Leave & all other paid types use annual leave pool
+              
               '$_availableDays',
               _availableDays > 0 ? Colors.black : Colors.red,
             ),

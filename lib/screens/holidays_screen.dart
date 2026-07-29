@@ -908,7 +908,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
 
-
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
@@ -1157,7 +1156,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       ],
     );
   }
-
 
 
   Widget _buildFilledState() {

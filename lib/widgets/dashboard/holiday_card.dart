@@ -20,7 +20,7 @@ class HolidayCard extends StatelessWidget {
   });
 
   static String _localizeMonth(String month) {
-    // Return abbreviated 3-letter month names so they fit neatly in the card
+    
     switch (month) {
       case 'January':
         return 'Jan';

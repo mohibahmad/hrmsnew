@@ -177,7 +177,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 16),
-                            const Spacer(), // Keeps alignment same as above
+                            const Spacer(), 
                           ],
                         ),
                       ],
@@ -276,7 +276,7 @@ class _DonutCalloutPainter extends CustomPainter {
       if (val <= 0) return;
 
       final angleRad = midAngle * math.pi / 180.0;
-      final innerRadius = radius - 35.0; // Start line deeper inside the slice
+      final innerRadius = radius - 35.0; 
       final p1 = Offset(
         center.dx + innerRadius * math.cos(angleRad),
         center.dy + innerRadius * math.sin(angleRad),
@@ -286,7 +286,7 @@ class _DonutCalloutPainter extends CustomPainter {
       final isTopSide = math.sin(angleRad) < 0;
 
       final double D =
-          55.0; // Increased diagonal extension length to push lines further away
+          55.0; 
       final double dx = isRightSide ? D : -D;
       final double dy = isTopSide ? -D : D;
 
@@ -303,7 +303,7 @@ class _DonutCalloutPainter extends CustomPainter {
     processCallout('sick', sickVal, sickMidAngle);
     processCallout('medical', medicalVal, medicalMidAngle);
 
-    // Sort labels vertically for anti-collision
+    
     leftLabels.sort(
       (a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy),
     );
@@ -314,7 +314,7 @@ class _DonutCalloutPainter extends CustomPainter {
     void drawLabels(List<Map<String, dynamic>> labels, bool isRightSide) {
       final lineExtension = 65.0;
       double lastY = -9999;
-      final minSpacing = 35.0; // minimum vertical gap between labels
+      final minSpacing = 35.0; 
 
       for (final labelData in labels) {
         final val = labelData['val'] as double;
@@ -353,7 +353,7 @@ class _DonutCalloutPainter extends CustomPainter {
 
         final centerX = (p2.dx + p3.dx) / 2;
         final labelX = centerX - textPainter.width / 2;
-        final labelY = p2.dy - textPainter.height - 4; // padding above the line
+        final labelY = p2.dy - textPainter.height - 4; 
 
         textPainter.paint(canvas, Offset(labelX, labelY));
       }

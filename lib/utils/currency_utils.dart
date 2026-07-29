@@ -32,8 +32,7 @@ class CurrencyUtils {
     return supportedCodes.contains(code);
   }
 
-  /// Converts valid values to their uppercase ISO-style code and safely
-  /// replaces empty, corrupt, or legacy free-text values with USD.
+  
   static String normalize(dynamic value) {
     final code = value?.toString().trim().toUpperCase() ?? '';
     return supportedCodes.contains(code) ? code : defaultCode;

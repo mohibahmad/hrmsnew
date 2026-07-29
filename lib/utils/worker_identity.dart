@@ -20,8 +20,8 @@ class WorkerIdentity {
 
   static String normalizeEmail(dynamic value) {
     final email = (value ?? '').toString().trim().toLowerCase();
-    // The single-worker form historically stores this value when email is
-    // optional. It is a placeholder, not a real worker identity.
+    
+    
     return email == 'worker@email.com' ? '' : email;
   }
 
@@ -34,10 +34,7 @@ class WorkerIdentity {
   static String normalizeDocumentUrl(dynamic value) =>
       (value ?? '').toString().trim().toLowerCase();
 
-  /// Returns the first identity field that already exists.
-  ///
-  /// Names are intentionally unique in this HRMS, as requested by the product
-  /// flow. Matching ignores capitalization and repeated whitespace.
+  
   static DuplicateWorkerField? duplicateField(
     Map<String, dynamic> candidate,
     Iterable<Map<String, dynamic>> existingWorkers, {

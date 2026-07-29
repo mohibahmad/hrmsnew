@@ -33,14 +33,14 @@ class AppDateUtils {
   }
   static DateTime? parseDateString(String dateStr) {
     try {
-      // First try standard ISO format parsing
+      
       final parsed = DateTime.tryParse(dateStr);
       if (parsed != null) return parsed;
 
-      // Try split by '/'
+      
       final parts = dateStr.split('/');
       if (parts.length == 3) {
-        // Check if the first part is a year (e.g. 4 digits)
+        
         if (parts[0].length == 4) {
           final year = int.parse(parts[0]);
           final month = int.parse(parts[1]);
@@ -50,20 +50,20 @@ class AppDateUtils {
           final year = int.parse(parts[2]);
           final val1 = int.parse(parts[0]);
           final val2 = int.parse(parts[1]);
-          // If val1 > 12, it must be the day, so it's dd/MM/yyyy
-          // If val2 > 12, it must be the day, so it's MM/dd/yyyy
+          
+          
           if (val1 > 12) {
             return DateTime(year, val2, val1);
           } else if (val2 > 12) {
             return DateTime(year, val1, val2);
           } else {
-            // Default to day first as per our original logic
+            
             return DateTime(year, val2, val1);
           }
         }
       }
 
-      // Try split by '-'
+      
       final hyphenParts = dateStr.split('-');
       if (hyphenParts.length == 3) {
         if (hyphenParts[0].length == 4) {
@@ -100,7 +100,7 @@ class AppDateUtils {
 
     final now = DateTime.now();
 
-    // For Today, check exact same day
+    
     if (period == 'Today') {
       return date.year == now.year && date.month == now.month && date.day == now.day;
     }
@@ -141,7 +141,7 @@ class AppDateUtils {
 
     final now = DateTime.now();
 
-    // For Today, check exact same day
+    
     if (period == 'Today') {
       return date.year == now.year && date.month == now.month && date.day == now.day;
     }

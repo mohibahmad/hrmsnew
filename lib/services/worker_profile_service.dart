@@ -25,6 +25,7 @@ class WorkerProfileService {
     required String relationshipStatus,
     required String address,
     String? profileImageUrl,
+    String? generatedOnText,
   }) async {
     final pdf = pw.Document();
 
@@ -43,9 +44,8 @@ class WorkerProfileService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(40, 30, 40, 30),
         build: (context) => [
-          // ═══════════════════════════════════════════
-          //  HEADER — Title + Profile Image
-          // ═══════════════════════════════════════════
+          
+          
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -107,13 +107,11 @@ class WorkerProfileService {
 
           pw.SizedBox(height: 30),
 
-          // ═══════════════════════════════════════════
-          //  WORKER INFO — Two columns
-          // ═══════════════════════════════════════════
+          
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Left column
+              
               pw.Expanded(
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -130,7 +128,7 @@ class WorkerProfileService {
                 ),
               ),
               pw.SizedBox(width: 30),
-              // Right column
+              
               pw.Expanded(
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -151,18 +149,14 @@ class WorkerProfileService {
 
           pw.SizedBox(height: 25),
 
-          // ═══════════════════════════════════════════
-          //  DOUBLE LINE SEPARATOR
-          // ═══════════════════════════════════════════
+          
           pw.Container(height: 1, color: black),
           pw.SizedBox(height: 2),
           pw.Container(height: 1, color: black),
 
           pw.SizedBox(height: 20),
 
-          // ═══════════════════════════════════════════
-          //  PERSONAL DETAILS TABLE
-          // ═══════════════════════════════════════════
+          
           _label('PERSONAL INFORMATION'),
           pw.SizedBox(height: 10),
           pw.Table(
@@ -182,9 +176,7 @@ class WorkerProfileService {
 
           pw.SizedBox(height: 25),
 
-          // ═══════════════════════════════════════════
-          //  WORK SUMMARY TABLE
-          // ═══════════════════════════════════════════
+          
           _label('WORK SUMMARY'),
           pw.SizedBox(height: 10),
           pw.Table(
@@ -206,9 +198,10 @@ class WorkerProfileService {
           pw.SizedBox(height: 40),
           pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
           pw.SizedBox(height: 10),
-          pw.Center(
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
             child: pw.Text(
-              'Generated on ${DateTime.now().toString().substring(0, 10)}',
+              generatedOnText ?? 'Generated on ${DateTime.now().toString().substring(0, 10)}',
               style: pw.TextStyle(
                 fontSize: 9,
                 color: PdfColor.fromHex('#6B7280'),
@@ -242,7 +235,7 @@ class WorkerProfileService {
     }
   }
 
-  // ─── Section Label ──────────────────────────────────────────
+  
   static pw.Widget _label(String text) {
     return pw.Container(
       padding: const pw.EdgeInsets.only(bottom: 4),
@@ -263,7 +256,7 @@ class WorkerProfileService {
     );
   }
 
-  // ─── Detail Row (Label: Value) ──────────────────────────────
+  
   static pw.Widget _detailRow(String label, String value) {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 6),
@@ -295,7 +288,7 @@ class WorkerProfileService {
     );
   }
 
-  // ─── Table Row ──────────────────────────────────────────────
+  
   static pw.TableRow _tableRow(List<String> cells, PdfColor navyColor, {bool isHeader = false}) {
     return pw.TableRow(
       decoration: isHeader

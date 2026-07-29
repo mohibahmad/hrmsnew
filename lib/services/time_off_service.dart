@@ -8,7 +8,7 @@ class TimeOffService {
 
   static const Set<String> unpaidLeaveTypes = {
     'Unpaid Leave',
-    // Legacy records used Custom Leave as the unlimited/non-quota option.
+    
     'Custom Leave',
   };
 
@@ -43,7 +43,7 @@ class TimeOffService {
     if (value == null) return null;
     if (value is DateTime) return DateTime(value.year, value.month, value.day);
 
-    // Supports Firestore Timestamp without coupling this helper to Firestore.
+    
     try {
       final dynamic converted = value.toDate();
       if (converted is DateTime) {
@@ -57,8 +57,7 @@ class TimeOffService {
         : DateTime(parsed.year, parsed.month, parsed.day);
   }
 
-  /// Returns every date touched from [start] through [end], including both
-  /// endpoints. The returned order follows the drag direction.
+  
   static List<DateTime> inclusiveDateRange(DateTime start, DateTime end) {
     final normalizedStart = DateTime(start.year, start.month, start.day);
     final normalizedEnd = DateTime(end.year, end.month, end.day);
@@ -72,9 +71,7 @@ class TimeOffService {
     return dates;
   }
 
-  /// Returns the exact leave dates for a record. New records persist an
-  /// explicit `selectedDates` list; legacy records are expanded from their
-  /// inclusive start/end range.
+  
   static List<DateTime> selectedDatesForRecord(Map<String, dynamic> record) {
     final explicitDates = record['selectedDates'];
     if (explicitDates is Iterable) {
@@ -125,8 +122,7 @@ class TimeOffService {
     return null;
   }
 
-  /// Returns all dates the worker has approved time off for, across all records.
-  /// Used to exclude those days from attendance counts.
+  
   static Set<DateTime> allLeaveDatesForWorker(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords,
@@ -247,8 +243,7 @@ class TimeOffService {
     return false;
   }
 
-  /// Counts approved paid and unpaid time-off dates in [month]. Dates are
-  /// de-duplicated so overlapping records cannot deduct payroll twice.
+  
   static Map<String, int> monthlyLeaveCounts(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
@@ -278,7 +273,7 @@ class TimeOffService {
       }
     }
 
-    // If a legacy overlap exists, paid leave wins and the date is not charged.
+    
     unpaidDates.removeAll(paidDates);
     return {
       'paidLeaves': paidDates.length,

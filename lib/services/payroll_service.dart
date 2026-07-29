@@ -29,7 +29,10 @@ class PayrollService {
 
       final payrollRecord = monthlyPayrollDocs.firstWhere((p) {
         final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-        final pName = (p['name'] ?? p['workerName'] ?? '').toString().trim().toLowerCase();
+        final pName = (p['name'] ?? p['workerName'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         return (email.isNotEmpty && pEmail == email) ||
             (name.isNotEmpty && pName == name);
       }, orElse: () => {});
@@ -40,10 +43,8 @@ class PayrollService {
           ...worker,
           ...payrollRecord,
           'hasPayrollRecord': true,
-          // Worker compensation is the source of truth for the current
-          // payroll form. The payroll record still keeps its historical
-          // snapshot in [rawPayrollDocs], but must not mask a salary edited
-          // from the Workers screen.
+          
+          
           'salaryAmount':
               worker['salaryAmount'] ?? payrollRecord['salaryAmount'],
           'currency': worker['currency'] ?? payrollRecord['currency'],
@@ -134,8 +135,8 @@ class PayrollService {
     if (salaryStr.isEmpty) return 0;
     String cleaned = salaryStr.replaceAll(RegExp(r'[^0-9.,]'), '');
     if (cleaned.isEmpty) return 0;
-    // Detect European format: last . is followed by exactly 3 digits.
-    // e.g. 1.234,56 -> treat as European; 1,234.56 -> treat as US
+    
+    
     final lastDot = cleaned.lastIndexOf('.');
     final lastComma = cleaned.lastIndexOf(',');
     bool isEuropean = false;
@@ -159,9 +160,7 @@ class PayrollService {
     return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 
-  /// Returns the worker's current configured salary for payroll editing.
-  /// `salaryAmount` is preferred over a saved payroll snapshot so a salary
-  /// change made on the Workers screen is reflected immediately.
+  
   static String currentSalaryDisplay(Map<String, dynamic> data) {
     final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
     if (salaryAmount.isNotEmpty) {
@@ -174,9 +173,7 @@ class PayrollService {
     return '\$ 0';
   }
 
-  /// Payroll absences and leaves are attendance counts, not leave allowance.
-  /// A new worker may have `annualLeaves: 100`, but until attendance is marked
-  /// their payroll leave count must still be zero.
+  
   static Map<String, int> attendanceCounts(
     Map<String, dynamic> payrollOrWorkerData,
   ) {
@@ -257,24 +254,22 @@ class PayrollService {
     final currency = getCurrencyPrefix(salary);
     final p = currency.isNotEmpty ? '$currency ' : '';
 
-    // Daily Rate = Monthly Salary / Total Work Days
+    
     final dailyRate = totalWorkDaysVal > 0
         ? rawSalaryVal / totalWorkDaysVal
         : 0.0;
 
-    // Worked Days is informational. Monthly gross remains the configured
-    // salary, and absence/unpaid-leave deductions are applied exactly once.
+    
     final workedDaysVal = daysWorked.isEmpty
         ? totalWorkDaysVal - absentDays - leaveDays
         : parseIntSafe(daysWorked);
 
     final grossSalary = rawSalaryVal;
 
-    // Overtime Pay = Custom Amount (HR enters manually)
+    
     final overtimePay = customOvertimeAmount;
 
-    // Blank per-day fields use the calculated daily rate. Entered values are
-    // treated as an explicit HR override, not an additional penalty.
+    
     final absentRate = absentDeductionPerDay.trim().isNotEmpty
         ? customAbsentDeduction
         : dailyRate;
@@ -286,7 +281,7 @@ class PayrollService {
 
     final totalDeductions = absentDeduction + leaveDeduction;
 
-    // Net Pay = Gross + OT - Deductions
+    
     final netSalary = (grossSalary + overtimePay - totalDeductions).clamp(
       0.0,
       double.infinity,
@@ -340,19 +335,19 @@ class PayrollService {
     final currency = getCurrencyPrefix(salary);
     final prefix = currency.isNotEmpty ? '$currency ' : '';
 
-    // Daily Rate = Monthly Salary / Total Work Days
+    
     final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
 
-    // Worked Days = Total Work Days - Absents
+    
     final effectiveWorkDays = workDays - absentDays;
 
-    // Gross Pay = Daily Rate × Worked Days
+    
     final grossSalary = effectiveWorkDays * dailyRate;
 
-    // Overtime Pay = Custom Amount
+    
     final overtimePay = overtime;
 
-    // Net Pay = Gross + OT
+    
     final netSalary = grossSalary + overtimePay;
 
     return '$prefix${formatNumber(netSalary)}';

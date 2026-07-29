@@ -998,7 +998,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      // ── Close icon (left) ──
+                      
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
                         child: MouseRegion(
@@ -1014,7 +1014,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // ── Title (center) ──
+                      
                       Expanded(
                         child: Text(
                           'assign_time_off'.tr(),
@@ -1028,7 +1028,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // ── Edit icon (right) ──
+                      
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop('edit'),
                         child: MouseRegion(

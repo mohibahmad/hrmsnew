@@ -62,7 +62,7 @@ class UploadService {
     final total = files.length;
     if (total == 0) return [];
 
-    // Parallel upload using Future.wait
+    
     final futures = files.map((file) async {
       if (cancelToken?.isCancelled == true) {
         return UploadResult.cancelled(file: file);

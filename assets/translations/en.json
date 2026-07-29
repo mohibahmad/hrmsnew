@@ -881,7 +881,7 @@
   "selected": "Selected",
   "select_all": "Select All",
   "deselect_all": "Deselect All",
-  "total_disbursement": "TOTAL DISBURSEMENT",
+  "total_disbursement": "TOTAL PAYMENT",
   "processing_for_cycle": "Processing for {period} cycle",
   "pay_all_count": "Pay All ({count})",
   "base_salary": "Base Salary",
@@ -989,5 +989,10 @@
   "log_in_button": "Log in",
   "dont_have_account_signup": "Don't have an account?",
   "already_have_account_login": "Already have an account?",
-  "forgot_password_link": "Forgot password?"
+  "forgot_password_link": "Forgot password?",
+  "generated_on": "Generated on",
+  "please_enter_total_work_days": "Please enter total work days",
+  "please_enter_absents": "Please enter absents",
+  "please_enter_leaves": "Please enter leaves",
+  "please_enter_salary": "Please enter salary"
 }

@@ -600,7 +600,7 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Row(
             children: [
-              // ─── Left Blue Banner ───────────────────────────────────────
+              
               if (isDesktop)
                 Expanded(
                   flex: 11,
@@ -608,7 +608,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: const Color(0xFF165CDB),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        // 880 = reference width at ~1600px window (1600 * 11/20)
+                        
                         final scale = (constraints.maxWidth / 880.0).clamp(
                           0.4,
                           1.2,
@@ -617,7 +617,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         return Stack(
                           clipBehavior: Clip.hardEdge,
                           children: [
-                            // Heading text — unchanged
+                            
                             Positioned(
                               top: 40,
                               left: 80,
@@ -707,7 +707,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-              // ─── Right Side Form ────────────────────────────────────────
+              
               Expanded(
                 flex: 9,
                 child: Center(
@@ -733,7 +733,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
 
-          // ─── Floating Language Selector ─────────────────────────────────
+          
           Positioned(
             top: 40,
             right: 40,

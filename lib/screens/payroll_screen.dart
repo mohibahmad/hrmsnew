@@ -143,8 +143,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Future<void> _showSalaryDayDialog() async {
     final now = DateTime.now();
     final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
-    // -1 represents "None" — instead of nullable, so we can distinguish
-    // between "Save with None" (pop -1) and "Cancel" (pop null).
+    
+    
     int selectedDay = _salaryPaymentDay ?? -1;
     final result = await showDialog<int>(
       context: context,
@@ -1100,7 +1100,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      // ── Close icon (left) ──
+                      
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
                         child: MouseRegion(
@@ -1116,7 +1116,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // ── Title (center, flex) ──
+                      
                       Expanded(
                         child: Text(
                           'payroll_data_preview'.tr(),
@@ -1130,7 +1130,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // ── Edit icon (right) ──
+                      
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop('edit'),
                         child: MouseRegion(

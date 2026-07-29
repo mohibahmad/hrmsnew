@@ -31,9 +31,8 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
-  // ─────────────────────────────────────────────────────────────
-  //  Constants
-  // ─────────────────────────────────────────────────────────────
+  
+  
   static const List<String> _requiredFields = [
     'name',
     'phone',
@@ -131,9 +130,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   static const double _tableContentWidth = 3522;
   static const double _rowHeight = 65.0;
 
-  // ─────────────────────────────────────────────────────────────
-  //  State
-  // ─────────────────────────────────────────────────────────────
+  
   late AuthService _authService;
   late FirestoreService _firestore;
 
@@ -153,9 +150,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   ScrollController? _hScrollController;
   StreamSubscription? _workersSubscription;
 
-  // ─────────────────────────────────────────────────────────────
-  //  Lifecycle
-  // ─────────────────────────────────────────────────────────────
+  
   @override
   void initState() {
     super.initState();
@@ -170,9 +165,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Unsaved changes guard
-  // ─────────────────────────────────────────────────────────────
+  
   bool get hasUnsavedChanges => _hasUnsavedChanges;
 
   Future<bool> confirmDiscard() => _onWillPop();
@@ -330,9 +323,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return result ?? false;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Helpers – error accessors
-  // ─────────────────────────────────────────────────────────────
+  
   Set<String> _errorFieldNames() {
     final fields = <String>{};
     for (final worker in _validWorkers) {
@@ -368,9 +359,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return clean;
       }).toList();
 
-  // ─────────────────────────────────────────────────────────────
-  //  File hash
-  // ─────────────────────────────────────────────────────────────
+  
   String _computeFileHash(Uint8List bytes) {
     int hash = 0;
     final minLen = min(bytes.length, 8192);
@@ -380,9 +369,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return hash.toRadixString(16);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Download template
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _downloadTemplate() async {
     const headerRow =
         'Full Name,Contact Number,Email Address,Father Name,National ID,'
@@ -467,9 +454,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Pick & parse CSV
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _pickCsvAndParse() async {
     try {
       final result = await FilePicker.pickFiles(
@@ -481,9 +466,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
-      const int maxBytes = 5 * 1024 * 1024; // 5 MB
+      const int maxBytes = 5 * 1024 * 1024; 
 
-      // Size guard (in-memory bytes)
+      
       if (file.bytes != null && file.bytes!.length > maxBytes) {
         if (mounted) {
           FlashySnackBar.show(
@@ -497,7 +482,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       Uint8List? bytes = file.bytes;
 
-      // Fallback: read from disk
+      
       if (bytes == null && file.path != null) {
         final diskFile = io.File(file.path!);
         if (await diskFile.length() > maxBytes) {
@@ -515,7 +500,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (bytes == null) return;
 
-      // Duplicate-file guard
+      
       final fileHash = _computeFileHash(bytes);
       if (_lastFileHash != null && _lastFileHash == fileHash) {
         if (mounted) {
@@ -528,7 +513,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return;
       }
 
-      // Decode & normalise line endings, strip BOM
+      
       var csvString = utf8.decode(bytes, allowMalformed: true);
       if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
         csvString = csvString.substring(1);
@@ -551,9 +536,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Process CSV rows
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _processCsvData(List<List<dynamic>> rows) async {
     if (rows.isEmpty) return;
 
@@ -568,7 +551,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .map((e) => e.toString().trim().toLowerCase())
         .toList();
 
-    // Which required fields are present in the header row?
+    
     final Set<String> foundFields = {};
     for (final h in headers) {
       final mapped = _headerMap[h] ?? h;
@@ -578,7 +561,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .where((f) => !foundFields.contains(f))
         .toList();
 
-    // ── Fetch existing workers for duplicate checks ──
+    
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
     Set<String> existingNames = {};
@@ -649,7 +632,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     if (!mounted) return;
 
-    // ── Parse rows ──
+    
     final List<Map<String, dynamic>> parsedWorkers = [];
     final Set<String> csvEmails = {};
     final Set<String> csvNames = {};
@@ -663,7 +646,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         continue;
       }
 
-      // Default empty worker map
+      
       final Map<String, dynamic> workerData = {
         'name': '',
         'phone': '',
@@ -694,13 +677,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'cv': '',
       };
 
-      // Map CSV columns → worker fields
+      
       for (int j = 0; j < headers.length && j < row.length; j++) {
         final val = row[j].toString().trim();
         if (val.isEmpty) continue;
 
         final mappedKey = _headerMap[headers[j]] ?? headers[j];
-        // Case-insensitive match against existing keys
+        
         String matchedKey = mappedKey;
         for (final key in workerData.keys) {
           if (key.toLowerCase() == mappedKey.toLowerCase()) {
@@ -713,7 +696,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       final fieldErrors = <String, String>{};
 
-      // ── Required field check ──
+      
       final missingForWorker = _requiredFields
           .where(
             (f) =>
@@ -728,7 +711,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // ── Currency validation ──
+      
       final currency = workerData['currency'].toString().trim();
       if (currency.isNotEmpty) {
         if (!CurrencyUtils.isSupported(currency)) {
@@ -738,7 +721,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // ── Date of birth validation ──
+      
       final dobStr = workerData['dob'].toString().trim();
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
@@ -756,7 +739,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // ── Gender validation ──
+      
       final gender = workerData['gender'].toString().trim();
       final normalizedGender = gender.toLowerCase();
       if (gender.isNotEmpty) {
@@ -769,13 +752,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // ── Email format validation ──
+      
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty && !Validators.isValidEmail(email)) {
         fieldErrors['email'] = 'validation_invalid_email'.tr();
       }
 
-      // ── Duplicate checks ──
+      
       final name = WorkerIdentity.normalizeName(workerData['name']);
       final nationalId = WorkerIdentity.normalizeNationalId(
         workerData['nationalId'],
@@ -827,14 +810,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         _duplicateCount++;
       }
 
-      // Track CSV-level uniqueness
+      
       if (email.isNotEmpty) csvEmails.add(email);
       if (name.isNotEmpty) csvNames.add(name);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
       if (frontId.isNotEmpty) csvFrontIds.add(frontId);
       if (backId.isNotEmpty) csvBackIds.add(backId);
 
-      // Derived leave counts
+      
       workerData['availableAnnualLeaves'] =
           int.tryParse(workerData['annualLeaves'].toString()) ?? 0;
       workerData['availableCasualLeaves'] =
@@ -856,7 +839,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     if (!mounted) return;
 
-    // ── Build snack-bar summary ──
+    
     final Set<String> allMissingFieldNames = {};
     for (final w in parsedWorkers) {
       for (final entry in _fieldErrors(w).entries) {
@@ -911,9 +894,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Revalidate all workers (re-checks duplicates against DB & CSV)
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _revalidateAllWorkers() async {
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
@@ -985,7 +966,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final workerData = _validWorkers[i];
       final Map<String, String> fieldErrors = {};
 
-      // Required field check
+      
       for (final reqField in _requiredFields) {
         final val = workerData[reqField]?.toString().trim() ?? '';
         if (val.isEmpty) {
@@ -994,7 +975,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // DOB validation
+      
       final dobStr = workerData['dob']?.toString().trim() ?? '';
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
@@ -1010,7 +991,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // Gender validation
+      
       final gender = workerData['gender']?.toString().trim() ?? '';
       final normalizedGender = gender.toLowerCase();
       if (gender.isNotEmpty) {
@@ -1021,13 +1002,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      // Email format
+      
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty && !Validators.isValidEmail(email)) {
         fieldErrors['email'] = 'validation_invalid_email'.tr();
       }
 
-      // Duplicate checks
+      
       final name = WorkerIdentity.normalizeName(workerData['name']);
       final nationalId = WorkerIdentity.normalizeNationalId(workerData['nationalId']);
       final frontId = WorkerIdentity.normalizeDocumentUrl(workerData['frontId']);
@@ -1073,11 +1054,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Save bulk workers
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _saveBulkWorkers() async {
-    // Reset stuck saving state
+    
     if (_isSaving && mounted) {
       setState(() => _isSaving = false);
     }
@@ -1097,7 +1076,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final workersReadyToSave = _workersReadyToSave;
 
     if (workersReadyToSave.isEmpty) {
-      // Nothing uploadable — show per-issue breakdown
+      
       final parts = <String>[];
       if (_missingRequiredCount > 0) {
         parts.add(
@@ -1140,7 +1119,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
-    // Count skips by category
+    
     int localDuplicateCount = 0;
     int localMissingCount = 0;
     int localInvalidDobCount = 0;
@@ -1181,9 +1160,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       if (!mounted) return;
-      Navigator.of(context).pop(); // close progress dialog
+      Navigator.of(context).pop(); 
 
-      // Build result summary with skip reasons
+      
       final summaryParts = <String>[
         'workers_added_successfully'.tr(
           namedArgs: {'count': importedCount.toString()},
@@ -1283,9 +1262,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Progress dialog
-  // ─────────────────────────────────────────────────────────────
+  
   void _showBulkProgressDialog() {
     showDialog(
       context: context,
@@ -1316,9 +1293,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Edit cell dialog
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _editCell(int workerIndex, String fieldKey) async {
     if (workerIndex >= _validWorkers.length) return;
 
@@ -1329,12 +1304,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
-        // ✅ Controller created INSIDE the dialog builder — its lifecycle
-        //    is naturally tied to the dialog. No manual dispose needed.
+        
+        
         final controller = TextEditingController(text: currentValue);
         String? dialogError;
 
-        // For media fields: store actual data URL separately, show filename in text field
+        
         final isMediaField =
             fieldKey == 'profileImage' ||
             fieldKey == 'frontId' ||
@@ -1361,7 +1336,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           );
         }
 
-        // ── Per-field input configuration ──
+        
         TextInputType? keyboardTypeForField() {
           if (fieldKey == 'phone') return TextInputType.phone;
           if (fieldKey == 'email') return TextInputType.emailAddress;
@@ -1528,7 +1503,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // ── Input ──
+                          
                           Padding(
                             padding: const EdgeInsets.fromLTRB(24, 24, 24, 6),
                             child: Column(
@@ -1689,7 +1664,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             ),
                           ),
 
-                          // ── Hint ──
+                          
                           if (_fieldHint(fieldKey).isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
@@ -1715,7 +1690,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               ),
                             ),
 
-                          // ── Inline error ──
+                          
                           if (dialogError != null)
                             Padding(
                               padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
@@ -1742,7 +1717,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               ),
                             ),
 
-                          // ── Actions ──
+                          
                           Container(
                             margin: const EdgeInsets.only(top: 16),
                             decoration: const BoxDecoration(
@@ -2016,14 +1991,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               mediaFileName ?? '';
                                           Navigator.of(ctx).pop(mediaDataUrl);
                                         } else if (hasExistingUpload) {
-                                          // Update display name but keep existing data URL
+                                          
                                           worker['${fieldKey}_name'] = val
                                               .split('/')
                                               .last;
                                           Navigator.of(ctx).pop(currentValue);
                                         } else if (val.isNotEmpty &&
                                             !val.startsWith('data:')) {
-                                          // Manually typed URL - validate file extension
+                                          
                                           final ext = val
                                               .split('.')
                                               .last
@@ -2106,11 +2081,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       },
     );
 
-    // ❌ No manual dispose needed — the controller is created inside the
-    //    dialog builder and will be garbage-collected when the dialog is
-    //    dismissed. The old delayed-dispose hack caused TextField rebuilds
-    //    (e.g. during close animation) to use a disposed controller.
-
+    
     if (result != null && mounted) {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
@@ -2151,9 +2122,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return key != null ? key.tr() : '';
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Build
-  // ─────────────────────────────────────────────────────────────
+  
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -2197,9 +2166,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Top bar
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildTopBar() {
     return Container(
       height: 94,
@@ -2212,7 +2179,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Back + title ──
+          
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -2260,7 +2227,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             ],
           ),
 
-          // ── Save All button (only when all rows are clean) ──
+          
           if (_hasParsedFile &&
               _validWorkers.isNotEmpty &&
               _validWorkers.every((w) => !_hasWorkerErrors(w)))
@@ -2307,9 +2274,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Action buttons row
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildActionButtons() {
     return Row(
       children: [
@@ -2351,9 +2316,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Summary card
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildSummaryCard() {
     final bool anyErrors = _validWorkers.any(_hasWorkerErrors);
     final int errorCount = _validWorkers.where(_hasWorkerErrors).length;
@@ -2437,9 +2400,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Worker table
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildWorkerTable() {
     _hScrollController ??= ScrollController();
 
@@ -2458,7 +2419,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       ),
       child: Column(
         children: [
-          // ── Scrollable header + rows share one controller ──
+          
           Expanded(
             child: Scrollbar(
               controller: _hScrollController,
@@ -2558,9 +2519,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Row & cell builders
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildWorkerRow(Map<String, dynamic> worker, int index) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -2792,7 +2751,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (hasError && text.isEmpty) {
       displayText = 'required_field'.tr();
     } else if (isMediaField && hasValue) {
-      // Use stored filename from worker data
+      
       if (workerIndex >= 0 && workerIndex < _validWorkers.length) {
         final storedName = _validWorkers[workerIndex]['${fieldKey}_name'];
         if (storedName != null && storedName.toString().isNotEmpty) {

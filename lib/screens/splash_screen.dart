@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateWhenReady() async {
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-    // Preferences check with timeout (prevent macOS disk I/O delay from blocking)
+    
     bool isGuest = false;
     try {
       isGuest = await PreferencesService.isGuest().timeout(
@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
         onTimeout: () => false,
       );
     } catch (_) {
-      // Disk I/O or other error — keep false, user will see login
+      
       isGuest = false;
     }
 
@@ -70,10 +70,10 @@ class _SplashScreenState extends State<SplashScreen>
         onTimeout: () => _authService.currentUser,
       );
     } on TimeoutException {
-      // Network slow — retry with currentUser
+      
       user = _authService.currentUser;
     } catch (_) {
-      // Unexpected error — force login
+      
       user = null;
     }
 

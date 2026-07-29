@@ -19,22 +19,18 @@ class PreferencesService {
   static const String _guestWorkersKey = 'guest_workers_data';
   static const String _guestPayrollKey = 'guest_payroll_data';
 
-  /// Synchronous cache of the profile pic URL so it's available on the first
-  /// frame (no async delay). Populated the first time [getProfilePicUrl] is
-  /// called, or explicitly via [initFromPrefs].
+  
   static String? _cachedProfilePicUrl;
   static bool _cachedIsGuest = false;
 
-  /// Call this once at app startup (e.g. in main()) to pre-populate the sync
-  /// cache from SharedPreferences before any widget builds.
+  
   static Future<void> initFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _cachedProfilePicUrl = prefs.getString(_profilePicUrlKey);
     _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
   }
 
-  /// Synchronous getter – returns the cached value immediately, or null if
-  /// [initFromPrefs] hasn't completed yet.
+  
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
   static bool get cachedIsGuest => _cachedIsGuest;
 
@@ -178,7 +174,7 @@ class PreferencesService {
     } else {
       await prefs.remove(_profilePicUrlKey);
     }
-    // Also update the sync cache immediately
+    
     _cachedProfilePicUrl = url;
   }
 
@@ -210,13 +206,12 @@ class PreferencesService {
 
   static Future<void> setRateUsRemindLater() async {
     final prefs = await SharedPreferences.getInstance();
-    // Remind in 1 day
+    
     final remindDate = DateTime.now().add(const Duration(days: 1));
     await prefs.setString(_rateUsRemindLaterKey, remindDate.toIso8601String());
   }
 
-  // ============== Rate Us counters for milestone triggers ==============
-
+  
   static Future<bool> _getBool(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(key) ?? false;

@@ -131,7 +131,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>>? _cachedFiltered;
   String _filterCacheKey = '';
 
-  // ── Share Attendance dropdown ──
+  
   String _selectedSharePeriod = 'Today';
   final LayerLink _shareDropdownLink = LayerLink();
   final GlobalKey _shareButtonKey = GlobalKey();
@@ -757,7 +757,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime? endDate,
   }) async {
     try {
-      // Determine date range
+      
       DateTime rangeStart;
       DateTime rangeEnd = DateTime.now();
 
@@ -806,7 +806,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           rangeStart = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
       }
 
-      // Filter attendance records within date range
+      
       final filteredRecords = _rawAttendanceDocs.where((record) {
         final createdAt = record['createdAt'];
         if (createdAt == null) return false;
@@ -825,7 +825,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             recordDate.isBefore(rangeEnd.add(const Duration(days: 1)));
       }).toList();
 
-      // Build CSV rows - include ALL workers
+      
       final rows = <List<dynamic>>[];
       rows.add([
         'Worker Name',
@@ -836,14 +836,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         'Attendance Type',
       ]);
 
-      // Build a map of attendance records by worker email for quick lookup
+      
       final Map<String, List<Map<String, dynamic>>> workerAttendance = {};
       for (final record in filteredRecords) {
         final email = (record['email'] ?? '').toString();
         workerAttendance.putIfAbsent(email, () => []).add(record);
       }
 
-      // If no filtered records but we have workers, add all workers with "No Record"
+      
       if (filteredRecords.isEmpty) {
         for (final worker in _workersList) {
           final name = (worker['name'] ?? worker['workerName'] ?? '').toString();
@@ -859,7 +859,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ]);
         }
       } else {
-        // Add all workers - with their attendance or "No Record"
+        
         final Set<String> addedWorkers = {};
         for (final worker in _workersList) {
           final name = (worker['name'] ?? worker['workerName'] ?? '').toString();
@@ -883,7 +883,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               rows.add([name, email, dateStr, status, workType, attType]);
             }
           } else {
-            // Worker has no attendance in this period
+            
             rows.add([
               name,
               email,
@@ -896,7 +896,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           addedWorkers.add(email);
         }
 
-        // Add any attendance records for workers not in _workersList
+        
         for (final record in filteredRecords) {
           final email = (record['email'] ?? '').toString();
           if (!addedWorkers.contains(email)) {
@@ -918,11 +918,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
       }
 
-      // Generate CSV
+      
       final csvString = const CsvEncoder().convert(rows);
       final csvBytes = Uint8List.fromList(utf8.encode(csvString));
 
-      // Save to zip if multiple periods, else single CSV
+      
       final fileName =
           'attendance_${period.replaceAll(' ', '_').toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}.csv';
 
@@ -1113,7 +1113,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   bool _matchesPeriod(Map<String, dynamic> doc) {
     final createdAt = doc['createdAt'];
-    // null createdAt = worker without attendance — always show in table
+    
     if (createdAt == null) return true;
     return AppDateUtils.isTimestampWithinPeriod(createdAt, _selectedTimeframe);
   }
@@ -1345,7 +1345,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        // Workers Attendance Button
+        
         SizedBox(
           height: 50,
           child: ElevatedButton(
@@ -1390,7 +1390,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        // Share Attendance Dropdown — same style as CustomTimeframeDropdown
+        
         CompositedTransformTarget(
           link: _shareDropdownLink,
           child: GestureDetector(
@@ -1655,7 +1655,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       attendanceRecords: _rawAttendanceDocs,
     );
 
-    // Filter worker records by the selected timeframe from main screen
+    
     final periodFilteredRecords = workerRecords.where((record) {
       final createdAt = record['createdAt'];
       if (createdAt == null) return true;
@@ -1665,13 +1665,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }).toList();
 
-    // Get approved time off dates for this worker
+    
     final timeOffDates = TimeOffService.allLeaveDatesForWorker(
       doc,
       _timeOffRecords,
     );
 
-    // Also filter out attendance records that fall on approved time off days
+    
     final filteredRecords = periodFilteredRecords.where((record) {
       final createdAt = record['createdAt'];
       if (createdAt == null) return true;

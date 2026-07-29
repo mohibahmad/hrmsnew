@@ -1,16 +1,12 @@
-/// Input validation for HRMS records.
-///
-/// These run at the Firestore write boundary (see `FirestoreService`) so that
-/// no screen can persist a structurally invalid record, regardless of its own
-/// form-level checks. Form widgets may still call the same helpers to surface
-/// inline errors before submitting.
+
+
 library;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'currency_utils.dart';
 import 'date_utils.dart';
 
-/// Thrown when a record fails validation before being written to Firestore.
+
 class ValidationException implements Exception {
   final String message;
   final String? field;
@@ -26,10 +22,7 @@ class ValidationException implements Exception {
 class Validators {
   Validators._();
 
-  // Validates a reasonable email shape. Requires a local part, an @, a domain
-  // with at least one dot (validating the TLD), and a TLD of 2-4 characters.
-  // Intentionally not RFC-5322 strict — the goal is to catch typos and
-  // garbage values, not to reject valid but unusual addresses.
+  
   static final RegExp _email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
   static bool isValidEmail(String? value) {
@@ -52,8 +45,7 @@ class Validators {
     return null;
   }
 
-  /// Returns null when [value] is a non-empty string, otherwise an error
-  /// message. Convenient as a `TextFormField.validator`.
+  
   static String? requiredField(String? value, {String? label}) {
     if (value == null || value.trim().isEmpty) return 'field_is_required'.tr(namedArgs: {'field': label ?? 'this_field'.tr()});
     return null;
@@ -66,8 +58,7 @@ class Validators {
     return null;
   }
 
-  /// Parses a currency/amount string (e.g. "1,200.50", "\$ 95,000") to a
-  /// double, or null when it can't be parsed.
+  
   static double? parseAmount(dynamic raw) {
     if (raw == null) return null;
     if (raw is num) return raw.toDouble();
@@ -79,8 +70,7 @@ class Validators {
   static String _str(Map<String, dynamic> m, String key) =>
       (m[key] ?? '').toString().trim();
 
-  // --- Record-level validation. Throw ValidationException on first failure. ---
-
+  
   static void validateWorker(Map<String, dynamic> w) {
     if (_str(w, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');

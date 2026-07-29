@@ -17,6 +17,7 @@ import 'preferences_service.dart';
 import 'dummy_data.dart';
 import 'invoice_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../widgets/amount_text.dart';
 
 /// Result of a single automated payroll run for one worker.
 class AutoPayrollResult {
@@ -27,8 +28,8 @@ class AutoPayrollResult {
   final String? error;
   final int absents;
   final int leaves;
-  final String absentDeduction;
-  final String leaveDeduction;
+  String absentDeduction;
+  String leaveDeduction;
   String overtimeAmount;
   String customDeduction;
   double rawNetSalaryValue;
@@ -138,6 +139,11 @@ class SalaryDayScheduler {
         final workerSnap = await Provider.of<FirestoreService>(context, listen: false).getWorkersOnce();
         workers = workerSnap.docs
             .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+            .where((w) {
+              final name = (w['name'] ?? '').toString().trim();
+              final email = (w['email'] ?? '').toString().trim();
+              return name.isNotEmpty && email.isNotEmpty;
+            })
             .toList();
       } catch (e) {
         if (context.mounted) {
@@ -643,33 +649,6 @@ class SalaryDayScheduler {
             );
           }
 
-          Widget buildFilterButton(String label, bool isActive, VoidCallback onTap) {
-            return GestureDetector(
-              onTap: onTap,
-              child: Container(
-                height: 30,
-                margin: const EdgeInsets.only(right: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFF0C51C1) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: isActive ? Colors.white : const Color(0xFF111827),
-                    fontSize: 13,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ),
-            );
-          }
-
           List<AutoPayrollResult> posFiltered;
           if (positionFilter == 'All') {
             posFiltered = summary.results;
@@ -806,37 +785,80 @@ class SalaryDayScheduler {
                       ),
                     ),
 
-                    // ── Filter Chips with visible container ───────────
+                    // ── Filter Chips ─────────────────────────────────
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                        child: Container(
-                          width: 200,
-                          height: 38,
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-                        ),
-                        child: ListView(
+                        child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          physics: const ClampingScrollPhysics(),
-                          children: [
-                            buildFilterButton('all_filter'.tr(), positionFilter == 'All', () {
-                              setDialogState(() => positionFilter = 'All');
-                            }),
-                            ...allPositions.map(
-                              (pos) => buildFilterButton(pos, positionFilter == pos, () {
-                                setDialogState(() => positionFilter = pos);
-                              }),
-                            ),
-                          ],
+                          child: Row(
+                            children: [
+                              ChoiceChip(
+                                label: Text('all_filter'.tr()),
+                                selected: positionFilter == 'All',
+                                onSelected: (_) {
+                                  setDialogState(() => positionFilter = 'All');
+                                },
+                                selectedColor: const Color(0xFF0C51C1),
+                                backgroundColor: Colors.white,
+                                checkmarkColor: Colors.transparent,
+                                side: positionFilter == 'All'
+                                    ? null
+                                    : const BorderSide(color: Color(0xFFE5E7EB)),
+                                labelStyle: TextStyle(
+                                  color: positionFilter == 'All'
+                                      ? Colors.white
+                                      : const Color(0xFF111827),
+                                  fontSize: 12,
+                                  fontWeight: positionFilter == 'All'
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              ...allPositions.map(
+                                (pos) => Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: ChoiceChip(
+                                    label: Text(pos),
+                                    selected: positionFilter == pos,
+                                    onSelected: (_) {
+                                      setDialogState(() => positionFilter = pos);
+                                    },
+                                    selectedColor: const Color(0xFF0C51C1),
+                                    backgroundColor: Colors.white,
+                                    checkmarkColor: Colors.transparent,
+                                    side: positionFilter == pos
+                                        ? null
+                                        : const BorderSide(color: Color(0xFFE5E7EB)),
+                                    labelStyle: TextStyle(
+                                      color: positionFilter == pos
+                                          ? Colors.white
+                                          : const Color(0xFF111827),
+                                      fontSize: 12,
+                                      fontWeight: positionFilter == pos
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                     ),
 
                     // ── Selection Status ─────────────────────────────────
@@ -1190,7 +1212,7 @@ class SalaryDayScheduler {
                                                     borderRadius: BorderRadius.circular(20),
                                                   ),
                                                   child: Text(
-                                                    r.netSalary,
+                                                    AmountText.formatCompact(r.netSalary),
                                                     style: TextStyle(
                                                       fontSize: 14,
                                                       fontWeight: FontWeight.w700,
@@ -1251,11 +1273,12 @@ class SalaryDayScheduler {
                                 () {
                                   double total = 0;
                                   String prefix = '';
-                                  for (int idx = 0; idx < summary.results.length; idx++) {
+                                  for (final r in filteredResults) {
+                                    final idx = summary.results.indexOf(r);
                                     if (selectedIndices.contains(idx)) {
-                                      total += summary.results[idx].rawNetSalaryValue;
+                                      total += r.rawNetSalaryValue;
                                       if (prefix.isEmpty) {
-                                        prefix = PayrollService.getCurrencyPrefix(summary.results[idx].netSalary);
+                                        prefix = PayrollService.getCurrencyPrefix(r.netSalary);
                                         if (prefix.isEmpty) prefix = '\$';
                                       }
                                     }
@@ -1549,7 +1572,7 @@ class SalaryDayScheduler {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    result.netSalary,
+                                    AmountText.formatCompact(result.netSalary),
                                     style: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.w800,
@@ -1588,9 +1611,9 @@ class SalaryDayScheduler {
                                   icon: Icons.payments_outlined,
                                   iconColor: const Color(0xFF10B981),
                                   rows: [
-                                    _metricRow('base_salary'.tr(), result.salary.isNotEmpty ? result.salary : '\$0', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
+                                    _metricRow('base_salary'.tr(), result.salary.isNotEmpty ? AmountText.formatCompact(result.salary) : '\$0', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
                                     _metricRow('working_days'.tr(), result.totalWorkDays, const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('overtime_bonus'.tr(), result.overtimeAmount.isNotEmpty ? result.overtimeAmount : '\$0.00', const Color(0xFFECFDF5), const Color(0xFF10B981), const Color(0xFF10B981)),
+                                    _metricRow('overtime_bonus'.tr(), result.overtimeAmount.isNotEmpty ? AmountText.formatCompact(result.overtimeAmount) : '\$0.00', const Color(0xFFECFDF5), const Color(0xFF10B981), const Color(0xFF10B981)),
                                   ],
                                 ),
                               ),
@@ -1603,8 +1626,26 @@ class SalaryDayScheduler {
                                   rows: [
                                     // ── Editable Custom Deduction ───────────────────
                                     _customDeductionRow(result, originalIndex, setDetailState, overtimeControllers),
-                                    _metricRow('absent_deduction'.tr(), result.absentDeduction.isNotEmpty ? '-${result.absentDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
-                                    _metricRow('leave_deduction'.tr(), result.leaveDeduction.isNotEmpty ? '-${result.leaveDeduction}' : '-\$0.00', const Color(0xFFFEF2F2), const Color(0xFFEF4444), const Color(0xFFEF4444)),
+                                    _editableDeductionRow(
+                                      label: 'absent_deduction'.tr(),
+                                      value: result.absentDeduction,
+                                      controllerKey: originalIndex * 10 + 1,
+                                      controllers: overtimeControllers,
+                                      onChanged: (val) {
+                                        result.absentDeduction = val;
+                                        _recalcWithDeductions(result, result.customDeduction, () => setDetailState(() {}));
+                                      },
+                                    ),
+                                    _editableDeductionRow(
+                                      label: 'leave_deduction'.tr(),
+                                      value: result.leaveDeduction,
+                                      controllerKey: originalIndex * 10 + 2,
+                                      controllers: overtimeControllers,
+                                      onChanged: (val) {
+                                        result.leaveDeduction = val;
+                                        _recalcWithDeductions(result, result.customDeduction, () => setDetailState(() {}));
+                                      },
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1672,7 +1713,7 @@ class SalaryDayScheduler {
                       children: [
                         if (result.success)
                           GestureDetector(
-                            onTap: () => Navigator.of(context).pop([result]),
+                            onTap: () => Navigator.of(context).pop(result),
                             child: Container(
                               height: 48,
                               padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -1809,26 +1850,30 @@ class SalaryDayScheduler {
     final controller = controllers[deductionKey]!;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF4E6),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFFFD6A5), width: 1),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'custom_deduction'.tr(),
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF9A5A00),
-              fontFamily: 'SF Pro Display',
+          Flexible(
+            child: Text(
+              'custom_deduction'.tr(),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF9A5A00),
+                fontFamily: 'SF Pro Display',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 8),
           SizedBox(
-            width: 120,
+            width: 90,
             child: TextField(
               controller: controller,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1868,6 +1913,90 @@ class SalaryDayScheduler {
               onChanged: (val) {
                 _recalcWithDeductions(r, val, () => setDialogState(() {}));
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Editable deduction row for absent/leave deduction per day.
+  Widget _editableDeductionRow({
+    required String label,
+    required String value,
+    required int controllerKey,
+    required Map<int, TextEditingController> controllers,
+    required void Function(String) onChanged,
+  }) {
+    if (!controllers.containsKey(controllerKey)) {
+      controllers[controllerKey] = TextEditingController(
+        text: value.replaceAll(RegExp(r'[^0-9.]'), ''),
+      );
+    }
+    final controller = controllers[controllerKey]!;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFECACA), width: 1),
+      ),
+      child: Row(
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFEF4444),
+                fontFamily: 'SF Pro Display',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 90,
+            child: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'SF Pro Display',
+                color: Color(0xFFEF4444),
+              ),
+              textAlign: TextAlign.end,
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'SF Pro Display',
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: Color(0xFFFECACA), width: 1),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: Color(0xFFFECACA), width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                ),
+              ),
+              onChanged: onChanged,
             ),
           ),
         ],

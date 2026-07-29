@@ -917,7 +917,6 @@ onPressed: isSaving
   }
 
 
-
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
@@ -1082,7 +1081,6 @@ onPressed: isSaving
       ],
     );
   }
-
 
 
   Widget _buildDataTable(List<AssetData> assets) {
@@ -1893,7 +1891,6 @@ onPressed: isSaving
       },
     );
   }
-
 
 
   Widget _buildEmptyState() {

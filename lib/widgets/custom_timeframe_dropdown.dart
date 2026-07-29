@@ -196,7 +196,7 @@ class _CustomTimeframeDropdownState extends State<CustomTimeframeDropdown> {
           constraints: const BoxConstraints(minWidth: 90),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFF0247C4), // Exact button blue
+            color: const Color(0xFF0247C4), 
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(6),
               topRight: const Radius.circular(6),

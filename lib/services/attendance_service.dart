@@ -5,8 +5,7 @@ class AttendanceService {
   factory AttendanceService() => _instance;
   AttendanceService._();
 
-  /// Returns only this worker's attendance records. Email is the primary
-  /// identity; name is used for legacy records without a usable email.
+  
   static List<Map<String, dynamic>> recordsForWorker({
     required Map<String, dynamic> worker,
     required List<Map<String, dynamic>> attendanceRecords,

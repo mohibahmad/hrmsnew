@@ -864,7 +864,7 @@
   "selected": "Выбрано",
   "select_all": "Выбрать Все",
   "deselect_all": "Отменить Все",
-  "total_disbursement": "ОБЩАЯ ВЫПЛАТА",
+  "total_disbursement": "ИТОГОВАЯ ОПЛАТА",
   "processing_for_cycle": "Обработка для цикла {period}",
   "pay_all_count": "Оплатить Все ({count})",
   "base_salary": "Базовая зарплата",
@@ -967,5 +967,10 @@
   "forgot_password_link": "Забыли пароль?",
   "welcome_to_hrms": "Добро пожаловать в HRMS",
   "welcome_banner_subtitle": "Управляйте всей рабочей силой без усилий\nс помощью нашего умного автоматизированного HRM-платформы.",
-  "save_attendance_report": "Сохранить Отчёт о Посещаемости"
+  "save_attendance_report": "Сохранить Отчёт о Посещаемости",
+  "generated_on": "Создано",
+  "please_enter_total_work_days": "Пожалуйста, введите общее количество рабочих дней",
+  "please_enter_absents": "Пожалуйста, введите количество прогулов",
+  "please_enter_leaves": "Пожалуйста, введите количество отпусков",
+  "please_enter_salary": "Пожалуйста, введите зарплату"
 }

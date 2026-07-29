@@ -32,7 +32,7 @@ class InvoiceService {
     final PdfColor lineColor = PdfColor.fromHex('#8B93B8');
     const double fontSize = 10;
 
-    // Load app logo
+    
     pw.Image? appLogo;
     try {
       final byteData = await rootBundle.load('assets/app_icon.png');
@@ -46,7 +46,7 @@ class InvoiceService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(45, 50, 45, 50),
         build: (context) => [
-          // ── 1. HEADER ROW (Logo & INVOICE) ──
+          
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
@@ -76,7 +76,7 @@ class InvoiceService {
           ),
           pw.SizedBox(height: 40),
 
-          // ── 2. INVOICE DETAILS ──
+          
           pw.Text(
             'Invoice N $payPeriod',
             style: pw.TextStyle(color: textColor, fontSize: fontSize),
@@ -88,7 +88,7 @@ class InvoiceService {
           ),
           pw.SizedBox(height: 40),
 
-          // ── 3. ADDRESS BLOCKS ──
+          
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
@@ -97,20 +97,7 @@ class InvoiceService {
                   primaryNavy,
                   textColor,
                   fontSize,
-                  'Bill From',
-                  'HRMS Company',
-                  '123 Street, City, State',
-                  '23123',
-                  '+00 000 000 000',
-                ),
-              ),
-              pw.SizedBox(width: 40),
-              pw.Expanded(
-                child: _buildAddressBlock(
-                  primaryNavy,
-                  textColor,
-                  fontSize,
-                  'Bill To',
+                  'Employee',
                   employeeName,
                   email,
                   'Position: $position',
@@ -121,8 +108,7 @@ class InvoiceService {
           ),
           pw.SizedBox(height: 35),
 
-          // ── 4. ITEMS TABLE ──
-          // Table Header
+          
           pw.Container(
             color: primaryNavy,
             padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -130,7 +116,6 @@ class InvoiceService {
               children: [
                 pw.Expanded(flex: 5, child: pw.Text('Description', style: _headerStyle(fontSize))),
                 pw.Expanded(flex: 2, child: pw.Center(child: pw.Text('Rate', style: _headerStyle(fontSize)))),
-                pw.Expanded(flex: 2, child: pw.Center(child: pw.Text('Qty', style: _headerStyle(fontSize)))),
                 pw.Expanded(flex: 2, child: pw.Align(
                   alignment: pw.Alignment.centerRight,
                   child: pw.Text('Total', style: _headerStyle(fontSize)),
@@ -138,53 +123,19 @@ class InvoiceService {
               ],
             ),
           ),
-          // Table Rows
-          _buildTableRow(lineColor, textColor, fontSize, 'Basic Salary', dailyRate, daysWorked, grossPay),
-          _buildTableRow(lineColor, textColor, fontSize, 'Overtime', overtimePay, '1', overtimePay),
-          _buildTableRow(lineColor, textColor, fontSize, 'Absent Deduction', absentDeduction, absents, absentDeduction),
-          _buildTableRow(lineColor, textColor, fontSize, 'Leave Deduction', leaveDeduction, leaves, leaveDeduction),
-          _buildTableRow(lineColor, textColor, fontSize, 'Total Deductions', '', '', totalDeductions),
+          
+          _buildTableRow(lineColor, textColor, fontSize, 'Basic Salary', dailyRate, grossPay),
+          _buildTableRow(lineColor, textColor, fontSize, 'Overtime', overtimePay, overtimePay),
+          _buildTableRow(lineColor, textColor, fontSize, 'Absent Deduction', absentDeduction, absentDeduction),
+          _buildTableRow(lineColor, textColor, fontSize, 'Leave Deduction', leaveDeduction, leaveDeduction),
+          _buildTableRow(lineColor, textColor, fontSize, 'Total Deductions', '', totalDeductions),
           pw.SizedBox(height: 20),
 
-          // ── 5. PAYMENT & TOTALS ──
+          
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Payment Info (Left)
-              pw.Expanded(
-                flex: 1,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Container(
-                      width: double.infinity,
-                      color: primaryNavy,
-                      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-                      child: pw.Text(
-                        'Payment Info',
-                        style: pw.TextStyle(color: PdfColors.white, fontSize: fontSize, fontWeight: pw.FontWeight.bold),
-                      ),
-                    ),
-                    pw.SizedBox(height: 10),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 10),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('Bank Account', style: pw.TextStyle(color: textColor, fontSize: fontSize)),
-                          pw.SizedBox(height: 4),
-                          pw.Text('ER73829 27382 28338', style: pw.TextStyle(color: textColor, fontSize: fontSize)),
-                          pw.SizedBox(height: 4),
-                          pw.Text('Pay Period', style: pw.TextStyle(color: textColor, fontSize: fontSize)),
-                          pw.Text(payPeriod, style: pw.TextStyle(color: textColor, fontSize: fontSize)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(width: 40),
-              // Totals (Right)
+              pw.SizedBox(width: 200),
               pw.Expanded(
                 flex: 1,
                 child: pw.Column(
@@ -234,7 +185,7 @@ class InvoiceService {
           ),
           pw.SizedBox(height: 50),
 
-          // ── 6. FOOTER (Thank you) ──
+          
           pw.SizedBox(height: 40),
           pw.Padding(
             padding: const pw.EdgeInsets.only(left: 10),
@@ -311,7 +262,6 @@ class InvoiceService {
     double fontSize,
     String desc,
     String rate,
-    String qty,
     String total,
   ) {
     return pw.Container(
@@ -323,7 +273,6 @@ class InvoiceService {
         children: [
           pw.Expanded(flex: 5, child: pw.Text(desc, style: _cellStyle(textColor, fontSize))),
           pw.Expanded(flex: 2, child: pw.Center(child: pw.Text(rate.isNotEmpty ? rate : '-', style: _cellStyle(textColor, fontSize)))),
-          pw.Expanded(flex: 2, child: pw.Center(child: pw.Text(qty.isNotEmpty ? qty : '-', style: _cellStyle(textColor, fontSize)))),
           pw.Expanded(flex: 2, child: pw.Align(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(total.isNotEmpty ? total : '-', style: _cellStyle(textColor, fontSize)),
@@ -347,17 +296,17 @@ class InvoiceService {
     return '${months[date.month - 1]}. $day$suffix, ${date.year}';
   }
 
-  /// Extracts numeric portion preserving the original currency symbol.
+  
   static String _extractNumeric(String formatted) {
     if (formatted.isEmpty) return r'$0.00';
-    // Detect currency symbol: everything before the first digit
+    
     String currency = r'$';
     final digitMatch = RegExp(r'\d').firstMatch(formatted);
     if (digitMatch != null && digitMatch.start > 0) {
       currency = formatted.substring(0, digitMatch.start).trim();
       if (currency.isEmpty) currency = r'$';
     }
-    // Remove currency symbols and commas, keep the number
+    
     final cleaned = formatted.replaceAll(RegExp(r'[^0-9.]'), '');
     if (cleaned.isEmpty) return '$currency 0.00';
     final value = double.tryParse(cleaned);

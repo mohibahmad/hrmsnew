@@ -866,7 +866,7 @@
   "selected": "Selecionados",
   "select_all": "Selecionar Tudo",
   "deselect_all": "Desmarcar Tudo",
-  "total_disbursement": "DESEMBOLSO TOTAL",
+  "total_disbursement": "PAGAMENTO TOTAL",
   "processing_for_cycle": "Processando para o ciclo {period}",
   "pay_all_count": "Pagar Tudo ({count})",
   "base_salary": "Salário base",
@@ -969,5 +969,10 @@
   "forgot_password_link": "Esqueceu a senha?",
   "welcome_to_hrms": "Bem-vindo ao HRMS",
   "welcome_banner_subtitle": "Gerencie toda a sua força de trabalho sem esforço\ncom nossa plataforma HRM inteligente e automatizada.",
-  "save_attendance_report": "Salvar Relatório de Presença"
+  "save_attendance_report": "Salvar Relatório de Presença",
+  "generated_on": "Gerado em",
+  "please_enter_total_work_days": "Por favor, insira o total de dias trabalhados",
+  "please_enter_absents": "Por favor, insira as ausências",
+  "please_enter_leaves": "Por favor, insira as férias",
+  "please_enter_salary": "Por favor, insira o salário"
 }

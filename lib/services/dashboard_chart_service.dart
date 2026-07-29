@@ -119,10 +119,7 @@ class DashboardChartService {
     return enteredDate ?? PayrollService.payrollRecordDate(record);
   }
 
-  /// Builds guest salary points with the same normalized curve as Expenses.
-  ///
-  /// The visual trend follows expense dates and proportions while tooltip
-  /// values remain salary amounts scaled to [totalSalary].
+  
   static DashboardChartSeries buildDummySalarySeries({
     required List<Map<String, dynamic>> expenses,
     required double totalSalary,

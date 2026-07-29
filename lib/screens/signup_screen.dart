@@ -608,7 +608,7 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           Row(
             children: [
-              // ─── Left Blue Banner ───────────────────────────────────────
+              
               if (isDesktop)
                 Expanded(
                   flex: 11,
@@ -616,7 +616,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     color: const Color(0xFF165CDB),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        // 880 = reference width at ~1600px window (1600 * 11/20)
+                        
                         final scale = (constraints.maxWidth / 880.0).clamp(
                           0.4,
                           1.2,
@@ -625,7 +625,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         return Stack(
                           clipBehavior: Clip.hardEdge,
                           children: [
-                            // Heading text — scales left padding with window
+                            
                             Positioned(
                               top: 40,
                               left: 80,
@@ -659,7 +659,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                             ),
 
-                            // Mockup — proportionally scaled with window
+                            
                             Positioned(
                               top: 380 * scale,
                               left: -520 * scale,
@@ -717,7 +717,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
 
-              // ─── Right Side Form ────────────────────────────────────────
+              
               Expanded(
                 flex: 9,
                 child: Center(
@@ -743,7 +743,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ],
           ),
 
-          // ─── Floating Language Selector ─────────────────────────────────
+          
           Positioned(
             top: 40,
             right: 40,

@@ -6,8 +6,8 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 
 class LeaveBalanceHelper {
-  /// Maps a leave type label to its running-balance field name.
-  /// All leave types (Sick, Casual, Medical) deduct from Annual Leave balance.
+  
+  
   static const Map<String, String> availKeyForType = {
     'Sick Leave': 'availableAnnualLeaves',
     'Casual Leave': 'availableAnnualLeaves',
@@ -15,8 +15,7 @@ class LeaveBalanceHelper {
     'Medical Leave': 'availableAnnualLeaves',
   };
 
-  /// Maps a leave type label to its configured allowance field name.
-  /// All leave types use the Annual Leave allowance.
+  
   static const Map<String, String> configKeyForType = {
     'Sick Leave': 'annualLeaves',
     'Casual Leave': 'annualLeaves',
@@ -26,14 +25,12 @@ class LeaveBalanceHelper {
 
   static int _toInt(dynamic v) => int.tryParse(v?.toString() ?? '0') ?? 0;
 
-  /// Total leave allowance - all leave types come from Annual Leave.
+  
   static int totalLeaveAllowance(Map<String, dynamic> worker) {
     return _toInt(worker['annualLeaves']);
   }
 
-  /// Remaining paid leave balance for a specific [leaveType]. Prefers the
-  /// stored running counter (e.g. `availableSickLeaves`) and falls back to the
-  /// configured allowance for that type.
+  
   static int remainingForType(Map<String, dynamic> worker, String leaveType) {
     final availKey = availKeyForType[leaveType];
     if (availKey != null) {
@@ -48,23 +45,19 @@ class LeaveBalanceHelper {
     return 0;
   }
 
-  /// Configured allowance for a specific [leaveType].
+  
   static int totalForType(Map<String, dynamic> worker, String leaveType) {
     final configKey = configKeyForType[leaveType];
     if (configKey != null) return _toInt(worker[configKey]);
     return 0;
   }
 
-  /// True when the worker has no paid leave remaining.
-  /// All leave types (Sick, Casual, Medical) come from Annual Leave,
-  /// so only Annual Leave balance matters.
+  
   static bool allLeavesExhausted(Map<String, dynamic> worker) {
     return remainingForType(worker, 'Annual Leave') <= 0;
   }
 
-  /// The exhausted state only blocks creating another request. An existing
-  /// request must remain editable because its own days are released from the
-  /// availability calculation while it is being changed.
+  
   static bool shouldBlockTimeOffForm(
     Map<String, dynamic> worker, {
     required bool isEditing,
@@ -72,9 +65,7 @@ class LeaveBalanceHelper {
     return !isEditing && allLeavesExhausted(worker);
   }
 
-  /// Calculates the counters to persist from the values captured before the
-  /// request is written. This avoids counting the newly-created record twice
-  /// when a local list or Firestore stream updates during the save.
+  
   static ({int remaining, int used}) balanceAfterRequest({
     required int availableBeforeSave,
     required int usedBeforeSave,

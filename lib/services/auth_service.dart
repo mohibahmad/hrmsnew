@@ -70,10 +70,10 @@ class AuthService {
       await PreferencesService.setLoggedIn(true);
       return credential;
     } on FirebaseAuthException {
-      // Real Firebase error — let the caller (signup_screen) handle it
+      
       rethrow;
     } catch (_) {
-      // Non-Firebase error (e.g. network) — also rethrow so caller can show error
+      
       rethrow;
     }
   }
@@ -93,14 +93,14 @@ class AuthService {
       await _clearSeededDummyDataIfNeeded();
       return credential;
     } on FirebaseAuthException {
-      // Let the caller handle specific Firebase errors (wrong password, etc.)
+      
       rethrow;
     } catch (_) {
       rethrow;
     }
   }
 
-  /// Sign in Anonymously (Continue as Guest) - Local only, no Firebase
+  
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
@@ -111,7 +111,7 @@ class AuthService {
     return GuestUserCredential(_guestUser);
   }
 
-  /// Sign in with Google
+  
   Future<UserCredential?> signInWithGoogle() async {
     try {
       String? clientId;
@@ -133,7 +133,7 @@ class AuthService {
             googleUser.displayName ?? userCredential.user!.email ?? 'User';
         await userCredential.user!.updateDisplayName(name);
 
-        // Ensure user profile is created in Firestore
+        
         final firestore = FirestoreService.instance;
         final profile = await firestore.getUserProfile();
         if (profile == null) {
@@ -157,7 +157,7 @@ class AuthService {
     }
   }
 
-  /// Sign in with Apple
+  
   Future<UserCredential?> signInWithApple() async {
     try {
       final appleProvider = OAuthProvider('apple.com');
@@ -170,7 +170,7 @@ class AuthService {
       if (userCredential.user != null) {
         final name = userCredential.user!.displayName ?? 'Apple User';
 
-        // Ensure user profile is created in Firestore
+        
         final firestore = FirestoreService.instance;
         final profile = await firestore.getUserProfile();
         if (profile == null) {
@@ -193,7 +193,7 @@ class AuthService {
     }
   }
 
-  /// Sign out
+  
   Future<void> signOut() async {
     final isGuest = await PreferencesService.isGuest();
     await PreferencesService.setGuest(false);
@@ -204,9 +204,7 @@ class AuthService {
     profilePicNotifier.value = null;
   }
 
-  /// Sync the user's premium status from Firestore into local preferences.
-  /// This is called after every login so that a returning premium user
-  /// doesn't see the upgrade dialog again.
+  
   Future<void> _syncPremiumStatusFromFirestore() async {
     try {
       final profile = await FirestoreService.instance.getUserProfile();

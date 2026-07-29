@@ -344,7 +344,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  // ==================== HEADER ====================
+  
   Widget _buildHeader() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -400,7 +400,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           ),
           Row(
             children: [
-              // Clear All (replaces the old close button)
+              
               if (_notifications.length > 1)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
@@ -466,7 +466,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  // ==================== EMPTY STATE ====================
+  
   Widget _buildEmptyState() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
@@ -575,7 +575,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         ),
         child: Stack(
           children: [
-            // Decorative circles
+            
             Positioned(
               top: -20,
               right: -20,
@@ -756,7 +756,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
       ),
       child: Stack(
         children: [
-          // Main Content (tap to navigate + close the panel)
+          
           GestureDetector(
             onTap: () {
               if (notificationId.isNotEmpty) {
@@ -773,7 +773,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon Container
+                  
                   Container(
                     width: 44,
                     height: 44,
@@ -800,7 +800,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                     ),
                   ),
                   const SizedBox(width: 14),
-                  // Text Content
+                  
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -887,7 +887,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               ),
             ),
           ),
-          // ✅ CROSS ICON (Right Side - Always Visible)
+          
           Positioned(
             top: 8,
             right: 8,
@@ -925,7 +925,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
   }
 }
 
-// ==================== STYLE CLASS ====================
+
 class _NotifStyle {
   final IconData icon;
   final Color color;
@@ -942,7 +942,7 @@ class _NotifStyle {
     required this.label,
     this.isWelcome = false,
     this.iconAsset,
-    // ignore: unused_element_parameter
+    
     this.iconSize = 22,
   });
 }

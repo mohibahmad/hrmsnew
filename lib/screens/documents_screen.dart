@@ -527,7 +527,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     final file = result.files.first;
     if (file.bytes == null) return;
 
-    // File size limit: 10 MB for guest base64 uploads (avoids memory overflow)
+    
     if (file.bytes!.length > 10 * 1024 * 1024) {
       if (mounted) {
         FlashySnackBar.show(
@@ -659,7 +659,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         });
         widget.onDocumentsUpdated();
       }
-      // Always show feedback after upload attempt
+      
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           if (url != null && url.isNotEmpty) {

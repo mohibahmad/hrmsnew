@@ -240,8 +240,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     _PasswordResetStep.password => _confirmPasswordReset(),
   };
 
-  // ─── Decoration helpers ───────────────────────────────────────────────────
-
+  
   InputDecoration _buildInputDecoration(
     String hint, {
     bool isPassword = false,
@@ -297,8 +296,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
-
+  
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -311,7 +309,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         children: [
           Row(
             children: [
-              // ─── Left Blue Banner ─────────────────────────────────────────
+              
               if (isDesktop)
                 Expanded(
                   flex: 11,
@@ -319,7 +317,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     color: const Color(0xFF165CDB),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        // 880 = reference width at ~1600px window (1600 * 11/20)
+                        
                         final scale = (constraints.maxWidth / 880.0).clamp(
                           0.4,
                           1.2,
@@ -328,7 +326,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         return Stack(
                           clipBehavior: Clip.hardEdge,
                           children: [
-                            // Heading text — left padding scales with window
+                            
                             Positioned(
                               top: 40,
                               left: 80,
@@ -361,7 +359,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                             ),
 
-                            // Mockup — proportionally scaled with window
+                            
                             Positioned(
                               top: 380 * scale,
                               left: -520 * scale,
@@ -419,7 +417,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 ),
 
-              // ─── Right Side Form ──────────────────────────────────────────
+              
               Expanded(
                 flex: 9,
                 child: Center(
@@ -557,7 +555,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ],
           ),
 
-          // ─── Floating Language Selector ───────────────────────────────────
+          
           Positioned(
             top: 40,
             right: 40,
@@ -593,8 +591,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ─── Step Indicator ───────────────────────────────────────────────────────
-
+  
   Widget _buildStepIndicator() {
     final currentIndex = _step.index;
     return Row(
@@ -614,8 +611,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // ─── Step Forms ───────────────────────────────────────────────────────────
-
+  
   Widget _buildCurrentForm() {
     switch (_step) {
       case _PasswordResetStep.email:

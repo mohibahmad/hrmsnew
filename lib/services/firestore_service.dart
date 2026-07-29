@@ -174,8 +174,7 @@ class FirestoreService {
     }
   }
 
-  /// Real-time stream of the user's profile document.
-  /// Use this to react instantly to premium status changes.
+  
   Stream<Map<String, dynamic>?> get userProfileStream {
     final doc = _userDoc;
     if (doc == null) return Stream.value(null);
@@ -283,8 +282,7 @@ class FirestoreService {
     await coll.doc(id).update(_withNormalizedCurrency(data));
   }
 
-  /// Directly updates leave-related fields on a worker document
-  /// without running full validation (which requires name & email).
+  
   Future<void> updateWorkerLeaves(
     String id,
     Map<String, dynamic> leaveData,
@@ -345,8 +343,7 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
-  /// Keeps one salary expense per worker and payroll month. Re-saving payroll
-  /// updates the linked expense instead of creating a duplicate payment.
+  
   Future<void> upsertPayrollExpense(
     Map<String, dynamic> expense, {
     required String payrollKey,
@@ -424,9 +421,7 @@ class FirestoreService {
     return AppDateUtils.parseDateString(createdAt.toString());
   }
 
-  /// Returns current-month attendance and approved time-off counts. Paid leave
-  /// is reported for visibility but only unpaid leave should reduce payroll.
-  /// Re-marks and overlapping time-off records are de-duplicated by date.
+  
   Future<Map<String, int>> getWorkerMonthlyAttendance(String email) async {
     final normalizedEmail = email.trim().toLowerCase();
     final now = DateTime.now();
@@ -438,7 +433,7 @@ class FirestoreService {
       final coll = _attendance;
       if (coll == null) return {'absents': 0, 'leaves': 0};
 
-      // 🔥 FIX: Filter by month properly
+      
       final startOfMonth = DateTime(now.year, now.month, 1);
       final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
 
@@ -508,7 +503,7 @@ class FirestoreService {
           TimeOffService.isWorkerOnLeave(worker, timeOffRecords, onDate: date),
     );
 
-    // ── Remove absents that fall on holidays or company off-days ──
+    
     final holidayDates = await _getHolidayDatesForMonth(now.year, now.month);
     absentDates.removeWhere((date) => holidayDates.contains(date));
 
@@ -522,21 +517,21 @@ class FirestoreService {
     };
   }
 
-  /// Calculates actual working days in a month excluding Sundays and enabled holidays.
+  
   Future<int> getMonthlyWorkingDays({DateTime? month}) async {
     final now = month ?? DateTime.now();
     final year = now.year;
     final m = now.month;
     final daysInMonth = DateTime(year, m + 1, 0).day;
 
-    // 1. Count weekdays (Mon–Sat) — Sunday = 7 is excluded.
+    
     int weekdays = 0;
     for (int d = 1; d <= daysInMonth; d++) {
       final date = DateTime(year, m, d);
       if (date.weekday != DateTime.sunday) weekdays++;
     }
 
-    // 2. Subtract enabled holidays that fall on a weekday.
+    
     final coll = _holidays;
     if (coll == null) return weekdays;
     try {
@@ -620,8 +615,7 @@ class FirestoreService {
     return docRef.id;
   }
 
-  /// Bulk-adds payroll records using Firestore batch writes for performance.
-  /// Returns the number of successfully added records.
+  
   Future<int> addBulkPayrollRecords(List<Map<String, dynamic>> records) async {
     final coll = _payroll;
     if (coll == null) return 0;
@@ -641,7 +635,7 @@ class FirestoreService {
           batch = _db.batch();
         }
       } catch (_) {
-        // Individual record failures are non-fatal.
+        
       }
     }
     if (count % 500 != 0 && count > 0) {
@@ -650,7 +644,7 @@ class FirestoreService {
     return count;
   }
 
-  /// Bulk-adds expense records using Firestore batch writes for performance.
+  
   Future<void> addBulkExpenses(List<Map<String, dynamic>> expenses) async {
     final coll = _expenses;
     if (coll == null) return;
@@ -676,7 +670,7 @@ class FirestoreService {
     }
   }
 
-  /// Bulk-adds notifications using Firestore batch writes for performance.
+  
   Future<void> addBulkNotifications(
     List<Map<String, dynamic>> notifications,
   ) async {
@@ -749,8 +743,7 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
-  /// Saves a time-off record and its derived worker leave balance in one
-  /// Firestore batch, preventing partial updates if the network drops.
+  
   Future<String> saveTimeOffWithWorkerBalance({
     String? timeOffId,
     required Map<String, dynamic> record,
@@ -820,7 +813,7 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
-  // --- Assets CRUD ---
+  
   Future<String> addAsset(Map<String, dynamic> asset) async {
     Validators.validateAsset(asset);
     final coll = _assets;
@@ -867,7 +860,7 @@ class FirestoreService {
     return coll.orderBy('createdAt', descending: true).snapshots();
   }
 
-  // --- Holidays CRUD ---
+  
   Future<String> addHoliday(Map<String, dynamic> holiday) async {
     Validators.validateHoliday(holiday);
     final coll = _holidays;
@@ -939,11 +932,11 @@ class FirestoreService {
     if (!force && userSnap.exists) {
       final data = userSnap.data();
       if (data != null && data['hasDummyData'] == true) {
-        return; // Already seeded
+        return; 
       }
     }
 
-    // Create user profile
+    
     await docRef.set({
       'username': displayName,
       'email': email,
@@ -958,7 +951,7 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    // Seed Workers
+    
     var batch = _db.batch();
     int count = 0;
     final workersColl = docRef.collection('hrms_workers');
@@ -975,7 +968,7 @@ class FirestoreService {
       }
     }
 
-    // Seed Attendance
+    
     final attendanceColl = docRef.collection('hrms_attendance');
     for (var a in DummyData.attendance) {
       final copy = Map<String, dynamic>.from(a)..remove('id');
@@ -990,7 +983,7 @@ class FirestoreService {
       }
     }
 
-    // Seed Expenses
+    
     final expensesColl = docRef.collection('hrms_expenses');
     for (var e in DummyData.expenses) {
       final copy = Map<String, dynamic>.from(e)..remove('id');
@@ -1005,7 +998,7 @@ class FirestoreService {
       }
     }
 
-    // Seed Payroll
+    
     final payrollColl = docRef.collection('hrms_payroll');
     for (var p in DummyData.payroll) {
       final copy = Map<String, dynamic>.from(p)..remove('id');
@@ -1020,7 +1013,7 @@ class FirestoreService {
       }
     }
 
-    // Seed Time Off requests
+    
     final timeoffColl = docRef.collection('hrms_timeoff');
     for (var t in DummyData.timeoff) {
       final copy = Map<String, dynamic>.from(t)..remove('id');
@@ -1035,7 +1028,7 @@ class FirestoreService {
       }
     }
 
-    // Seed Holidays
+    
     final holidaysColl = docRef.collection('hrms_holidays');
     for (var holidayList in DummyData.holidays.values) {
       for (var h in holidayList) {
@@ -1052,7 +1045,7 @@ class FirestoreService {
       }
     }
 
-    // Seed Assets
+    
     final assetsColl = docRef.collection('hrms_assets');
     for (var a in DummyData.assets) {
       final copy = Map<String, dynamic>.from(a)..remove('id');
@@ -1072,8 +1065,7 @@ class FirestoreService {
     }
   }
 
-  // ==================== NOTIFICATIONS ====================
-
+  
   Future<void> addNotification(Map<String, dynamic> notification) async {
     final coll = _notifications;
     if (coll == null) return;

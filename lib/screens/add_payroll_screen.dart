@@ -35,25 +35,20 @@ class AddPayrollScreen extends StatefulWidget {
 }
 
 class _AddPayrollScreenState extends State<AddPayrollScreen> {
-  // ─────────────────────────────────────────────────────────────
-  //  Theme constants
-  // ─────────────────────────────────────────────────────────────
+  
+  
   static const Color _primaryBlue = Color(0xFF0A44C2);
   static const Color _darkBlue = Color(0xFF082C7C);
   static const Color _textDark = Color(0xFF111827);
   static const Color _textGrey = Color(0xFF000000);
   static const Color _borderLight = Color(0xFFE5E7EB);
 
-  // ─────────────────────────────────────────────────────────────
-  //  Services
-  // ─────────────────────────────────────────────────────────────
+  
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _initialized = false;
 
-  // ─────────────────────────────────────────────────────────────
-  //  Controllers
-  // ─────────────────────────────────────────────────────────────
+  
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
   final _leavesCtrl = TextEditingController();
@@ -63,18 +58,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   final _leaveDeductionCtrl = TextEditingController();
   final _netCtrl = TextEditingController(text: r'$ 0');
 
-  // ─────────────────────────────────────────────────────────────
-  //  State
-  // ─────────────────────────────────────────────────────────────
+  
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
   bool _isSaving = false;
   bool _showNotifications = false;
   int _paidLeaves = 0;
 
-  // ─────────────────────────────────────────────────────────────
-  //  Worker data accessors
-  // ─────────────────────────────────────────────────────────────
+  
   String get _name => (widget.workerData['name'] ?? '').toString();
 
   String get _email => (widget.workerData['email'] ?? '').toString();
@@ -93,13 +84,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String get _salaryStr =>
       PayrollService.currentSalaryDisplay(widget.workerData);
 
-  // ─────────────────────────────────────────────────────────────
-  //  Lifecycle
-  // ─────────────────────────────────────────────────────────────
+  
   @override
   void initState() {
     super.initState();
-    // ❌ DO NOT use Provider.of in initState — context is not available
+    
   }
 
   @override
@@ -151,9 +140,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Payroll calculation
-  // ─────────────────────────────────────────────────────────────
+  
   void _recalc() {
     if (_workDaysCtrl.text.trim().isEmpty) {
       setState(() {
@@ -191,12 +178,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     });
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Attendance fetch
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _fetchMonthlyAttendance() async {
     if (_email.trim().isEmpty) return;
-    // ✅ Skip for guest users — Firestore not available
+    
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) return;
     try {
@@ -209,22 +194,20 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
         _paidLeaves = results['paidLeaves'] ?? 0;
         _leavesCtrl.text = (results['unpaidLeaves'] ?? 0).toString();
-        // Auto-fill totalWorkDays only if not already set by HR
+        
         if (_workDaysCtrl.text.trim().isEmpty && workingDays > 0) {
           _workDaysCtrl.text = workingDays.toString();
         }
       });
       _recalc();
     } catch (_) {
-      // Silently ignore — attendance is optional context
+      
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Save handler
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _handleSave() async {
-    // ── Validation ──
+    
     final validators = <(String, String)>[
       (_workDaysCtrl.text.trim(), 'please_enter_total_work_days'.tr()),
       (_absentsCtrl.text.trim(), 'please_enter_absents'.tr()),
@@ -270,9 +253,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // ── Persist payroll ──
+      
       if (isGuest) {
-        // ✅ Pure PreferencesService — DummyData sirf preview ke liye hai
+        
         final guestPayroll =
             (await PreferencesService.getGuestPayroll()) ??
             <Map<String, dynamic>>[];
@@ -295,7 +278,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         }
       }
 
-      // ── Persist expense ──
+      
       final netAmount = PayrollService.extractSalary(_calculatedNet);
       if (netAmount > 0) {
         final expenseRecord = <String, dynamic>{
@@ -322,7 +305,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             };
           }
           await DummyData.saveToPrefs();
-          if (mounted) setState(() {}); // ✅ UI UPDATE after expense add
+          if (mounted) setState(() {}); 
         } else {
           await _firestore.upsertPayrollExpense(
             expenseRecord,
@@ -349,12 +332,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Invoice generation
-  // ─────────────────────────────────────────────────────────────
+  
   Future<void> _generateAndShowInvoice() async {
     if (_calcResult.isEmpty) {
-      // ✅ Skip invoice if no calculation
+      
       return;
     }
 
@@ -408,7 +389,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           child: Column(
             children: [
-              // ── Dialog header ──
+              
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
@@ -480,7 +461,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               Container(height: 1, color: const Color(0xFFE5E7EB)),
               const SizedBox(height: 12),
 
-              // ── PDF viewer ──
+              
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -504,9 +485,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     });
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Notifications
-  // ─────────────────────────────────────────────────────────────
+  
   void _toggleNotifications() {
     setState(() => _showNotifications = !_showNotifications);
     if (_showNotifications) _firestore.markAllNotificationsRead();
@@ -516,9 +495,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     setState(() => _showNotifications = false);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Build
-  // ─────────────────────────────────────────────────────────────
+  
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -555,7 +532,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
         ),
 
-        // ── Notification overlay ──
+        
         if (_showNotifications) ...[
           Positioned.fill(
             child: GestureDetector(
@@ -572,9 +549,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  App bar
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildAppBar() {
     return Container(
       height: 94,
@@ -612,9 +587,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Payroll data header row
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildPayrollDataHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -692,9 +665,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Employee banner
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildEmployeeBanner() {
     final now = DateTime.now();
     final firstDay = DateTime(now.year, now.month, 1);
@@ -718,7 +689,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Avatar + status badge ──
+          
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -754,7 +725,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(width: 24),
 
-          // ── Name + ID + position ──
+          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,7 +765,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
           ),
 
-          // ── Pay period ──
+          
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -823,9 +794,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Details card
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildDetailsCard() {
     final cr = _calcResult;
 
@@ -839,7 +808,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Section title ──
+          
           Row(
             children: [
               Container(width: 4, height: 24, color: _darkBlue),
@@ -856,7 +825,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 32),
 
-          // ── Row 1 ──
+          
           Row(
             children: [
               Expanded(
@@ -900,7 +869,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Row 2 ──
+          
           Row(
             children: [
               Expanded(
@@ -927,7 +896,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 32),
 
-          // ── Breakdown ──
+          
           if (cr.isNotEmpty) ...[
             _buildCalcBreakdown(cr),
             const SizedBox(height: 16),
@@ -940,9 +909,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Input field builder
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildInput(
     String label,
     String hint,
@@ -1016,9 +983,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Net pay (calculated) field
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildCalculatedInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1061,9 +1026,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Calculation breakdown
-  // ─────────────────────────────────────────────────────────────
+  
   Widget _buildCalcBreakdown(Map<String, dynamic> cr) {
     String fmt(String key) => (cr[key] as String?) ?? '';
 

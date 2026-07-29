@@ -41,13 +41,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // ❌ YAHAN KUCH NAHI RAKHNA - context use nahi karna
+    
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (mounted) { // Safe guard — Provider.of in didChangeDependencies should only run once
+    if (mounted) { 
       _authService = Provider.of<AuthService>(context, listen: false);
       _firestore = Provider.of<FirestoreService>(context, listen: false);
     }
@@ -68,7 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
       );
       if (passwordWasReset == true) {
-        // ✅ Logout hatao — password reset ke baad user ko Settings par hi rahne do
+        
         if (context.mounted) {
           FlashySnackBar.show(
             context,
@@ -272,7 +272,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           message: 'account_deleted_successfully'.tr(),
           title: 'account_deleted'.tr(),
         );
-        // ✅ Guest user ke liye HomeScreen, login user ke liye LoginScreen
+        
         if (isGuest) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -502,7 +502,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
 
 
   Widget _buildHeader(BuildContext context) {
