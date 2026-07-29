@@ -965,9 +965,9 @@
   "validation_invalid_salary_type": "Apenas Mensal, Por hora ou Contrato é permitido",
   "log_in_button": "Log in",
   "dont_have_account_signup": "Don't have an account?",
-  "already_have_account_login": "Already have an account?",
-  "forgot_password_link": "Forgot password?",
-  "welcome_to_hrms": "Welcome to HRMS",
-  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.",
+  "already_have_account_login": "Já tem uma conta?",
+  "forgot_password_link": "Esqueceu a senha?",
+  "welcome_to_hrms": "Bem-vindo ao HRMS",
+  "welcome_banner_subtitle": "Gerencie toda a sua força de trabalho sem esforço\ncom nossa plataforma HRM inteligente e automatizada.",
   "save_attendance_report": "Salvar Relatório de Presença"
 }

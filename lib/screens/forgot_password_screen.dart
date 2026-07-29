@@ -444,9 +444,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                             ),
                             const SizedBox(height: 50),
-                            const Text(
-                              'Reset Password',
-                              style: TextStyle(
+                            Text(
+                              'reset_password'.tr(),
+                              style: const TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.black,
@@ -457,7 +457,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Secure your account with a new password',
+                              'forgot_password_subtitle_reset'.tr(),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,

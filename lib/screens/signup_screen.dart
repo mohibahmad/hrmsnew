@@ -226,9 +226,8 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          title: 'Welcome $emailLocalPart! 🎉',
-          message:
-              'Your HRMS account has been created successfully. Welcome aboard!',
+          title: 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}),
+          message: 'notif_msg_welcome'.tr(),
         );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -347,9 +346,9 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 50),
 
-      const Text(
-        'Create Account',
-        style: TextStyle(
+      Text(
+        'create_account'.tr(),
+        style: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
           color: Colors.black,
@@ -360,7 +359,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       const SizedBox(height: 4),
       Text(
-        'join us to get started on your journey',
+        'signup_subtitle'.tr(),
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
@@ -379,7 +378,7 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildFieldLabel('E-mail'),
+            _buildFieldLabel('email_label'.tr()),
             TextFormField(
               controller: _emailController,
               enabled: !_anyLoading,
@@ -389,7 +388,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontSize: 15,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _buildCustomInputDecoration('Enter your e-mail'),
+              decoration: _buildCustomInputDecoration('email_hint'.tr()),
               validator: (value) {
                 if (value == null || value.trim().isEmpty)
                   return 'email_required'.tr();
@@ -403,7 +402,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildFieldLabel('Password'),
+            _buildFieldLabel('password_label'.tr()),
             TextFormField(
               controller: _passwordController,
               enabled: !_anyLoading,
@@ -414,7 +413,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _buildCustomInputDecoration(
-                'Enter your password',
+                'password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscurePassword,
                 onToggleVisibility: () {
@@ -430,7 +429,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildFieldLabel('Confirm Password'),
+            _buildFieldLabel('confirm_new_password'.tr()),
             TextFormField(
               controller: _confirmPasswordController,
               enabled: !_anyLoading,
@@ -442,7 +441,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 fontFamily: 'SF Pro Display',
               ),
               decoration: _buildCustomInputDecoration(
-                'Confirm your password',
+                'confirm_new_password_hint'.tr(),
                 isPassword: true,
                 obscureText: _obscureConfirmPassword,
                 onToggleVisibility: () {
@@ -453,9 +452,9 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty)
-                  return 'Please confirm your password';
+                  return 'confirm_password_required'.tr();
                 if (value != _passwordController.text)
-                  return 'Passwords do not match';
+                  return 'passwords_do_not_match'.tr();
                 return null;
               },
             ),
@@ -489,9 +488,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                 )
-              : const Text(
-                  'Create Account',
-                  style: TextStyle(
+              : Text(
+                  'create_account'.tr(),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFFFFFF),
@@ -565,7 +564,7 @@ class _SignupScreenState extends State<SignupScreen> {
       Center(
         child: RichText(
           text: TextSpan(
-            text: 'Already have an account? ',
+            text: 'already_have_account'.tr(),
             style: const TextStyle(
               color: Colors.black87,
               fontSize: 14,
@@ -574,7 +573,7 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
             children: [
               TextSpan(
-                text: 'Sign In',
+                text: 'sign_in'.tr(),
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,

@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:share_plus/share_plus.dart';
 
 class WorkerProfileService {
   static Future<Uint8List> generateWorkerProfile({
@@ -29,55 +28,193 @@ class WorkerProfileService {
   }) async {
     final pdf = pw.Document();
 
-    final primaryBlue = PdfColor.fromHex('#0247C4');
-    final darkBlue = PdfColor.fromHex('#004FDE');
-    final white = PdfColors.white;
-    final lightIconBg = PdfColor.fromHex('#E5EEFC');
-    final cardBorder = PdfColor.fromHex('#E8E8E8');
-    final textDark = PdfColor.fromHex('#111827');
-    final textGrey = PdfColor.fromHex('#6B7280');
+    final navy = PdfColor.fromHex('#162036');
+    final black = PdfColors.black;
+    final lightGrey = PdfColor.fromHex('#F3F4F6');
+    final border = PdfColor.fromHex('#D1D5DB');
 
-    // Download profile image
     Uint8List? imageBytes;
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       imageBytes = await _downloadImage(profileImageUrl);
     }
 
-    final details = <Map<String, String>>[
-      {'label': 'Father/Husband Name', 'value': fatherHusbandName, 'icon': 'F'},
-      {'label': 'Position', 'value': position, 'icon': 'P'},
-      {'label': 'National ID', 'value': nationalId, 'icon': 'N'},
-      {'label': 'Attendance Type', 'value': attendanceType, 'icon': 'A'},
-      {'label': 'Work Type', 'value': workType, 'icon': 'W'},
-      {'label': 'Experience Level', 'value': experienceLevel, 'icon': 'E'},
-      {'label': 'Gender', 'value': gender, 'icon': 'G'},
-      {'label': 'Joining Date', 'value': joiningDate, 'icon': 'J'},
-      {'label': 'Salary', 'value': salary.isNotEmpty ? salary : '-', 'icon': 'S'},
-      {'label': 'Education', 'value': education, 'icon': 'E'},
-      {'label': 'Salary Type', 'value': salaryType, 'icon': 'T'},
-      {'label': 'Religion', 'value': religion, 'icon': 'R'},
-      {'label': 'Date of Birth', 'value': dateOfBirth, 'icon': 'D'},
-      {'label': 'Relationship Status', 'value': relationshipStatus, 'icon': 'R'},
-      {'label': 'Address', 'value': address, 'icon': 'A'},
-    ];
-
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(0, 0, 0, 0),
+        margin: const pw.EdgeInsets.fromLTRB(40, 30, 40, 30),
         build: (context) => [
-          // ── Header (matches WorkerProfilePreviewDialog) ──
-          _buildHeader(primaryBlue, darkBlue, white, name, email, phone, imageBytes, lightIconBg),
+          // ═══════════════════════════════════════════
+          //  HEADER — Title + Profile Image
+          // ═══════════════════════════════════════════
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'WORK',
+                    style: pw.TextStyle(
+                      fontSize: 42,
+                      fontWeight: pw.FontWeight.bold,
+                      color: navy,
+                      height: 1.0,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  pw.Text(
+                    'PROFILE',
+                    style: pw.TextStyle(
+                      fontSize: 42,
+                      fontWeight: pw.FontWeight.bold,
+                      color: navy,
+                      height: 1.0,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+              pw.Container(
+                width: 90,
+                height: 90,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: border, width: 1.5),
+                ),
+                child: imageBytes != null
+                    ? pw.Image(
+                        pw.MemoryImage(imageBytes),
+                        width: 90,
+                        height: 90,
+                        fit: pw.BoxFit.cover,
+                      )
+                    : pw.Container(
+                        color: lightGrey,
+                        child: pw.Center(
+                          child: pw.Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                            style: pw.TextStyle(
+                              fontSize: 36,
+                              fontWeight: pw.FontWeight.bold,
+                              color: navy,
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
 
-          pw.SizedBox(height: 24),
+          pw.SizedBox(height: 30),
 
-          // ── Details cards in 2-column grid ──
-          _buildDetailsSection(details, primaryBlue, lightIconBg, cardBorder, textDark, textGrey),
+          // ═══════════════════════════════════════════
+          //  WORKER INFO — Two columns
+          // ═══════════════════════════════════════════
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Left column
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _label('EMPLOYEE DETAILS'),
+                    pw.SizedBox(height: 10),
+                    _detailRow('Name', name),
+                    _detailRow('Father/Husband Name', fatherHusbandName),
+                    _detailRow('Position', position),
+                    _detailRow('National ID', nationalId),
+                    _detailRow('Gender', gender),
+                    _detailRow('Date of Birth', dateOfBirth),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 30),
+              // Right column
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _label('CONTACT & WORK'),
+                    pw.SizedBox(height: 10),
+                    _detailRow('Phone', phone),
+                    _detailRow('Email', email),
+                    _detailRow('Joining Date', joiningDate),
+                    _detailRow('Work Type', workType),
+                    _detailRow('Attendance Type', attendanceType),
+                    _detailRow('Experience Level', experienceLevel),
+                  ],
+                ),
+              ),
+            ],
+          ),
 
-          pw.SizedBox(height: 24),
+          pw.SizedBox(height: 25),
 
-          // ── Footer ──
-          _buildFooter(textGrey),
+          // ═══════════════════════════════════════════
+          //  DOUBLE LINE SEPARATOR
+          // ═══════════════════════════════════════════
+          pw.Container(height: 1, color: black),
+          pw.SizedBox(height: 2),
+          pw.Container(height: 1, color: black),
+
+          pw.SizedBox(height: 20),
+
+          // ═══════════════════════════════════════════
+          //  PERSONAL DETAILS TABLE
+          // ═══════════════════════════════════════════
+          _label('PERSONAL INFORMATION'),
+          pw.SizedBox(height: 10),
+          pw.Table(
+            columnWidths: const {
+              0: pw.FlexColumnWidth(2),
+              1: pw.FlexColumnWidth(3),
+              2: pw.FlexColumnWidth(2),
+              3: pw.FlexColumnWidth(3),
+            },
+            border: pw.TableBorder.all(color: border, width: 0.5),
+            children: [
+              _tableRow(['Religion', religion, 'Education', education], navy, isHeader: true),
+              _tableRow(['Relationship', relationshipStatus, 'Salary Type', salaryType], navy, isHeader: true),
+              _tableRow(['Address', address, 'Salary', salary.isNotEmpty ? salary : '-'], navy, isHeader: true),
+            ],
+          ),
+
+          pw.SizedBox(height: 25),
+
+          // ═══════════════════════════════════════════
+          //  WORK SUMMARY TABLE
+          // ═══════════════════════════════════════════
+          _label('WORK SUMMARY'),
+          pw.SizedBox(height: 10),
+          pw.Table(
+            columnWidths: const {
+              0: pw.FlexColumnWidth(4),
+              1: pw.FlexColumnWidth(6),
+            },
+            border: pw.TableBorder.all(color: border, width: 0.5),
+            children: [
+              _tableRow(['Field', 'Details'], navy, isHeader: true),
+              _tableRow(['Work Type', workType], navy),
+              _tableRow(['Attendance Type', attendanceType], navy),
+              _tableRow(['Experience Level', experienceLevel], navy),
+              _tableRow(['Joining Date', joiningDate], navy),
+              _tableRow(['Salary', salary.isNotEmpty ? salary : '-'], navy),
+            ],
+          ),
+
+          pw.SizedBox(height: 40),
+          pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
+          pw.SizedBox(height: 10),
+          pw.Center(
+            child: pw.Text(
+              'Generated on ${DateTime.now().toString().substring(0, 10)}',
+              style: pw.TextStyle(
+                fontSize: 9,
+                color: PdfColor.fromHex('#6B7280'),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -105,361 +242,95 @@ class WorkerProfileService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Header — matches WorkerProfilePreviewDialog layout
-  // ─────────────────────────────────────────────────────────────
-  static pw.Widget _buildHeader(
-    PdfColor primaryBlue,
-    PdfColor darkBlue,
-    PdfColor white,
-    String name,
-    String email,
-    String phone,
-    Uint8List? imageBytes,
-    PdfColor lightIconBg,
-  ) {
+  // ─── Section Label ──────────────────────────────────────────
+  static pw.Widget _label(String text) {
     return pw.Container(
+      padding: const pw.EdgeInsets.only(bottom: 4),
       decoration: pw.BoxDecoration(
-        gradient: pw.LinearGradient(
-          colors: [primaryBlue, darkBlue],
-          begin: pw.Alignment.centerLeft,
-          end: pw.Alignment.centerRight,
+        border: pw.Border(
+          bottom: pw.BorderSide(color: PdfColor.fromHex('#162036'), width: 1.5),
         ),
       ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          // ── Title bar ──
-          pw.Container(
-            height: 32,
-            color: darkBlue,
-            alignment: pw.Alignment.center,
-            child: pw.Text(
-              'Worker Profile',
-              style: pw.TextStyle(
-                fontSize: 14,
-                fontWeight: pw.FontWeight.bold,
-                color: white,
-              ),
-            ),
-          ),
-
-          // ── Profile info row ──
-          pw.Padding(
-            padding: const pw.EdgeInsets.fromLTRB(32, 16, 32, 20),
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                // Profile image
-                pw.Container(
-                  width: 100,
-                  height: 100,
-                  decoration: pw.BoxDecoration(
-                    color: white,
-                    shape: pw.BoxShape.circle,
-                    border: pw.Border.all(color: white, width: 3),
-                  ),
-                  child: imageBytes != null
-                      ? pw.ClipOval(
-                          child: pw.Image(
-                            pw.MemoryImage(imageBytes),
-                            width: 100,
-                            height: 100,
-                            fit: pw.BoxFit.cover,
-                          ),
-                        )
-                      : pw.Center(
-                          child: pw.Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: pw.TextStyle(
-                              fontSize: 32,
-                              fontWeight: pw.FontWeight.bold,
-                              color: primaryBlue,
-                            ),
-                          ),
-                        ),
-                ),
-                pw.SizedBox(width: 20),
-
-                // Name + contact info
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    children: [
-                      pw.Text(
-                        name.isNotEmpty ? name : '-',
-                        style: pw.TextStyle(
-                          fontSize: 22,
-                          fontWeight: pw.FontWeight.bold,
-                          color: white,
-                        ),
-                      ),
-                      pw.SizedBox(height: 8),
-
-                      // Email
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.center,
-                        children: [
-                          _buildIconBox(lightIconBg, 'E', primaryBlue, 14),
-                          pw.SizedBox(width: 8),
-                          pw.Expanded(
-                            child: pw.Text(
-                              email.isNotEmpty ? email : '-',
-                              style: pw.TextStyle(
-                                fontSize: 11,
-                                color: white,
-                                fontWeight: pw.FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.SizedBox(height: 6),
-
-                      // Phone
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.center,
-                        children: [
-                          _buildIconBox(lightIconBg, 'P', primaryBlue, 14),
-                          pw.SizedBox(width: 8),
-                          pw.Expanded(
-                            child: pw.Text(
-                              phone.isNotEmpty ? phone : '-',
-                              style: pw.TextStyle(
-                                fontSize: 11,
-                                color: white,
-                                fontWeight: pw.FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Icon box helper (small colored box with letter)
-  // ─────────────────────────────────────────────────────────────
-  static pw.Widget _buildIconBox(
-    PdfColor bgColor,
-    String letter,
-    PdfColor iconColor,
-    double size,
-  ) {
-    return pw.Container(
-      width: size,
-      height: size,
-      decoration: pw.BoxDecoration(
-        color: bgColor,
-        borderRadius: pw.BorderRadius.circular(3),
-      ),
-      alignment: pw.Alignment.center,
       child: pw.Text(
-        letter,
+        text,
         style: pw.TextStyle(
-          fontSize: size * 0.55,
+          fontSize: 11,
           fontWeight: pw.FontWeight.bold,
-          color: iconColor,
+          color: PdfColor.fromHex('#162036'),
+          letterSpacing: 1,
         ),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Info card widget (matches preview dialog card style)
-  // ─────────────────────────────────────────────────────────────
-  static pw.Widget _buildInfoCard(
-    String iconLetter,
-    String label,
-    String value,
-    PdfColor primaryBlue,
-    PdfColor lightIconBg,
-    PdfColor cardBorder,
-    PdfColor textDark,
-    PdfColor textGrey,
-  ) {
-    final displayValue = value.isNotEmpty ? value : '-';
-    return pw.Container(
-      height: 56,
-      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.white,
-        borderRadius: pw.BorderRadius.circular(6),
-        border: pw.Border.all(color: cardBorder, width: 1),
-      ),
-      child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          // Icon box
-          pw.Container(
-            width: 32,
-            height: 32,
-            decoration: pw.BoxDecoration(
-              color: lightIconBg,
-              borderRadius: pw.BorderRadius.circular(6),
-            ),
-            alignment: pw.Alignment.center,
-            child: pw.Text(
-              iconLetter,
-              style: pw.TextStyle(
-                fontSize: 13,
-                fontWeight: pw.FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-          ),
-          pw.SizedBox(width: 10),
-          // Label + value
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              mainAxisAlignment: pw.MainAxisAlignment.center,
-              children: [
-                pw.Text(
-                  label,
-                  style: pw.TextStyle(
-                    fontSize: 9,
-                    color: textGrey,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  displayValue,
-                  style: pw.TextStyle(
-                    fontSize: 11,
-                    color: textDark,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Details section — 2-column card grid (like preview dialog)
-  // ─────────────────────────────────────────────────────────────
-  static pw.Widget _buildDetailsSection(
-    List<Map<String, String>> details,
-    PdfColor primaryBlue,
-    PdfColor lightIconBg,
-    PdfColor cardBorder,
-    PdfColor textDark,
-    PdfColor textGrey,
-  ) {
-    final rows = <pw.Widget>[];
-
-    for (int i = 0; i < details.length; i += 2) {
-      final left = _buildInfoCard(
-        details[i]['icon'] ?? '?',
-        details[i]['label']!,
-        details[i]['value']!,
-        primaryBlue,
-        lightIconBg,
-        cardBorder,
-        textDark,
-        textGrey,
-      );
-
-      pw.Widget right;
-      if (i + 1 < details.length) {
-        right = _buildInfoCard(
-          details[i + 1]['icon'] ?? '?',
-          details[i + 1]['label']!,
-          details[i + 1]['value']!,
-          primaryBlue,
-          lightIconBg,
-          cardBorder,
-          textDark,
-          textGrey,
-        );
-      } else {
-        right = pw.SizedBox.shrink();
-      }
-
-      rows.add(
-        pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 10),
-          child: pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(child: left),
-              pw.SizedBox(width: 10),
-              pw.Expanded(child: right),
-            ],
-          ),
-        ),
-      );
-    }
-
+  // ─── Detail Row (Label: Value) ──────────────────────────────
+  static pw.Widget _detailRow(String label, String value) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 32),
-      child: pw.Column(
+      padding: const pw.EdgeInsets.only(bottom: 6),
+      child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: rows,
+        children: [
+          pw.SizedBox(
+            width: 130,
+            child: pw.Text(
+              label,
+              style: pw.TextStyle(
+                fontSize: 10,
+                color: PdfColor.fromHex('#6B7280'),
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              value.isNotEmpty ? value : '-',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.black,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Footer
-  // ─────────────────────────────────────────────────────────────
-  static pw.Widget _buildFooter(PdfColor greyColor) {
-    return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(horizontal: 32),
-      child: pw.Column(
-        children: [
-          pw.Divider(color: PdfColor.fromHex('#DEE2E6'), thickness: 0.5),
-          pw.SizedBox(height: 8),
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                'Generated by HRMS',
-                style: pw.TextStyle(
-                  fontSize: 9,
-                  color: greyColor,
-                  fontStyle: pw.FontStyle.italic,
-                ),
-              ),
-              pw.Text(
-                'Generated on ${DateTime.now().toString().substring(0, 10)}',
-                style: pw.TextStyle(fontSize: 9, color: greyColor),
-              ),
-            ],
+  // ─── Table Row ──────────────────────────────────────────────
+  static pw.TableRow _tableRow(List<String> cells, PdfColor navyColor, {bool isHeader = false}) {
+    return pw.TableRow(
+      decoration: isHeader
+          ? pw.BoxDecoration(color: PdfColor.fromHex('#F3F4F6'))
+          : null,
+      children: cells.map((cell) {
+        return pw.Container(
+          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          child: pw.Text(
+            cell,
+            style: pw.TextStyle(
+              fontSize: 10,
+              fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+              color: isHeader ? navyColor : PdfColors.black,
+            ),
           ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 
   static Future<void> shareWorkerProfile(Uint8List bytes, String fileName) async {
-    try {
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile.fromData(bytes, name: fileName)],
-        ),
-      );
-    } catch (e) {
-      rethrow;
+    final result = await FilePicker.saveFile(
+      dialogTitle: 'Save Worker Profile',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      bytes: bytes,
+    );
+    if (result != null) {
+      final file = File(result);
+      await file.writeAsBytes(bytes);
     }
   }
 
-  /// Returns `true` if the file was saved, `false` if the user cancelled.
   static Future<bool> downloadWorkerProfile(Uint8List bytes, String fileName) async {
     try {
       final result = await FilePicker.saveFile(

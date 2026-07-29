@@ -340,7 +340,7 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 50),
 
       Text(
-        'Welcome Back!'.tr(),
+        'welcome_back'.tr(),
         style: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
@@ -441,8 +441,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
         behavior: HitTestBehavior.opaque,
-        child: const Text(
-          'forget_password',
+        child: Text(
+          'forget_password'.tr(),
           style: TextStyle(
             color: Color(0xFFFF0000),
             fontSize: 13,

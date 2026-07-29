@@ -963,9 +963,9 @@
   "validation_invalid_salary_type": "Допускаются только Ежемесячно, Почасово или По контракту",
   "log_in_button": "Log in",
   "dont_have_account_signup": "Don't have an account?",
-  "already_have_account_login": "Already have an account?",
-  "forgot_password_link": "Forgot password?",
-  "welcome_to_hrms": "Welcome to HRMS",
-  "welcome_banner_subtitle": "Manage your entire workforce effortlessly\nwith our smart, automated HRM platform.",
+  "already_have_account_login": "Уже есть аккаунт?",
+  "forgot_password_link": "Забыли пароль?",
+  "welcome_to_hrms": "Добро пожаловать в HRMS",
+  "welcome_banner_subtitle": "Управляйте всей рабочей силой без усилий\nс помощью нашего умного автоматизированного HRM-платформы.",
   "save_attendance_report": "Сохранить Отчёт о Посещаемости"
 }
