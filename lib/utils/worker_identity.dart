@@ -20,8 +20,7 @@ class WorkerIdentity {
 
   static String normalizeEmail(dynamic value) {
     final email = (value ?? '').toString().trim().toLowerCase();
-    
-    
+
     return email == 'worker@email.com' ? '' : email;
   }
 
@@ -34,18 +33,25 @@ class WorkerIdentity {
   static String normalizeDocumentUrl(dynamic value) =>
       (value ?? '').toString().trim().toLowerCase();
 
-  
   static DuplicateWorkerField? duplicateField(
     Map<String, dynamic> candidate,
     Iterable<Map<String, dynamic>> existingWorkers, {
     String? excludeId,
   }) {
-    final candidateName = normalizeName(candidate['name']);
     final candidateEmail = normalizeEmail(candidate['email']);
     final candidateNationalId = normalizeNationalId(candidate['nationalId']);
-    final candidateFrontId = normalizeDocumentUrl(candidate['frontId']);
-    final candidateBackId = normalizeDocumentUrl(candidate['backId']);
-
+    final candidateFrontId = normalizeDocumentUrl(
+      candidate['frontId'] ??
+          candidate['front_id'] ??
+          candidate['idFront'] ??
+          candidate['id_front'],
+    );
+    final candidateBackId = normalizeDocumentUrl(
+      candidate['backId'] ??
+          candidate['back_id'] ??
+          candidate['idBack'] ??
+          candidate['id_back'],
+    );
     if (candidateFrontId.isNotEmpty && candidateFrontId == candidateBackId) {
       return DuplicateWorkerField.backId;
     }
@@ -54,10 +60,6 @@ class WorkerIdentity {
       final existingId = (existing['id'] ?? '').toString();
       if (excludeId != null && existingId == excludeId) continue;
 
-      if (candidateName.isNotEmpty &&
-          candidateName == normalizeName(existing['name'])) {
-        return DuplicateWorkerField.name;
-      }
       if (candidateEmail.isNotEmpty &&
           candidateEmail == normalizeEmail(existing['email'])) {
         return DuplicateWorkerField.email;
@@ -66,8 +68,18 @@ class WorkerIdentity {
           candidateNationalId == normalizeNationalId(existing['nationalId'])) {
         return DuplicateWorkerField.nationalId;
       }
-      final existingFrontId = normalizeDocumentUrl(existing['frontId']);
-      final existingBackId = normalizeDocumentUrl(existing['backId']);
+      final existingFrontId = normalizeDocumentUrl(
+        existing['frontId'] ??
+            existing['front_id'] ??
+            existing['idFront'] ??
+            existing['id_front'],
+      );
+      final existingBackId = normalizeDocumentUrl(
+        existing['backId'] ??
+            existing['back_id'] ??
+            existing['idBack'] ??
+            existing['id_back'],
+      );
       if (candidateFrontId.isNotEmpty &&
           (candidateFrontId == existingFrontId ||
               candidateFrontId == existingBackId)) {

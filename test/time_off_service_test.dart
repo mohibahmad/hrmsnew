@@ -37,17 +37,36 @@ void main() {
     );
   });
 
-  test('does not hide worker for non-approved leave', () {
-    final pending = [
-      {...leaves.first, 'status': 'Pending'},
+  test('worker ID keeps time off connected after email and name changes', () {
+    final linkedWorker = {
+      'id': 'worker-1',
+      'name': 'Updated Name',
+      'email': 'new@example.com',
+    };
+    final linkedLeave = [
+      {
+        'workerId': 'worker-1',
+        'name': 'Old Name',
+        'email': 'old@example.com',
+        'selectedDates': ['2026-07-02'],
+      },
     ];
+
     expect(
       TimeOffService.isWorkerOnLeave(
-        worker,
-        pending,
+        linkedWorker,
+        linkedLeave,
         onDate: DateTime(2026, 7, 2),
       ),
-      isFalse,
+      isTrue,
+    );
+  });
+
+  test('legacy unsupported leave types normalize to unpaid leave', () {
+    expect(TimeOffService.normalizeLeaveType('Custom Leave'), 'Unpaid Leave');
+    expect(
+      TimeOffService.normalizeLeaveType('Maternity Leave'),
+      'Unpaid Leave',
     );
   });
 
@@ -125,7 +144,7 @@ void main() {
     ]);
   });
 
-  test('paid leave balance is recalculated from approved records', () {
+  test('annual allowance is consumed by both paid and unpaid records', () {
     const workerWithAllowance = {
       'name': 'Ali Khan',
       'email': 'ali@example.com',
@@ -153,7 +172,58 @@ void main() {
       TimeOffService.paidDaysUsedForWorker(workerWithAllowance, records),
       2,
     );
-    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 3);
+    expect(
+      TimeOffService.leaveDaysUsedForWorker(workerWithAllowance, records),
+      3,
+    );
+    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 2);
+  });
+
+  test('the same time-off date only consumes annual allowance once', () {
+    const workerWithAllowance = {
+      'name': 'Ali Khan',
+      'email': 'ali@example.com',
+      'annualLeaves': '2',
+    };
+    final records = [
+      {
+        'email': 'ali@example.com',
+        'type': 'Sick Leave',
+        'selectedDates': ['2026-07-01'],
+      },
+      {
+        'email': 'ali@example.com',
+        'type': 'Unpaid Leave',
+        'isPaidLeave': false,
+        'selectedDates': ['2026-07-01'],
+      },
+    ];
+
+    expect(
+      TimeOffService.leaveDaysUsedForWorker(workerWithAllowance, records),
+      1,
+    );
+    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 1);
+  });
+
+  test('using the full allowance exhausts the attendance leave balance', () {
+    const workerWithAllowance = {
+      'name': 'Ali Khan',
+      'email': 'ali@example.com',
+      'annualLeaves': '15',
+    };
+    final records = [
+      {
+        'email': 'ali@example.com',
+        'type': 'Medical Leave',
+        'selectedDates': [
+          for (var day = 1; day <= 15; day++)
+            '2026-07-${day.toString().padLeft(2, '0')}',
+        ],
+      },
+    ];
+
+    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 0);
   });
 
   test('editing excludes the old record from available paid balance', () {
@@ -181,6 +251,40 @@ void main() {
       5,
     );
   });
+
+  test('empty time-off records return the full configured allowance', () {
+    const workerWithAllowance = {
+      'name': 'Ali Khan',
+      'email': 'ali@example.com',
+      'annualLeaves': 5.0,
+    };
+
+    expect(
+      TimeOffService.paidDaysUsedForWorker(workerWithAllowance, const []),
+      0,
+    );
+    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, const []), 5);
+  });
+
+  test(
+    'invalid or negative paid leave allowance is safely treated as zero',
+    () {
+      expect(
+        TimeOffService.configuredPaidLeaveAllowance({'annualLeaves': '-5'}),
+        0,
+      );
+      expect(
+        TimeOffService.configuredPaidLeaveAllowance({
+          'annualLeaves': 'invalid',
+        }),
+        0,
+      );
+      expect(
+        TimeOffService.remainingPaidLeave({'annualLeaves': '-5'}, const []),
+        0,
+      );
+    },
+  );
 
   test('detects overlapping approved time off but ignores edited record', () {
     final records = [
@@ -233,4 +337,51 @@ void main() {
       {'paidLeaves': 2, 'unpaidLeaves': 1, 'leaves': 3},
     );
   });
+
+  test(
+    'cancelled time off restores balance and no longer blocks attendance',
+    () {
+      const workerWithAllowance = {
+        'id': 'worker-1',
+        'name': 'Ali Khan',
+        'email': 'ali@example.com',
+        'annualLeaves': '5',
+      };
+      final records = [
+        {
+          'id': 'leave-1',
+          'workerId': 'worker-1',
+          'email': 'ali@example.com',
+          'type': 'Sick Leave',
+          'status': 'Cancelled',
+          'selectedDates': ['2026-07-29', '2026-07-30'],
+        },
+      ];
+
+      expect(
+        TimeOffService.isWorkerOnLeave(
+          workerWithAllowance,
+          records,
+          onDate: DateTime(2026, 7, 29),
+        ),
+        isFalse,
+      );
+      expect(
+        TimeOffService.leaveDaysUsedForWorker(workerWithAllowance, records),
+        0,
+      );
+      expect(
+        TimeOffService.remainingPaidLeave(workerWithAllowance, records),
+        5,
+      );
+      expect(
+        TimeOffService.hasOverlappingApprovedLeave(
+          workerWithAllowance,
+          records,
+          [DateTime(2026, 7, 29)],
+        ),
+        isFalse,
+      );
+    },
+  );
 }

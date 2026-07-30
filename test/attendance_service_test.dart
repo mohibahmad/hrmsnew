@@ -2,6 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/attendance_service.dart';
 
 void main() {
+  test('attendance row workerId wins over the attendance document id', () {
+    expect(
+      AttendanceService.workerIdFor(const {
+        'id': 'attendance-document-id',
+        'workerId': 'worker-1',
+      }),
+      'worker-1',
+    );
+  });
+
   test('attendance preview matches a worker by email even if name changed', () {
     final records = AttendanceService.recordsForWorker(
       worker: const {'name': 'Ali Khan', 'email': 'ali@example.com'},
@@ -64,6 +74,64 @@ void main() {
 
     expect(records, hasLength(1));
     expect(records.single['workerId'], 'worker-1');
+  });
+
+  test('attendance before worker creation date is ignored', () {
+    final records = AttendanceService.recordsForWorker(
+      worker: {
+        'id': 'worker-1',
+        'name': 'Ali',
+        'createdAt': DateTime(2026, 7, 31),
+      },
+      attendanceRecords: [
+        {
+          'workerId': 'worker-1',
+          'name': 'Ali',
+          'attendanceDate': '2026-07-30',
+          'status': 'Present',
+        },
+      ],
+    );
+
+    expect(records, isEmpty);
+  });
+
+  test('attendance on worker creation date remains valid', () {
+    final records = AttendanceService.recordsForWorker(
+      worker: {
+        'id': 'worker-1',
+        'name': 'Ali',
+        'createdAt': DateTime(2026, 7, 30, 18),
+      },
+      attendanceRecords: [
+        {
+          'workerId': 'worker-1',
+          'name': 'Ali',
+          'attendanceDate': '2026-07-30',
+          'status': 'Present',
+        },
+      ],
+    );
+
+    expect(records, hasLength(1));
+  });
+
+  test('attendance list clears status dated before worker creation', () {
+    final combined = AttendanceService.combineAttendance(
+      workersList: [
+        {'id': 'worker-1', 'name': 'Ali', 'createdAt': DateTime(2026, 7, 31)},
+      ],
+      rawAttendanceDocs: const [
+        {
+          'workerId': 'worker-1',
+          'name': 'Ali',
+          'attendanceDate': '2026-07-30',
+          'status': 'Present',
+        },
+      ],
+    );
+
+    expect(combined.single['status'], isEmpty);
   });
 
   test('attendance list keeps placeholder-email workers separate', () {

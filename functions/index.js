@@ -8,7 +8,7 @@ const {
   getFirestore,
 } = require("firebase-admin/firestore");
 const {logger} = require("firebase-functions");
-const {defineSecret, defineString} = require("firebase-functions/params");
+const {defineSecret} = require("firebase-functions/params");
 const {HttpsError, onCall} = require("firebase-functions/v2/https");
 const {
   emailDocumentId,
@@ -23,7 +23,7 @@ initializeApp();
 
 const resendApiKey = defineSecret("RESEND_API_KEY");
 const otpPepper = defineSecret("PASSWORD_RESET_OTP_PEPPER");
-const passwordResetFrom = defineString("PASSWORD_RESET_FROM");
+const passwordResetFrom = defineSecret("PASSWORD_RESET_FROM");
 
 const REGION = "us-central1";
 const OTP_LIFETIME_MS = 10 * 60 * 1000;

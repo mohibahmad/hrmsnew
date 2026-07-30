@@ -21,12 +21,19 @@ class LocalizationHelper {
   static String localizeType1(String value) {
     switch (value) {
       case 'Full-Time':
+      case 'full_time':
+      case 'Full Time':
+      case 'employee':
         return 'full_time'.tr();
       case 'Part-Time':
+      case 'part_time':
+      case 'Part Time':
         return 'part_time'.tr();
       case 'Contract':
+      case 'contract':
         return 'contract'.tr();
       case 'Freelance':
+      case 'freelance':
         return 'freelance'.tr();
       default:
         return value;
@@ -36,10 +43,13 @@ class LocalizationHelper {
   static String localizeType2(String value) {
     switch (value) {
       case 'On-Site':
+      case 'on_site':
         return 'on_site'.tr();
       case 'Remote':
+      case 'remote':
         return 'remote'.tr();
       case 'Hybrid':
+      case 'hybrid':
         return 'hybrid'.tr();
       default:
         return value;
@@ -49,12 +59,17 @@ class LocalizationHelper {
   static String localizeExperience(String value) {
     switch (value) {
       case 'Fresher':
+      case 'fresher':
         return 'fresher'.tr();
       case 'Junior':
+      case 'junior':
         return 'junior'.tr();
       case 'Mid-Level':
+      case 'mid_level':
+      case 'Mid Level':
         return 'mid_level'.tr();
       case 'Senior':
+      case 'senior':
         return 'senior'.tr();
       default:
         return value;
@@ -64,14 +79,19 @@ class LocalizationHelper {
   static String localizeEducation(String value) {
     switch (value) {
       case 'Matric':
+      case 'matric':
         return 'matric'.tr();
       case 'Intermediate':
+      case 'intermediate':
         return 'intermediate'.tr();
       case 'Bachelor':
+      case 'bachelor':
         return 'bachelor'.tr();
       case 'Master':
+      case 'master':
         return 'master'.tr();
       case 'Other':
+      case 'other':
         return 'other'.tr();
       default:
         return value;
@@ -81,10 +101,14 @@ class LocalizationHelper {
   static String localizeSalaryType(String value) {
     switch (value) {
       case 'Monthly':
+      case 'monthly':
+      case 'fixed':
         return 'monthly'.tr();
       case 'Hourly':
+      case 'hourly':
         return 'hourly'.tr();
       case 'Contract':
+      case 'contract':
         return 'contract'.tr();
       default:
         return value;
@@ -119,10 +143,13 @@ class LocalizationHelper {
   static String localizeLeavePolicy(String value) {
     switch (value) {
       case 'Standard':
+      case 'standard':
         return 'standard'.tr();
       case 'Custom':
+      case 'custom':
         return 'custom'.tr();
       case 'Sick/Casual Only':
+      case 'sick_casual_only':
         return 'sick_casual_only'.tr();
       default:
         return value;
@@ -132,10 +159,16 @@ class LocalizationHelper {
   static String localizeWorkType(String value) {
     switch (value) {
       case 'Full Time':
+      case 'full_time':
+      case 'Full-Time':
+      case 'employee':
         return 'full_time'.tr();
       case 'Part Time':
+      case 'part_time':
+      case 'Part-Time':
         return 'part_time'.tr();
       case 'Contract':
+      case 'contract':
         return 'contract'.tr();
       default:
         return value;
@@ -145,10 +178,13 @@ class LocalizationHelper {
   static String localizeAttendanceType(String value) {
     switch (value) {
       case 'On-Site':
+      case 'on_site':
         return 'on_site'.tr();
       case 'Remote':
+      case 'remote':
         return 'remote'.tr();
       case 'Hybrid':
+      case 'hybrid':
         return 'hybrid'.tr();
       default:
         return value;
@@ -158,16 +194,22 @@ class LocalizationHelper {
   static String localizeLeaveAction(String value) {
     switch (value) {
       case 'Sick':
+      case 'sick':
         return 'sick'.tr();
       case 'Casual':
+      case 'casual':
         return 'casual'.tr();
       case 'Annual':
+      case 'annual':
         return 'annual'.tr();
       case 'Unpaid':
+      case 'unpaid':
         return 'unpaid'.tr();
       case 'Maternity':
+      case 'maternity':
         return 'maternity'.tr();
       case 'Paternity':
+      case 'paternity':
         return 'paternity'.tr();
       default:
         return value;

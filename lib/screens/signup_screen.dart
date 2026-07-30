@@ -608,7 +608,6 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           Row(
             children: [
-              
               if (isDesktop)
                 Expanded(
                   flex: 11,
@@ -616,16 +615,16 @@ class _SignupScreenState extends State<SignupScreen> {
                     color: const Color(0xFF165CDB),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        
-                        final scale = (constraints.maxWidth / 880.0).clamp(
-                          0.4,
-                          1.2,
+                        final panelWidth = constraints.maxWidth.clamp(
+                          0.0,
+                          880.0,
                         );
+                        final scale = (panelWidth / 880.0).clamp(0.4, 1.0);
+                        final mockupWidth = panelWidth + (520 * scale) - 90;
 
                         return Stack(
                           clipBehavior: Clip.hardEdge,
                           children: [
-                            
                             Positioned(
                               top: 40,
                               left: 80,
@@ -641,7 +640,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                       fontFamily: 'SF Pro Display',
-                                      letterSpacing: 2,
+                                      letterSpacing: 3,
                                     ),
                                   ),
                                   Text(
@@ -652,22 +651,20 @@ class _SignupScreenState extends State<SignupScreen> {
                                       color: Colors.white,
                                       fontFamily: 'SF Pro Display',
                                       height: 1.4,
-                                      letterSpacing: 2,
+                                      letterSpacing: 2.2,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
 
-                            
                             Positioned(
                               top: 380 * scale,
                               left: -520 * scale,
-                              right: 90,
                               child: Transform.rotate(
                                 angle: -0.18,
                                 child: Container(
-                                  width: 1200 * scale,
+                                  width: mockupWidth,
                                   height: 800 * scale,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -717,7 +714,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
 
-              
               Expanded(
                 flex: 9,
                 child: Center(
@@ -743,7 +739,6 @@ class _SignupScreenState extends State<SignupScreen> {
             ],
           ),
 
-          
           Positioned(
             top: 40,
             right: 40,

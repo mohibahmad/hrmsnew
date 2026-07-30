@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/payroll_service.dart';
 import '../widgets/amount_text.dart';
 
 import '../utils/date_utils.dart';
@@ -57,6 +58,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _selectedPeriod = 'Yearly';
   StreamSubscription? _expensesSub;
   StreamSubscription? _workersSub;
+  StreamSubscription? _payrollSub;
+  final Map<String, double> _payrollAmountsByKey = {};
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _initialized = false;
@@ -65,6 +68,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   void dispose() {
     _expensesSub?.cancel();
     _workersSub?.cancel();
+    _payrollSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -90,6 +94,31 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         if (mounted) {
           setState(() {});
         }
+      });
+      _payrollSub = _firestore.payrollStream.listen((snapshot) {
+        if (!mounted) return;
+        setState(() {
+          _payrollAmountsByKey
+            ..clear()
+            ..addEntries(
+              snapshot.docs
+                  .map((document) {
+                    final data = document.data() as Map<String, dynamic>;
+                    final payrollKey = (data['payrollKey'] ?? '').toString();
+                    final numericAmount = data['netSalaryAmount'];
+                    final amount = numericAmount is num
+                        ? numericAmount.toDouble()
+                        : PayrollService.extractSalary(
+                            (data['netSalaryFormatted'] ??
+                                    data['netSalary'] ??
+                                    '')
+                                .toString(),
+                          );
+                    return MapEntry(payrollKey, amount);
+                  })
+                  .where((entry) => entry.key.isNotEmpty && entry.value > 0),
+            );
+        });
       });
       _expensesSub = _firestore.expensesStream.listen(
         (snapshot) {
@@ -126,6 +155,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       _expensesDocs = DummyData.expenses
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
+      for (final payroll in DummyData.payroll) {
+        final payrollKey = (payroll['payrollKey'] ?? '').toString();
+        if (payrollKey.isEmpty) continue;
+        final numericAmount = payroll['netSalaryAmount'];
+        final amount = numericAmount is num
+            ? numericAmount.toDouble()
+            : PayrollService.extractSalary(
+                (payroll['netSalaryFormatted'] ?? payroll['netSalary'] ?? '')
+                    .toString(),
+              );
+        if (amount > 0) _payrollAmountsByKey[payrollKey] = amount;
+      }
       _isLoading = false;
       _adjustDummyDatesForPeriod(_selectedPeriod);
     }
@@ -133,7 +174,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   double get _totalExpenseSum {
     return _expensesDocs.fold(0.0, (sum, doc) {
-      return sum + ((doc['amount'] ?? 0).toDouble());
+      return sum + _expenseAmount(doc);
     });
   }
 
@@ -147,10 +188,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final month = int.tryParse(parts[1]) ?? 0;
       final year = int.tryParse(parts[2]) ?? 0;
       if (month == now.month && year == now.year) {
-        return sum + ((doc['amount'] ?? 0).toDouble());
+        return sum + _expenseAmount(doc);
       }
       return sum;
     });
+  }
+
+  double _expenseAmount(Map<String, dynamic> expense) {
+    final isSalary =
+        (expense['category'] ?? '').toString().trim().toLowerCase() == 'salary';
+    final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
+    if (isSalary && payrollKey.isNotEmpty) {
+      final payrollAmount = _payrollAmountsByKey[payrollKey];
+      if (payrollAmount != null && payrollAmount > 0) return payrollAmount;
+    }
+
+    final rawAmount = expense['amount'];
+    if (rawAmount is num) return rawAmount.toDouble();
+    return double.tryParse((rawAmount ?? '').toString()) ?? 0;
   }
 
   String _formatCurrency(double amount) {
@@ -199,9 +254,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final yearStr = newDate.year.toString();
       dummyList[i]['date'] = '$dayStr/$monthStr/$yearStr';
     }
-    _expensesDocs = dummyList
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+    _expensesDocs = dummyList.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   List<Map<String, dynamic>> get _filteredExpenses {
@@ -242,7 +295,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       text: doc['category']?.toString() ?? '',
     );
     final amountController = TextEditingController(
-      text: doc['amount']?.toString() ?? '0.00',
+      text: _expenseAmount(doc).toString(),
     );
     final descriptionController = TextEditingController(
       text: doc['name']?.toString() ?? doc['description']?.toString() ?? '',
@@ -343,11 +396,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
-                                  if (descriptionController.text.trim().isEmpty) {
+                                  if (descriptionController.text
+                                      .trim()
+                                      .isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
-                                      message: 'please_enter_expense_title'.tr(),
+                                      message: 'please_enter_expense_title'
+                                          .tr(),
                                       isError: true,
                                     );
                                     return;
@@ -364,11 +420,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     'name': descriptionController.text,
                                     'description': descriptionController.text,
                                   };
-                                   final isGuest =
+                                  final isGuest =
                                       _authService.currentUser?.isAnonymous ??
                                       false;
-                                   try {
-                                     if (isGuest) {
+                                  try {
+                                    if (isGuest) {
                                       setState(() {
                                         final idx = _expensesDocs.indexWhere(
                                           (e) => e['id'] == docId,
@@ -380,9 +436,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                           };
                                       });
                                       final dummyIdx = DummyData.expenses
-                                          .indexWhere(
-                                            (e) => e['id'] == docId,
-                                          );
+                                          .indexWhere((e) => e['id'] == docId);
                                       if (dummyIdx != -1)
                                         DummyData.expenses[dummyIdx] = {
                                           ...updatedMap,
@@ -637,11 +691,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
-                                  if (descriptionController.text.trim().isEmpty) {
+                                  if (descriptionController.text
+                                      .trim()
+                                      .isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
-                                      message: 'please_enter_expense_title'.tr(),
+                                      message: 'please_enter_expense_title'
+                                          .tr(),
                                       isError: true,
                                     );
                                     return;
@@ -651,10 +708,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     calendarDate.month,
                                     selectedDay,
                                   );
-                                   final isGuest =
+                                  final isGuest =
                                       _authService.currentUser?.isAnonymous ??
                                       false;
-                                   final expenseMap = {
+                                  final expenseMap = {
                                     'date': date,
                                     'category': categoryController.text,
                                     'amount': amt,
@@ -677,9 +734,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       });
                                       await DummyData.saveToPrefs();
                                     } else {
-                                      await _firestore.addExpense(
-                                        expenseMap,
-                                      );
+                                      await _firestore.addExpense(expenseMap);
                                     }
                                   } catch (e) {
                                     setModalState(() => isSaving = false);
@@ -703,9 +758,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     ),
                                   );
                                   if (parentContext.mounted) {
-                                    tryShowFirstMilestoneRateUs(
-                                      'expense',
-                                    );
+                                    tryShowFirstMilestoneRateUs('expense');
                                   }
                                 },
                           child: isSaving
@@ -1560,98 +1613,98 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-Widget _buildDataRow(Map<String, dynamic> doc, int index) {
-     final name = (doc['name'] ?? '').toString();
-     final date = _eds(doc['date']);
-     final category = (doc['category'] ?? '').toString();
-     final amount = (doc['amount'] ?? 0).toDouble();
+  Widget _buildDataRow(Map<String, dynamic> doc, int index) {
+    final name = (doc['name'] ?? '').toString();
+    final date = _eds(doc['date']);
+    final category = (doc['category'] ?? '').toString();
+    final amount = _expenseAmount(doc);
 
-     return GestureDetector(
-       onTap: () {
-         final isGuest = _authService.currentUser?.isAnonymous ?? false;
-         if (isGuest) {
-           showGuestRestrictionDialog(context);
-           return;
-         }
-         _editExpense(doc);
-       },
-       child: Container(
-         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-         decoration: BoxDecoration(
-           color: const Color(0xFFF6F8FA),
-           borderRadius: BorderRadius.circular(6),
-         ),
-         child: Row(
-           children: [
-             Expanded(
-               flex: 3,
-               child: Padding(
-                 padding: const EdgeInsets.only(right: 16.0),
-                 child: Text(
-                   name,
-                   style: const TextStyle(
-                     fontWeight: FontWeight.bold,
-                     fontSize: 16,
-                     color: Color(0xFF000000),
-                     fontFamily: 'SF Pro Display',
-                   ),
-                   maxLines: 2,
-                   overflow: TextOverflow.ellipsis,
-                 ),
-               ),
-             ),
-             Expanded(
-               flex: 3,
-               child: Padding(
-                 padding: const EdgeInsets.only(left: 40.0, right: 16.0),
-                 child: Text(
-                   category,
-                   style: const TextStyle(
-                     fontSize: 15,
-                     color: Color(0xFF000000),
-                     fontFamily: 'SF Pro Display',
-                   ),
-                   maxLines: 2,
-                   overflow: TextOverflow.ellipsis,
-                 ),
-               ),
-             ),
-             Expanded(
-               flex: 3,
-               child: Padding(
-                 padding: const EdgeInsets.only(right: 16.0),
-                 child: Text(
-                   date,
-                   textAlign: TextAlign.center,
-                   style: const TextStyle(
-                     fontSize: 15,
-                     color: Color(0xFF000000),
-                     fontFamily: 'SF Pro Display',
-                   ),
-                   maxLines: 1,
-                   overflow: TextOverflow.ellipsis,
-                 ),
-               ),
-             ),
-             Expanded(
-               flex: 2,
-               child: AmountText(
-                 _formatCurrency(amount),
-                 textAlign: TextAlign.center,
-                 style: const TextStyle(
-                   fontSize: 15,
-                   color: Color(0xFF0247C4),
-                   fontWeight: FontWeight.w600,
-                   fontFamily: 'SF Pro Display',
-                 ),
-               ),
-             ),
-             _buildActionMenu(doc),
-           ],
-         ),
-       ),
-     );
-   }
+    return GestureDetector(
+      onTap: () {
+        final isGuest = _authService.currentUser?.isAnonymous ?? false;
+        if (isGuest) {
+          showGuestRestrictionDialog(context);
+          return;
+        }
+        _editExpense(doc);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F8FA),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 40.0, right: 16.0),
+                child: Text(
+                  category,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Text(
+                  date,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF000000),
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: AmountText(
+                _formatCurrency(amount),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF0247C4),
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+            _buildActionMenu(doc),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
     final docId = doc['id']?.toString() ?? '';

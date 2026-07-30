@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'dart:math';
@@ -13,6 +12,7 @@ import 'package:csv/csv.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
+import '../services/upload_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
@@ -31,8 +31,6 @@ class AddBulkWorkerScreen extends StatefulWidget {
 }
 
 class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
-  
-  
   static const List<String> _requiredFields = [
     'name',
     'phone',
@@ -130,7 +128,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   static const double _tableContentWidth = 3522;
   static const double _rowHeight = 65.0;
 
-  
   late AuthService _authService;
   late FirestoreService _firestore;
 
@@ -150,7 +147,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   ScrollController? _hScrollController;
   StreamSubscription? _workersSubscription;
 
-  
   @override
   void initState() {
     super.initState();
@@ -165,7 +161,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     super.dispose();
   }
 
-  
   bool get hasUnsavedChanges => _hasUnsavedChanges;
 
   Future<bool> confirmDiscard() => _onWillPop();
@@ -323,7 +318,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return result ?? false;
   }
 
-  
   Set<String> _errorFieldNames() {
     final fields = <String>{};
     for (final worker in _validWorkers) {
@@ -359,7 +353,65 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return clean;
       }).toList();
 
-  
+  Future<List<Map<String, dynamic>>> _uploadEmbeddedWorkerMedia(
+    List<Map<String, dynamic>> workers,
+  ) async {
+    final prepared = workers
+        .map((worker) => Map<String, dynamic>.from(worker))
+        .toList();
+    final files = <UploadFile>[];
+    final targets = <({int workerIndex, String field})>[];
+    const mediaFields = ['profileImage', 'frontId', 'backId', 'cv'];
+
+    for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
+      final worker = prepared[workerIndex];
+      for (final field in mediaFields) {
+        final value = (worker[field] ?? '').toString();
+        if (!value.startsWith('data:') || !value.contains(';base64,')) {
+          continue;
+        }
+        final separator = value.indexOf(';base64,');
+        final mimeType = value.substring(5, separator);
+        final bytes = base64Decode(value.substring(separator + 8));
+        final storedName = (worker['${field}_name'] ?? '').toString().trim();
+        final fallbackExtension = switch (mimeType) {
+          'application/pdf' => 'pdf',
+          'application/msword' => 'doc',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document' =>
+            'docx',
+          'image/png' => 'png',
+          'image/webp' => 'webp',
+          _ => 'jpg',
+        };
+        files.add(
+          UploadFile(
+            folder: field == 'profileImage'
+                ? 'profile_images'
+                : field == 'cv'
+                ? 'worker_cvs'
+                : 'identity_documents',
+            fileName: storedName.isNotEmpty
+                ? storedName
+                : '${field}_$workerIndex.$fallbackExtension',
+            bytes: bytes,
+            mimeType: mimeType,
+          ),
+        );
+        targets.add((workerIndex: workerIndex, field: field));
+      }
+    }
+
+    final results = await UploadService.uploadFiles(files: files);
+    if (results.any((result) => !result.isSuccess || result.url == null)) {
+      throw StateError('One or more worker files could not be uploaded.');
+    }
+    for (var i = 0; i < results.length; i++) {
+      final target = targets[i];
+      prepared[target.workerIndex][target.field] = results[i].url;
+    }
+    return prepared;
+  }
+
   String _computeFileHash(Uint8List bytes) {
     int hash = 0;
     final minLen = min(bytes.length, 8192);
@@ -369,7 +421,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return hash.toRadixString(16);
   }
 
-  
   Future<void> _downloadTemplate() async {
     const headerRow =
         'Full Name,Contact Number,Email Address,Father Name,National ID,'
@@ -454,7 +505,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
   Future<void> _pickCsvAndParse() async {
     try {
       final result = await FilePicker.pickFiles(
@@ -466,9 +516,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
-      const int maxBytes = 5 * 1024 * 1024; 
+      const int maxBytes = 5 * 1024 * 1024;
 
-      
       if (file.bytes != null && file.bytes!.length > maxBytes) {
         if (mounted) {
           FlashySnackBar.show(
@@ -482,7 +531,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       Uint8List? bytes = file.bytes;
 
-      
       if (bytes == null && file.path != null) {
         final diskFile = io.File(file.path!);
         if (await diskFile.length() > maxBytes) {
@@ -500,7 +548,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       if (bytes == null) return;
 
-      
       final fileHash = _computeFileHash(bytes);
       if (_lastFileHash != null && _lastFileHash == fileHash) {
         if (mounted) {
@@ -513,7 +560,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         return;
       }
 
-      
       var csvString = utf8.decode(bytes, allowMalformed: true);
       if (csvString.isNotEmpty && csvString.codeUnitAt(0) == 0xFEFF) {
         csvString = csvString.substring(1);
@@ -536,7 +582,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
   Future<void> _processCsvData(List<List<dynamic>> rows) async {
     if (rows.isEmpty) return;
 
@@ -551,7 +596,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .map((e) => e.toString().trim().toLowerCase())
         .toList();
 
-    
     final Set<String> foundFields = {};
     for (final h in headers) {
       final mapped = _headerMap[h] ?? h;
@@ -561,34 +605,18 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .where((f) => !foundFields.contains(f))
         .toList();
 
-    
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
-    Set<String> existingNames = {};
     Set<String> existingNationalIds = {};
-    Set<String> existingFrontIds = {};
-    Set<String> existingBackIds = {};
 
     if (isGuest) {
       existingEmails = DummyData.workers
           .map((w) => WorkerIdentity.normalizeEmail(w['email']))
           .where((e) => e.isNotEmpty)
           .toSet();
-      existingNames = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeName(w['name']))
-          .where((n) => n.isNotEmpty)
-          .toSet();
       existingNationalIds = DummyData.workers
           .map((w) => WorkerIdentity.normalizeNationalId(w['nationalId']))
           .where((n) => n.isNotEmpty)
-          .toSet();
-      existingFrontIds = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['frontId']))
-          .where((u) => u.isNotEmpty)
-          .toSet();
-      existingBackIds = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['backId']))
-          .where((u) => u.isNotEmpty)
           .toSet();
     } else {
       try {
@@ -598,25 +626,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             .map((doc) => WorkerIdentity.normalizeEmail(d(doc)['email']))
             .where((e) => e.isNotEmpty)
             .toSet();
-        existingNames = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeName(d(doc)['name']))
-            .where((n) => n.isNotEmpty)
-            .toSet();
         existingNationalIds = snapshot.docs
             .map(
               (doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']),
             )
             .where((n) => n.isNotEmpty)
-            .toSet();
-        existingFrontIds = snapshot.docs
-            .map(
-              (doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['frontId']),
-            )
-            .where((u) => u.isNotEmpty)
-            .toSet();
-        existingBackIds = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['backId']))
-            .where((u) => u.isNotEmpty)
             .toSet();
       } catch (_) {
         if (mounted) {
@@ -632,13 +646,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     if (!mounted) return;
 
-    
     final List<Map<String, dynamic>> parsedWorkers = [];
     final Set<String> csvEmails = {};
-    final Set<String> csvNames = {};
     final Set<String> csvNationalIds = {};
-    final Set<String> csvFrontIds = {};
-    final Set<String> csvBackIds = {};
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -646,7 +656,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         continue;
       }
 
-      
       final Map<String, dynamic> workerData = {
         'name': '',
         'phone': '',
@@ -677,13 +686,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'cv': '',
       };
 
-      
       for (int j = 0; j < headers.length && j < row.length; j++) {
         final val = row[j].toString().trim();
         if (val.isEmpty) continue;
 
         final mappedKey = _headerMap[headers[j]] ?? headers[j];
-        
+
         String matchedKey = mappedKey;
         for (final key in workerData.keys) {
           if (key.toLowerCase() == mappedKey.toLowerCase()) {
@@ -696,7 +704,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
       final fieldErrors = <String, String>{};
 
-      
       final missingForWorker = _requiredFields
           .where(
             (f) =>
@@ -711,7 +718,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final currency = workerData['currency'].toString().trim();
       if (currency.isNotEmpty) {
         if (!CurrencyUtils.isSupported(currency)) {
@@ -721,7 +727,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final dobStr = workerData['dob'].toString().trim();
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
@@ -739,7 +744,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final gender = workerData['gender'].toString().trim();
       final normalizedGender = gender.toLowerCase();
       if (gender.isNotEmpty) {
@@ -752,26 +756,15 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty && !Validators.isValidEmail(email)) {
         fieldErrors['email'] = 'validation_invalid_email'.tr();
       }
 
-      
-      final name = WorkerIdentity.normalizeName(workerData['name']);
       final nationalId = WorkerIdentity.normalizeNationalId(
         workerData['nationalId'],
       );
-      final frontId = WorkerIdentity.normalizeDocumentUrl(
-        workerData['frontId'],
-      );
-      final backId = WorkerIdentity.normalizeDocumentUrl(workerData['backId']);
 
-      if (name.isNotEmpty &&
-          (existingNames.contains(name) || csvNames.contains(name))) {
-        fieldErrors['name'] = 'validation_duplicate_name'.tr();
-      }
       if (email.isNotEmpty &&
           (existingEmails.contains(email) || csvEmails.contains(email))) {
         fieldErrors['email'] = 'validation_duplicate_email'.tr();
@@ -781,49 +774,20 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               csvNationalIds.contains(nationalId))) {
         fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
       }
-      if (frontId.isNotEmpty &&
-          (existingFrontIds.contains(frontId) ||
-              existingBackIds.contains(frontId) ||
-              csvFrontIds.contains(frontId) ||
-              csvBackIds.contains(frontId))) {
-        fieldErrors['frontId'] = 'validation_duplicate_front_id'.tr();
-      }
-      if (backId.isNotEmpty &&
-          (backId == frontId ||
-              existingFrontIds.contains(backId) ||
-              existingBackIds.contains(backId) ||
-              csvFrontIds.contains(backId) ||
-              csvBackIds.contains(backId))) {
-        fieldErrors['backId'] = 'validation_duplicate_back_id'.tr();
-      }
 
-      final duplicateFields = {
-        'name',
-        'email',
-        'nationalId',
-        'frontId',
-        'backId',
-      };
+      final duplicateFields = {'email', 'nationalId'};
       if (fieldErrors.keys.any(
         (k) => duplicateFields.contains(k) && fieldErrors[k] != null,
       )) {
         _duplicateCount++;
       }
 
-      
       if (email.isNotEmpty) csvEmails.add(email);
-      if (name.isNotEmpty) csvNames.add(name);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
-      if (frontId.isNotEmpty) csvFrontIds.add(frontId);
-      if (backId.isNotEmpty) csvBackIds.add(backId);
 
-      
       workerData['availableAnnualLeaves'] =
           int.tryParse(workerData['annualLeaves'].toString()) ?? 0;
-      workerData['availableCasualLeaves'] =
-          int.tryParse(workerData['casualLeaves'].toString()) ?? 0;
-      workerData['availableSickLeaves'] =
-          int.tryParse(workerData['sickLeaves'].toString()) ?? 0;
+      workerData['leavesUsed'] = 0;
 
       workerData['_rowNumber'] = i + 1;
       workerData['_fieldErrors'] = fieldErrors;
@@ -839,7 +803,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     if (!mounted) return;
 
-    
     final Set<String> allMissingFieldNames = {};
     for (final w in parsedWorkers) {
       for (final entry in _fieldErrors(w).entries) {
@@ -894,35 +857,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
   Future<void> _revalidateAllWorkers() async {
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
-    Set<String> existingNames = {};
     Set<String> existingNationalIds = {};
-    Set<String> existingFrontIds = {};
-    Set<String> existingBackIds = {};
 
     if (isGuest) {
       existingEmails = DummyData.workers
           .map((w) => WorkerIdentity.normalizeEmail(w['email']))
           .where((e) => e.isNotEmpty)
           .toSet();
-      existingNames = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeName(w['name']))
-          .where((n) => n.isNotEmpty)
-          .toSet();
       existingNationalIds = DummyData.workers
           .map((w) => WorkerIdentity.normalizeNationalId(w['nationalId']))
           .where((n) => n.isNotEmpty)
-          .toSet();
-      existingFrontIds = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['frontId']))
-          .where((u) => u.isNotEmpty)
-          .toSet();
-      existingBackIds = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeDocumentUrl(w['backId']))
-          .where((u) => u.isNotEmpty)
           .toSet();
     } else {
       try {
@@ -932,30 +879,17 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             .map((doc) => WorkerIdentity.normalizeEmail(d(doc)['email']))
             .where((e) => e.isNotEmpty)
             .toSet();
-        existingNames = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeName(d(doc)['name']))
-            .where((n) => n.isNotEmpty)
-            .toSet();
         existingNationalIds = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']))
+            .map(
+              (doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']),
+            )
             .where((n) => n.isNotEmpty)
-            .toSet();
-        existingFrontIds = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['frontId']))
-            .where((u) => u.isNotEmpty)
-            .toSet();
-        existingBackIds = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeDocumentUrl(d(doc)['backId']))
-            .where((u) => u.isNotEmpty)
             .toSet();
       } catch (_) {}
     }
 
     final Set<String> csvEmails = {};
-    final Set<String> csvNames = {};
     final Set<String> csvNationalIds = {};
-    final Set<String> csvFrontIds = {};
-    final Set<String> csvBackIds = {};
 
     int duplicateCount = 0;
     int missingCount = 0;
@@ -966,7 +900,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final workerData = _validWorkers[i];
       final Map<String, String> fieldErrors = {};
 
-      
       for (final reqField in _requiredFields) {
         final val = workerData[reqField]?.toString().trim() ?? '';
         if (val.isEmpty) {
@@ -975,7 +908,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final dobStr = workerData['dob']?.toString().trim() ?? '';
       if (dobStr.isNotEmpty) {
         final dob = AppDateUtils.parseDateString(dobStr);
@@ -983,7 +915,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           fieldErrors['dob'] = 'validation_invalid_date'.tr();
           invalidDobCount++;
         } else {
-          final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+          final cutoff = DateTime.now().subtract(
+            const Duration(days: 365 * 18),
+          );
           if (dob.isAfter(cutoff)) {
             fieldErrors['dob'] = 'validation_min_age'.tr();
             invalidDobCount++;
@@ -991,7 +925,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final gender = workerData['gender']?.toString().trim() ?? '';
       final normalizedGender = gender.toLowerCase();
       if (gender.isNotEmpty) {
@@ -1002,44 +935,34 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
       }
 
-      
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
       if (email.isNotEmpty && !Validators.isValidEmail(email)) {
         fieldErrors['email'] = 'validation_invalid_email'.tr();
       }
 
-      
-      final name = WorkerIdentity.normalizeName(workerData['name']);
-      final nationalId = WorkerIdentity.normalizeNationalId(workerData['nationalId']);
-      final frontId = WorkerIdentity.normalizeDocumentUrl(workerData['frontId']);
-      final backId = WorkerIdentity.normalizeDocumentUrl(workerData['backId']);
+      final nationalId = WorkerIdentity.normalizeNationalId(
+        workerData['nationalId'],
+      );
 
-      if (name.isNotEmpty && (existingNames.contains(name) || csvNames.contains(name))) {
-        fieldErrors['name'] = 'validation_duplicate_name'.tr();
-      }
-      if (email.isNotEmpty && (existingEmails.contains(email) || csvEmails.contains(email))) {
+      if (email.isNotEmpty &&
+          (existingEmails.contains(email) || csvEmails.contains(email))) {
         fieldErrors['email'] = 'validation_duplicate_email'.tr();
       }
-      if (nationalId.isNotEmpty && (existingNationalIds.contains(nationalId) || csvNationalIds.contains(nationalId))) {
+      if (nationalId.isNotEmpty &&
+          (existingNationalIds.contains(nationalId) ||
+              csvNationalIds.contains(nationalId))) {
         fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
       }
-      if (frontId.isNotEmpty && (existingFrontIds.contains(frontId) || existingBackIds.contains(frontId) || csvFrontIds.contains(frontId) || csvBackIds.contains(frontId))) {
-        fieldErrors['frontId'] = 'validation_duplicate_front_id'.tr();
-      }
-      if (backId.isNotEmpty && (backId == frontId || existingFrontIds.contains(backId) || existingBackIds.contains(backId) || csvFrontIds.contains(backId) || csvBackIds.contains(backId))) {
-        fieldErrors['backId'] = 'validation_duplicate_back_id'.tr();
-      }
 
-      const duplicateFields = {'name', 'email', 'nationalId', 'frontId', 'backId'};
-      if (fieldErrors.keys.any((k) => duplicateFields.contains(k) && fieldErrors[k] != null)) {
+      const duplicateFields = {'email', 'nationalId'};
+      if (fieldErrors.keys.any(
+        (k) => duplicateFields.contains(k) && fieldErrors[k] != null,
+      )) {
         duplicateCount++;
       }
 
       if (email.isNotEmpty) csvEmails.add(email);
-      if (name.isNotEmpty) csvNames.add(name);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
-      if (frontId.isNotEmpty) csvFrontIds.add(frontId);
-      if (backId.isNotEmpty) csvBackIds.add(backId);
 
       workerData['_fieldErrors'] = fieldErrors;
     }
@@ -1054,9 +977,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
   Future<void> _saveBulkWorkers() async {
-    
     if (_isSaving && mounted) {
       setState(() => _isSaving = false);
     }
@@ -1073,10 +994,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
 
     final workersWithErrors = _validWorkers.where(_hasWorkerErrors).toList();
-    final workersReadyToSave = _workersReadyToSave;
+    var workersReadyToSave = _workersReadyToSave;
 
     if (workersReadyToSave.isEmpty) {
-      
       final parts = <String>[];
       if (_missingRequiredCount > 0) {
         parts.add(
@@ -1119,7 +1039,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return;
     }
 
-    
     int localDuplicateCount = 0;
     int localMissingCount = 0;
     int localInvalidDobCount = 0;
@@ -1153,6 +1072,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         }
         await DummyData.saveToPrefs();
       } else {
+        workersReadyToSave = await _uploadEmbeddedWorkerMedia(
+          workersReadyToSave,
+        );
         bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
         importedCount = bulkResult.imported;
         if (bulkResult.skipped > 0)
@@ -1160,9 +1082,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       if (!mounted) return;
-      Navigator.of(context).pop(); 
+      Navigator.of(context).pop();
 
-      
       final summaryParts = <String>[
         'workers_added_successfully'.tr(
           namedArgs: {'count': importedCount.toString()},
@@ -1262,7 +1183,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  
   void _showBulkProgressDialog() {
     showDialog(
       context: context,
@@ -1293,7 +1213,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  
   Future<void> _editCell(int workerIndex, String fieldKey) async {
     if (workerIndex >= _validWorkers.length) return;
 
@@ -1304,12 +1223,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (ctx) {
-        
-        
         final controller = TextEditingController(text: currentValue);
         String? dialogError;
 
-        
         final isMediaField =
             fieldKey == 'profileImage' ||
             fieldKey == 'frontId' ||
@@ -1336,7 +1252,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           );
         }
 
-        
         TextInputType? keyboardTypeForField() {
           if (fieldKey == 'phone') return TextInputType.phone;
           if (fieldKey == 'email') return TextInputType.emailAddress;
@@ -1503,7 +1418,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          
                           Padding(
                             padding: const EdgeInsets.fromLTRB(24, 24, 24, 6),
                             child: Column(
@@ -1664,7 +1578,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             ),
                           ),
 
-                          
                           if (_fieldHint(fieldKey).isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
@@ -1690,7 +1603,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               ),
                             ),
 
-                          
                           if (dialogError != null)
                             Padding(
                               padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
@@ -1717,7 +1629,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               ),
                             ),
 
-                          
                           Container(
                             margin: const EdgeInsets.only(top: 16),
                             decoration: const BoxDecoration(
@@ -1991,20 +1902,33 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               mediaFileName ?? '';
                                           Navigator.of(ctx).pop(mediaDataUrl);
                                         } else if (hasExistingUpload) {
-                                          
                                           worker['${fieldKey}_name'] = val
                                               .split('/')
                                               .last;
                                           Navigator.of(ctx).pop(currentValue);
                                         } else if (val.isNotEmpty &&
                                             !val.startsWith('data:')) {
-                                          
-                                          final ext = val
-                                              .split('.')
-                                              .last
-                                              .split('?')
-                                              .first
-                                              .toLowerCase();
+                                          final uri = Uri.tryParse(val);
+                                          if (uri == null ||
+                                              !uri.hasAuthority ||
+                                              (uri.scheme != 'http' &&
+                                                  uri.scheme != 'https')) {
+                                            setDialogState(() {
+                                              dialogError =
+                                                  'Please enter a valid HTTP or HTTPS URL';
+                                            });
+                                            return;
+                                          }
+                                          final lastSegment =
+                                              uri.pathSegments.isEmpty
+                                              ? ''
+                                              : uri.pathSegments.last;
+                                          final ext = lastSegment.contains('.')
+                                              ? lastSegment
+                                                    .split('.')
+                                                    .last
+                                                    .toLowerCase()
+                                              : '';
                                           const imageExts = {
                                             'png',
                                             'jpeg',
@@ -2022,12 +1946,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'webp',
                                           };
                                           if (fieldKey == 'cv' &&
+                                              ext.isNotEmpty &&
                                               !cvExts.contains(ext)) {
                                             setDialogState(() {
                                               dialogError =
                                                   'Only PDF, DOC, DOCX and image formats (JPG, JPEG, PNG, etc.) are accepted for CV';
                                             });
                                           } else if (fieldKey != 'cv' &&
+                                              ext.isNotEmpty &&
                                               !imageExts.contains(ext)) {
                                             setDialogState(() {
                                               dialogError =
@@ -2081,7 +2007,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       },
     );
 
-    
     if (result != null && mounted) {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
@@ -2122,7 +2047,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     return key != null ? key.tr() : '';
   }
 
-  
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -2166,7 +2090,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  
   Widget _buildTopBar() {
     return Container(
       height: 94,
@@ -2179,7 +2102,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -2227,7 +2149,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             ],
           ),
 
-          
           if (_hasParsedFile &&
               _validWorkers.isNotEmpty &&
               _validWorkers.every((w) => !_hasWorkerErrors(w)))
@@ -2274,7 +2195,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  
   Widget _buildActionButtons() {
     return Row(
       children: [
@@ -2316,7 +2236,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  
   Widget _buildSummaryCard() {
     final bool anyErrors = _validWorkers.any(_hasWorkerErrors);
     final int errorCount = _validWorkers.where(_hasWorkerErrors).length;
@@ -2400,7 +2319,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  
   Widget _buildWorkerTable() {
     _hScrollController ??= ScrollController();
 
@@ -2419,7 +2337,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       ),
       child: Column(
         children: [
-          
           Expanded(
             child: Scrollbar(
               controller: _hScrollController,
@@ -2519,7 +2436,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
-  
   Widget _buildWorkerRow(Map<String, dynamic> worker, int index) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -2751,7 +2667,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (hasError && text.isEmpty) {
       displayText = 'required_field'.tr();
     } else if (isMediaField && hasValue) {
-      
       if (workerIndex >= 0 && workerIndex < _validWorkers.length) {
         final storedName = _validWorkers[workerIndex]['${fieldKey}_name'];
         if (storedName != null && storedName.toString().isNotEmpty) {
@@ -2782,6 +2697,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       margin: const EdgeInsets.only(right: 16),
       child: Row(
         children: [
+          if (isMediaField && hasValue) ...[
+            _buildMediaThumbnail(text, fieldKey),
+            const SizedBox(width: 6),
+          ],
           Expanded(
             child: Text(
               displayText,
@@ -2821,6 +2740,58 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMediaThumbnail(String value, String? fieldKey) {
+    const fallback = Icon(
+      Icons.insert_drive_file_outlined,
+      size: 18,
+      color: Color(0xFF64748B),
+    );
+    if (fieldKey == 'cv' && !value.startsWith('data:image/')) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(child: fallback),
+      );
+    }
+
+    ImageProvider? provider;
+    try {
+      if (value.startsWith('data:image/') && value.contains(';base64,')) {
+        provider = MemoryImage(base64Decode(value.split(';base64,').last));
+      } else {
+        final uri = Uri.tryParse(value);
+        if (uri != null &&
+            uri.hasAuthority &&
+            (uri.scheme == 'http' || uri.scheme == 'https')) {
+          provider = NetworkImage(value);
+        }
+      }
+    } catch (_) {
+      provider = null;
+    }
+    if (provider == null) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(child: fallback),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image(
+        image: provider,
+        width: 24,
+        height: 24,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const SizedBox(
+          width: 24,
+          height: 24,
+          child: Center(child: fallback),
+        ),
       ),
     );
   }

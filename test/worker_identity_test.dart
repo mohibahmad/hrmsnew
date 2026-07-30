@@ -11,13 +11,23 @@ void main() {
     },
   ];
 
-  test('same normalized name is duplicate even with a different email', () {
+  test('same normalized name is allowed when identity fields differ', () {
     final duplicate = WorkerIdentity.duplicateField(const {
       'name': '  SENIOR   developer ',
       'email': 'different@example.com',
     }, existing);
 
-    expect(duplicate, DuplicateWorkerField.name);
+    expect(duplicate, isNull);
+  });
+
+  test('edit duplicate check excludes the current worker ID', () {
+    final duplicate = WorkerIdentity.duplicateField(
+      existing.first,
+      existing,
+      excludeId: 'worker-1',
+    );
+
+    expect(duplicate, isNull);
   });
 
   test('same email is duplicate when name differs', () {

@@ -28,6 +28,10 @@ class DashboardChartService {
     final current = now ?? DateTime.now();
     final datedValues = <({DateTime date, double value})>[];
     for (final record in records) {
+      if ((record['status'] ?? '').toString().trim().toLowerCase() ==
+          'cancelled') {
+        continue;
+      }
       final value = valueOf(record);
       if (!value.isFinite || value == 0) continue;
       final date = (dateOf ?? PayrollService.payrollRecordDate)(record);
@@ -119,7 +123,6 @@ class DashboardChartService {
     return enteredDate ?? PayrollService.payrollRecordDate(record);
   }
 
-  
   static DashboardChartSeries buildDummySalarySeries({
     required List<Map<String, dynamic>> expenses,
     required double totalSalary,

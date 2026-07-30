@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
 import '../services/preferences_service.dart';
+import '../services/error_reporter.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
@@ -57,8 +58,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _initialized = false;
 
   bool get _isPayDate {
-    if (_salaryPaymentDay == null) return false;
-    return _salaryPaymentDay == DateTime.now().day;
+    return PayrollService.isPayrollDue(DateTime.now(), _salaryPaymentDay);
   }
 
   @override
@@ -74,6 +74,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _payrollDocs = PayrollService.combinePayroll(
       _workersList,
       _rawPayrollDocs,
+      month: PayrollService.completedPayrollMonth(),
       allowUndatedRecords: isGuest,
     );
 
@@ -143,8 +144,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Future<void> _showSalaryDayDialog() async {
     final now = DateTime.now();
     final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
-    
-    
+
     int selectedDay = _salaryPaymentDay ?? -1;
     final result = await showDialog<int>(
       context: context,
@@ -213,12 +213,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     ),
                   ),
                   items: [
-                    DropdownMenuItem<int>(
-                      value: -1,
-                      child: Text(
-                        'none'.tr(),
-                      ),
-                    ),
+                    DropdownMenuItem<int>(value: -1, child: Text('none'.tr())),
                     ...List.generate(
                       daysInCurrentMonth,
                       (index) => DropdownMenuItem<int>(
@@ -302,41 +297,53 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     _loadCompanySalaryDay();
+
+    // A cached Firestore snapshot can be delivered while the first frame is
+    // still building. Starting the listeners after that frame prevents their
+    // callbacks from calling setState during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startPayrollListeners();
+    });
+  }
+
+  void _startPayrollListeners() {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
       _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
             _workersList = snapshot.docs
-                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
                 .toList();
             _combinePayroll();
           });
         }
-      });
-      _payrollSub = _firestore.payrollStream.listen(
-        (snapshot) {
-          if (mounted) {
-            setState(() {
-              _rawPayrollDocs = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              _combinePayroll();
-            });
-          }
-        },
-        onError: (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        },
-      );
+      }, onError: _handlePayrollStreamError);
+      _payrollSub = _firestore.payrollStream.listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            _rawPayrollDocs = snapshot.docs
+                .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
+                .toList();
+            _combinePayroll();
+          });
+        }
+      }, onError: _handlePayrollStreamError);
     } else {
-      _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
-      _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
-      _combinePayroll();
+      setState(() {
+        _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
+        _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
+        _combinePayroll();
+      });
+    }
+  }
+
+  void _handlePayrollStreamError(Object error, StackTrace stackTrace) {
+    ErrorReporter.report(error, stackTrace, context: 'PayrollScreenStream');
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -351,6 +358,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
           message: 'payroll_run_complete'.tr(
             namedArgs: {'count': '${summary.successCount}'},
           ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_save_record'.tr(),
+          isError: true,
         );
       }
     } finally {
@@ -1018,14 +1033,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String email = (data['email'] ?? '').toString();
     final String totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
     final String absents = (data['absents'] ?? '0').toString();
-    final String leaves = (data['leaves'] ?? '0').toString();
+    final attendanceCounts = PayrollService.attendanceCounts(data);
+    final String leaves = (attendanceCounts['leaves'] ?? 0).toString();
+    final String deductionLeaveDays = (attendanceCounts['unpaidLeaves'] ?? 0)
+        .toString();
     final String rawAbsentDeduction = (data['absentDeduction'] ?? '0')
         .toString();
     final String rawLeaveDeduction = (data['leaveDeduction'] ?? '0').toString();
     final String rawOvertimeAmount = (data['overtimeAmount'] ?? '0').toString();
-    final String absentDeductionPerDay = AmountText.formatCompact(
-      rawAbsentDeduction,
-    );
+    final deductionsAreTotals = data['deductionsAreTotals'] == true;
     final String overtimeAmount = AmountText.formatCompact(rawOvertimeAmount);
     final String salary = AmountText.formatCompact(
       PayrollService.currentSalaryDisplay(data),
@@ -1035,8 +1051,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final effectiveWorkedDays =
         totalDaysValue -
         PayrollService.parseIntSafe(absents) -
-        (hasLeaveDeduction ? PayrollService.parseIntSafe(leaves) : 0);
-    final previewCalculation = totalDaysValue > 0
+        (hasLeaveDeduction
+            ? PayrollService.parseIntSafe(deductionLeaveDays)
+            : 0);
+    final basePreviewCalculation = totalDaysValue > 0
         ? PayrollService.calculatePayroll(
             salary: PayrollService.currentSalaryDisplay(data),
             totalWorkDays: totalWorkDays,
@@ -1044,18 +1062,47 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 ? effectiveWorkedDays.toString()
                 : '0',
             absents: absents,
-            leaves: leaves,
+            leaves: deductionLeaveDays,
             overtimeAmount: rawOvertimeAmount,
-            absentDeductionPerDay: rawAbsentDeduction,
-            leaveDeductionPerDay: rawLeaveDeduction,
+            absentDeductionPerDay: deductionsAreTotals
+                ? ''
+                : rawAbsentDeduction,
+            leaveDeductionPerDay: deductionsAreTotals ? '' : rawLeaveDeduction,
             salaryType: (data['salaryType'] ?? 'Monthly').toString(),
           )
         : const <String, dynamic>{};
+    final previewCalculation =
+        deductionsAreTotals && basePreviewCalculation.isNotEmpty
+        ? {
+            ...basePreviewCalculation,
+            'formattedNet': () {
+              final netPayment = PayrollService.calculateNetFromTotals(
+                salary: PayrollService.currentSalaryDisplay(data),
+                overtimeAmount: rawOvertimeAmount,
+                absentDeduction: rawAbsentDeduction,
+                leaveDeduction: rawLeaveDeduction,
+                salaryType: (data['salaryType'] ?? 'Monthly').toString(),
+              );
+              final currency = PayrollService.getCurrencyPrefix(
+                PayrollService.currentSalaryDisplay(data),
+              );
+              final prefix = currency.isEmpty ? '' : '$currency ';
+              return '$prefix${PayrollService.formatNumber(netPayment)}';
+            }(),
+          }
+        : basePreviewCalculation;
     final String salaryAfterDeduction = AmountText.formatCompact(
       (previewCalculation['formattedNet'] ??
               data['netSalary'] ??
               data['salaryAfterDeduction'] ??
               '0')
+          .toString(),
+    );
+    final String absentDeduction = AmountText.formatCompact(
+      (deductionsAreTotals
+              ? rawAbsentDeduction
+              : previewCalculation['formattedAbsentDeduct'] ??
+                    rawAbsentDeduction)
           .toString(),
     );
 
@@ -1100,7 +1147,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
                         child: MouseRegion(
@@ -1116,7 +1162,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Text(
                           'payroll_data_preview'.tr(),
@@ -1130,7 +1176,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop('edit'),
                         child: MouseRegion(
@@ -1207,8 +1253,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'absent_deduction_per_day'.tr(),
-                                  value: absentDeductionPerDay,
+                                  title: 'absent_deduction'.tr(),
+                                  value: absentDeduction.isEmpty
+                                      ? '0'
+                                      : absentDeduction,
                                 ),
                               ),
                               const SizedBox(width: 12),

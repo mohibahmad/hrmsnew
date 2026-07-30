@@ -9,7 +9,6 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/time_off_service.dart';
-import '../utils/snackbar_utils.dart';
 import '../utils/image_utils.dart';
 import '../widgets/notification_bell.dart';
 
@@ -87,15 +86,21 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
 
     final combined = <Map<String, dynamic>>[];
     for (final worker in _workersList) {
+      final workerId = (worker['id'] ?? '').toString().trim();
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
       final matchingRecords = _rawTimeoffDocs.where((record) {
+        if (!TimeOffService.isActiveRecord(record)) return false;
+        final recordWorkerId = (record['workerId'] ?? '').toString().trim();
         final tEmail = (record['email'] ?? '').toString().trim().toLowerCase();
         final tName = (record['name'] ?? record['workerName'] ?? '')
             .toString()
             .trim()
             .toLowerCase();
-        return (email.isNotEmpty && tEmail == email) ||
+        return (workerId.isNotEmpty &&
+                recordWorkerId.isNotEmpty &&
+                workerId == recordWorkerId) ||
+            (recordWorkerId.isEmpty && email.isNotEmpty && tEmail == email) ||
             (email.isEmpty && name.isNotEmpty && tName == name);
       }).toList();
       final remaining = TimeOffService.remainingPaidLeave(
@@ -110,6 +115,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           'startDate': '',
           'endDate': '',
           'requestedDays': 0,
+          'annualLeaves': worker['annualLeaves'],
+          'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
         });
         continue;
@@ -120,10 +127,16 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           ...worker,
           ...timeoffRecord,
           'workerId': worker['id'],
+          'action': TimeOffService.leaveType(timeoffRecord),
+          'type': TimeOffService.leaveType(timeoffRecord),
+          'name': worker['name'] ?? timeoffRecord['name'],
+          'email': worker['email'] ?? timeoffRecord['email'],
           'profileImage':
               worker['profileImage'] ?? timeoffRecord['profileImage'],
           'phone': worker['phone'] ?? timeoffRecord['phone'] ?? '',
           'contact': worker['phone'] ?? timeoffRecord['contact'] ?? '',
+          'annualLeaves': worker['annualLeaves'],
+          'availableAnnualLeaves': worker['availableAnnualLeaves'],
           'remainingLeaves': remaining.toString(),
         });
       }
@@ -246,139 +259,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     });
 
     return filtered;
-  }
-
-  Future<void> _handleDelete(Map<String, dynamic> doc) async {
-    final action = (doc['action'] ?? '').toString();
-    if (action.isEmpty) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'no_time_off_record_to_delete'.tr(),
-          isError: true,
-        );
-      }
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(
-          'delete_time_off'.tr(),
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        content: Text(() {
-          String localizedAction = action;
-          if (action == 'Annual Leave') {
-            localizedAction = 'annual'.tr();
-          } else if (action == 'Sick Leave') {
-            localizedAction = 'sick'.tr();
-          } else if (action == 'Casual Leave') {
-            localizedAction = 'casual'.tr();
-          } else if (action == 'Maternity Leave') {
-            localizedAction = 'maternity_leave'.tr();
-          }
-          return '${doc['name'] ?? ''} — $localizedAction';
-        }(), style: const TextStyle(fontFamily: 'SF Pro Display')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'cancel'.tr(),
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              'delete'.tr(),
-              style: const TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-
-      final recordId = doc['id']?.toString() ?? '';
-      final workerEmail = (doc['email'] ?? '').toString().trim().toLowerCase();
-      final worker = _workersList.firstWhere(
-        (candidate) =>
-            (candidate['email'] ?? '').toString().trim().toLowerCase() ==
-            workerEmail,
-        orElse: () => <String, dynamic>{},
-      );
-      final projectedRecords = _rawTimeoffDocs
-          .where((record) => record['id']?.toString() != recordId)
-          .map(Map<String, dynamic>.from)
-          .toList();
-      final usedPaidDays = worker.isEmpty
-          ? 0
-          : TimeOffService.paidDaysUsedForWorker(worker, projectedRecords);
-      final totalPaidDays = worker.isEmpty
-          ? 0
-          : TimeOffService.configuredPaidLeaveAllowance(worker);
-      final balanceUpdate = <String, dynamic>{
-        'availableAnnualLeaves': (totalPaidDays - usedPaidDays)
-            .clamp(0, totalPaidDays)
-            .toString(),
-        'leavesUsed': usedPaidDays.toString(),
-      };
-
-      if (isGuest) {
-        final workerIndex = DummyData.workers.indexWhere(
-          (candidate) =>
-              (candidate['email'] ?? '').toString().trim().toLowerCase() ==
-              workerEmail,
-        );
-        if (workerIndex != -1) {
-          DummyData.workers[workerIndex].addAll(balanceUpdate);
-        }
-        DummyData.timeoff.removeWhere((record) => record['id'] == doc['id']);
-        await DummyData.saveToPrefs();
-        if (mounted) {
-          setState(() {
-            _rawTimeoffDocs.removeWhere((record) => record['id'] == doc['id']);
-            _combineTimeOff();
-          });
-        }
-      } else {
-        final workerId = (worker['id'] ?? doc['workerId'] ?? '').toString();
-        if (recordId.isNotEmpty && workerId.isNotEmpty) {
-          await _firestore.deleteTimeOffWithWorkerBalance(
-            timeOffId: recordId,
-            workerId: workerId,
-            balance: balanceUpdate,
-          );
-        } else if (recordId.isNotEmpty) {
-          await _firestore.deleteTimeOffRecord(recordId);
-        }
-      }
-      if (mounted) {
-        FlashySnackBar.show(context, message: 'time_off_record_deleted'.tr());
-      }
-    } catch (e) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'failed_to_delete_record'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
-          isError: true,
-        );
-      }
-    }
   }
 
   @override
@@ -734,9 +614,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                     }
                     _showTimeOffDataDialog(context, doc, index);
                   },
-                  onLongPress: (doc['action'] ?? '').toString().isNotEmpty
-                      ? () => _handleDelete(doc)
-                      : null,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -927,7 +804,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   ) async {
     final String name = (data['name'] ?? '').toString();
     final String email = (data['email'] ?? '').toString();
-    final String action = (data['action'] ?? '').toString();
+    final String action = TimeOffService.leaveType(data);
     final selectedDates = TimeOffService.selectedDatesForRecord(data);
     final String selectedDatesText = selectedDates
         .map((date) => DateFormat('dd/MM/yyyy').format(date))
@@ -936,9 +813,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
         .toString();
     final String notes = (data['notes'] ?? '').toString();
     final String remainingLeaves = (data['remainingLeaves'] ?? '0').toString();
-    final String annualLeavesBalance =
-        (data['availableAnnualLeaves'] ?? data['annualLeaves'] ?? '0')
-            .toString();
+    final String annualLeaveAllowance =
+        TimeOffService.configuredPaidLeaveAllowance(data).toString();
 
     String localizedAction = action;
     if (action == 'Annual Leave') {
@@ -949,10 +825,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       localizedAction = 'casual_leave_type'.tr();
     } else if (action == 'Medical Leave') {
       localizedAction = 'medical_leave_type'.tr();
-    } else if (action == 'Maternity Leave') {
-      localizedAction = 'maternity_leave'.tr();
-    } else if (action == 'Custom Leave') {
-      localizedAction = 'custom_leave_type'.tr();
     } else if (action == 'Unpaid Leave') {
       localizedAction = 'unpaid_leave_type'.tr();
     }
@@ -998,7 +870,6 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
                         child: MouseRegion(
@@ -1014,7 +885,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: Text(
                           'assign_time_off'.tr(),
@@ -1028,7 +899,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop('edit'),
                         child: MouseRegion(
@@ -1125,7 +996,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'remaining_days'.tr(),
+                                  title: 'remaining_leave_balance'.tr(),
                                   value: remainingLeaves,
                                 ),
                               ),
@@ -1153,8 +1024,8 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                                     color: Color(0xFF004FDE),
                                     size: 20,
                                   ),
-                                  title: 'annual_leaves'.tr(),
-                                  value: annualLeavesBalance,
+                                  title: 'annual_leave_allowance'.tr(),
+                                  value: annualLeaveAllowance,
                                 ),
                               ),
                             ],

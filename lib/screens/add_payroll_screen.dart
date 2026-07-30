@@ -12,8 +12,10 @@ import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
+import '../utils/currency_formatter.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/notification_sidebar.dart';
+import '../widgets/amount_text.dart';
 import 'package:provider/provider.dart';
 
 class AddPayrollScreen extends StatefulWidget {
@@ -35,20 +37,16 @@ class AddPayrollScreen extends StatefulWidget {
 }
 
 class _AddPayrollScreenState extends State<AddPayrollScreen> {
-  
-  
   static const Color _primaryBlue = Color(0xFF0A44C2);
   static const Color _darkBlue = Color(0xFF082C7C);
   static const Color _textDark = Color(0xFF111827);
   static const Color _textGrey = Color(0xFF000000);
   static const Color _borderLight = Color(0xFFE5E7EB);
 
-  
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _initialized = false;
 
-  
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
   final _leavesCtrl = TextEditingController();
@@ -58,17 +56,22 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   final _leaveDeductionCtrl = TextEditingController();
   final _netCtrl = TextEditingController(text: r'$ 0');
 
-  
   String _calculatedNet = '';
   Map<String, dynamic> _calcResult = {};
   bool _isSaving = false;
+  bool _isCancellingPayroll = false;
+  bool _isAttendanceLoading = true;
   bool _showNotifications = false;
   int _paidLeaves = 0;
+  int _unpaidLeaves = 0;
 
-  
   String get _name => (widget.workerData['name'] ?? '').toString();
 
   String get _email => (widget.workerData['email'] ?? '').toString();
+
+  String get _workerId =>
+      (widget.workerData['workerId'] ?? widget.workerData['id'] ?? '')
+          .toString();
 
   String get _position => (widget.workerData['position'] ?? '').toString();
 
@@ -84,11 +87,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String get _salaryStr =>
       PayrollService.currentSalaryDisplay(widget.workerData);
 
-  
+  DateTime get _payrollMonth => PayrollService.completedPayrollMonth();
+
   @override
   void initState() {
     super.initState();
-    
   }
 
   @override
@@ -100,22 +103,26 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
 
-    _salaryCtrl.text = _salaryStr;
+    _salaryCtrl.text = AmountText.formatCompact(_salaryStr);
 
     final attendanceCounts = PayrollService.attendanceCounts(widget.workerData);
     _absentsCtrl.text = attendanceCounts['absents'].toString();
     _paidLeaves = attendanceCounts['paidLeaves'] ?? 0;
-    _leavesCtrl.text = (attendanceCounts['unpaidLeaves'] ?? 0).toString();
+    _unpaidLeaves = attendanceCounts['unpaidLeaves'] ?? 0;
+    _leavesCtrl.text = (attendanceCounts['leaves'] ?? 0).toString();
 
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
     if (totalDays.isNotEmpty) {
       _workDaysCtrl.text = totalDays;
-      _overtimeAmountCtrl.text = (widget.workerData['overtimeAmount'] ?? '')
-          .toString();
-      _absentDeductionCtrl.text = (widget.workerData['absentDeduction'] ?? '')
-          .toString();
-      _leaveDeductionCtrl.text = (widget.workerData['leaveDeduction'] ?? '')
-          .toString();
+      _overtimeAmountCtrl.text = _editableAmountValue(
+        widget.workerData['overtimeAmount'],
+      );
+      _absentDeductionCtrl.text = _editableAmountValue(
+        widget.workerData['absentDeduction'],
+      );
+      _leaveDeductionCtrl.text = _editableAmountValue(
+        widget.workerData['leaveDeduction'],
+      );
       _recalc();
     }
 
@@ -140,7 +147,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     super.dispose();
   }
 
-  
   void _recalc() {
     if (_workDaysCtrl.text.trim().isEmpty) {
       setState(() {
@@ -153,8 +159,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
     final totalDays = int.tryParse(_workDaysCtrl.text.trim()) ?? 0;
     final absentDays = int.tryParse(_absentsCtrl.text.trim()) ?? 0;
-    final leaveDays = int.tryParse(_leavesCtrl.text.trim()) ?? 0;
-    final effectiveWorkedDays = (totalDays - absentDays - leaveDays).clamp(
+    final effectiveWorkedDays = (totalDays - absentDays - _unpaidLeaves).clamp(
       0,
       totalDays,
     );
@@ -164,7 +169,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       totalWorkDays: _workDaysCtrl.text,
       daysWorked: effectiveWorkedDays.toString(),
       absents: _absentsCtrl.text,
-      leaves: _leavesCtrl.text,
+      leaves: _unpaidLeaves.toString(),
       overtimeAmount: _overtimeAmountCtrl.text,
       absentDeductionPerDay: _absentDeductionCtrl.text,
       leaveDeductionPerDay: _leaveDeductionCtrl.text,
@@ -178,36 +183,48 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     });
   }
 
-  
   Future<void> _fetchMonthlyAttendance() async {
-    if (_email.trim().isEmpty) return;
-    
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) return;
+    if (_email.trim().isEmpty && _workerId.trim().isEmpty) {
+      if (mounted) setState(() => _isAttendanceLoading = false);
+      return;
+    }
     try {
-      final results = await Future<Map<String, int>>.value(
-        _firestore.getWorkerMonthlyAttendance(_email),
+      final results = await _firestore.getWorkerMonthlyAttendance(
+        _email,
+        workerId: _workerId,
+        month: _payrollMonth,
       );
-      final workingDays = await _firestore.getMonthlyWorkingDays();
+      final workingDays = await _firestore.getMonthlyWorkingDays(
+        month: _payrollMonth,
+      );
       if (!mounted) return;
       setState(() {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
         _paidLeaves = results['paidLeaves'] ?? 0;
-        _leavesCtrl.text = (results['unpaidLeaves'] ?? 0).toString();
-        
+        _unpaidLeaves = results['unpaidLeaves'] ?? 0;
+        _leavesCtrl.text = (results['leaves'] ?? 0).toString();
+
         if (_workDaysCtrl.text.trim().isEmpty && workingDays > 0) {
           _workDaysCtrl.text = workingDays.toString();
         }
       });
       _recalc();
-    } catch (_) {
-      
+    } catch (e) {
+      debugPrint('⚠️ _fetchMonthlyAttendance error for $_email: $e');
+    } finally {
+      if (mounted) setState(() => _isAttendanceLoading = false);
     }
   }
 
-  
   Future<void> _handleSave() async {
-    
+    if (_isAttendanceLoading) {
+      FlashySnackBar.show(
+        context,
+        message: 'Attendance is still loading. Please wait.',
+        isError: true,
+      );
+      return;
+    }
     final validators = <(String, String)>[
       (_workDaysCtrl.text.trim(), 'please_enter_total_work_days'.tr()),
       (_absentsCtrl.text.trim(), 'please_enter_absents'.tr()),
@@ -223,11 +240,18 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     }
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final now = DateTime.now();
-    final payPeriod = DateTime(now.year, now.month, 1);
+    final payPeriod = _payrollMonth;
+    final payrollIdentity = _workerId.trim().isNotEmpty
+        ? _workerId.trim()
+        : _email.trim().toLowerCase();
     final payrollKey =
-        '${_email.trim().toLowerCase()}_${now.year}-${now.month.toString().padLeft(2, '0')}';
+        '${payrollIdentity}_${PayrollService.payrollPeriodLabel(payPeriod)}';
+    final netAmount =
+        (_calcResult['netSalary'] as num?)?.toDouble() ??
+        PayrollService.extractSalary(_calculatedNet);
 
     final record = <String, dynamic>{
+      'workerId': _workerId,
       'name': _name,
       'email': _email,
       'position': _position,
@@ -237,25 +261,27 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       'totalWorkDays': _workDaysCtrl.text.trim(),
       'absents': _absentsCtrl.text.trim(),
       'paidLeaves': _paidLeaves,
-      'unpaidLeaves': _leavesCtrl.text.trim(),
-      'leaves': (_paidLeaves + (int.tryParse(_leavesCtrl.text.trim()) ?? 0))
-          .toString(),
+      'unpaidLeaves': _unpaidLeaves.toString(),
+      'leaves': _leavesCtrl.text.trim(),
       'overtimeAmount': _overtimeAmountCtrl.text.trim(),
       'absentDeduction': _absentDeductionCtrl.text.trim(),
       'leaveDeduction': _leaveDeductionCtrl.text.trim(),
+      'deductionsAreTotals': false,
       'salary': _salaryStr,
+      'salaryType': (widget.workerData['salaryType'] ?? 'Monthly').toString(),
       'netSalary': _calculatedNet,
+      'netSalaryAmount': netAmount,
+      'netSalaryFormatted': _calculatedNet,
       'payPeriod': payPeriod,
       'payrollKey': payrollKey,
+      'cancelledAt': null,
       'lastModified': now,
     };
 
     setState(() => _isSaving = true);
 
     try {
-      
       if (isGuest) {
-        
         final guestPayroll =
             (await PreferencesService.getGuestPayroll()) ??
             <Map<String, dynamic>>[];
@@ -278,8 +304,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         }
       }
 
-      
-      final netAmount = PayrollService.extractSalary(_calculatedNet);
       if (netAmount > 0) {
         final expenseRecord = <String, dynamic>{
           'name': _name,
@@ -305,7 +329,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             };
           }
           await DummyData.saveToPrefs();
-          if (mounted) setState(() {}); 
+          if (mounted) setState(() {});
         } else {
           await _firestore.upsertPayrollExpense(
             expenseRecord,
@@ -317,8 +341,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       if (!mounted) return;
 
       FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
-      await _generateAndShowInvoice();
-      widget.onBack?.call();
     } catch (_) {
       if (mounted) {
         FlashySnackBar.show(
@@ -327,21 +349,76 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           isError: true,
         );
       }
-    } finally {
       if (mounted) setState(() => _isSaving = false);
+      return;
+    }
+
+    try {
+      await _generateAndShowInvoice();
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'invoice_generation_failed_after_save'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        widget.onBack?.call();
+      }
     }
   }
 
-  
+  Future<void> _handleCancelPayroll() async {
+    if (_isSaving ||
+        _isCancellingPayroll ||
+        widget.workerData['hasPayrollRecord'] != true) {
+      return;
+    }
+    final payrollId = (widget.workerData['id'] ?? '').toString().trim();
+    final payrollKey = (widget.workerData['payrollKey'] ?? '')
+        .toString()
+        .trim();
+    setState(() => _isCancellingPayroll = true);
+    try {
+      await _firestore.cancelPayrollRecord(
+        payrollId: payrollId,
+        payrollKey: payrollKey,
+      );
+      if (!mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: 'payroll_cancelled_for_worker'.tr(namedArgs: {'name': _name}),
+      );
+      widget.onBack?.call();
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'payroll_cancel_failed'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCancellingPayroll = false);
+    }
+  }
+
+  String _editableAmountValue(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    return PayrollService.extractSalary(text) == 0 ? '' : text;
+  }
+
   Future<void> _generateAndShowInvoice() async {
     if (_calcResult.isEmpty) {
-      
       return;
     }
 
     final cr = _calcResult;
-    final now = DateTime.now();
-    final payPeriod = '${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final payPeriod =
+        '${_payrollMonth.month.toString().padLeft(2, '0')}/${_payrollMonth.year}';
     final fileName =
         'payroll_${_name.replaceAll(' ', '_')}'
         '_${payPeriod.replaceAll('/', '-')}.pdf';
@@ -389,7 +466,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           child: Column(
             children: [
-              
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
@@ -461,7 +537,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               Container(height: 1, color: const Color(0xFFE5E7EB)),
               const SizedBox(height: 12),
 
-              
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -485,7 +560,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     });
   }
 
-  
   void _toggleNotifications() {
     setState(() => _showNotifications = !_showNotifications);
     if (_showNotifications) _firestore.markAllNotificationsRead();
@@ -495,7 +569,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     setState(() => _showNotifications = false);
   }
 
-  
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -532,7 +605,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
         ),
 
-        
         if (_showNotifications) ...[
           Positioned.fill(
             child: GestureDetector(
@@ -549,7 +621,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildAppBar() {
     return Container(
       height: 94,
@@ -587,7 +658,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildPayrollDataHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -603,7 +673,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         Row(
           children: [
             OutlinedButton(
-              onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
+              onPressed: _isSaving || _isCancellingPayroll
+                  ? null
+                  : widget.onBack ?? () => Navigator.of(context).pop(),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _primaryBlue,
                 side: BorderSide(color: _primaryBlue.withValues(alpha: 0.5)),
@@ -621,8 +693,41 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ),
             ),
             const SizedBox(width: 16),
+            if (widget.workerData['hasPayrollRecord'] == true) ...[
+              OutlinedButton(
+                onPressed: _isSaving || _isCancellingPayroll
+                    ? null
+                    : _handleCancelPayroll,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFE53935),
+                  side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: _isCancellingPayroll
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE53935),
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'cancel_payroll'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+              ),
+              const SizedBox(width: 16),
+            ],
             ElevatedButton(
-              onPressed: _isSaving
+              onPressed:
+                  _isSaving || _isCancellingPayroll || _isAttendanceLoading
                   ? null
                   : () {
                       final isGuest =
@@ -645,7 +750,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: _isSaving
+              child: _isSaving || _isAttendanceLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -665,15 +770,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildEmployeeBanner() {
-    final now = DateTime.now();
-    final firstDay = DateTime(now.year, now.month, 1);
-    final lastDay = DateTime(now.year, now.month + 1, 0);
+    final firstDay = _payrollMonth;
+    final lastDay = DateTime(_payrollMonth.year, _payrollMonth.month + 1, 0);
     final monthFmt = DateFormat('MMM');
     final period =
         '${monthFmt.format(firstDay)} ${firstDay.day} – '
-        '${monthFmt.format(lastDay)} ${lastDay.day}, ${now.year}';
+        '${monthFmt.format(lastDay)} ${lastDay.day}, ${_payrollMonth.year}';
 
     return Container(
       width: double.infinity,
@@ -689,7 +792,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -725,7 +827,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(width: 24),
 
-          
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,7 +866,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             ),
           ),
 
-          
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -794,7 +894,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildDetailsCard() {
     final cr = _calcResult;
 
@@ -808,7 +907,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
           Row(
             children: [
               Container(width: 4, height: 24, color: _darkBlue),
@@ -825,7 +923,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 32),
 
-          
           Row(
             children: [
               Expanded(
@@ -840,7 +937,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
-                  'unpaid_leaves_label'.tr(),
+                  'leaves_label'.tr(),
                   '0',
                   _leavesCtrl,
                   readOnly: true,
@@ -869,7 +966,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 24),
 
-          
           Row(
             children: [
               Expanded(
@@ -896,7 +992,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
           const SizedBox(height: 32),
 
-          
           if (cr.isNotEmpty) ...[
             _buildCalcBreakdown(cr),
             const SizedBox(height: 16),
@@ -909,7 +1004,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildInput(
     String label,
     String hint,
@@ -945,10 +1039,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
               ? TextInputType.number
               : null,
           inputFormatters: isCurrency
-              ? [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                  LengthLimitingTextInputFormatter(10),
-                ]
+              ? [CommaCurrencyFormatter(), LengthLimitingTextInputFormatter(14)]
               : isDaysInput
               ? [
                   FilteringTextInputFormatter.digitsOnly,
@@ -983,7 +1074,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildCalculatedInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,7 +1116,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     );
   }
 
-  
   Widget _buildCalcBreakdown(Map<String, dynamic> cr) {
     String fmt(String key) => (cr[key] as String?) ?? '';
 

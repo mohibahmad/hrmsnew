@@ -6,7 +6,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:image/image.dart' as img;
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/cupertino.dart' as import_cupertino;
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import '../widgets/custom_dropdown_field.dart';
@@ -495,15 +494,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _casualLeavesController.addListener(_onControllerChanged);
 
     _annualLeavesController.addListener(_clampAnnualLeaves);
-    _sickLeavesController.addListener(_autoCalcAnnualLeaves);
-    _casualLeavesController.addListener(_autoCalcAnnualLeaves);
-    if (widget.workerToEdit == null) {
-      final sickText = _sickLeavesController.text.trim();
-      final casualText = _casualLeavesController.text.trim();
-      if (sickText.isNotEmpty || casualText.isNotEmpty) {
-        _autoCalcAnnualLeaves();
-      }
-    }
   }
 
   void _clampAnnualLeaves() {
@@ -514,22 +504,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         offset: _annualLeavesController.text.length,
       );
     }
-  }
-
-  void _autoCalcAnnualLeaves() {
-    if (_leavePolicyController.text == 'Custom') return;
-    final sick = (int.tryParse(_sickLeavesController.text) ?? 0).clamp(0, 999);
-    final casual = (int.tryParse(_casualLeavesController.text) ?? 0).clamp(
-      0,
-      999,
-    );
-    final sum = sick + casual;
-    final sumText = sum.toString();
-    final truncated = sumText.length > 3 ? sumText.substring(0, 3) : sumText;
-    _annualLeavesController.value = TextEditingValue(
-      text: truncated,
-      selection: TextSelection.collapsed(offset: truncated.length),
-    );
   }
 
   Future<void> _pickProfileImage() async {
@@ -870,7 +844,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    if (email.isNotEmpty && !Validators.isValidEmail(email)) {
+    if (email.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'email_is_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (!Validators.isValidEmail(email)) {
       FlashySnackBar.show(
         context,
         message: 'please_enter_valid_email'.tr(),
@@ -984,38 +967,36 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
-    if (!isEditing) {
-      try {
-        Iterable<Map<String, dynamic>> existingWorkers;
-        if (isGuest) {
-          final guestWorkers = await PreferencesService.getGuestWorkers();
-          existingWorkers = guestWorkers ?? DummyData.workers;
-        } else {
-          final snapshot = await _firestore.getWorkersOnce();
-          existingWorkers = snapshot.docs.map(
-            (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
-          );
-        }
+    try {
+      Iterable<Map<String, dynamic>> existingWorkers;
+      if (isGuest) {
+        final guestWorkers = await PreferencesService.getGuestWorkers();
+        existingWorkers = guestWorkers ?? DummyData.workers;
+      } else {
+        final snapshot = await _firestore.getWorkersOnce();
+        existingWorkers = snapshot.docs.map(
+          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        );
+      }
 
-        final duplicateField = WorkerIdentity.duplicateField({
-          'name': name.toLowerCase(),
-          'email': email.toLowerCase(),
-          'nationalId': nationalId,
-        }, existingWorkers);
-        if (duplicateField != null && mounted) {
-          setState(() => _isSaving = false);
-          final messageKey = switch (duplicateField) {
-            DuplicateWorkerField.name => 'duplicate_name',
-            DuplicateWorkerField.email => 'duplicate_email',
-            DuplicateWorkerField.nationalId => 'duplicate_national_id',
-            DuplicateWorkerField.frontId => 'duplicate_front_id',
-            DuplicateWorkerField.backId => 'duplicate_back_id',
-          };
-          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
-          return;
-        }
-      } catch (_) {}
-    }
+      final duplicateField = WorkerIdentity.duplicateField(
+        {'email': email, 'nationalId': nationalId},
+        existingWorkers,
+        excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
+      );
+      if (duplicateField != null && mounted) {
+        setState(() => _isSaving = false);
+        final messageKey = switch (duplicateField) {
+          DuplicateWorkerField.name => 'duplicate_name',
+          DuplicateWorkerField.email => 'duplicate_email',
+          DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          DuplicateWorkerField.frontId => 'duplicate_front_id',
+          DuplicateWorkerField.backId => 'duplicate_back_id',
+        };
+        FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
+        return;
+      }
+    } catch (_) {}
 
     String? profileImageUrl = _existingProfileImageUrl;
     String? frontIdUrl = _existingFrontIdUrl;
@@ -1082,6 +1063,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
         if (uploadFiles.isNotEmpty) {
           final results = await UploadService.uploadFiles(files: uploadFiles);
+          final uploadFailed = results.any((result) => !result.isSuccess);
 
           for (final result in results) {
             if (result.isSuccess) {
@@ -1108,13 +1090,17 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
               }
             }
           }
+          if (uploadFailed) {
+            if (mounted) setState(() => _isSaving = false);
+            return;
+          }
         }
       }
 
-      final data = {
+      final data = <String, dynamic>{
         'name': name,
         'fatherName': _fatherNameController.text.trim(),
-        'email': email.isNotEmpty ? email : 'worker@email.com',
+        'email': WorkerIdentity.normalizeEmail(email),
         'phone': phone,
         'nationalId': _nationalIdController.text.trim(),
         'religion': _religionController.text.trim(),
@@ -1155,14 +1141,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
 
         'cv': cvUrl,
         'payroll_initialized': true,
-        'leavesUsed': '0',
-        'availableAnnualLeaves':
-            int.tryParse(_annualLeavesController.text.trim()) ?? 0,
-        'availableCasualLeaves':
-            int.tryParse(_casualLeavesController.text.trim()) ?? 0,
-        'availableSickLeaves':
-            int.tryParse(_sickLeavesController.text.trim()) ?? 0,
       };
+
+      if (!isEditing) {
+        final annualLeaveTotal =
+            int.tryParse(_annualLeavesController.text.trim()) ?? 0;
+        data.addAll({
+          'leavesUsed': '0',
+          'availableAnnualLeaves': annualLeaveTotal,
+        });
+      }
 
       if (widget.workerToEdit != null) {
         final editId = widget.workerToEdit!['id']?.toString();
@@ -1182,7 +1170,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         if (isGuest) {
           final index = DummyData.workers.indexWhere((w) => w['id'] == editId);
           if (index != -1) {
-            DummyData.workers[index] = {...data, 'id': editId};
+            DummyData.workers[index] = {
+              ...DummyData.workers[index],
+              ...data,
+              'id': editId,
+            };
             await DummyData.saveToPrefs();
           }
         } else {
@@ -1274,7 +1266,16 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
-    if (email.isNotEmpty && !Validators.isValidEmail(email)) {
+    if (email.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'email_is_required'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    if (!Validators.isValidEmail(email)) {
       FlashySnackBar.show(
         context,
         message: 'please_enter_valid_email'.tr(),
@@ -1349,37 +1350,35 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     final isEditing = widget.workerToEdit != null;
 
-    if (!isEditing) {
-      try {
-        Iterable<Map<String, dynamic>> existingWorkers;
-        if (isGuest) {
-          final guestWorkers = await PreferencesService.getGuestWorkers();
-          existingWorkers = guestWorkers ?? DummyData.workers;
-        } else {
-          final snapshot = await _firestore.getWorkersOnce();
-          existingWorkers = snapshot.docs.map(
-            (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
-          );
-        }
+    try {
+      Iterable<Map<String, dynamic>> existingWorkers;
+      if (isGuest) {
+        final guestWorkers = await PreferencesService.getGuestWorkers();
+        existingWorkers = guestWorkers ?? DummyData.workers;
+      } else {
+        final snapshot = await _firestore.getWorkersOnce();
+        existingWorkers = snapshot.docs.map(
+          (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+        );
+      }
 
-        final duplicateField = WorkerIdentity.duplicateField({
-          'name': name.toLowerCase(),
-          'email': email.toLowerCase(),
-          'nationalId': nationalId,
-        }, existingWorkers);
-        if (duplicateField != null && mounted) {
-          final messageKey = switch (duplicateField) {
-            DuplicateWorkerField.name => 'duplicate_name',
-            DuplicateWorkerField.email => 'duplicate_email',
-            DuplicateWorkerField.nationalId => 'duplicate_national_id',
-            DuplicateWorkerField.frontId => 'duplicate_front_id',
-            DuplicateWorkerField.backId => 'duplicate_back_id',
-          };
-          FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
-          return;
-        }
-      } catch (_) {}
-    }
+      final duplicateField = WorkerIdentity.duplicateField(
+        {'email': email, 'nationalId': nationalId},
+        existingWorkers,
+        excludeId: isEditing ? widget.workerToEdit!['id']?.toString() : null,
+      );
+      if (duplicateField != null && mounted) {
+        final messageKey = switch (duplicateField) {
+          DuplicateWorkerField.name => 'duplicate_name',
+          DuplicateWorkerField.email => 'duplicate_email',
+          DuplicateWorkerField.nationalId => 'duplicate_national_id',
+          DuplicateWorkerField.frontId => 'duplicate_front_id',
+          DuplicateWorkerField.backId => 'duplicate_back_id',
+        };
+        FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
+        return;
+      }
+    } catch (_) {}
 
     setState(() => _activeTabIndex = 1);
   }
@@ -3845,182 +3844,6 @@ class DocumentationSection extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  String _cleanDocumentFileName(String rawName) {
-    if (rawName.trim().isEmpty) return 'Document';
-    String name = rawName.split('?').first;
-    try {
-      name = Uri.decodeComponent(name);
-    } catch (_) {}
-    if (name.contains('/')) {
-      name = name.split('/').last;
-    }
-    name = name.replaceFirst(RegExp(r'^\d+_'), '');
-    return name.trim().isNotEmpty ? name.trim() : 'Document';
-  }
-
-  void _openDocumentPreview(BuildContext context) async {
-    final isImage =
-        cvName != null &&
-        (cvName!.toLowerCase().endsWith('.png') ||
-            cvName!.toLowerCase().endsWith('.jpg') ||
-            cvName!.toLowerCase().endsWith('.jpeg'));
-    final isPdf = cvName != null && cvName!.toLowerCase().endsWith('.pdf');
-    final isDoc =
-        cvName != null &&
-        (cvName!.toLowerCase().endsWith('.doc') ||
-            cvName!.toLowerCase().endsWith('.docx'));
-
-    if (isDoc) {
-      if (existingCvUrl != null && existingCvUrl!.isNotEmpty) {
-        launchUrl(
-          Uri.parse(existingCvUrl!),
-          mode: LaunchMode.externalApplication,
-        );
-      } else if (cvBytes != null && cvName != null) {
-        try {
-          final tempDir = io.Directory.systemTemp;
-          final tempFile = io.File('${tempDir.path}/$cvName');
-          await tempFile.writeAsBytes(cvBytes!);
-          launchUrl(
-            Uri.file(tempFile.path),
-            mode: LaunchMode.externalApplication,
-          );
-        } catch (e) {}
-      }
-      return;
-    }
-
-    if (!isImage && !isPdf) {
-      if (existingCvUrl != null && existingCvUrl!.isNotEmpty) {
-        launchUrl(
-          Uri.parse(existingCvUrl!),
-          mode: LaunchMode.externalApplication,
-        );
-      } else if (cvBytes != null && cvName != null) {
-        try {
-          final tempDir = io.Directory.systemTemp;
-          final tempFile = io.File('${tempDir.path}/$cvName');
-          tempFile.writeAsBytesSync(cvBytes!);
-          launchUrl(
-            Uri.file(tempFile.path),
-            mode: LaunchMode.externalApplication,
-          );
-        } catch (e) {}
-      }
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (ctx) {
-        final dialogWidth = (MediaQuery.of(ctx).size.width * 0.85).clamp(
-          450.0,
-          720.0,
-        );
-
-        return Dialog(
-          backgroundColor: Colors.white,
-          insetPadding: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: SizedBox(
-              width: dialogWidth,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    color: const Color(0xFFF5F5F5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _cleanDocumentFileName(cvName ?? 'CV'),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 22),
-                          onPressed: () => Navigator.of(ctx).pop(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Flexible(
-                    child: isImage
-                        ? Container(
-                            color: const Color(0xFF000000),
-                            width: double.infinity,
-                            constraints: BoxConstraints(
-                              maxHeight: MediaQuery.of(ctx).size.height * 0.70,
-                            ),
-                            child: InteractiveViewer(
-                              minScale: 0.5,
-                              maxScale: 4.0,
-                              child: cvBytes != null
-                                  ? Image.memory(
-                                      cvBytes!,
-                                      width: dialogWidth,
-                                      fit: BoxFit.contain,
-                                    )
-                                  : CachedNetworkImage(
-                                      imageUrl: existingCvUrl ?? '',
-                                      width: dialogWidth,
-                                      fit: BoxFit.contain,
-                                      placeholder: (context, url) =>
-                                          const SizedBox(
-                                            height: 200,
-                                            child: Center(
-                                              child: CircularProgressIndicator(
-                                                color: Color(0xFF0247C4),
-                                              ),
-                                            ),
-                                          ),
-                                      errorWidget: (context, url, error) =>
-                                          const Padding(
-                                            padding: EdgeInsets.all(32),
-                                            child: Center(
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 48,
-                                                color: Color(0xFF9E9E9E),
-                                              ),
-                                            ),
-                                          ),
-                                    ),
-                            ),
-                          )
-                        : SizedBox(
-                            height: MediaQuery.of(ctx).size.height * 0.55,
-                            child: PdfPagePreview(
-                              cvBytes: cvBytes,
-                              existingCvUrl: existingCvUrl,
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

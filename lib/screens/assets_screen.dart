@@ -66,6 +66,43 @@ class _AssetsScreenState extends State<AssetsScreen> {
   Map<String, Map<String, dynamic>> _workersMap = {};
   bool _initialized = false;
 
+  String _workerOption(Map<String, dynamic> worker) {
+    final name = (worker['name'] ?? '').toString().trim();
+    final email = (worker['email'] ?? '').toString().trim();
+    final id = (worker['id'] ?? '').toString().trim();
+    final qualifier = email.isNotEmpty ? email : id;
+    return qualifier.isEmpty ? name : '$name — $qualifier';
+  }
+
+  void _setWorkerOptions(Iterable<Map<String, dynamic>> workers) {
+    final validWorkers = workers
+        .where((worker) => (worker['name'] ?? '').toString().trim().isNotEmpty)
+        .toList();
+    _workerNames = validWorkers.map(_workerOption).toList();
+    _workersMap = {
+      for (final worker in validWorkers) _workerOption(worker): worker,
+    };
+  }
+
+  String? _optionForAsset(AssetData asset) {
+    for (final entry in _workersMap.entries) {
+      final worker = entry.value;
+      final workerId = (worker['id'] ?? '').toString().trim();
+      if ((asset.workerId ?? '').isNotEmpty && workerId == asset.workerId) {
+        return entry.key;
+      }
+      final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+      if ((asset.email ?? '').trim().isNotEmpty &&
+          email == asset.email!.trim().toLowerCase()) {
+        return entry.key;
+      }
+    }
+    for (final entry in _workersMap.entries) {
+      if (entry.value['name']?.toString() == asset.name) return entry.key;
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _assetsSub?.cancel();
@@ -97,21 +134,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
           _adts(data['dateReturned']),
           data['isReturned'] ?? false,
           profileImage: data['profileImage']?.toString(),
+          workerId: data['workerId']?.toString(),
           email: data['email']?.toString(),
           phone: data['phone']?.toString(),
           cnic: data['cnic']?.toString(),
           dateOfJoining: _adts(data['dateOfJoining']),
         );
       }).toList();
-      _workerNames = DummyData.workers
-          .map((w) => (w['name'] ?? '').toString())
-          .where((n) => n.isNotEmpty)
-          .toSet()
-          .toList();
-      _workersMap = {
-        for (var w in DummyData.workers)
-          (w['name'] ?? '').toString(): Map<String, dynamic>.from(w),
-      };
+      _setWorkerOptions(DummyData.workers.map(Map<String, dynamic>.from));
     } else {
       _isLoading = true;
       _assetsSub = _firestore.assetsStream.listen((snapshot) {
@@ -142,6 +172,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 data['isReturned'] ?? false,
                 id: doc.id,
                 profileImage: data['profileImage']?.toString(),
+                workerId: data['workerId']?.toString(),
                 email: data['email']?.toString(),
                 phone: data['phone']?.toString(),
                 cnic: data['cnic']?.toString(),
@@ -155,20 +186,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
       _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
-            _workerNames = snapshot.docs
-                .map(
-                  (doc) =>
-                      (doc.data() as Map<String, dynamic>)['name'] as String? ??
-                      '',
-                )
-                .where((n) => n.isNotEmpty)
-                .toSet()
-                .toList();
-            _workersMap = {
-              for (var doc in snapshot.docs)
-                (doc.data() as Map<String, dynamic>)['name'] as String? ?? '':
-                    doc.data() as Map<String, dynamic>,
-            };
+            _setWorkerOptions(
+              snapshot.docs.map(
+                (doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id},
+              ),
+            );
           });
         }
       });
@@ -179,9 +201,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       final names = DummyData.workers
-          .map((w) => (w['name'] ?? '').toString())
-          .where((n) => n.isNotEmpty)
-          .toSet()
+          .map((worker) => _workerOption(worker))
           .toList();
       return Stream.value(names);
     } else {
@@ -189,10 +209,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
         final list = snapshot.docs
             .map((doc) {
               final data = doc.data() as Map<String, dynamic>?;
-              return data?['name'] as String? ?? '';
+              if (data == null) return '';
+              return _workerOption({...data, 'id': doc.id});
             })
             .where((n) => n.isNotEmpty)
-            .toSet()
             .toList();
         return list;
       });
@@ -201,10 +221,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   List<AssetData> get _filteredAssets {
     return _assets.where((asset) {
-      final nameClean = asset.name.trim().toLowerCase();
-      final workerExists = _workersMap.keys.any(
-        (k) => k.trim().toLowerCase() == nameClean,
-      );
+      final workerExists = _optionForAsset(asset) != null;
       if (!workerExists) return false;
 
       final matchesSearch =
@@ -224,7 +241,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
     DateTime returnedDate = DateTime.now();
     bool isReturned = false;
     var isSaving = false;
-
 
     String formatDate(DateTime date) {
       final day = date.day.toString().padLeft(2, '0');
@@ -252,7 +268,6 @@ class _AssetsScreenState extends State<AssetsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -284,111 +299,122 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             ),
                             minimumSize: const Size(0, 36),
                           ),
-onPressed: isSaving
+                          onPressed: isSaving
                               ? null
                               : () async {
-                            if (selectedWorkerName != null &&
-                                typeController.text.isNotEmpty &&
-                                positionController.text.isNotEmpty) {
-                              setModalState(() => isSaving = true);
-                              final workerData =
-                                  _workersMap[selectedWorkerName] ?? {};
-                              final workerProfileImage =
-                                  workerData['profileImage']?.toString();
-                              final workerEmail = workerData['email']
-                                  ?.toString();
-                              final workerPhone = workerData['phone']
-                                  ?.toString();
-                              final workerCnic = workerData['cnic']?.toString();
-                              final workerDateOfJoining =
-                                  workerData['dateOfJoining']?.toString();
-                              final assetMap = {
-                                'name': selectedWorkerName!,
-                                'position': positionController.text,
-                                'type': typeController.text,
-                                'dateLoaned': loanedDate,
-                                'dateReturned': isReturned
-                                    ? returnedDate
-                                    : _inUseKey,
-                                'isReturned': isReturned,
-                                'profileImage': workerProfileImage ?? '',
-                                'email': workerEmail ?? '',
-                                'phone': workerPhone ?? '',
-                                'cnic': workerCnic ?? '',
-                                'dateOfJoining': workerDateOfJoining ?? '',
-                              };
-                              final isGuest =
-                                  _authService.currentUser?.isAnonymous ??
-                                  false;
-                              if (isGuest) {
-                                final newAsset = {
-                                  'name': selectedWorkerName!,
-                                  'position': positionController.text,
-                                  'type': typeController.text,
-                                  'dateLoaned': formatDate(loanedDate),
-                                  'dateReturned': isReturned
-                                      ? formatDate(returnedDate)
-                                      : _inUseKey,
-                                  'isReturned': isReturned,
-                                  'profileImage': workerProfileImage ?? '',
-                                  'email': workerEmail ?? '',
-                                  'phone': workerPhone ?? '',
-                                  'cnic': workerCnic ?? '',
-                                  'dateOfJoining': workerDateOfJoining ?? '',
-                                };
-                                setState(() {
-                                  _assets.insert(
-                                    0,
-                                    AssetData(
-                                      selectedWorkerName!,
-                                      positionController.text,
-                                      typeController.text,
-                                      formatDate(loanedDate),
-                                      isReturned
-                                          ? formatDate(returnedDate)
+                                  if (selectedWorkerName != null &&
+                                      typeController.text.isNotEmpty &&
+                                      positionController.text.isNotEmpty) {
+                                    setModalState(() => isSaving = true);
+                                    final workerData =
+                                        _workersMap[selectedWorkerName] ?? {};
+                                    final actualWorkerName =
+                                        (workerData['name'] ?? '').toString();
+                                    final selectedWorkerId =
+                                        (workerData['id'] ?? '').toString();
+                                    final workerProfileImage =
+                                        workerData['profileImage']?.toString();
+                                    final workerEmail = workerData['email']
+                                        ?.toString();
+                                    final workerPhone = workerData['phone']
+                                        ?.toString();
+                                    final workerCnic =
+                                        (workerData['cnic'] ??
+                                                workerData['nationalId'])
+                                            ?.toString();
+                                    final workerDateOfJoining =
+                                        workerData['dateOfJoining']?.toString();
+                                    final assetMap = {
+                                      'workerId': selectedWorkerId,
+                                      'name': actualWorkerName,
+                                      'position': positionController.text,
+                                      'type': typeController.text,
+                                      'dateLoaned': loanedDate,
+                                      'dateReturned': isReturned
+                                          ? returnedDate
                                           : _inUseKey,
-                                      isReturned,
-                                      profileImage: workerProfileImage,
-                                      email: workerEmail,
-                                      phone: workerPhone,
-                                      cnic: workerCnic,
-                                      dateOfJoining: workerDateOfJoining,
-                                    ),
-                                  );
-                                  DummyData.assets.insert(0, newAsset);
-                                });
-                                await DummyData.saveToPrefs();
-                                setModalState(() => isSaving = false);
-                              } else {
-                                try {
-                                  await _firestore.addAsset(assetMap);
-                                } catch (e, st) {
-                                  setModalState(() => isSaving = false);
-                                  if (!context.mounted) return;
-                                  FlashySnackBar.show(
-                                    context,
-                                    message: 'failed_to_add_asset'.tr(
-                                      namedArgs: {'error': e.toString()},
-                                    ),
-                                  );
-                                  return;
-                                }
-                              }
-                              if (!context.mounted) return;
-                              Navigator.of(context).pop();
-                              FlashySnackBar.show(
-                                context,
-                                message: 'successfully_added_asset'.tr(
-                                  namedArgs: {'name': selectedWorkerName!},
-                                ),
-                              );
-                              if (parentContext.mounted) {
-                                tryShowFirstMilestoneRateUs(
-                                  'asset',
-                                );
-                              }
-                            }
-                          },
+                                      'isReturned': isReturned,
+                                      'profileImage': workerProfileImage ?? '',
+                                      'email': workerEmail ?? '',
+                                      'phone': workerPhone ?? '',
+                                      'cnic': workerCnic ?? '',
+                                      'dateOfJoining':
+                                          workerDateOfJoining ?? '',
+                                    };
+                                    final isGuest =
+                                        _authService.currentUser?.isAnonymous ??
+                                        false;
+                                    if (isGuest) {
+                                      final newAsset = {
+                                        'workerId': selectedWorkerId,
+                                        'name': actualWorkerName,
+                                        'position': positionController.text,
+                                        'type': typeController.text,
+                                        'dateLoaned': formatDate(loanedDate),
+                                        'dateReturned': isReturned
+                                            ? formatDate(returnedDate)
+                                            : _inUseKey,
+                                        'isReturned': isReturned,
+                                        'profileImage':
+                                            workerProfileImage ?? '',
+                                        'email': workerEmail ?? '',
+                                        'phone': workerPhone ?? '',
+                                        'cnic': workerCnic ?? '',
+                                        'dateOfJoining':
+                                            workerDateOfJoining ?? '',
+                                      };
+                                      setState(() {
+                                        _assets.insert(
+                                          0,
+                                          AssetData(
+                                            actualWorkerName,
+                                            positionController.text,
+                                            typeController.text,
+                                            formatDate(loanedDate),
+                                            isReturned
+                                                ? formatDate(returnedDate)
+                                                : _inUseKey,
+                                            isReturned,
+                                            workerId: selectedWorkerId,
+                                            profileImage: workerProfileImage,
+                                            email: workerEmail,
+                                            phone: workerPhone,
+                                            cnic: workerCnic,
+                                            dateOfJoining: workerDateOfJoining,
+                                          ),
+                                        );
+                                        DummyData.assets.insert(0, newAsset);
+                                      });
+                                      await DummyData.saveToPrefs();
+                                      setModalState(() => isSaving = false);
+                                    } else {
+                                      try {
+                                        await _firestore.addAsset(assetMap);
+                                      } catch (e) {
+                                        setModalState(() => isSaving = false);
+                                        if (!context.mounted) return;
+                                        FlashySnackBar.show(
+                                          context,
+                                          message: 'failed_to_add_asset'.tr(
+                                            namedArgs: {'error': e.toString()},
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                    }
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pop();
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'successfully_added_asset'.tr(
+                                        namedArgs: {'name': actualWorkerName},
+                                      ),
+                                    );
+                                    if (parentContext.mounted) {
+                                      tryShowFirstMilestoneRateUs('asset');
+                                    }
+                                  }
+                                },
                           child: isSaving
                               ? const SizedBox(
                                   width: 20,
@@ -399,13 +425,13 @@ onPressed: isSaving
                                   ),
                                 )
                               : Text(
-                            'save'.tr(),
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
+                                  'save'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -450,7 +476,6 @@ onPressed: isSaving
                       readOnly: true,
                     ),
                     const SizedBox(height: 16),
-
 
                     _buildModalDatePicker(
                       context,
@@ -546,7 +571,6 @@ onPressed: isSaving
                       },
                     ),
                     const SizedBox(height: 16),
-
 
                     Row(
                       children: [
@@ -916,7 +940,6 @@ onPressed: isSaving
     );
   }
 
-
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
@@ -959,7 +982,6 @@ onPressed: isSaving
   Widget _buildTopActionRow(BuildContext context) {
     return Row(
       children: [
-
         Expanded(
           child: Container(
             height: 44,
@@ -1082,7 +1104,6 @@ onPressed: isSaving
     );
   }
 
-
   Widget _buildDataTable(List<AssetData> assets) {
     final double tableHeight = (MediaQuery.of(context).size.height - 279).clamp(
       495.0,
@@ -1097,7 +1118,6 @@ onPressed: isSaving
       ),
       child: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.fromLTRB(40, 24, 40, 12),
             child: Row(
@@ -1174,7 +1194,6 @@ onPressed: isSaving
   }
 
   Widget _buildDataRow(AssetData data, int index) {
-
     String? profileImage = data.profileImage;
     String? email = data.email;
     final nameClean = data.name.trim().toLowerCase();
@@ -1195,7 +1214,6 @@ onPressed: isSaving
       ),
       child: Row(
         children: [
-
           Expanded(
             flex: 3,
             child: Padding(
@@ -1336,8 +1354,7 @@ onPressed: isSaving
               content: 'delete_asset_desc'.tr(),
             );
             if (!confirmed) return;
-            if (data.id != null)
-              await _firestore.deleteAsset(data.id!);
+            if (data.id != null) await _firestore.deleteAsset(data.id!);
           }
         },
         itemBuilder: (context) => [
@@ -1422,7 +1439,7 @@ onPressed: isSaving
   }
 
   void _showEditAssetModal(AssetData data) {
-    String? selectedWorkerName = data.name;
+    String? selectedWorkerName = _optionForAsset(data);
     final typeController = TextEditingController(text: data.type);
     final positionController = TextEditingController(text: data.position);
     DateTime loanedDate = _parseDate(data.dateLoaned) ?? DateTime(2025, 1, 1);
@@ -1490,120 +1507,145 @@ onPressed: isSaving
                           onPressed: isSaving
                               ? null
                               : () async {
-                            if (selectedWorkerName != null &&
-                                typeController.text.isNotEmpty &&
-                                positionController.text.isNotEmpty) {
-                              setModalState(() => isSaving = true);
-                              final workerData =
-                                  _workersMap[selectedWorkerName] ?? {};
-                              final workerProfileImage =
-                                  workerData['profileImage']?.toString();
-                              final workerEmail = workerData['email']
-                                  ?.toString();
-                              final workerPhone = workerData['phone']
-                                  ?.toString();
-                              final workerCnic = workerData['cnic']?.toString();
-                              final workerDateOfJoining =
-                                  workerData['dateOfJoining']?.toString();
-                              final assetMap = {
-                                'name': selectedWorkerName!,
-                                'position': positionController.text,
-                                'type': typeController.text,
-                                'dateLoaned': loanedDate,
-                                'dateReturned': isReturned
-                                    ? returnedDate
-                                    : _inUseKey,
-                                'isReturned': isReturned,
-                                'profileImage': workerProfileImage ?? '',
-                                'email': workerEmail ?? '',
-                                'phone': workerPhone ?? '',
-                                'cnic': workerCnic ?? '',
-                                'dateOfJoining': workerDateOfJoining ?? '',
-                              };
-                              final isGuest =
-                                  _authService.currentUser?.isAnonymous ??
-                                  false;
-                              if (isGuest) {
-                                setState(() {
-                                  final idx = _assets.indexWhere(
-                                    (a) => a.id == data.id,
-                                  );
-                                  if (idx != -1) {
-                                    _assets[idx] = AssetData(
-                                      selectedWorkerName!,
-                                      positionController.text,
-                                      typeController.text,
-                                      formatDate(loanedDate),
-                                      isReturned
-                                          ? formatDate(returnedDate)
+                                  if (selectedWorkerName != null &&
+                                      typeController.text.isNotEmpty &&
+                                      positionController.text.isNotEmpty) {
+                                    setModalState(() => isSaving = true);
+                                    final workerData =
+                                        _workersMap[selectedWorkerName] ?? {};
+                                    final actualWorkerName =
+                                        (workerData['name'] ?? '').toString();
+                                    final selectedWorkerId =
+                                        (workerData['id'] ?? '').toString();
+                                    final workerProfileImage =
+                                        workerData['profileImage']?.toString();
+                                    final workerEmail = workerData['email']
+                                        ?.toString();
+                                    final workerPhone = workerData['phone']
+                                        ?.toString();
+                                    final workerCnic =
+                                        (workerData['cnic'] ??
+                                                workerData['nationalId'])
+                                            ?.toString();
+                                    final workerDateOfJoining =
+                                        workerData['dateOfJoining']?.toString();
+                                    final assetMap = {
+                                      'workerId': selectedWorkerId,
+                                      'name': actualWorkerName,
+                                      'position': positionController.text,
+                                      'type': typeController.text,
+                                      'dateLoaned': loanedDate,
+                                      'dateReturned': isReturned
+                                          ? returnedDate
                                           : _inUseKey,
-                                      isReturned,
-                                      id: data.id,
-                                      profileImage: workerProfileImage,
-                                      email: workerEmail,
-                                      phone: workerPhone,
-                                      cnic: workerCnic,
-                                      dateOfJoining: workerDateOfJoining,
-                                    );
-                                  }
-                                  final dummyIdx = DummyData.assets.indexWhere(
-                                    (a) => a['name'] == data.name,
-                                  );
-                                  if (dummyIdx != -1)
-                                    DummyData.assets[dummyIdx] = assetMap;
-                                });
-                                await DummyData.saveToPrefs();
-                              } else {
-                                if (data.id != null) {
-                                  try {
-                                    await _firestore.updateAsset(
-                                      data.id!,
-                                      assetMap,
-                                    );
-                                  } catch (e) {
-                                    setModalState(() => isSaving = false);
+                                      'isReturned': isReturned,
+                                      'profileImage': workerProfileImage ?? '',
+                                      'email': workerEmail ?? '',
+                                      'phone': workerPhone ?? '',
+                                      'cnic': workerCnic ?? '',
+                                      'dateOfJoining':
+                                          workerDateOfJoining ?? '',
+                                    };
+                                    final isGuest =
+                                        _authService.currentUser?.isAnonymous ??
+                                        false;
+                                    if (isGuest) {
+                                      setState(() {
+                                        final idx = _assets.indexWhere(
+                                          (a) => a.id == data.id,
+                                        );
+                                        if (idx != -1) {
+                                          _assets[idx] = AssetData(
+                                            actualWorkerName,
+                                            positionController.text,
+                                            typeController.text,
+                                            formatDate(loanedDate),
+                                            isReturned
+                                                ? formatDate(returnedDate)
+                                                : _inUseKey,
+                                            isReturned,
+                                            id: data.id,
+                                            workerId: selectedWorkerId,
+                                            profileImage: workerProfileImage,
+                                            email: workerEmail,
+                                            phone: workerPhone,
+                                            cnic: workerCnic,
+                                            dateOfJoining: workerDateOfJoining,
+                                          );
+                                        }
+                                        final dummyIdx = DummyData.assets
+                                            .indexWhere(
+                                              (asset) =>
+                                                  (data.workerId ?? '')
+                                                      .isNotEmpty
+                                                  ? asset['workerId'] ==
+                                                        data.workerId
+                                                  : asset['name'] ==
+                                                            data.name &&
+                                                        asset['type'] ==
+                                                            data.type,
+                                            );
+                                        if (dummyIdx != -1)
+                                          DummyData.assets[dummyIdx] = assetMap;
+                                      });
+                                      await DummyData.saveToPrefs();
+                                    } else {
+                                      if (data.id != null) {
+                                        try {
+                                          await _firestore.updateAsset(
+                                            data.id!,
+                                            assetMap,
+                                          );
+                                        } catch (e) {
+                                          setModalState(() => isSaving = false);
+                                          if (!context.mounted) return;
+                                          FlashySnackBar.show(
+                                            context,
+                                            message: 'failed_to_update_asset'
+                                                .tr(
+                                                  namedArgs: {
+                                                    'error': e.toString(),
+                                                  },
+                                                ),
+                                          );
+                                          return;
+                                        }
+                                        setState(() {
+                                          _assets = _assets.map((a) {
+                                            if (a.id == data.id) {
+                                              return AssetData(
+                                                actualWorkerName,
+                                                positionController.text,
+                                                typeController.text,
+                                                formatDate(loanedDate),
+                                                isReturned
+                                                    ? formatDate(returnedDate)
+                                                    : _inUseKey,
+                                                isReturned,
+                                                id: data.id,
+                                                workerId: selectedWorkerId,
+                                                profileImage:
+                                                    workerProfileImage,
+                                                email: workerEmail,
+                                                phone: workerPhone,
+                                                cnic: workerCnic,
+                                                dateOfJoining:
+                                                    workerDateOfJoining,
+                                              );
+                                            }
+                                            return a;
+                                          }).toList();
+                                        });
+                                      }
+                                    }
                                     if (!context.mounted) return;
+                                    Navigator.of(context).pop();
                                     FlashySnackBar.show(
                                       context,
-                                      message: 'failed_to_update_asset'.tr(
-                                        namedArgs: {'error': e.toString()},
-                                      ),
+                                      message: 'asset_updated'.tr(),
                                     );
-                                    return;
                                   }
-                                  setState(() {
-                                    _assets = _assets.map((a) {
-                                      if (a.id == data.id) {
-                                        return AssetData(
-                                          selectedWorkerName!,
-                                          positionController.text,
-                                          typeController.text,
-                                          formatDate(loanedDate),
-                                          isReturned
-                                              ? formatDate(returnedDate)
-                                              : _inUseKey,
-                                          isReturned,
-                                          id: data.id,
-                                          profileImage: workerProfileImage,
-                                          email: workerEmail,
-                                          phone: workerPhone,
-                                          cnic: workerCnic,
-                                          dateOfJoining: workerDateOfJoining,
-                                        );
-                                      }
-                                      return a;
-                                    }).toList();
-                                  });
-                                }
-                              }
-                              if (!context.mounted) return;
-                              Navigator.of(context).pop();
-                              FlashySnackBar.show(
-                                context,
-                                message: 'asset_updated'.tr(),
-                              );
-                            }
-                          },
+                                },
                           child: isSaving
                               ? const SizedBox(
                                   width: 20,
@@ -1614,14 +1656,14 @@ onPressed: isSaving
                                   ),
                                 )
                               : Text(
-                            'save'.tr(),
-                            style: const TextStyle(
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
+                                  'save'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -1892,7 +1934,6 @@ onPressed: isSaving
     );
   }
 
-
   Widget _buildEmptyState() {
     final bool isSearchEmpty = _searchQuery.isNotEmpty;
     return Center(
@@ -1931,6 +1972,7 @@ onPressed: isSaving
 
 class AssetData {
   final String? id;
+  final String? workerId;
   final String name;
   final String position;
   final String type;
@@ -1952,6 +1994,7 @@ class AssetData {
     this.dateReturned,
     this.isReturned, {
     this.id,
+    this.workerId,
     this.profileImage,
     this.email,
     this.phone,

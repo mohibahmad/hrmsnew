@@ -309,8 +309,19 @@ class InvoiceService {
     
     final cleaned = formatted.replaceAll(RegExp(r'[^0-9.]'), '');
     if (cleaned.isEmpty) return '$currency 0.00';
-    final value = double.tryParse(cleaned);
-    if (value == null) return '$currency 0.00';
+    double value = double.tryParse(cleaned) ?? 0;
+    
+    final suffixMatch = RegExp(r'[KMBTkmbt]').firstMatch(formatted);
+    if (suffixMatch != null) {
+      final suffix = suffixMatch.group(0)!;
+      switch (suffix.toUpperCase()) {
+        case 'K': value *= 1000; break;
+        case 'M': value *= 1000000; break;
+        case 'B': value *= 1000000000; break;
+        case 'T': value *= 1000000000000; break;
+      }
+    }
+    
     if (value == value.roundToDouble()) {
       return '$currency ${value.round()}';
     }

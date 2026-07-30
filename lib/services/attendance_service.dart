@@ -1,34 +1,70 @@
 import '../utils/worker_identity.dart';
+import '../utils/date_utils.dart';
 
 class AttendanceService {
   static final AttendanceService _instance = AttendanceService._();
   factory AttendanceService() => _instance;
   AttendanceService._();
 
-  
+  static String workerIdFor(Map<String, dynamic> data) {
+    return (data['workerId'] ?? data['id'] ?? '').toString().trim();
+  }
+
+  static bool workerExistedOnDate(Map<String, dynamic> worker, DateTime date) {
+    final createdAt = AppDateUtils.dateFromValue(worker['createdAt']);
+    if (createdAt == null) return true;
+
+    final creationDay = DateTime(
+      createdAt.year,
+      createdAt.month,
+      createdAt.day,
+    );
+    final targetDay = DateTime(date.year, date.month, date.day);
+    return !targetDay.isBefore(creationDay);
+  }
+
+  static bool recordIsOnOrAfterWorkerCreation({
+    required Map<String, dynamic> worker,
+    required Map<String, dynamic> attendanceRecord,
+  }) {
+    final attendanceDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
+    return attendanceDate == null ||
+        workerExistedOnDate(worker, attendanceDate);
+  }
+
+  static bool _recordMatchesWorkerIdentity(
+    Map<String, dynamic> worker,
+    Map<String, dynamic> record,
+  ) {
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+    if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
+      return recordWorkerId == workerId;
+    }
+
+    final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
+    final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
+    if (workerEmail.isNotEmpty && recordEmail.isNotEmpty) {
+      return recordEmail == workerEmail;
+    }
+
+    final workerName = WorkerIdentity.normalizeName(worker['name']);
+    final recordName = WorkerIdentity.normalizeName(record['name']);
+    return workerName.isNotEmpty && recordName == workerName;
+  }
+
   static List<Map<String, dynamic>> recordsForWorker({
     required Map<String, dynamic> worker,
     required List<Map<String, dynamic>> attendanceRecords,
   }) {
-    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-        .toString()
-        .trim();
-    final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
-    final workerName = WorkerIdentity.normalizeName(worker['name']);
-
     return attendanceRecords.where((record) {
-      final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-      if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
-        return recordWorkerId == workerId;
-      }
-
-      final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
-      if (workerEmail.isNotEmpty && recordEmail.isNotEmpty) {
-        return recordEmail == workerEmail;
-      }
-
-      final recordName = WorkerIdentity.normalizeName(record['name']);
-      return workerName.isNotEmpty && recordName == workerName;
+      return _recordMatchesWorkerIdentity(worker, record) &&
+          recordIsOnOrAfterWorkerCreation(
+            worker: worker,
+            attendanceRecord: record,
+          );
     }).toList();
   }
 
@@ -42,40 +78,22 @@ class AttendanceService {
 
     final combined = <Map<String, dynamic>>[];
 
-    final idMap = <String, Map<String, dynamic>>{};
-    final emailMap = <String, Map<String, dynamic>>{};
-    final nameMap = <String, Map<String, dynamic>>{};
-
-    for (var att in rawAttendanceDocs) {
-      final attId = (att['workerId'] ?? '').toString().trim().toLowerCase();
-      final attEmail = WorkerIdentity.normalizeEmail(att['email']);
-      final attName = WorkerIdentity.normalizeName(att['name']);
-      if (attId.isNotEmpty) {
-        idMap.putIfAbsent(attId, () => att);
-      }
-      if (attEmail.isNotEmpty) {
-        emailMap.putIfAbsent(attEmail, () => att);
-      }
-      if (attName.isNotEmpty) {
-        nameMap.putIfAbsent(attName, () => att);
-      }
-    }
-
     for (var worker in workersList) {
-      final wId = (worker['id'] ?? '').toString().trim().toLowerCase();
       final wEmail = WorkerIdentity.normalizeEmail(worker['email']);
-      final wName = WorkerIdentity.normalizeName(worker['name']);
+      final matched = rawAttendanceDocs
+          .cast<Map<String, dynamic>?>()
+          .firstWhere(
+            (record) =>
+                record != null &&
+                _recordMatchesWorkerIdentity(worker, record) &&
+                recordIsOnOrAfterWorkerCreation(
+                  worker: worker,
+                  attendanceRecord: record,
+                ),
+            orElse: () => null,
+          );
 
-      final matched = <String, dynamic>{};
-      if (wId.isNotEmpty && idMap.containsKey(wId)) {
-        matched.addAll(idMap[wId]!);
-      } else if (wEmail.isNotEmpty && emailMap.containsKey(wEmail)) {
-        matched.addAll(emailMap[wEmail]!);
-      } else if (wName.isNotEmpty && nameMap.containsKey(wName)) {
-        matched.addAll(nameMap[wName]!);
-      }
-
-      if (matched.isNotEmpty) {
+      if (matched != null) {
         combined.add({
           ...matched,
           'workerId': worker['id'] ?? matched['workerId'],

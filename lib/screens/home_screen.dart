@@ -59,14 +59,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showNotifications = false;
   bool _showWorkersAttendance = false;
   final List<bool> _activatedScreens = List.filled(13, false);
-  final GlobalKey<WorkersScreenState> _workersKey = GlobalKey<WorkersScreenState>();
+  final GlobalKey<WorkersScreenState> _workersKey =
+      GlobalKey<WorkersScreenState>();
   late AuthService _authService;
   late FirestoreService _firestore;
 
   Widget _getScreen(int index) {
     switch (index) {
       case 0:
-        return const SizedBox.shrink(); 
+        return const SizedBox.shrink();
       case 1:
         return WorkersScreen(
           key: _workersKey,
@@ -217,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  
   static num _parseAmount(dynamic value) {
     if (value == null) return 0;
     if (value is num) return value;
@@ -228,7 +228,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0;
   }
 
-  
   static double _parseNumToDouble(dynamic value) =>
       _parseAmount(value).toDouble();
 
@@ -291,8 +290,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _startPremiumListener();
 
     if (currentUser?.isAnonymous ?? false) {
-      
-      
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _handlePeriodChanged(_selectedPeriod);
       });
@@ -381,8 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _otherWorkersCount = oCount;
         _totalTimeoffCount = DummyData.timeoff.length;
         _recalculateDummyTotals(_selectedPeriod);
-        
-        
+
         final rawHolidays = DummyData.holidays.values
             .expand((list) => list)
             .cast<Map<String, dynamic>>()
@@ -391,10 +387,29 @@ class _HomeScreenState extends State<HomeScreen> {
           final dateStr = (h['date'] ?? '').toString();
           final parts = dateStr.split('/');
           final monthNames = [
-            '', 'January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December',
+            '',
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December',
           ];
-          final weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          final weekDays = [
+            'Sunday',
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+          ];
           String day = '';
           String month = '';
           String dayOfWeek = '';
@@ -404,9 +419,12 @@ class _HomeScreenState extends State<HomeScreen> {
             final year = int.tryParse(parts[2]) ?? DateTime.now().year;
             day = dayNum.toString();
             month = monthNum >= 1 && monthNum <= 12 ? monthNames[monthNum] : '';
-            if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+            if (monthNum >= 1 &&
+                monthNum <= 12 &&
+                dayNum >= 1 &&
+                dayNum <= 31) {
               final dt = DateTime(year, monthNum, dayNum);
-              dayOfWeek = weekDays[dt.weekday % 7]; 
+              dayOfWeek = weekDays[dt.weekday % 7];
             }
           }
           return {
@@ -419,14 +437,16 @@ class _HomeScreenState extends State<HomeScreen> {
           };
         }).toList();
 
-        
         final enrichedAttendance = List<Map<String, dynamic>>.from(
           DummyData.attendance,
         );
         for (final att in enrichedAttendance) {
           final status = (att['status'] ?? '').toString().trim().toLowerCase();
           if (status == 'leave') {
-            final reason = (att['reason'] ?? '').toString().trim().toLowerCase();
+            final reason = (att['reason'] ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
             if (reason == 'vacation') {
               att['type'] = 'Casual Leave';
             } else if (reason == 'medical') {
@@ -551,19 +571,30 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _rawPayrollDocs = snap.docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>?;
-              final result = PayrollService.calculatePayroll(
-                salary: (data?['salary'] ?? '').toString(),
-                totalWorkDays: (data?['totalWorkDays'] ?? '').toString(),
-                absents: (data?['absents'] ?? '').toString(),
-                leaves: (data?['leaves'] ?? '').toString(),
-                overtimeAmount: (data?['overtimeAmount'] ?? '').toString(),
-                salaryType: (data?['salaryType'] ?? 'Monthly').toString(),
-              );
-              return {
-                ...?data,
-                'id': doc.id,
-                'netSalary': result['netSalary'] as double,
-              };
+              final savedNet = data?['netSalaryAmount'];
+              final legacyFormattedNet = (data?['netSalary'] ?? '').toString();
+              final netSalary = savedNet is num
+                  ? savedNet.toDouble()
+                  : legacyFormattedNet.trim().isNotEmpty
+                  ? PayrollService.extractSalary(legacyFormattedNet)
+                  : (PayrollService.calculatePayroll(
+                              salary: (data?['salary'] ?? '').toString(),
+                              totalWorkDays: (data?['totalWorkDays'] ?? '')
+                                  .toString(),
+                              absents: (data?['absents'] ?? '').toString(),
+                              leaves: (data?['leaves'] ?? '').toString(),
+                              overtimeAmount: (data?['overtimeAmount'] ?? '')
+                                  .toString(),
+                              absentDeductionPerDay:
+                                  (data?['absentDeduction'] ?? '').toString(),
+                              leaveDeductionPerDay:
+                                  (data?['leaveDeduction'] ?? '').toString(),
+                              salaryType: (data?['salaryType'] ?? 'Monthly')
+                                  .toString(),
+                            )['netSalary']
+                            as num)
+                        .toDouble();
+              return {...?data, 'id': doc.id, 'netSalary': netSalary};
             }).toList();
             _recalculateSumsForPeriod(_selectedPeriod);
           });
@@ -623,15 +654,14 @@ class _HomeScreenState extends State<HomeScreen> {
       placeUndatedInCurrentPeriod: true,
     );
     final payrollRecords = DummyData.payroll.map((item) {
-      final result = PayrollService.calculatePayroll(
-        salary: (item['salary'] ?? '').toString(),
-        totalWorkDays: (item['totalWorkDays'] ?? '').toString(),
-        absents: (item['absents'] ?? '').toString(),
-        leaves: (item['leaves'] ?? '').toString(),
-        overtimeAmount: (item['overtimeAmount'] ?? '').toString(),
-        salaryType: (item['salaryType'] ?? 'Monthly').toString(),
-      );
-      return {...item, 'netSalary': result['netSalary'] as double};
+      final savedNet = item['netSalaryAmount'];
+      final formattedNet = (item['netSalary'] ?? '').toString();
+      final netSalary = savedNet is num
+          ? savedNet.toDouble()
+          : formattedNet.trim().isNotEmpty
+          ? PayrollService.extractSalary(formattedNet)
+          : 0.0;
+      return {...item, 'netSalary': netSalary};
     }).toList();
     final totalDummySalary = payrollRecords.fold<double>(
       0,
@@ -664,8 +694,6 @@ class _HomeScreenState extends State<HomeScreen> {
           dt = createdAt.toDate();
         }
       } else {
-        
-        
         final id = att['id']?.toString() ?? '';
         final numericPart = id.replaceAll(RegExp(r'[^0-9]'), '');
         final num = numericPart.isNotEmpty ? int.tryParse(numericPart) ?? 0 : 0;
@@ -784,9 +812,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     isGuest: _authService.currentUser?.isAnonymous ?? false,
                     isPremium: _isPremium,
                     onItemSelected: (index, {subIndex}) async {
-                      
-                      if (_selectedIndex == 1 && _workersKey.currentState?.hasUnsavedBulkChanges == true) {
-                        final shouldDiscard = await _workersKey.currentState!.confirmDiscardBulkChanges();
+                      if (_selectedIndex == 1 &&
+                          _workersKey.currentState?.hasUnsavedBulkChanges ==
+                              true) {
+                        final shouldDiscard = await _workersKey.currentState!
+                            .confirmDiscardBulkChanges();
                         if (!shouldDiscard) return;
                       }
                       setState(() {

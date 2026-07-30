@@ -1,18 +1,13 @@
-import 'dart:async';
-
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../shared/auth_widgets.dart';
 import '../utils/snackbar_utils.dart';
-
-enum _PasswordResetStep { email, otp, password }
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -24,24 +19,11 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _otpController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   late AuthService _authService;
 
-  _PasswordResetStep _step = _PasswordResetStep.email;
   bool _isLoading = false;
   bool _submitted = false;
-  bool _obscureNewPassword = true;
-  bool _obscureConfirmPassword = true;
-  String? _resetToken;
-  Timer? _resendTimer;
-  int _resendSeconds = 0;
-
-  @override
-  void initState() {
-    super.initState();
-  }
+  bool _emailSent = false;
 
   @override
   void didChangeDependencies() {
@@ -51,202 +33,51 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   void dispose() {
-    _resendTimer?.cancel();
     _emailController.dispose();
-    _otpController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _startResendTimer() {
-    _resendTimer?.cancel();
-    setState(() => _resendSeconds = 60);
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_resendSeconds <= 1) {
-        timer.cancel();
-        setState(() => _resendSeconds = 0);
-      } else {
-        setState(() => _resendSeconds--);
-      }
-    });
-  }
-
-  Future<void> _requestOtp({bool isResend = false}) async {
-    if (!isResend) {
-      _submitted = true;
-      if (!(_formKey.currentState?.validate() ?? false)) return;
-    }
-    setState(() => _isLoading = true);
-    try {
-      await _authService.requestPasswordResetOtp(_emailController.text);
-      if (!mounted) return;
-      _otpController.clear();
-      setState(() {
-        _step = _PasswordResetStep.otp;
-        _submitted = false;
-      });
-      _startResendTimer();
-      FlashySnackBar.show(
-        context,
-        title: 'otp_sent'.tr(),
-        message: 'otp_sent_if_account_exists'.tr(),
-      );
-    } on FirebaseFunctionsException catch (error) {
-      _showFunctionsError(error);
-    } catch (_) {
-      _showUnexpectedError();
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _verifyOtp() async {
+  Future<void> _sendResetEmail() async {
     _submitted = true;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _isLoading = true);
     try {
-      final token = await _authService.verifyPasswordResetOtp(
-        email: _emailController.text,
-        otp: _otpController.text,
-      );
+      await _authService.sendPasswordResetEmail(_emailController.text);
       if (!mounted) return;
-      _resendTimer?.cancel();
       setState(() {
-        _resetToken = token;
-        _step = _PasswordResetStep.password;
+        _emailSent = true;
         _submitted = false;
-        _resendSeconds = 0;
       });
-      FlashySnackBar.show(
-        context,
-        title: 'otp_verified'.tr(),
-        message: 'otp_verified_message'.tr(),
-      );
-    } on FirebaseFunctionsException catch (error) {
-      _showFunctionsError(error);
+    } on FirebaseAuthException catch (e) {
+      bool isError = true;
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'password_reset_link'.tr();
+          isError = false;
+          break;
+        case 'invalid-email':
+          message = 'invalid_email_address_short'.tr();
+          break;
+        case 'too-many-requests':
+          message = 'too_many_requests'.tr();
+          break;
+        default:
+          message = 'password_reset_failed'.tr();
+      }
+      if (mounted) _showMessage(message, isError: isError);
     } catch (_) {
-      _showUnexpectedError();
+      if (mounted) _showMessage('unexpected_error'.tr(), isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _confirmPasswordReset() async {
-    _submitted = true;
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final resetToken = _resetToken;
-    if (resetToken == null || resetToken.isEmpty) {
-      _showMessage('otp_session_expired'.tr(), isError: true);
-      _goToStep(_PasswordResetStep.otp);
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      await _authService.confirmPasswordResetOtp(
-        email: _emailController.text,
-        resetToken: resetToken,
-        newPassword: _newPasswordController.text,
-      );
-      if (!mounted) return;
-      FlashySnackBar.show(
-        context,
-        title: 'password_reset_success'.tr(),
-        message: 'password_reset_success_message'.tr(),
-      );
-      Navigator.of(context).pop(true);
-    } on FirebaseFunctionsException catch (error) {
-      _showFunctionsError(error);
-    } catch (_) {
-      _showUnexpectedError();
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _showFunctionsError(FirebaseFunctionsException error) {
-    if (!mounted) return;
-    final message = switch (error.code) {
-      'resource-exhausted' => 'otp_too_many_requests'.tr(),
-      'invalid-argument' when _step == _PasswordResetStep.email =>
-        'invalid_email_address_short'.tr(),
-      'invalid-argument' => 'invalid_or_expired_otp'.tr(),
-      'failed-precondition' => 'password_requirements_not_met'.tr(),
-      'deadline-exceeded' => 'network_error_short'.tr(),
-      'unavailable' => 'network_error_short'.tr(),
-      _ => 'password_reset_failed'.tr(),
-    };
-    _showMessage(message, isError: true);
-  }
-
-  void _showUnexpectedError() {
-    if (mounted) _showMessage('unexpected_error'.tr(), isError: true);
   }
 
   void _showMessage(String message, {required bool isError}) {
     FlashySnackBar.show(context, message: message, isError: isError);
   }
 
-  void _goToStep(_PasswordResetStep step) {
-    setState(() {
-      _step = step;
-      _submitted = false;
-      if (step != _PasswordResetStep.password) _resetToken = null;
-    });
-    _otpController.clear();
-    _newPasswordController.clear();
-    _confirmPasswordController.clear();
-  }
-
-  void _handleBack() {
-    if (_step == _PasswordResetStep.password) {
-      _goToStep(_PasswordResetStep.otp);
-    } else if (_step == _PasswordResetStep.otp) {
-      _resendTimer?.cancel();
-      _goToStep(_PasswordResetStep.email);
-    } else {
-      Navigator.of(context).pop();
-    }
-  }
-
-  String get _title => switch (_step) {
-    _PasswordResetStep.email => 'reset_password'.tr(),
-    _PasswordResetStep.otp => 'verify_otp'.tr(),
-    _PasswordResetStep.password => 'reset_password'.tr(),
-  };
-
-  String get _subtitle => switch (_step) {
-    _PasswordResetStep.email => 'forgot_password_otp_subtitle'.tr(),
-    _PasswordResetStep.otp => 'enter_otp_sent_to'.tr(
-      namedArgs: {'email': _emailController.text.trim()},
-    ),
-    _PasswordResetStep.password => 'create_new_password_subtitle'.tr(),
-  };
-
-  String get _buttonLabel => switch (_step) {
-    _PasswordResetStep.email => 'send_otp'.tr(),
-    _PasswordResetStep.otp => 'verify_otp'.tr(),
-    _PasswordResetStep.password => 'reset_password'.tr(),
-  };
-
-  Future<void> _handlePrimaryAction() => switch (_step) {
-    _PasswordResetStep.email => _requestOtp(),
-    _PasswordResetStep.otp => _verifyOtp(),
-    _PasswordResetStep.password => _confirmPasswordReset(),
-  };
-
-  
-  InputDecoration _buildInputDecoration(
-    String hint, {
-    bool isPassword = false,
-    bool obscureText = false,
-    VoidCallback? onToggleVisibility,
-  }) {
+  InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -269,15 +100,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ),
       filled: true,
       fillColor: Colors.white,
-      suffixIcon: isPassword
-          ? IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey.shade400,
-              ),
-              onPressed: onToggleVisibility,
-            )
-          : null,
     );
   }
 
@@ -296,7 +118,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -309,7 +130,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         children: [
           Row(
             children: [
-              
               if (isDesktop)
                 Expanded(
                   flex: 11,
@@ -317,16 +137,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     color: const Color(0xFF165CDB),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        
-                        final scale = (constraints.maxWidth / 880.0).clamp(
-                          0.4,
-                          1.2,
+                        final panelWidth = constraints.maxWidth.clamp(
+                          0.0,
+                          880.0,
                         );
-
+                        final scale = (panelWidth / 880.0).clamp(0.4, 1.0);
+                        final mockupWidth = panelWidth + (520 * scale) - 90;
                         return Stack(
                           clipBehavior: Clip.hardEdge,
                           children: [
-                            
                             Positioned(
                               top: 40,
                               left: 80,
@@ -352,22 +171,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       color: Colors.white,
                                       fontFamily: 'SF Pro Display',
                                       height: 1.4,
-                                      letterSpacing: 2,
+                                      letterSpacing: 2.2,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
-                            
                             Positioned(
                               top: 380 * scale,
                               left: -520 * scale,
-                              right: 90,
                               child: Transform.rotate(
                                 angle: -0.18,
                                 child: Container(
-                                  width: 1200 * scale,
+                                  width: mockupWidth,
                                   height: 800 * scale,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -417,7 +233,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 ),
 
-              
               Expanded(
                 flex: 9,
                 child: Center(
@@ -455,7 +270,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'forgot_password_subtitle_reset'.tr(),
+                              _emailSent
+                                  ? 'forgot_password_subtitle_reset'.tr()
+                                  : 'forgot_password_otp_subtitle'.tr(),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
@@ -465,86 +282,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            _buildStepIndicator(),
-                            const SizedBox(height: 20),
-                            Form(
-                              key: _formKey,
-                              autovalidateMode: _submitted
-                                  ? AutovalidateMode.onUserInteraction
-                                  : AutovalidateMode.disabled,
-                              child: _buildCurrentForm(),
-                            ),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : _handlePrimaryAction,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0044C9),
-                                  foregroundColor: const Color(0xFFFFFFFF),
-                                  disabledBackgroundColor: const Color(
-                                    0xFF0044C9,
-                                  ).withOpacity(0.6),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Color(0xFFFFFFFF),
-                                              ),
-                                        ),
-                                      )
-                                    : Text(
-                                        _buttonLabel,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFFFFFFFF),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            Center(
-                              child: RichText(
-                                text: TextSpan(
-                                  text: '',
-                                  style: const TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: _step == _PasswordResetStep.email
-                                          ? 'dont_need_this'.tr()
-                                          : 'back'.tr(),
-                                      style: const TextStyle(
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = _handleBack,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
+                            if (_emailSent)
+                              _buildEmailSentContent()
+                            else
+                              _buildEmailForm(),
                           ],
                         ),
                       ),
@@ -555,7 +296,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ],
           ),
 
-          
           Positioned(
             top: 40,
             right: 40,
@@ -591,184 +331,217 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  
-  Widget _buildStepIndicator() {
-    final currentIndex = _step.index;
-    return Row(
-      children: List.generate(3, (index) {
-        final active = index <= currentIndex;
-        return Expanded(
-          child: Container(
-            height: 4,
-            margin: EdgeInsets.only(right: index == 2 ? 0 : 8),
-            decoration: BoxDecoration(
-              color: active ? const Color(0xFF0247C4) : const Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.circular(4),
+  Widget _buildEmailForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Form(
+          key: _formKey,
+          autovalidateMode: _submitted
+              ? AutovalidateMode.onUserInteraction
+              : AutovalidateMode.disabled,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFieldLabel('email_label'.tr()),
+              TextFormField(
+                controller: _emailController,
+                enabled: !_isLoading,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _sendResetEmail(),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontFamily: 'SF Pro Display',
+                ),
+                decoration: _buildInputDecoration('email_hint'.tr()),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'email_required'.tr();
+                  }
+                  if (!RegExp(
+                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                  ).hasMatch(value.trim())) {
+                    return 'email_invalid'.tr();
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _sendResetEmail,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0044C9),
+              foregroundColor: const Color(0xFFFFFFFF),
+              disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              elevation: 0,
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFFFFFFFF),
+                      ),
+                    ),
+                  )
+                : Text(
+                    'send_reset_link'.tr(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFFFFF),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Center(
+          child: RichText(
+            text: TextSpan(
+              text: '',
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+              children: [
+                TextSpan(
+                  text: 'back'.tr(),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
           ),
-        );
-      }),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 
-  
-  Widget _buildCurrentForm() {
-    switch (_step) {
-      case _PasswordResetStep.email:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildFieldLabel('email_label'.tr()),
-            TextFormField(
-              controller: _emailController,
-              enabled: !_isLoading,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _handlePrimaryAction(),
+  Widget _buildEmailSentContent() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F9FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFBAE6FD)),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.mark_email_unread_rounded,
+                color: Color(0xFF0284C7),
+                size: 28,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'password_reset_email_sent'.tr(
+                        namedArgs: {'email': _emailController.text.trim()},
+                      ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'check_email_reset_link'.tr(
+                        namedArgs: {'email': _emailController.text.trim()},
+                      ),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF475569),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0044C9),
+              foregroundColor: const Color(0xFFFFFFFF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              'back_to_login'.tr(),
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFFFFFF),
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _buildInputDecoration('email_hint'.tr()),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'email_required'.tr();
-                }
-                if (!RegExp(
-                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                ).hasMatch(value.trim())) {
-                  return 'email_invalid'.tr();
-                }
-                return null;
-              },
             ),
-          ],
-        );
-
-      case _PasswordResetStep.otp:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildFieldLabel('otp_code'.tr()),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _otpController,
-              enabled: !_isLoading,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(6),
-              ],
-              onFieldSubmitted: (_) => _handlePrimaryAction(),
-              textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Center(
+          child: RichText(
+            text: TextSpan(
+              text: '',
               style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 10,
+                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
                 fontFamily: 'SF Pro Display',
               ),
-              decoration: _buildInputDecoration('otp_hint'.tr()),
-              validator: (value) {
-                if (value == null || value.length != 6) {
-                  return 'enter_six_digit_otp'.tr();
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'did_not_receive_otp'.tr(),
+                TextSpan(
+                  text: 'resend_email'.tr(),
                   style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 13,
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
                     fontFamily: 'SF Pro Display',
                   ),
-                ),
-                TextButton(
-                  onPressed: _isLoading || _resendSeconds > 0
-                      ? null
-                      : () => _requestOtp(isResend: true),
-                  child: Text(
-                    _resendSeconds > 0
-                        ? 'resend_otp_in'.tr(
-                            namedArgs: {'seconds': '$_resendSeconds'},
-                          )
-                        : 'resend_otp'.tr(),
-                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = _isLoading ? null : _sendResetEmail,
                 ),
               ],
             ),
-          ],
-        );
-
-      case _PasswordResetStep.password:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildFieldLabel('new_password'.tr()),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _newPasswordController,
-              enabled: !_isLoading,
-              obscureText: _obscureNewPassword,
-              textInputAction: TextInputAction.next,
-              style: const TextStyle(
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _buildInputDecoration(
-                'new_password_hint'.tr(),
-                isPassword: true,
-                obscureText: _obscureNewPassword,
-                onToggleVisibility: () =>
-                    setState(() => _obscureNewPassword = !_obscureNewPassword),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'password_enter'.tr();
-                }
-                if (value.length < 6) return 'password_too_short'.tr();
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildFieldLabel('confirm_new_password'.tr()),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _confirmPasswordController,
-              enabled: !_isLoading,
-              obscureText: _obscureConfirmPassword,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _handlePrimaryAction(),
-              style: const TextStyle(
-                fontSize: 15,
-                fontFamily: 'SF Pro Display',
-              ),
-              decoration: _buildInputDecoration(
-                'confirm_new_password_hint'.tr(),
-                isPassword: true,
-                obscureText: _obscureConfirmPassword,
-                onToggleVisibility: () => setState(
-                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'confirm_password_required'.tr();
-                }
-                if (value != _newPasswordController.text) {
-                  return 'passwords_do_not_match'.tr();
-                }
-                return null;
-              },
-            ),
-          ],
-        );
-    }
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
   }
 }

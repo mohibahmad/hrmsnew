@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +15,13 @@ import 'payroll_service.dart';
 import 'preferences_service.dart';
 import 'dummy_data.dart';
 import 'invoice_service.dart';
+import '../utils/currency_formatter.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/amount_text.dart';
 
 /// Result of a single automated payroll run for one worker.
 class AutoPayrollResult {
+  final String workerId;
   final String workerName;
   final String email;
   String netSalary;
@@ -28,8 +29,11 @@ class AutoPayrollResult {
   final String? error;
   final int absents;
   final int leaves;
+  final int paidLeaves;
+  final int unpaidLeaves;
   String absentDeduction;
   String leaveDeduction;
+  bool deductionsAreTotals;
   String overtimeAmount;
   String customDeduction;
   double rawNetSalaryValue;
@@ -40,6 +44,7 @@ class AutoPayrollResult {
   final String? imageUrl;
 
   AutoPayrollResult({
+    this.workerId = '',
     required this.workerName,
     required this.email,
     required this.netSalary,
@@ -47,20 +52,46 @@ class AutoPayrollResult {
     this.error,
     this.absents = 0,
     this.leaves = 0,
+    this.paidLeaves = 0,
+    this.unpaidLeaves = 0,
     this.absentDeduction = '',
     this.leaveDeduction = '',
+    this.deductionsAreTotals = false,
     this.overtimeAmount = '',
     this.customDeduction = '',
     this.rawNetSalaryValue = 0,
     this.salary = '',
-    this.totalWorkDays = '22',
+    this.totalWorkDays = '',
     this.position = '',
     this.salaryType = 'Monthly',
     this.imageUrl,
   });
+
+  AutoPayrollResult copy() => AutoPayrollResult(
+    workerId: workerId,
+    workerName: workerName,
+    email: email,
+    netSalary: netSalary,
+    success: success,
+    error: error,
+    absents: absents,
+    leaves: leaves,
+    paidLeaves: paidLeaves,
+    unpaidLeaves: unpaidLeaves,
+    absentDeduction: absentDeduction,
+    leaveDeduction: leaveDeduction,
+    deductionsAreTotals: deductionsAreTotals,
+    overtimeAmount: overtimeAmount,
+    customDeduction: customDeduction,
+    rawNetSalaryValue: rawNetSalaryValue,
+    salary: salary,
+    totalWorkDays: totalWorkDays,
+    position: position,
+    salaryType: salaryType,
+    imageUrl: imageUrl,
+  );
 }
 
-/// Tracks the overall outcome of a salary-day payroll run.
 class PayrollRunSummary {
   final DateTime runDate;
   final int totalWorkers;
@@ -79,13 +110,6 @@ class PayrollRunSummary {
   });
 }
 
-/// Responsible for scheduling and executing automated payroll on the
-/// configured salary day of each month.
-///
-/// Supports two modes:
-///   - **Semi‑auto** (default): calculates everything and shows a review
-///     dialog before finalising.
-///   - **Fully auto**: processes immediately without user intervention.
 class SalaryDayScheduler {
   static const String _lastRunKey = 'salary_day_last_run';
 
@@ -108,11 +132,12 @@ class SalaryDayScheduler {
 
     final today = DateTime.now();
 
-    // Only run on the configured day.
-    if (today.day != salaryDay) return false;
+    if (!PayrollService.isPayrollDue(today, salaryDay)) return false;
 
-    // Guard against running more than once per day.
-    if (await _alreadyRanToday()) return false;
+    final period = PayrollService.payrollPeriodLabel(
+      PayrollService.completedPayrollMonth(referenceDate: today),
+    );
+    if (await _alreadyRanForPeriod(period)) return false;
 
     // Offer the run (semi‑auto by default).
     final summary = await runPayroll(context, autoMode: false);
@@ -127,7 +152,12 @@ class SalaryDayScheduler {
     BuildContext context, {
     bool autoMode = false,
   }) async {
-    final isGuest = Provider.of<AuthService>(context, listen: false).currentUser?.isAnonymous ?? false;
+    final isGuest =
+        Provider.of<AuthService>(
+          context,
+          listen: false,
+        ).currentUser?.isAnonymous ??
+        false;
 
     // 1. Gather workers.
     List<Map<String, dynamic>> workers;
@@ -136,20 +166,27 @@ class SalaryDayScheduler {
       workers = List<Map<String, dynamic>>.from(DummyData.workers);
     } else {
       try {
-        final workerSnap = await Provider.of<FirestoreService>(context, listen: false).getWorkersOnce();
+        final workerSnap = await Provider.of<FirestoreService>(
+          context,
+          listen: false,
+        ).getWorkersOnce();
         workers = workerSnap.docs
             .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
             .where((w) {
               final name = (w['name'] ?? '').toString().trim();
+              final workerId = (w['id'] ?? '').toString().trim();
               final email = (w['email'] ?? '').toString().trim();
-              return name.isNotEmpty && email.isNotEmpty;
+              return name.isNotEmpty &&
+                  (workerId.isNotEmpty || email.isNotEmpty);
             })
             .toList();
       } catch (e) {
         if (context.mounted) {
           FlashySnackBar.show(
             context,
-            message: 'failed_to_load_worker_data'.tr(namedArgs: {'error': '$e'}),
+            message: 'failed_to_load_worker_data'.tr(
+              namedArgs: {'error': '$e'},
+            ),
             isError: true,
           );
         }
@@ -169,34 +206,59 @@ class SalaryDayScheduler {
     }
 
     final now = DateTime.now();
-    final periodLabel = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final payrollMonth = PayrollService.completedPayrollMonth(
+      referenceDate: now,
+    );
+    final periodLabel = PayrollService.payrollPeriodLabel(payrollMonth);
 
-    // 2. Fetch attendance for all workers in parallel (fixes N+1 query problem).
-    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    final firestoreService = Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    );
     final attendanceFutures = <Future<Map<String, int>>>[];
     for (final worker in workers) {
       final email = (worker['email'] ?? '').toString();
-      if (!isGuest && email.trim().isNotEmpty) {
+      final workerId = (worker['id'] ?? '').toString();
+      if (!isGuest && (email.trim().isNotEmpty || workerId.isNotEmpty)) {
         attendanceFutures.add(
-          firestoreService.getWorkerMonthlyAttendance(email).catchError((_) {
-            final att = PayrollService.attendanceCounts(worker);
-            return <String, int>{'absents': att['absents'] ?? 0, 'leaves': att['leaves'] ?? 0};
-          }),
+          firestoreService
+              .getWorkerMonthlyAttendance(
+                email,
+                workerId: workerId,
+                month: payrollMonth,
+              )
+              .catchError((_) {
+                final att = PayrollService.attendanceCounts(worker);
+                return <String, int>{
+                  'absents': att['absents'] ?? 0,
+                  'paidLeaves': att['paidLeaves'] ?? 0,
+                  'unpaidLeaves': att['unpaidLeaves'] ?? 0,
+                  'leaves': att['leaves'] ?? 0,
+                };
+              }),
         );
       } else {
         final att = PayrollService.attendanceCounts(worker);
-        attendanceFutures.add(Future.value(<String, int>{'absents': att['absents'] ?? 0, 'leaves': att['leaves'] ?? 0}));
+        attendanceFutures.add(
+          Future.value(<String, int>{
+            'absents': att['absents'] ?? 0,
+            'paidLeaves': att['paidLeaves'] ?? 0,
+            'unpaidLeaves': att['unpaidLeaves'] ?? 0,
+            'leaves': att['leaves'] ?? 0,
+          }),
+        );
       }
     }
     final attendanceResults = await Future.wait(attendanceFutures);
 
-    // 2b. Get auto-calculated working days for the month (Sundays + holidays excluded).
-    final autoWorkDays = await firestoreService.getMonthlyWorkingDays();
+    final autoWorkDays = await firestoreService.getMonthlyWorkingDays(
+      month: payrollMonth,
+    );
 
-    // 3. Calculate payroll for each worker using pre-fetched attendance.
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
       final worker = workers[i];
+      final workerId = (worker['id'] ?? '').toString();
       final name = (worker['name'] ?? '').toString();
       final email = (worker['email'] ?? '').toString();
       final salaryStr = PayrollService.currentSalaryDisplay(worker);
@@ -204,16 +266,10 @@ class SalaryDayScheduler {
       final workDays = int.tryParse(totalWorkDays) ?? autoWorkDays;
 
       int absents = attendanceResults[i]['absents'] ?? 0;
+      int paidLeaves = attendanceResults[i]['paidLeaves'] ?? 0;
+      int unpaidLeaves = attendanceResults[i]['unpaidLeaves'] ?? 0;
       int leaves = attendanceResults[i]['leaves'] ?? 0;
 
-      // Use worker's configured absent/leave deduction per day if available.
-      // If not configured, default both to daily rate so that every absent or
-      // leave day is itemised as a deduction.  This matches the individual
-      // payroll screen where the HR normally enters these values manually.
-      final rawSalary = PayrollService.extractSalary(salaryStr);
-      final dailyRate = workDays > 0
-          ? (rawSalary / workDays).toStringAsFixed(2)
-          : '0';
       final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
           .toString()
           .trim();
@@ -222,17 +278,16 @@ class SalaryDayScheduler {
           .trim();
       final effectiveAbsentDeduction = absentDeductionPerDay.isNotEmpty
           ? absentDeductionPerDay
-          : dailyRate;
+          : '0';
       final effectiveLeaveDeduction = leaveDeductionPerDay.isNotEmpty
           ? leaveDeductionPerDay
-          : dailyRate;
+          : '0';
+      final absentDeductionTotal =
+          PayrollService.extractSalary(effectiveAbsentDeduction) * absents;
+      final leaveDeductionTotal =
+          PayrollService.extractSalary(effectiveLeaveDeduction) * unpaidLeaves;
 
-      // Match _recalc() in AddPayrollScreen: when a per-day deduction is
-      // configured for leaves, those leave days also reduce worked days.
-      // Absents always reduce worked days irrespective of deduction config.
-      final hasLeaveDeduction = effectiveLeaveDeduction.isNotEmpty;
-      final effectiveDays =
-          workDays - absents - (hasLeaveDeduction ? leaves : 0);
+      final effectiveDays = workDays - absents - unpaidLeaves;
 
       String netSalary;
       double rawNetVal = 0;
@@ -242,7 +297,7 @@ class SalaryDayScheduler {
           totalWorkDays: workDays.toString(),
           daysWorked: effectiveDays > 0 ? effectiveDays.toString() : '0',
           absents: absents.toString(),
-          leaves: leaves.toString(),
+          leaves: unpaidLeaves.toString(),
           overtimeAmount: (worker['overtimeAmount'] ?? '').toString(),
           absentDeductionPerDay: effectiveAbsentDeduction,
           leaveDeductionPerDay: effectiveLeaveDeduction,
@@ -253,6 +308,7 @@ class SalaryDayScheduler {
       } catch (e) {
         results.add(
           AutoPayrollResult(
+            workerId: workerId,
             workerName: name,
             email: email,
             netSalary: '0',
@@ -265,6 +321,7 @@ class SalaryDayScheduler {
 
       results.add(
         AutoPayrollResult(
+          workerId: workerId,
           workerName: name,
           email: email,
           netSalary: netSalary,
@@ -272,8 +329,11 @@ class SalaryDayScheduler {
           success: true,
           absents: absents,
           leaves: leaves,
-          absentDeduction: effectiveAbsentDeduction,
-          leaveDeduction: effectiveLeaveDeduction,
+          paidLeaves: paidLeaves,
+          unpaidLeaves: unpaidLeaves,
+          absentDeduction: _editableAmount(absentDeductionTotal),
+          leaveDeduction: _editableAmount(leaveDeductionTotal),
+          deductionsAreTotals: true,
           overtimeAmount: (worker['overtimeAmount'] ?? '').toString(),
           salary: salaryStr,
           totalWorkDays: workDays.toString(),
@@ -297,6 +357,7 @@ class SalaryDayScheduler {
       results: results,
       periodLabel: periodLabel,
     );
+    var committedSummary = summary;
 
     if (!autoMode && context.mounted) {
       final selectedResults = await _showReviewDialog(context, summary);
@@ -310,6 +371,7 @@ class SalaryDayScheduler {
         results: selectedResults,
         periodLabel: summary.periodLabel,
       );
+      committedSummary = filteredSummary;
 
       await _commitPayrollRun(filteredSummary, isGuest, context);
 
@@ -318,69 +380,70 @@ class SalaryDayScheduler {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
             .toList();
-        await _generateAndSaveZip(context, paidResults, filteredSummary.periodLabel);
+        await _generateAndSaveZip(
+          context,
+          paidResults,
+          filteredSummary.periodLabel,
+        );
       }
     } else {
       await _commitPayrollRun(summary, isGuest, context);
 
       // Auto-download ZIP if more than 1 worker was paid.
       if (summary.successCount > 1 && context.mounted) {
-        final paidResults = summary.results
-            .where((r) => r.success)
-            .toList();
+        final paidResults = summary.results.where((r) => r.success).toList();
         await _generateAndSaveZip(context, paidResults, summary.periodLabel);
       }
     }
 
-    await _markRunComplete();
+    await _markRunComplete(periodLabel);
 
     if (context.mounted && autoMode) {
       FlashySnackBar.show(
         context,
         message: 'payroll_run_complete'.tr(
-          namedArgs: {'count': '$successCount'},
+          namedArgs: {'count': '${committedSummary.successCount}'},
         ),
       );
     }
 
-    return summary;
+    return committedSummary;
   }
 
   Future<PayrollRunSummary?> payAll(BuildContext context) async {
-    // Note: No loading dialog here because runPayroll(autoMode: false)
-    // will show its own review dialog (_showReviewDialog). A loading
-    // dialog shown first would block the review dialog from appearing.
     final result = await runPayroll(context, autoMode: false);
     return result;
   }
 
   Future<int?> _loadSalaryDay(BuildContext context) async {
-    final isGuest = Provider.of<AuthService>(context, listen: false).currentUser?.isAnonymous ?? false;
+    final isGuest =
+        Provider.of<AuthService>(
+          context,
+          listen: false,
+        ).currentUser?.isAnonymous ??
+        false;
     if (isGuest) {
       return PreferencesService.getCompanySalaryDay();
     }
-    final profile = await Provider.of<FirestoreService>(context, listen: false).getUserProfile();
+    final profile = await Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    ).getUserProfile();
     final raw = profile?['salaryPaymentDay'];
     final day = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
     if (day != null && (day < 1 || day > 31)) return null;
     return day;
   }
 
-  Future<bool> _alreadyRanToday() async {
+  Future<bool> _alreadyRanForPeriod(String periodLabel) async {
     final prefs = await SharedPreferences.getInstance();
     final lastRun = prefs.getString(_lastRunKey);
-    if (lastRun == null) return false;
-    final today = DateTime.now();
-    final last = DateTime.tryParse(lastRun);
-    if (last == null) return false;
-    return last.year == today.year &&
-        last.month == today.month &&
-        last.day == today.day;
+    return lastRun == periodLabel;
   }
 
-  Future<void> _markRunComplete() async {
+  Future<void> _markRunComplete(String periodLabel) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastRunKey, DateTime.now().toIso8601String());
+    await prefs.setString(_lastRunKey, periodLabel);
   }
 
   Future<void> _commitPayrollRun(
@@ -391,45 +454,82 @@ class SalaryDayScheduler {
     if (isGuest) {
       for (final r in summary.results) {
         if (!r.success) continue;
+        final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email;
+        final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
         final record = {
+          'workerId': r.workerId,
           'name': r.workerName,
           'email': r.email,
           'status': 'Paid',
           'totalWorkDays': r.totalWorkDays,
           'absents': r.absents.toString(),
+          'paidLeaves': r.paidLeaves,
+          'unpaidLeaves': r.unpaidLeaves,
           'leaves': r.leaves.toString(),
           'overtimeAmount': r.overtimeAmount,
           'absentDeduction': r.absentDeduction,
           'leaveDeduction': r.leaveDeduction,
+          'deductionsAreTotals': r.deductionsAreTotals,
           'salary': r.salary,
+          'salaryType': r.salaryType,
           'netSalary': r.netSalary,
+          'netSalaryAmount': r.rawNetSalaryValue,
+          'netSalaryFormatted': r.netSalary,
+          'payrollKey': payrollKey,
+          'payPeriod': '${summary.periodLabel}-01',
+          'cancelledAt': null,
           'lastModified': DateTime.now(),
           'createdAt': FieldValue.serverTimestamp(),
           'payrollDate': summary.runDate,
         };
-        DummyData.payroll.add({
-          ...record,
-          'id': DateTime.now().microsecondsSinceEpoch.toString(),
-        });
-        final netAmount = PayrollService.extractSalary(r.netSalary);
+        final existingPayrollIndex = DummyData.payroll.indexWhere(
+          (payroll) => (payroll['payrollKey'] ?? '').toString() == payrollKey,
+        );
+        if (existingPayrollIndex == -1) {
+          DummyData.payroll.add({
+            ...record,
+            'id': DateTime.now().microsecondsSinceEpoch.toString(),
+          });
+        } else {
+          DummyData.payroll[existingPayrollIndex] = {
+            ...DummyData.payroll[existingPayrollIndex],
+            ...record,
+          };
+        }
+        final netAmount = r.rawNetSalaryValue;
         if (netAmount > 0) {
           final expenseRecord = {
             'name': r.workerName,
             'date': summary.runDate,
             'category': 'Salary',
             'amount': netAmount,
-            'description': 'Salary payment for ${r.workerName} (${summary.periodLabel})',
+            'description':
+                'Salary payment for ${r.workerName} (${summary.periodLabel})',
+            'payrollKey': payrollKey,
           };
-          final expenseId = 'dummy_e${DateTime.now().microsecondsSinceEpoch}_${r.email.hashCode}';
-          DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
+          final expenseId =
+              'dummy_e${DateTime.now().microsecondsSinceEpoch}_${r.email.hashCode}';
+          final expenseIndex = DummyData.expenses.indexWhere(
+            (expense) => (expense['payrollKey'] ?? '').toString() == payrollKey,
+          );
+          if (expenseIndex == -1) {
+            DummyData.expenses.insert(0, {...expenseRecord, 'id': expenseId});
+          } else {
+            DummyData.expenses[expenseIndex] = {
+              ...DummyData.expenses[expenseIndex],
+              ...expenseRecord,
+            };
+          }
         }
       }
       await DummyData.saveToPrefs();
       return;
     }
 
-    // Batch Firestore writes for better performance.
-    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    final firestoreService = Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    );
     final successfulResults = summary.results.where((r) => r.success).toList();
 
     // Prepare payroll records
@@ -438,32 +538,46 @@ class SalaryDayScheduler {
     final notifications = <Map<String, dynamic>>[];
 
     for (final r in successfulResults) {
+      final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email;
+      final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
       final record = {
+        'workerId': r.workerId,
         'name': r.workerName,
         'email': r.email,
         'status': 'Paid',
         'totalWorkDays': r.totalWorkDays,
         'absents': r.absents.toString(),
+        'paidLeaves': r.paidLeaves,
+        'unpaidLeaves': r.unpaidLeaves,
         'leaves': r.leaves.toString(),
         'overtimeAmount': r.overtimeAmount,
         'absentDeduction': r.absentDeduction,
         'leaveDeduction': r.leaveDeduction,
+        'deductionsAreTotals': r.deductionsAreTotals,
         'salary': r.salary,
+        'salaryType': r.salaryType,
         'netSalary': r.netSalary,
+        'netSalaryAmount': r.rawNetSalaryValue,
+        'netSalaryFormatted': r.netSalary,
+        'payrollKey': payrollKey,
+        'payPeriod': '${summary.periodLabel}-01',
+        'cancelledAt': null,
         'lastModified': DateTime.now(),
         'payrollDate': summary.runDate,
       };
       payrollRecords.add(record);
 
       // Prepare expense record
-      final netAmount = PayrollService.extractSalary(r.netSalary);
+      final netAmount = r.rawNetSalaryValue;
       if (netAmount > 0) {
         expenseRecords.add({
           'name': r.workerName,
           'date': summary.runDate,
           'category': 'Salary',
           'amount': netAmount,
-          'description': 'Salary payment for ${r.workerName} (${summary.periodLabel})',
+          'description':
+              'Salary payment for ${r.workerName} (${summary.periodLabel})',
+          'payrollKey': payrollKey,
         });
       }
 
@@ -471,12 +585,18 @@ class SalaryDayScheduler {
       final amount = r.netSalary;
       if (r.workerName.isNotEmpty) {
         notifications.add({
+          'notificationKey': 'payroll_$payrollKey',
           'type': 'payroll_added',
           'title': 'notif_title_payroll'.tr(namedArgs: {'name': r.workerName}),
           'message': amount.isNotEmpty
-              ? 'notif_msg_payroll_amount'.tr(namedArgs: {'amount': '\$$amount', 'name': r.workerName})
+              ? 'notif_msg_payroll_amount'.tr(
+                  namedArgs: {'amount': '\$$amount', 'name': r.workerName},
+                )
               : 'notif_msg_payroll'.tr(namedArgs: {'name': r.workerName}),
-          'data': {'name': r.workerName, 'amount': amount.isNotEmpty ? '\$$amount' : ''},
+          'data': {
+            'name': r.workerName,
+            'amount': amount.isNotEmpty ? '\$$amount' : '',
+          },
         });
       }
     }
@@ -511,24 +631,36 @@ class SalaryDayScheduler {
 
       for (final r in selected) {
         if (!r.success) continue;
-        final rawSalary = PayrollService.extractSalary(r.salary);
+        final enteredSalary = PayrollService.extractSalary(r.salary);
+        final rawSalary = r.salaryType.trim().toLowerCase() == 'annual'
+            ? enteredSalary / 12
+            : enteredSalary;
         final workDays = int.tryParse(r.totalWorkDays) ?? 22;
         final dailyRate = workDays > 0
             ? (rawSalary / workDays).toStringAsFixed(2)
             : '0';
         final absentsInt = r.absents;
         final leavesInt = r.leaves;
-        final absentDeductionAmt = double.tryParse(r.absentDeduction) ?? 0.0;
-        final leaveDeductionAmt = double.tryParse(r.leaveDeduction) ?? 0.0;
-        final overtimeAmt = double.tryParse(r.overtimeAmount) ?? 0.0;
-        final absentTotal = absentDeductionAmt * absentsInt;
-        final leaveTotal = leaveDeductionAmt * leavesInt;
+        final deductibleLeaves = r.unpaidLeaves;
+        final absentDeductionAmt = PayrollService.extractSalary(
+          r.absentDeduction,
+        );
+        final leaveDeductionAmt = PayrollService.extractSalary(
+          r.leaveDeduction,
+        );
+        final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
+        final absentTotal = r.deductionsAreTotals
+            ? absentDeductionAmt
+            : absentDeductionAmt * absentsInt;
+        final leaveTotal = r.deductionsAreTotals
+            ? leaveDeductionAmt
+            : leaveDeductionAmt * deductibleLeaves;
         final totalDeductions = absentTotal + leaveTotal;
-        final hasLeaveDeduction = leaveDeductionAmt > 0;
-        final effectiveDays = workDays - absentsInt - (hasLeaveDeduction ? leavesInt : 0);
-        final grossPay = rawSalary > 0 && workDays > 0
-            ? (rawSalary / workDays * effectiveDays).toStringAsFixed(2)
-            : '0';
+        final effectiveDays = (workDays - absentsInt - leavesInt).clamp(
+          0,
+          workDays,
+        );
+        final grossPay = rawSalary.toStringAsFixed(2);
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
           employeeName: r.workerName,
@@ -539,19 +671,39 @@ class SalaryDayScheduler {
           daysWorked: effectiveDays.toString(),
           absents: absentsInt.toString(),
           leaves: leavesInt.toString(),
-          overtimeAmount: overtimeAmt > 0 ? 'Rs ${overtimeAmt.toStringAsFixed(0)}' : '0',
+          overtimeAmount: overtimeAmt > 0
+              ? 'Rs ${overtimeAmt.toStringAsFixed(0)}'
+              : '0',
           salary: r.salary,
-          dailyRate: 'Rs ${double.tryParse(dailyRate)?.toStringAsFixed(0) ?? dailyRate}',
-          grossPay: 'Rs ${double.tryParse(grossPay)?.toStringAsFixed(0) ?? grossPay}',
-          overtimePay: overtimeAmt > 0 ? 'Rs ${overtimeAmt.toStringAsFixed(0)}' : '0',
-          absentDeduction: absentTotal > 0 ? 'Rs ${absentTotal.toStringAsFixed(0)}' : '0',
-          leaveDeduction: leaveTotal > 0 ? 'Rs ${leaveTotal.toStringAsFixed(0)}' : '0',
-          totalDeductions: totalDeductions > 0 ? 'Rs ${totalDeductions.toStringAsFixed(0)}' : '0',
+          dailyRate:
+              'Rs ${double.tryParse(dailyRate)?.toStringAsFixed(0) ?? dailyRate}',
+          grossPay:
+              'Rs ${double.tryParse(grossPay)?.toStringAsFixed(0) ?? grossPay}',
+          overtimePay: overtimeAmt > 0
+              ? 'Rs ${overtimeAmt.toStringAsFixed(0)}'
+              : '0',
+          absentDeduction: absentTotal > 0
+              ? 'Rs ${absentTotal.toStringAsFixed(0)}'
+              : '0',
+          leaveDeduction: leaveTotal > 0
+              ? 'Rs ${leaveTotal.toStringAsFixed(0)}'
+              : '0',
+          totalDeductions: totalDeductions > 0
+              ? 'Rs ${totalDeductions.toStringAsFixed(0)}'
+              : '0',
           netSalary: r.netSalary,
         );
 
-        final safeName = r.workerName.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '_');
-        archive.addFile(ArchiveFile('${safeName}_invoice_$payPeriod.pdf', pdfBytes.length, pdfBytes));
+        final safeName = r.workerName
+            .replaceAll(RegExp(r'[^\w\s]'), '')
+            .replaceAll(' ', '_');
+        archive.addFile(
+          ArchiveFile(
+            '${safeName}_invoice_$payPeriod.pdf',
+            pdfBytes.length,
+            pdfBytes,
+          ),
+        );
       }
 
       final zipBytes = ZipEncoder().encode(archive);
@@ -572,7 +724,10 @@ class SalaryDayScheduler {
         final file = File(result);
         await file.writeAsBytes(zipData);
         if (context.mounted) {
-          FlashySnackBar.show(context, message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}));
+          FlashySnackBar.show(
+            context,
+            message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
+          );
         }
       }
     } catch (e) {
@@ -635,52 +790,1140 @@ class SalaryDayScheduler {
               scale: curve,
               child: StatefulBuilder(
                 builder: (context, setDialogState) {
-          Widget avatarInitials(String name, Color color) {
-            return Center(
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'SF Pro Display',
-                ),
+                  Widget avatarInitials(String name, Color color) {
+                    return Center(
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    );
+                  }
+
+                  List<AutoPayrollResult> posFiltered;
+                  if (positionFilter == 'All') {
+                    posFiltered = summary.results;
+                  } else {
+                    posFiltered = summary.results
+                        .where(
+                          (r) =>
+                              r.position.toLowerCase().trim() ==
+                              positionFilter.toLowerCase().trim(),
+                        )
+                        .toList();
+                  }
+
+                  final filteredResults = searchQuery.isEmpty
+                      ? posFiltered
+                      : posFiltered
+                            .where(
+                              (r) =>
+                                  r.workerName.toLowerCase().contains(
+                                    searchQuery.toLowerCase(),
+                                  ) ||
+                                  r.email.toLowerCase().contains(
+                                    searchQuery.toLowerCase(),
+                                  ),
+                            )
+                            .toList();
+
+                  // Count only filtered workers that are also selected.
+                  final filteredSelectedCount = filteredResults
+                      .where(
+                        (r) => selectedIndices.contains(
+                          summary.results.indexOf(r),
+                        ),
+                      )
+                      .length;
+                  final selectedCount = selectedIndices
+                      .where(
+                        (index) =>
+                            index >= 0 &&
+                            index < summary.results.length &&
+                            summary.results[index].success,
+                      )
+                      .length;
+
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Center(
+                      child: Container(
+                        width: dialogWidth,
+                        height: dialogHeight,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF0F172A,
+                              ).withValues(alpha: 0.12),
+                              blurRadius: 32,
+                              offset: const Offset(0, 16),
+                            ),
+                            BoxShadow(
+                              color: const Color(
+                                0xFF0F172A,
+                              ).withValues(alpha: 0.06),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // ── Header ────────────────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 14.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        'payroll_run_review'.tr(),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF111827),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Close button
+                                  GestureDetector(
+                                    onTap: () => Navigator.of(context).pop(),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 18,
+                                        color: Color(0xFF9CA3AF),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ── Search Bar (Full Width, just outline) ─────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: SizedBox(
+                                height: 38,
+                                child: TextField(
+                                  onChanged: (val) {
+                                    setDialogState(() => searchQuery = val);
+                                  },
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: 'SF Pro Display',
+                                    color: Color(0xFF111827),
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'search_workers_hint'.tr(),
+                                    hintStyle: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFFBDBDBD),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.search,
+                                      size: 18,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                      horizontal: 12,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFE5E7EB),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFE5E7EB),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF0F70FF),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // ── Filter Chips ─────────────────────────────────
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  24,
+                                  8,
+                                  24,
+                                  0,
+                                ),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ChoiceChip(
+                                        label: Text('all_filter'.tr()),
+                                        selected: positionFilter == 'All',
+                                        onSelected: (_) {
+                                          setDialogState(
+                                            () => positionFilter = 'All',
+                                          );
+                                        },
+                                        selectedColor: const Color(0xFF0C51C1),
+                                        backgroundColor: Colors.white,
+                                        checkmarkColor: Colors.transparent,
+                                        showCheckmark: false,
+                                        side: positionFilter == 'All'
+                                            ? null
+                                            : const BorderSide(
+                                                color: Color(0xFFE5E7EB),
+                                              ),
+                                        labelStyle: TextStyle(
+                                          color: positionFilter == 'All'
+                                              ? Colors.white
+                                              : const Color(0xFF111827),
+                                          fontSize: 12,
+                                          fontWeight: positionFilter == 'All'
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                      ...allPositions.map(
+                                        (pos) => Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 8,
+                                          ),
+                                          child: ChoiceChip(
+                                            label: Text(pos),
+                                            selected: positionFilter == pos,
+                                            onSelected: (_) {
+                                              setDialogState(
+                                                () => positionFilter = pos,
+                                              );
+                                            },
+                                            selectedColor: const Color(
+                                              0xFF0C51C1,
+                                            ),
+                                            backgroundColor: Colors.white,
+                                            checkmarkColor: Colors.transparent,
+                                            showCheckmark: false,
+                                            side: positionFilter == pos
+                                                ? null
+                                                : const BorderSide(
+                                                    color: Color(0xFFE5E7EB),
+                                                  ),
+                                            labelStyle: TextStyle(
+                                              color: positionFilter == pos
+                                                  ? Colors.white
+                                                  : const Color(0xFF111827),
+                                              fontSize: 12,
+                                              fontWeight: positionFilter == pos
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // ── Selection Status ─────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                14,
+                                24,
+                                12,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEEF2FF),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$filteredSelectedCount ${'selected'.tr()}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF0247C4),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'processing_for_cycle'.tr(
+                                          namedArgs: {
+                                            'period': summary.periodLabel,
+                                          },
+                                        ),
+                                        style: const TextStyle(
+                                          color: Color(0xFF6B7280),
+                                          fontSize: 13,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setDialogState(() {
+                                        final filteredIndices = filteredResults
+                                            .map(
+                                              (r) => summary.results.indexOf(r),
+                                            )
+                                            .toSet();
+                                        final allFilteredSelected =
+                                            filteredIndices.every(
+                                              (i) =>
+                                                  selectedIndices.contains(i),
+                                            );
+                                        if (allFilteredSelected) {
+                                          selectedIndices.removeAll(
+                                            filteredIndices,
+                                          );
+                                        } else {
+                                          selectedIndices.addAll(
+                                            filteredIndices,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            filteredResults.every(
+                                              (r) => selectedIndices.contains(
+                                                summary.results.indexOf(r),
+                                              ),
+                                            )
+                                            ? const Color(0xFFFEE2E2)
+                                            : const Color(0xFFEEF2FF),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            filteredResults.every(
+                                                  (r) =>
+                                                      selectedIndices.contains(
+                                                        summary.results.indexOf(
+                                                          r,
+                                                        ),
+                                                      ),
+                                                )
+                                                ? Icons.deselect
+                                                : Icons.select_all,
+                                            size: 15,
+                                            color:
+                                                filteredResults.every(
+                                                  (r) =>
+                                                      selectedIndices.contains(
+                                                        summary.results.indexOf(
+                                                          r,
+                                                        ),
+                                                      ),
+                                                )
+                                                ? const Color(0xFFEF4444)
+                                                : const Color(0xFF0247C4),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            filteredResults.every(
+                                                  (r) =>
+                                                      selectedIndices.contains(
+                                                        summary.results.indexOf(
+                                                          r,
+                                                        ),
+                                                      ),
+                                                )
+                                                ? 'deselect_all'.tr()
+                                                : 'select_all'.tr(),
+                                            style: TextStyle(
+                                              color:
+                                                  filteredResults.every(
+                                                    (r) => selectedIndices
+                                                        .contains(
+                                                          summary.results
+                                                              .indexOf(r),
+                                                        ),
+                                                  )
+                                                  ? const Color(0xFFEF4444)
+                                                  : const Color(0xFF0247C4),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              height: 1,
+                              color: const Color(0xFFE5E7EB),
+                            ),
+
+                            // ── Worker List ──────────────────────────────────────
+                            Expanded(
+                              child: filteredResults.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.search_off_rounded,
+                                            size: 48,
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'no_results'.tr(),
+                                            style: const TextStyle(
+                                              color: Color(0xFF64748B),
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        24,
+                                        10,
+                                        24,
+                                        10,
+                                      ),
+                                      itemCount: filteredResults.length,
+                                      itemBuilder: (_, i) {
+                                        final r = filteredResults[i];
+                                        final originalIndex = summary.results
+                                            .indexOf(r);
+                                        final isSelected = selectedIndices
+                                            .contains(originalIndex);
+                                        // Avatar color based on name
+                                        final avatarColors = [
+                                          const Color(0xFFE4F0FF),
+                                          const Color(0xFFEFE4FF),
+                                          const Color(0xFFE4FFE8),
+                                          const Color(0xFFFFE4E4),
+                                          const Color(0xFFFFF0E4),
+                                        ];
+                                        final avatarTextColors = [
+                                          const Color(0xFF0F70FF),
+                                          const Color(0xFF6A00FF),
+                                          const Color(0xFF22C55E),
+                                          const Color(0xFFEF4444),
+                                          const Color(0xFFF97316),
+                                        ];
+                                        final colorIdx =
+                                            r.workerName.hashCode.abs() % 5;
+
+                                        // Determine worker type for badge
+                                        final posLower = r.position
+                                            .toLowerCase()
+                                            .trim();
+                                        final stLower = r.salaryType
+                                            .toLowerCase()
+                                            .trim();
+                                        final isContractorWorker =
+                                            posLower.contains('contract') ||
+                                            posLower.contains('freelance') ||
+                                            stLower.contains('contract') ||
+                                            stLower.contains('freelance') ||
+                                            (stLower != 'monthly' &&
+                                                stLower.isNotEmpty);
+                                        final typeLabel = isContractorWorker
+                                            ? 'type_contractor'.tr()
+                                            : 'type_full_time'.tr();
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 8,
+                                          ),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? const Color(
+                                                        0xFF0F70FF,
+                                                      ).withValues(alpha: 0.3)
+                                                    : const Color(0xFFE5E7EB),
+                                                width: 1.2,
+                                              ),
+                                            ),
+                                            child: InkWell(
+                                              onTap: () async {
+                                                final controllerKeys = [
+                                                  originalIndex * 10,
+                                                  originalIndex * 10 + 1,
+                                                  originalIndex * 10 + 2,
+                                                ];
+                                                for (final key
+                                                    in controllerKeys) {
+                                                  overtimeControllers
+                                                      .remove(key)
+                                                      ?.dispose();
+                                                }
+                                                final updated =
+                                                    await _showWorkerPayrollDetails(
+                                                      context: context,
+                                                      result: r.copy(),
+                                                      originalIndex:
+                                                          originalIndex,
+                                                      overtimeControllers:
+                                                          overtimeControllers,
+                                                      summary: summary,
+                                                      dialogWidth: dialogWidth,
+                                                      dialogHeight:
+                                                          dialogHeight,
+                                                    );
+                                                for (final key
+                                                    in controllerKeys) {
+                                                  overtimeControllers
+                                                      .remove(key)
+                                                      ?.dispose();
+                                                }
+                                                if (updated != null) {
+                                                  summary.results[originalIndex] =
+                                                      updated;
+                                                }
+                                                if (context.mounted) {
+                                                  setDialogState(() {});
+                                                }
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 14,
+                                                      horizontal: 14,
+                                                    ),
+                                                child: Row(
+                                                  children: [
+                                                    // Custom Checkbox (tiny, fits inside container)
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        setDialogState(() {
+                                                          if (isSelected) {
+                                                            selectedIndices
+                                                                .remove(
+                                                                  originalIndex,
+                                                                );
+                                                          } else {
+                                                            selectedIndices.add(
+                                                              originalIndex,
+                                                            );
+                                                          }
+                                                        });
+                                                      },
+                                                      child: Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration: BoxDecoration(
+                                                          border: Border.all(
+                                                            color: isSelected
+                                                                ? const Color(
+                                                                    0xFF0F70FF,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFFD1D5DB,
+                                                                  ),
+                                                            width: 1,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                2,
+                                                              ),
+                                                          color: isSelected
+                                                              ? const Color(
+                                                                  0xFF0F70FF,
+                                                                )
+                                                              : Colors
+                                                                    .transparent,
+                                                        ),
+                                                        child: isSelected
+                                                            ? const Icon(
+                                                                Icons.check,
+                                                                size: 8,
+                                                                color: Colors
+                                                                    .white,
+                                                              )
+                                                            : null,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 14),
+                                                    // Avatar with image or initials (circular, no dot)
+                                                    Container(
+                                                      width: 44,
+                                                      height: 44,
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            avatarColors[colorIdx
+                                                                    .abs() %
+                                                                5],
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child:
+                                                          r.imageUrl != null &&
+                                                              r
+                                                                  .imageUrl!
+                                                                  .isNotEmpty
+                                                          ? ClipRRect(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    22,
+                                                                  ),
+                                                              child: Image.network(
+                                                                r.imageUrl!,
+                                                                width: 44,
+                                                                height: 44,
+                                                                fit: BoxFit
+                                                                    .cover,
+                                                                errorBuilder:
+                                                                    (
+                                                                      _,
+                                                                      __,
+                                                                      ___,
+                                                                    ) => avatarInitials(
+                                                                      r.workerName,
+                                                                      avatarTextColors[colorIdx
+                                                                              .abs() %
+                                                                          5],
+                                                                    ),
+                                                                loadingBuilder:
+                                                                    (
+                                                                      _,
+                                                                      child,
+                                                                      progress,
+                                                                    ) {
+                                                                      if (progress ==
+                                                                          null)
+                                                                        return child;
+                                                                      return avatarInitials(
+                                                                        r.workerName,
+                                                                        avatarTextColors[colorIdx.abs() %
+                                                                            5],
+                                                                      );
+                                                                    },
+                                                              ),
+                                                            )
+                                                          : avatarInitials(
+                                                              r.workerName,
+                                                              avatarTextColors[colorIdx
+                                                                      .abs() %
+                                                                  5],
+                                                            ),
+                                                    ),
+                                                    const SizedBox(width: 14),
+                                                    // Name + type badge + email
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Row(
+                                                            children: [
+                                                              Flexible(
+                                                                child: Text(
+                                                                  r.workerName,
+                                                                  style: const TextStyle(
+                                                                    fontSize:
+                                                                        15,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    fontFamily:
+                                                                        'SF Pro Display',
+                                                                    color: Color(
+                                                                      0xFF111827,
+                                                                    ),
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                width: 8,
+                                                              ),
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          7,
+                                                                      vertical:
+                                                                          2,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  color: const Color(
+                                                                    0xFFF3F4F6,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        4,
+                                                                      ),
+                                                                ),
+                                                                child: Text(
+                                                                  typeLabel,
+                                                                  style: const TextStyle(
+                                                                    fontSize:
+                                                                        10,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                    color: Color(
+                                                                      0xFF4B5563,
+                                                                    ),
+                                                                    letterSpacing:
+                                                                        0.5,
+                                                                    fontFamily:
+                                                                        'SF Pro Display',
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          Row(
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .mail_outline_rounded,
+                                                                size: 13,
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade400,
+                                                              ),
+                                                              const SizedBox(
+                                                                width: 4,
+                                                              ),
+                                                              Flexible(
+                                                                child: Text(
+                                                                  r.email.isNotEmpty
+                                                                      ? r.email
+                                                                      : 'no_email'
+                                                                            .tr(),
+                                                                  style: const TextStyle(
+                                                                    fontSize:
+                                                                        13,
+                                                                    color: Color(
+                                                                      0xFF6B7280,
+                                                                    ),
+                                                                    fontFamily:
+                                                                        'SF Pro Display',
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    // Salary block
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .end,
+                                                      children: [
+                                                        Text(
+                                                          'net_salary'.tr(),
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: Color(
+                                                              0xFF6B7280,
+                                                            ),
+                                                            fontFamily:
+                                                                'SF Pro Display',
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 5,
+                                                        ),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 14,
+                                                                vertical: 6,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: r.success
+                                                                ? const Color(
+                                                                    0xFFF0F6FF,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFFFEE2E2,
+                                                                  ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  20,
+                                                                ),
+                                                          ),
+                                                          child: Text(
+                                                            AmountText.formatCompact(
+                                                              r.netSalary,
+                                                            ),
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontFamily:
+                                                                  'SF Pro Display',
+                                                              color: r.success
+                                                                  ? const Color(
+                                                                      0xFF0F70FF,
+                                                                    )
+                                                                  : const Color(
+                                                                      0xFFEF4444,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    // Chevron right
+                                                    const Icon(
+                                                      Icons
+                                                          .chevron_right_rounded,
+                                                      size: 22,
+                                                      color: Color(0xFF9CA3AF),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                            ),
+
+                            // ── Bottom Footer ───────────────────────────────────
+                            Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Color(0xFFE5E7EB),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                12,
+                                24,
+                                14,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Total Disbursement
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'total_disbursement'.tr(),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF6B7280),
+                                          letterSpacing: 0.5,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        () {
+                                          double total = 0;
+                                          String prefix = '';
+                                          for (final idx in selectedIndices) {
+                                            if (idx < 0 ||
+                                                idx >= summary.results.length) {
+                                              continue;
+                                            }
+                                            final r = summary.results[idx];
+                                            if (r.success &&
+                                                r.rawNetSalaryValue.isFinite) {
+                                              total += r.rawNetSalaryValue;
+                                              if (prefix.isEmpty) {
+                                                prefix =
+                                                    PayrollService.getCurrencyPrefix(
+                                                      r.netSalary,
+                                                    );
+                                                if (prefix.isEmpty) {
+                                                  prefix = '\$';
+                                                }
+                                              }
+                                            }
+                                          }
+                                          return '$prefix ${PayrollService.formatNumber(total)}';
+                                        }(),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF111827),
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      // Save Draft button
+                                      GestureDetector(
+                                        onTap: () =>
+                                            Navigator.of(context).pop(),
+                                        child: Container(
+                                          height: 48,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 22,
+                                          ),
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'cancel'.tr(),
+                                            style: const TextStyle(
+                                              color: Color(0xFF000000),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      // Pay All button
+                                      GestureDetector(
+                                        onTap: selectedCount == 0
+                                            ? null
+                                            : () {
+                                                final selected = selectedIndices
+                                                    .where(
+                                                      (index) =>
+                                                          index >= 0 &&
+                                                          index <
+                                                              summary
+                                                                  .results
+                                                                  .length,
+                                                    )
+                                                    .map(
+                                                      (index) => summary
+                                                          .results[index],
+                                                    )
+                                                    .where((r) => r.success)
+                                                    .toList();
+                                                Navigator.of(
+                                                  context,
+                                                ).pop(selected);
+                                              },
+                                        child: Container(
+                                          height: 48,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 22,
+                                          ),
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: selectedCount == 0
+                                                ? const Color(
+                                                    0xFF0247C4,
+                                                  ).withValues(alpha: 0.4)
+                                                : const Color(0xFF0247C4),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            boxShadow: selectedCount > 0
+                                                ? [
+                                                    BoxShadow(
+                                                      color: const Color(
+                                                        0xFF0247C4,
+                                                      ).withValues(alpha: 0.2),
+                                                      blurRadius: 8,
+                                                      offset: const Offset(
+                                                        0,
+                                                        4,
+                                                      ),
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle_outline,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'pay_all_count'.tr(
+                                                  namedArgs: {
+                                                    'count': '$selectedCount',
+                                                  },
+                                                ),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          }
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-          List<AutoPayrollResult> posFiltered;
-          if (positionFilter == 'All') {
-            posFiltered = summary.results;
-          } else {
-            posFiltered = summary.results
-                .where((r) => r.position.toLowerCase().trim() == positionFilter.toLowerCase().trim())
-                .toList();
-          }
+  /// Opens a separate dialog with the Payroll Details for a specific worker.
+  /// Uses the same dialog dimensions as the parent review dialog for consistency.
+  Future<AutoPayrollResult?> _showWorkerPayrollDetails({
+    required BuildContext context,
+    required AutoPayrollResult result,
+    required int originalIndex,
+    required Map<int, TextEditingController> overtimeControllers,
+    required PayrollRunSummary summary,
+    required double dialogWidth,
+    required double dialogHeight,
+  }) {
+    final totalWorkDays = int.tryParse(result.totalWorkDays) ?? 22;
+    final presents = totalWorkDays - result.absents - result.leaves;
 
-          final filteredResults = searchQuery.isEmpty
-              ? posFiltered
-              : posFiltered
-                    .where(
-                      (r) =>
-                          r.workerName.toLowerCase().contains(
-                            searchQuery.toLowerCase(),
-                          ) ||
-                          r.email.toLowerCase().contains(
-                            searchQuery.toLowerCase(),
-                          ),
-                    )
-                    .toList();
-
-          // Count only filtered workers that are also selected.
-          final filteredSelectedCount = filteredResults
-              .where((r) => selectedIndices.contains(summary.results.indexOf(r)))
-              .length;
-
-          return Dialog(
+    return showDialog<AutoPayrollResult>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: StatefulBuilder(
+          builder: (detailContext, setDetailState) => Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 30,
+            ),
             child: Center(
               child: Container(
                 width: dialogWidth,
@@ -704,545 +1947,389 @@ class SalaryDayScheduler {
                 ),
                 child: Column(
                   children: [
-                    // ── Header ────────────────────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                'payroll_run_review'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF111827),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Close button
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pop(),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              child: const Icon(
-                                Icons.close,
-                                size: 18,
-                                color: Color(0xFF9CA3AF),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ── Search Bar (Full Width, just outline) ─────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: SizedBox(
-                        height: 38,
-                        child: TextField(
-                          onChanged: (val) {
-                            setDialogState(() => searchQuery = val);
-                          },
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontFamily: 'SF Pro Display',
-                            color: Color(0xFF111827),
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'search_workers_hint'.tr(),
-                            hintStyle: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFFBDBDBD),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              size: 18,
-                              color: Color(0xFF6B7280),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFFF9FAFB),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Color(0xFF0247C4), width: 1.5),
-                            ),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // ── Filter Chips ─────────────────────────────────
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              ChoiceChip(
-                                label: Text('all_filter'.tr()),
-                                selected: positionFilter == 'All',
-                                onSelected: (_) {
-                                  setDialogState(() => positionFilter = 'All');
-                                },
-                                selectedColor: const Color(0xFF0C51C1),
-                                backgroundColor: Colors.white,
-                                checkmarkColor: Colors.transparent,
-                                side: positionFilter == 'All'
-                                    ? null
-                                    : const BorderSide(color: Color(0xFFE5E7EB)),
-                                labelStyle: TextStyle(
-                                  color: positionFilter == 'All'
-                                      ? Colors.white
-                                      : const Color(0xFF111827),
-                                  fontSize: 12,
-                                  fontWeight: positionFilter == 'All'
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              ...allPositions.map(
-                                (pos) => Padding(
-                                  padding: const EdgeInsets.only(left: 8),
-                                  child: ChoiceChip(
-                                    label: Text(pos),
-                                    selected: positionFilter == pos,
-                                    onSelected: (_) {
-                                      setDialogState(() => positionFilter = pos);
-                                    },
-                                    selectedColor: const Color(0xFF0C51C1),
-                                    backgroundColor: Colors.white,
-                                    checkmarkColor: Colors.transparent,
-                                    side: positionFilter == pos
-                                        ? null
-                                        : const BorderSide(color: Color(0xFFE5E7EB)),
-                                    labelStyle: TextStyle(
-                                      color: positionFilter == pos
-                                          ? Colors.white
-                                          : const Color(0xFF111827),
-                                      fontSize: 12,
-                                      fontWeight: positionFilter == pos
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    visualDensity: VisualDensity.compact,
+                    // ── Scrollable Content ─────────────────────────────
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ── Top Bar: Back Button + Title ────────────
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () =>
+                                      Navigator.of(detailContext).pop(),
+                                  child: const Icon(
+                                    Icons.arrow_back_rounded,
+                                    color: Color(0xFF000000),
+                                    size: 22,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // ── Selection Status ─────────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF2FF),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '$filteredSelectedCount ${'selected'.tr()}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF0247C4),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      'payroll_details_title'
+                                          .tr(namedArgs: {'name': ''})
+                                          .trim(),
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF111827),
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'processing_for_cycle'.tr(namedArgs: {'period': summary.periodLabel}),
-                                style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 13,
-                                  fontFamily: 'SF Pro Display',
+                                const SizedBox(width: 22),
+                              ],
+                            ),
+
+                            const SizedBox(height: 28),
+
+                            // ── 1. Header: Avatar + Name/Email + Total Net Payment ────
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    // Large Avatar with image or initials (circular)
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF0F70FF),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child:
+                                          result.imageUrl != null &&
+                                              result.imageUrl!.isNotEmpty
+                                          ? ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                              child: Image.network(
+                                                result.imageUrl!,
+                                                width: 60,
+                                                height: 60,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    Center(
+                                                      child: Text(
+                                                        result
+                                                                .workerName
+                                                                .isNotEmpty
+                                                            ? result
+                                                                  .workerName[0]
+                                                                  .toUpperCase()
+                                                            : '?',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 28,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                loadingBuilder: (_, child, progress) {
+                                                  if (progress == null)
+                                                    return child;
+                                                  return Center(
+                                                    child: Text(
+                                                      result
+                                                              .workerName
+                                                              .isNotEmpty
+                                                          ? result.workerName[0]
+                                                                .toUpperCase()
+                                                          : '?',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 28,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontFamily:
+                                                            'SF Pro Display',
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            )
+                                          : Center(
+                                              child: Text(
+                                                result.workerName.isNotEmpty
+                                                    ? result.workerName[0]
+                                                          .toUpperCase()
+                                                    : '?',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'SF Pro Display',
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          result.workerName,
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF111827),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          result.email.isNotEmpty
+                                              ? result.email
+                                              : 'no_email'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF6B7280),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              setDialogState(() {
-                                final filteredIndices = filteredResults
-                                    .map((r) => summary.results.indexOf(r))
-                                    .toSet();
-                                final allFilteredSelected = filteredIndices
-                                    .every((i) => selectedIndices.contains(i));
-                                if (allFilteredSelected) {
-                                  selectedIndices.removeAll(filteredIndices);
-                                } else {
-                                  selectedIndices.addAll(filteredIndices);
-                                }
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'total_net_payment'.tr(),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF6B7280),
+                                        letterSpacing: 0.8,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      AmountText.formatCompact(
+                                        result.netSalary,
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0247C4),
+                                        letterSpacing: -1.0,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // ── 2. 3-Column Metrics Grid ───────────────────────────
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _metricColumn(
+                                    title: 'attendance'.tr(),
+                                    icon: Icons.calendar_today_outlined,
+                                    iconColor: const Color(0xFF3B82F6),
+                                    rows: [
+                                      _metricRow(
+                                        'presents'.tr(),
+                                        '$presents ${'days_suffix'.tr()}',
+                                        const Color(0xFFF9FAFB),
+                                        const Color(0xFF6B7280),
+                                        const Color(0xFF111827),
+                                      ),
+                                      _metricRow(
+                                        'absents'.tr(),
+                                        '${result.absents} ${'days_suffix'.tr()}',
+                                        const Color(0xFFF9FAFB),
+                                        const Color(0xFF6B7280),
+                                        const Color(0xFF111827),
+                                      ),
+                                      _metricRow(
+                                        'leaves'.tr(),
+                                        '${result.leaves} ${'days_suffix'.tr()}',
+                                        const Color(0xFFF9FAFB),
+                                        const Color(0xFF6B7280),
+                                        const Color(0xFF111827),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: _metricColumn(
+                                    title: 'earnings'.tr(),
+                                    icon: Icons.payments_outlined,
+                                    iconColor: const Color(0xFF10B981),
+                                    rows: [
+                                      _metricRow(
+                                        'base_salary'.tr(),
+                                        result.salary.isNotEmpty
+                                            ? AmountText.formatCompact(
+                                                result.salary,
+                                              )
+                                            : '\$0',
+                                        const Color(0xFFF9FAFB),
+                                        const Color(0xFF6B7280),
+                                        const Color(0xFF111827),
+                                      ),
+                                      _metricRow(
+                                        'working_days'.tr(),
+                                        result.totalWorkDays,
+                                        const Color(0xFFF9FAFB),
+                                        const Color(0xFF6B7280),
+                                        const Color(0xFF111827),
+                                      ),
+                                      _metricRow(
+                                        'overtime_bonus'.tr(),
+                                        result.overtimeAmount.isNotEmpty
+                                            ? AmountText.formatCompact(
+                                                result.overtimeAmount,
+                                              )
+                                            : '\$0.00',
+                                        const Color(0xFFECFDF5),
+                                        const Color(0xFF10B981),
+                                        const Color(0xFF10B981),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: _metricColumn(
+                                    title: 'deductions'.tr(),
+                                    icon: Icons.remove_circle_outline,
+                                    iconColor: const Color(0xFFEF4444),
+                                    rows: [
+                                      _editableDeductionRow(
+                                        label: 'absent_deduction'.tr(),
+                                        value: result.absentDeduction,
+                                        controllerKey: originalIndex * 10 + 1,
+                                        controllers: overtimeControllers,
+                                        onChanged: (val) {
+                                          result.absentDeduction = val;
+                                          _recalcWithDeductions(
+                                            result,
+                                            result.customDeduction,
+                                            () => setDetailState(() {}),
+                                          );
+                                        },
+                                      ),
+                                      _editableDeductionRow(
+                                        label: 'leave_deduction'.tr(),
+                                        value: result.leaveDeduction,
+                                        controllerKey: originalIndex * 10 + 2,
+                                        controllers: overtimeControllers,
+                                        onChanged: (val) {
+                                          result.leaveDeduction = val;
+                                          _recalcWithDeductions(
+                                            result,
+                                            result.customDeduction,
+                                            () => setDetailState(() {}),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // ── 3. Adjust Overtime Section ─────────────────────────
+                            Container(
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: filteredResults.every(
-                                  (r) => selectedIndices.contains(summary.results.indexOf(r)),
-                                )
-                                    ? const Color(0xFFFEE2E2)
-                                    : const Color(0xFFEEF2FF),
-                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: const Color(0xFFF3F4F6),
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.01),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
                               child: Row(
                                 children: [
-                                  Icon(
-                                    filteredResults.every(
-                                      (r) => selectedIndices.contains(summary.results.indexOf(r)),
-                                    )
-                                        ? Icons.deselect
-                                        : Icons.select_all,
-                                    size: 15,
-                                    color: filteredResults.every(
-                                      (r) => selectedIndices.contains(summary.results.indexOf(r)),
-                                    )
-                                        ? const Color(0xFFEF4444)
-                                        : const Color(0xFF0247C4),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    filteredResults.every(
-                                      (r) => selectedIndices.contains(summary.results.indexOf(r)),
-                                    )
-                                        ? 'deselect_all'.tr()
-                                        : 'select_all'.tr(),
-                                    style: TextStyle(
-                                      color: filteredResults.every(
-                                        (r) => selectedIndices.contains(summary.results.indexOf(r)),
-                                      )
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF0247C4),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'SF Pro Display',
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: const Color(0xFFE5E7EB),
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
+                                    child: const Icon(
+                                      Icons.more_time,
+                                      color: Color(0xFF0F70FF),
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'adjust_overtime'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF111827),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          'apply_additional_hours'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF6B7280),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  _buildOvertimeInlineField(
+                                    result,
+                                    originalIndex,
+                                    setDetailState,
+                                    overtimeControllers,
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
-                      height: 1,
-                      color: const Color(0xFFE5E7EB),
-                    ),
-
-                    // ── Worker List ──────────────────────────────────────
-                    Expanded(
-                      child: filteredResults.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.search_off_rounded,
-                                    size: 48,
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'no_results'.tr(),
-                                    style: const TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(24, 10, 24, 10),
-                              itemCount: filteredResults.length,
-                              itemBuilder: (_, i) {
-                                final r = filteredResults[i];
-                                final originalIndex = summary.results.indexOf(r);
-                                final isSelected = selectedIndices.contains(originalIndex);
-                                // Avatar color based on name
-                                final avatarColors = [
-                                  const Color(0xFFE4F0FF),
-                                  const Color(0xFFEFE4FF),
-                                  const Color(0xFFE4FFE8),
-                                  const Color(0xFFFFE4E4),
-                                  const Color(0xFFFFF0E4),
-                                ];
-                                final avatarTextColors = [
-                                  const Color(0xFF0F70FF),
-                                  const Color(0xFF6A00FF),
-                                  const Color(0xFF22C55E),
-                                  const Color(0xFFEF4444),
-                                  const Color(0xFFF97316),
-                                ];
-                                final colorIdx = r.workerName.hashCode.abs() % 5;
-
-                                // Determine worker type for badge
-                                final posLower = r.position.toLowerCase().trim();
-                                final stLower = r.salaryType.toLowerCase().trim();
-                                final isContractorWorker = posLower.contains('contract') || 
-                                    posLower.contains('freelance') || 
-                                    stLower.contains('contract') || 
-                                    stLower.contains('freelance') || 
-                                    (stLower != 'monthly' && stLower.isNotEmpty);
-                                final typeLabel = isContractorWorker ? 'type_contractor'.tr() : 'type_full_time'.tr();
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? const Color(0xFF0F70FF).withValues(alpha: 0.3)
-                                            : const Color(0xFFE5E7EB),
-                                        width: 1.2,
-                                      ),
-                                    ),
-                                    child: InkWell(
-                                      onTap: () {
-                                        _showWorkerPayrollDetails(
-                                          context: context,
-                                          result: r,
-                                          originalIndex: originalIndex,
-                                          overtimeControllers: overtimeControllers,
-                                          summary: summary,
-                                          dialogWidth: dialogWidth,
-                                          dialogHeight: dialogHeight,
-                                        );
-                                      },
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                          horizontal: 14,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            // Custom Checkbox (tiny, fits inside container)
-                                            GestureDetector(
-                                              onTap: () {
-                                                setDialogState(() {
-                                                  if (isSelected) {
-                                                    selectedIndices.remove(originalIndex);
-                                                  } else {
-                                                    selectedIndices.add(originalIndex);
-                                                  }
-                                                });
-                                              },
-                                              child: Container(
-                                                width: 12,
-                                                height: 12,
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? const Color(0xFF0F70FF)
-                                                        : const Color(0xFFD1D5DB),
-                                                    width: 1,
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(2),
-                                                  color: isSelected
-                                                      ? const Color(0xFF0F70FF)
-                                                      : Colors.transparent,
-                                                ),
-                                                child: isSelected
-                                                    ? const Icon(Icons.check, size: 8, color: Colors.white)
-                                                    : null,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 14),
-                                            // Avatar with image or initials (circular, no dot)
-                                            Container(
-                                              width: 44,
-                                              height: 44,
-                                              decoration: BoxDecoration(
-                                                color: avatarColors[colorIdx.abs() % 5],
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: r.imageUrl != null && r.imageUrl!.isNotEmpty
-                                                  ? ClipRRect(
-                                                      borderRadius: BorderRadius.circular(22),
-                                                      child: Image.network(
-                                                        r.imageUrl!,
-                                                        width: 44,
-                                                        height: 44,
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (_, __, ___) => avatarInitials(
-                                                          r.workerName,
-                                                          avatarTextColors[colorIdx.abs() % 5],
-                                                        ),
-                                                        loadingBuilder: (_, child, progress) {
-                                                          if (progress == null) return child;
-                                                          return avatarInitials(
-                                                            r.workerName,
-                                                            avatarTextColors[colorIdx.abs() % 5],
-                                                          );
-                                                        },
-                                                      ),
-                                                    )
-                                                  : avatarInitials(
-                                                      r.workerName,
-                                                      avatarTextColors[colorIdx.abs() % 5],
-                                                    ),
-                                            ),
-                                            const SizedBox(width: 14),
-                                            // Name + type badge + email
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Flexible(
-                                                        child: Text(
-                                                          r.workerName,
-                                                          style: const TextStyle(
-                                                            fontSize: 15,
-                                                            fontWeight: FontWeight.bold,
-                                                            fontFamily: 'SF Pro Display',
-                                                            color: Color(0xFF111827),
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(0xFFF3F4F6),
-                                                          borderRadius: BorderRadius.circular(4),
-                                                        ),
-                                                        child: Text(
-                                                          typeLabel,
-                                                          style: const TextStyle(
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.w700,
-                                                            color: Color(0xFF4B5563),
-                                                            letterSpacing: 0.5,
-                                                            fontFamily: 'SF Pro Display',
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 5),
-                                                  Row(
-                                                    children: [
-                                                      Icon(Icons.mail_outline_rounded, size: 13, color: Colors.grey.shade400),
-                                                      const SizedBox(width: 4),
-                                                      Flexible(
-                                                        child: Text(
-                                                          r.email.isNotEmpty ? r.email : 'no_email'.tr(),
-                                                          style: const TextStyle(
-                                                            fontSize: 13,
-                                                            color: Color(0xFF6B7280),
-                                                            fontFamily: 'SF Pro Display',
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            // Salary block
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  'net_salary'.tr(),
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF6B7280),
-                                                    fontFamily: 'SF Pro Display',
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                                  decoration: BoxDecoration(
-                                                    color: r.success
-                                                        ? const Color(0xFFF0F6FF)
-                                                        : const Color(0xFFFEE2E2),
-                                                    borderRadius: BorderRadius.circular(20),
-                                                  ),
-                                                  child: Text(
-                                                    AmountText.formatCompact(r.netSalary),
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.w700,
-                                                      fontFamily: 'SF Pro Display',
-                                                      color: r.success
-                                                          ? const Color(0xFF0F70FF)
-                                                          : const Color(0xFFEF4444),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(width: 6),
-                                            // Chevron right
-                                            const Icon(
-                                              Icons.chevron_right_rounded,
-                                              size: 22,
-                                              color: Color(0xFF9CA3AF),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-
-                    // ── Bottom Footer ───────────────────────────────────
+                    // ── 4. Fixed Footer ─────────────────────────────────────
                     Container(
                       decoration: const BoxDecoration(
                         color: Colors.white,
@@ -1252,122 +2339,52 @@ class SalaryDayScheduler {
                       ),
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          // Total Disbursement
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'total_disbursement'.tr(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF6B7280),
-                                  letterSpacing: 0.5,
-                                  fontFamily: 'SF Pro Display',
+                          if (result.success)
+                            GestureDetector(
+                              onTap: () => Navigator.of(context).pop(result),
+                              child: Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                () {
-                                  double total = 0;
-                                  String prefix = '';
-                                  for (final r in filteredResults) {
-                                    final idx = summary.results.indexOf(r);
-                                    if (selectedIndices.contains(idx)) {
-                                      total += r.rawNetSalaryValue;
-                                      if (prefix.isEmpty) {
-                                        prefix = PayrollService.getCurrencyPrefix(r.netSalary);
-                                        if (prefix.isEmpty) prefix = '\$';
-                                      }
-                                    }
-                                  }
-                                  return '$prefix${PayrollService.formatNumber(total)}';
-                                }(),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF111827),
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              // Save Draft button
-                              GestureDetector(
-                                onTap: () => Navigator.of(context).pop(),
-                                child: Container(
-                                  height: 48,
-                                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    'cancel'.tr(),
-                                    style: const TextStyle(
-                                      color: Color(0xFF000000),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'SF Pro Display',
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0247C4),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF0247C4,
+                                      ).withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 14),
-                              // Pay All button
-                              GestureDetector(
-                                onTap: filteredSelectedCount == 0
-                                    ? null
-                                    : () {
-                                        final selected = filteredResults
-                                            .where((r) => selectedIndices.contains(summary.results.indexOf(r)))
-                                            .toList();
-                                        Navigator.of(context).pop(selected);
-                                      },
-                                child: Container(
-                                  height: 48,
-                                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: filteredSelectedCount == 0
-                                        ? const Color(0xFF0247C4).withValues(alpha: 0.4)
-                                        : const Color(0xFF0247C4),
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: filteredSelectedCount > 0
-                                        ? [
-                                            BoxShadow(
-                                              color: const Color(0xFF0247C4).withValues(alpha: 0.2),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'pay_all_count'.tr(namedArgs: {'count': '$filteredSelectedCount'}),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'SF Pro Display',
-                                        ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_outline,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'confirm_review'.tr(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro Display',
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
                         ],
                       ),
                     ),
@@ -1375,389 +2392,10 @@ class SalaryDayScheduler {
                 ),
               ),
             ),
-          );
-            },
           ),
         ),
       ),
     );
-  },
-);
-  }
-
-  /// Opens a separate dialog with the Payroll Details for a specific worker.
-  /// Uses the same dialog dimensions as the parent review dialog for consistency.
-  void _showWorkerPayrollDetails({
-    required BuildContext context,
-    required AutoPayrollResult result,
-    required int originalIndex,
-    required Map<int, TextEditingController> overtimeControllers,
-    required PayrollRunSummary summary,
-    required double dialogWidth,
-    required double dialogHeight,
-  }) {
-    final totalWorkDays = int.tryParse(result.totalWorkDays) ?? 22;
-    final presents = totalWorkDays - result.absents - result.leaves;
-
-    showDialog<AutoPayrollResult>(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
-      builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: StatefulBuilder(
-          builder: (detailContext, setDetailState) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
-                  child: Center(
-                    child: Container(
-                      width: dialogWidth,
-                      height: dialogHeight,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.12),
-                            blurRadius: 32,
-                            offset: const Offset(0, 16),
-                          ),
-                          BoxShadow(
-                            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-              child: Column(
-                children: [
-                  // ── Scrollable Content ─────────────────────────────
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // ── Top Bar: Back Button + Title ────────────
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () => Navigator.of(detailContext).pop(),
-                                child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF000000), size: 22),
-                              ),
-                              Expanded(
-                                child: Center(
-                                  child: Text(
-                                    'payroll_details_title'.tr(namedArgs: {'name': ''}).trim(),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF111827),
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 22),
-                            ],
-                          ),
-
-                          const SizedBox(height: 28),
-
-                          // ── 1. Header: Avatar + Name/Email + Total Net Payment ────
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  // Large Avatar with image or initials (circular)
-                                  Container(
-                                    width: 60,
-                                    height: 60,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF0F70FF),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: result.imageUrl != null && result.imageUrl!.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(30),
-                                            child: Image.network(
-                                              result.imageUrl!,
-                                              width: 60,
-                                              height: 60,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => Center(
-                                                child: Text(
-                                                  result.workerName.isNotEmpty ? result.workerName[0].toUpperCase() : '?',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 28,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontFamily: 'SF Pro Display',
-                                                  ),
-                                                ),
-                                              ),
-                                              loadingBuilder: (_, child, progress) {
-                                                if (progress == null) return child;
-                                                return Center(
-                                                  child: Text(
-                                                    result.workerName.isNotEmpty ? result.workerName[0].toUpperCase() : '?',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 28,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontFamily: 'SF Pro Display',
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          )
-                                        : Center(
-                                            child: Text(
-                                              result.workerName.isNotEmpty ? result.workerName[0].toUpperCase() : '?',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: 'SF Pro Display',
-                                              ),
-                                            ),
-                                          ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        result.workerName,
-                                        style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF111827),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        result.email.isNotEmpty ? result.email : 'no_email'.tr(),
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF6B7280),
-                                          fontFamily: 'SF Pro Display',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    'total_net_payment',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF6B7280),
-                                      letterSpacing: 0.8,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    AmountText.formatCompact(result.netSalary),
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF0F70FF),
-                                      letterSpacing: -1.0,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // ── 2. 3-Column Metrics Grid ───────────────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _metricColumn(
-                                  title: 'attendance'.tr(),
-                                  icon: Icons.calendar_today_outlined,
-                                  iconColor: const Color(0xFF3B82F6),
-                                  rows: [
-                                    _metricRow('presents'.tr(), '$presents ${'days_suffix'.tr()}', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('absents'.tr(), '${result.absents} ${'days_suffix'.tr()}', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('leaves'.tr(), '${result.leaves} ${'days_suffix'.tr()}', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: _metricColumn(
-                                  title: 'earnings'.tr(),
-                                  icon: Icons.payments_outlined,
-                                  iconColor: const Color(0xFF10B981),
-                                  rows: [
-                                    _metricRow('base_salary'.tr(), result.salary.isNotEmpty ? AmountText.formatCompact(result.salary) : '\$0', const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('working_days'.tr(), result.totalWorkDays, const Color(0xFFF9FAFB), const Color(0xFF6B7280), const Color(0xFF111827)),
-                                    _metricRow('overtime_bonus'.tr(), result.overtimeAmount.isNotEmpty ? AmountText.formatCompact(result.overtimeAmount) : '\$0.00', const Color(0xFFECFDF5), const Color(0xFF10B981), const Color(0xFF10B981)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: _metricColumn(
-                                  title: 'deductions'.tr(),
-                                  icon: Icons.remove_circle_outline,
-                                  iconColor: const Color(0xFFEF4444),
-                                  rows: [
-                                    // ── Editable Custom Deduction ───────────────────
-                                    _customDeductionRow(result, originalIndex, setDetailState, overtimeControllers),
-                                    _editableDeductionRow(
-                                      label: 'absent_deduction'.tr(),
-                                      value: result.absentDeduction,
-                                      controllerKey: originalIndex * 10 + 1,
-                                      controllers: overtimeControllers,
-                                      onChanged: (val) {
-                                        result.absentDeduction = val;
-                                        _recalcWithDeductions(result, result.customDeduction, () => setDetailState(() {}));
-                                      },
-                                    ),
-                                    _editableDeductionRow(
-                                      label: 'leave_deduction'.tr(),
-                                      value: result.leaveDeduction,
-                                      controllerKey: originalIndex * 10 + 2,
-                                      controllers: overtimeControllers,
-                                      onChanged: (val) {
-                                        result.leaveDeduction = val;
-                                        _recalcWithDeductions(result, result.customDeduction, () => setDetailState(() {}));
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // ── 3. Adjust Overtime Section ─────────────────────────
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: const Color(0xFFF3F4F6), width: 2),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.01),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Icons.more_time, color: Color(0xFF0F70FF), size: 22),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('adjust_overtime'.tr(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF111827), fontFamily: 'SF Pro Display')),
-                                      const SizedBox(height: 3),
-                                      Text('apply_additional_hours'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), fontFamily: 'SF Pro Display')),
-                                    ],
-                                  ),
-                                ),
-                                _buildOvertimeInlineField(result, originalIndex, setDetailState, overtimeControllers),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ── 4. Fixed Footer ─────────────────────────────────────
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-                      ),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (result.success)
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pop(result),
-                            child: Container(
-                              height: 48,
-                              padding: const EdgeInsets.symmetric(horizontal: 22),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0247C4),
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF0247C4).withValues(alpha: 0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'confirm_review'.tr(),
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
   }
 
   Widget _metricColumn({
@@ -1786,15 +2424,21 @@ class SalaryDayScheduler {
           ],
         ),
         const SizedBox(height: 20),
-        ...rows.map((row) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: row,
-        )),
+        ...rows.map(
+          (row) =>
+              Padding(padding: const EdgeInsets.only(bottom: 12), child: row),
+        ),
       ],
     );
   }
 
-  Widget _metricRow(String label, String value, Color bgColor, Color labelColor, Color valueColor) {
+  Widget _metricRow(
+    String label,
+    String value,
+    Color bgColor,
+    Color labelColor,
+    Color valueColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -1833,93 +2477,6 @@ class SalaryDayScheduler {
   }
 
   /// Editable custom deduction row shown above Absent/Leave deduction.
-  Widget _customDeductionRow(
-    AutoPayrollResult r,
-    int index,
-    void Function(VoidCallback) setDialogState,
-    Map<int, TextEditingController> controllers,
-  ) {
-    final deductionKey = -index - 1000;
-    if (!controllers.containsKey(deductionKey)) {
-      controllers[deductionKey] = TextEditingController(
-        text: r.customDeduction.isNotEmpty
-            ? r.customDeduction.replaceAll(RegExp(r'[^0-9.]'), '')
-            : '',
-      );
-    }
-    final controller = controllers[deductionKey]!;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF4E6),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFFD6A5), width: 1),
-      ),
-      child: Row(
-        children: [
-          Flexible(
-            child: Text(
-              'custom_deduction'.tr(),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF9A5A00),
-                fontFamily: 'SF Pro Display',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 90,
-            child: TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'SF Pro Display',
-                color: Color(0xFF9A5A00),
-              ),
-              textAlign: TextAlign.end,
-              decoration: InputDecoration(
-                hintText: '0',
-                hintStyle: TextStyle(
-                  color: const Color(0xFF9A5A00).withValues(alpha: 0.4),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'SF Pro Display',
-                ),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFFFD6A5), width: 1),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFFFD6A5), width: 1),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.5),
-                ),
-              ),
-              onChanged: (val) {
-                _recalcWithDeductions(r, val, () => setDialogState(() {}));
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Editable deduction row for absent/leave deduction per day.
   Widget _editableDeductionRow({
     required String label,
@@ -1962,9 +2519,12 @@ class SalaryDayScheduler {
             width: 90,
             child: TextField(
               controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                CommaCurrencyFormatter(),
+                LengthLimitingTextInputFormatter(14),
               ],
               style: const TextStyle(
                 fontSize: 12,
@@ -1982,18 +2542,30 @@ class SalaryDayScheduler {
                   fontFamily: 'SF Pro Display',
                 ),
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFFECACA), width: 1),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFFECACA),
+                    width: 1,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFFECACA), width: 1),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFFECACA),
+                    width: 1,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFEF4444),
+                    width: 1.5,
+                  ),
                 ),
               ),
               onChanged: onChanged,
@@ -2011,14 +2583,15 @@ class SalaryDayScheduler {
     void Function(VoidCallback) setDialogState,
     Map<int, TextEditingController> controllers,
   ) {
-    if (!controllers.containsKey(index)) {
-      controllers[index] = TextEditingController(
+    final controllerKey = index * 10;
+    if (!controllers.containsKey(controllerKey)) {
+      controllers[controllerKey] = TextEditingController(
         text: r.overtimeAmount.isNotEmpty && r.overtimeAmount != '0'
             ? r.overtimeAmount.replaceAll(RegExp(r'[^0-9.]'), '')
             : '',
       );
     }
-    final controller = controllers[index]!;
+    final controller = controllers[controllerKey]!;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -2030,7 +2603,8 @@ class SalaryDayScheduler {
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              CommaCurrencyFormatter(),
+              LengthLimitingTextInputFormatter(14),
             ],
             style: const TextStyle(
               fontSize: 14,
@@ -2039,7 +2613,7 @@ class SalaryDayScheduler {
               color: Color(0xFF111827),
             ),
             decoration: InputDecoration(
-              hintText: 'amount_in_usd'.tr(),
+              hintText: '0',
               hintStyle: TextStyle(
                 color: const Color(0xFF6B7280).withValues(alpha: 0.6),
                 fontSize: 14,
@@ -2051,20 +2625,26 @@ class SalaryDayScheduler {
               fillColor: Colors.white,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFFE5E7EB),
+                  width: 1.5,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFFE5E7EB),
+                  width: 1.5,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFF0F70FF), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFF0F70FF),
+                  width: 1.5,
+                ),
               ),
             ),
-            onChanged: (val) {
-              _recalcOvertime(r, val, () => setDialogState(() {}));
-            },
           ),
         ),
         const SizedBox(width: 12),
@@ -2072,10 +2652,11 @@ class SalaryDayScheduler {
           height: 44,
           child: ElevatedButton(
             onPressed: () {
-              _recalcOvertime(r, controller.text, () => setDialogState(() {}));
+              final clean = controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
+              _recalcOvertime(r, clean, () => setDialogState(() {}));
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F70FF),
+              backgroundColor: const Color(0xFF0247C4),
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -2097,38 +2678,28 @@ class SalaryDayScheduler {
     );
   }
 
-
   void _recalcWithDeductions(
     AutoPayrollResult r,
     String deductionVal,
     VoidCallback onUpdated,
   ) {
     r.customDeduction = deductionVal;
-    final deduction = PayrollService.extractSalary(deductionVal);
-    final workDays = int.tryParse(r.totalWorkDays) ?? 22;
-    final hasLeaveDeduction = r.leaveDeduction.isNotEmpty;
-    final effectiveDays = workDays - r.absents - (hasLeaveDeduction ? r.leaves : 0);
-
     try {
-      final calc = PayrollService.calculatePayroll(
+      final netPayment = PayrollService.calculateNetFromTotals(
         salary: r.salary,
-        totalWorkDays: r.totalWorkDays,
-        daysWorked: effectiveDays > 0 ? effectiveDays.toString() : '0',
-        absents: r.absents.toString(),
-        leaves: r.leaves.toString(),
         overtimeAmount: r.overtimeAmount,
-        absentDeductionPerDay: r.absentDeduction,
-        leaveDeductionPerDay: r.leaveDeduction,
+        absentDeduction: r.absentDeduction,
+        leaveDeduction: r.leaveDeduction,
+        customDeduction: deductionVal,
         salaryType: r.salaryType,
       );
-      final baseNet = ((calc['netSalary'] as num?) ?? 0).toDouble();
-      final netAfterDeduction = (baseNet - deduction).clamp(0, double.infinity).toDouble();
-      final currency = PayrollService.getCurrencyPrefix(r.netSalary);
+      final currency = PayrollService.getCurrencyPrefix(r.salary);
       final p = currency.isNotEmpty ? '$currency ' : '';
-      r.netSalary = '$p${PayrollService.formatNumber(netAfterDeduction)}';
-      r.rawNetSalaryValue = netAfterDeduction;
-    } catch (_) {
-      // Keep old values if calculation fails
+      r.netSalary = '$p${PayrollService.formatNumber(netPayment)}';
+      r.rawNetSalaryValue = netPayment;
+      r.deductionsAreTotals = true;
+    } catch (e) {
+      debugPrint('_recalcWithDeductions error: $e');
     }
     onUpdated();
   }
@@ -2143,7 +2714,9 @@ class SalaryDayScheduler {
     _recalcWithDeductions(r, r.customDeduction, onUpdated);
   }
 
-
+  String _editableAmount(num amount) {
+    return amount % 1 == 0
+        ? amount.toStringAsFixed(0)
+        : amount.toStringAsFixed(2);
+  }
 }
-
-

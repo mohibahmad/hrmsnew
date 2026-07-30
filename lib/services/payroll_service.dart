@@ -6,6 +6,26 @@ class PayrollService {
   factory PayrollService() => _instance;
   PayrollService._();
 
+  static DateTime completedPayrollMonth({DateTime? referenceDate}) {
+    final reference = referenceDate ?? DateTime.now();
+    return DateTime(reference.year, reference.month - 1, 1);
+  }
+
+  static String payrollPeriodLabel(DateTime month) =>
+      '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+  static int effectiveSalaryDay(DateTime month, int configuredDay) {
+    final lastDay = DateTime(month.year, month.month + 1, 0).day;
+    return configuredDay.clamp(1, lastDay);
+  }
+
+  static bool isPayrollDue(DateTime date, int? configuredDay) {
+    if (configuredDay == null || configuredDay < 1 || configuredDay > 31) {
+      return false;
+    }
+    return date.day >= effectiveSalaryDay(date, configuredDay);
+  }
+
   static List<Map<String, dynamic>> combinePayroll(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
@@ -14,6 +34,10 @@ class PayrollService {
   }) {
     final targetMonth = month ?? DateTime.now();
     final monthlyPayrollDocs = rawPayrollDocs.where((record) {
+      if ((record['status'] ?? '').toString().trim().toLowerCase() ==
+          'cancelled') {
+        return false;
+      }
       return isRecordInMonth(
         record,
         targetMonth,
@@ -24,17 +48,55 @@ class PayrollService {
 
     final combined = <Map<String, dynamic>>[];
     for (var worker in workersList) {
+      final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+          .toString()
+          .trim();
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
       final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+      final identity = workerId.isNotEmpty ? workerId : email;
+      final canonicalPayrollKey =
+          '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
+      final canonicalRecord = identity.isEmpty
+          ? null
+          : rawPayrollDocs.cast<Map<String, dynamic>?>().firstWhere(
+              (record) =>
+                  (record?['payrollKey'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase() ==
+                  canonicalPayrollKey,
+              orElse: () => null,
+            );
+      final workerPayrollDocs = canonicalRecord == null
+          ? monthlyPayrollDocs
+          : ((canonicalRecord['status'] ?? '')
+                            .toString()
+                            .trim()
+                            .toLowerCase() !=
+                        'cancelled' &&
+                    isRecordInMonth(
+                      canonicalRecord,
+                      targetMonth,
+                      allowUndated: allowUndatedRecords,
+                    )
+                ? <Map<String, dynamic>>[canonicalRecord]
+                : const <Map<String, dynamic>>[]);
 
-      final payrollRecord = monthlyPayrollDocs.firstWhere((p) {
+      final payrollRecord = workerPayrollDocs.firstWhere((p) {
+        final payrollWorkerId = (p['workerId'] ?? '').toString().trim();
         final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
         final pName = (p['name'] ?? p['workerName'] ?? '')
             .toString()
             .trim()
             .toLowerCase();
-        return (email.isNotEmpty && pEmail == email) ||
-            (name.isNotEmpty && pName == name);
+        return (workerId.isNotEmpty &&
+                payrollWorkerId.isNotEmpty &&
+                workerId == payrollWorkerId) ||
+            (payrollWorkerId.isEmpty && email.isNotEmpty && pEmail == email) ||
+            (payrollWorkerId.isEmpty &&
+                pEmail.isEmpty &&
+                name.isNotEmpty &&
+                pName == name);
       }, orElse: () => {});
 
       if (payrollRecord.isNotEmpty) {
@@ -42,9 +104,9 @@ class PayrollService {
         combined.add({
           ...worker,
           ...payrollRecord,
+          'workerId': workerId,
           'hasPayrollRecord': true,
-          
-          
+
           'salaryAmount':
               worker['salaryAmount'] ?? payrollRecord['salaryAmount'],
           'currency': worker['currency'] ?? payrollRecord['currency'],
@@ -60,6 +122,7 @@ class PayrollService {
         final salaryAmount = worker['salaryAmount']?.toString() ?? '';
         combined.add({
           ...worker,
+          'workerId': workerId,
           'hasPayrollRecord': false,
           'status': 'Active',
           'totalWorkDays': '',
@@ -88,16 +151,36 @@ class PayrollService {
   }
 
   static DateTime? payrollRecordDate(Map<String, dynamic> record) {
+    final createdAt = _parseDate(record['createdAt']);
+    final payrollDate = _parseDate(record['payrollDate']);
+    if (payrollDate != null &&
+        createdAt != null &&
+        (payrollDate.year != createdAt.year ||
+            payrollDate.month != createdAt.month)) {
+      return payrollDate;
+    }
+
     for (final key in [
+      'payrollMonth',
+      'period',
+      'payPeriod',
       'createdAt',
       'timestamp',
-      'payPeriod',
       'payrollDate',
       'date',
       'lastModified',
     ]) {
       final parsed = _parseDate(record[key]);
       if (parsed != null) return parsed;
+    }
+    final payrollKey = (record['payrollKey'] ?? '').toString();
+    final periodMatch = RegExp(r'(\d{4})-(\d{2})$').firstMatch(payrollKey);
+    if (periodMatch != null) {
+      final year = int.tryParse(periodMatch.group(1)!);
+      final month = int.tryParse(periodMatch.group(2)!);
+      if (year != null && month != null && month >= 1 && month <= 12) {
+        return DateTime(year, month, 1);
+      }
     }
     return null;
   }
@@ -133,26 +216,45 @@ class PayrollService {
 
   static double extractSalary(String salaryStr) {
     if (salaryStr.isEmpty) return 0;
+    final suffix = RegExp(
+      r'([KMBT])\s*$',
+      caseSensitive: false,
+    ).firstMatch(salaryStr.trim())?.group(1)?.toUpperCase();
+    final multiplier = switch (suffix) {
+      'K' => 1e3,
+      'M' => 1e6,
+      'B' => 1e9,
+      'T' => 1e12,
+      _ => 1.0,
+    };
     String cleaned = salaryStr.replaceAll(RegExp(r'[^0-9.,]'), '');
     if (cleaned.isEmpty) return 0;
-    
-    
+
     final lastDot = cleaned.lastIndexOf('.');
     final lastComma = cleaned.lastIndexOf(',');
-    bool isEuropean = false;
-    if (lastComma > lastDot) {
-      isEuropean = true;
-    } else if (lastDot > lastComma &&
-        cleaned.length - lastDot == 4 &&
-        cleaned.contains(',')) {
-      isEuropean = true;
+    if (lastDot >= 0 && lastComma >= 0) {
+      if (lastComma > lastDot) {
+        // European format: 1.234,56
+        cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        // US format: 1,234.56
+        cleaned = cleaned.replaceAll(',', '');
+      }
+    } else if (lastComma >= 0) {
+      final commaCount = ','.allMatches(cleaned).length;
+      final digitsAfterComma = cleaned.length - lastComma - 1;
+      if (commaCount > 1 || digitsAfterComma == 3) {
+        // Thousands grouping: 1,234 or 1,234,567
+        cleaned = cleaned.replaceAll(',', '');
+      } else {
+        // Decimal comma: 123,45
+        cleaned = cleaned.replaceAll(',', '.');
+      }
+    } else if ('.'.allMatches(cleaned).length > 1) {
+      // European thousands grouping without a decimal part: 1.234.567
+      cleaned = cleaned.replaceAll('.', '');
     }
-    if (isEuropean) {
-      cleaned = cleaned.replaceAll('.', '').replaceFirst(',', '.');
-    } else {
-      cleaned = cleaned.replaceAll(',', '');
-    }
-    return double.tryParse(cleaned) ?? 0;
+    return (double.tryParse(cleaned) ?? 0) * multiplier;
   }
 
   static int parseIntSafe(String value) {
@@ -160,7 +262,6 @@ class PayrollService {
     return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 
-  
   static String currentSalaryDisplay(Map<String, dynamic> data) {
     final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
     if (salaryAmount.isNotEmpty) {
@@ -173,7 +274,6 @@ class PayrollService {
     return '\$ 0';
   }
 
-  
   static Map<String, int> attendanceCounts(
     Map<String, dynamic> payrollOrWorkerData,
   ) {
@@ -186,7 +286,7 @@ class PayrollService {
     final hasExplicitUnpaid = payrollOrWorkerData.containsKey('unpaidLeaves');
     final unpaidLeaves = hasExplicitUnpaid
         ? parseIntSafe((payrollOrWorkerData['unpaidLeaves'] ?? '').toString())
-        : legacyLeaves;
+        : (legacyLeaves - paidLeaves).clamp(0, legacyLeaves);
     return {
       'absents': parseIntSafe(
         (payrollOrWorkerData['absents'] ?? '').toString(),
@@ -215,6 +315,19 @@ class PayrollService {
     return formatted;
   }
 
+  static String formatFullNumber(num number) {
+    if (number.isNaN || number.isInfinite) return '0';
+    final hasDecimals = number != number.roundToDouble();
+    final parts = number.toStringAsFixed(hasDecimals ? 2 : 0).split('.');
+    final formattedInteger = parts.first.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match match) => '${match[1]},',
+    );
+    return parts.length == 1
+        ? formattedInteger
+        : '$formattedInteger.${parts[1]}';
+  }
+
   static String getCurrencyPrefix(String salaryStr) {
     if (salaryStr.isEmpty) return '';
     final match = RegExp(r'\d').firstMatch(salaryStr);
@@ -233,6 +346,27 @@ class PayrollService {
     return '$prefix${formatNumber(val)}';
   }
 
+  static double calculateNetFromTotals({
+    required String salary,
+    String overtimeAmount = '',
+    String absentDeduction = '',
+    String leaveDeduction = '',
+    String customDeduction = '',
+    String salaryType = 'Monthly',
+  }) {
+    final enteredSalary = extractSalary(salary);
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+        ? enteredSalary / 12
+        : enteredSalary;
+    final netSalary =
+        periodSalary +
+        extractSalary(overtimeAmount) -
+        extractSalary(absentDeduction) -
+        extractSalary(leaveDeduction) -
+        extractSalary(customDeduction);
+    return netSalary.clamp(0.0, double.infinity).toDouble();
+  }
+
   static Map<String, dynamic> calculatePayroll({
     required String salary,
     required String totalWorkDays,
@@ -245,6 +379,9 @@ class PayrollService {
     String salaryType = 'Monthly',
   }) {
     final rawSalaryVal = extractSalary(salary);
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+        ? rawSalaryVal / 12
+        : rawSalaryVal;
     final totalWorkDaysVal = parseIntSafe(totalWorkDays);
     final absentDays = parseIntSafe(absents);
     final leaveDays = parseIntSafe(leaves);
@@ -254,34 +391,29 @@ class PayrollService {
     final currency = getCurrencyPrefix(salary);
     final p = currency.isNotEmpty ? '$currency ' : '';
 
-    
     final dailyRate = totalWorkDaysVal > 0
-        ? rawSalaryVal / totalWorkDaysVal
+        ? periodSalary / totalWorkDaysVal
         : 0.0;
 
-    
     final workedDaysVal = daysWorked.isEmpty
         ? totalWorkDaysVal - absentDays - leaveDays
         : parseIntSafe(daysWorked);
 
-    final grossSalary = rawSalaryVal;
+    final grossSalary = periodSalary;
 
-    
     final overtimePay = customOvertimeAmount;
 
-    
     final absentRate = absentDeductionPerDay.trim().isNotEmpty
         ? customAbsentDeduction
-        : dailyRate;
+        : 0.0;
     final leaveRate = leaveDeductionPerDay.trim().isNotEmpty
         ? customLeaveDeduction
-        : dailyRate;
+        : 0.0;
     final absentDeduction = absentDays * absentRate;
     final leaveDeduction = leaveDays * leaveRate;
 
     final totalDeductions = absentDeduction + leaveDeduction;
 
-    
     final netSalary = (grossSalary + overtimePay - totalDeductions).clamp(
       0.0,
       double.infinity,
@@ -328,27 +460,17 @@ class PayrollService {
     String overtimeAmount = '',
     String salaryType = 'Monthly',
   }) {
-    final rawSalary = extractSalary(salary);
-    final workDays = parseIntSafe(totalWorkDays);
-    final absentDays = parseIntSafe(absents);
+    final enteredSalary = extractSalary(salary);
+    final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+        ? enteredSalary / 12
+        : enteredSalary;
     final overtime = extractSalary(overtimeAmount);
     final currency = getCurrencyPrefix(salary);
     final prefix = currency.isNotEmpty ? '$currency ' : '';
 
-    
-    final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
-
-    
-    final effectiveWorkDays = workDays - absentDays;
-
-    
-    final grossSalary = effectiveWorkDays * dailyRate;
-
-    
-    final overtimePay = overtime;
-
-    
-    final netSalary = grossSalary + overtimePay;
+    // Attendance is detected and displayed separately. It must not reduce net
+    // salary automatically; HR applies any deduction explicitly in payroll.
+    final netSalary = periodSalary + overtime;
 
     return '$prefix${formatNumber(netSalary)}';
   }

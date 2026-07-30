@@ -64,18 +64,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _resetPassword(BuildContext context) async {
     final email = _authService.currentUser?.email;
     if (email != null && email.isNotEmpty) {
-      final passwordWasReset = await Navigator.of(context).push<bool>(
+      final emailSent = await Navigator.of(context).push<bool>(
         MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
       );
-      if (passwordWasReset == true) {
-        
-        if (context.mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'password_reset_success'.tr(),
-            title: 'success'.tr(),
-          );
-        }
+      if (emailSent == true && context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'password_reset_sent'.tr(),
+          title: 'success'.tr(),
+        );
       }
     } else {
       if (context.mounted) {

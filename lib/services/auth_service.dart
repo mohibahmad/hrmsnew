@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../firebase_options.dart';
@@ -17,9 +16,6 @@ class AuthService {
   static AuthService get instance => _instance!;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
-    region: 'us-central1',
-  );
   final User _guestUser = GuestUser();
 
   AuthService() {
@@ -214,40 +210,8 @@ class AuthService {
     } catch (_) {}
   }
 
-  Future<void> requestPasswordResetOtp(String email) async {
-    await _functions.httpsCallable('requestPasswordResetOtp').call({
-      'email': email.trim(),
-    });
-  }
-
-  Future<String> verifyPasswordResetOtp({
-    required String email,
-    required String otp,
-  }) async {
-    final result = await _functions
-        .httpsCallable('verifyPasswordResetOtp')
-        .call({'email': email.trim(), 'otp': otp.trim()});
-    final data = Map<String, dynamic>.from(result.data as Map);
-    final resetToken = (data['resetToken'] ?? '').toString();
-    if (resetToken.isEmpty) {
-      throw FirebaseFunctionsException(
-        code: 'internal',
-        message: 'The reset verification token is missing.',
-      );
-    }
-    return resetToken;
-  }
-
-  Future<void> confirmPasswordResetOtp({
-    required String email,
-    required String resetToken,
-    required String newPassword,
-  }) async {
-    await _functions.httpsCallable('confirmPasswordResetOtp').call({
-      'email': email.trim(),
-      'resetToken': resetToken,
-      'newPassword': newPassword,
-    });
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
   }
 }
 

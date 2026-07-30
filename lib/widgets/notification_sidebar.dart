@@ -785,8 +785,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                       child: style.iconAsset != null
                           ? SvgPicture.asset(
                               style.iconAsset!,
-                              width: style.iconSize,
-                              height: style.iconSize,
+                              width: 22,
+                              height: 22,
                               colorFilter: ColorFilter.mode(
                                 style.color,
                                 BlendMode.srcIn,
@@ -794,7 +794,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                             )
                           : Icon(
                               style.icon,
-                              size: style.iconSize,
+                              size: 22,
                               color: style.color,
                             ),
                     ),
@@ -933,8 +933,6 @@ class _NotifStyle {
   final String label;
   final bool isWelcome;
   final String? iconAsset;
-  final double iconSize;
-
   const _NotifStyle({
     required this.icon,
     required this.color,
@@ -942,7 +940,5 @@ class _NotifStyle {
     required this.label,
     this.isWelcome = false,
     this.iconAsset,
-    
-    this.iconSize = 22,
   });
 }

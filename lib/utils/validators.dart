@@ -1,11 +1,8 @@
-
-
 library;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'currency_utils.dart';
 import 'date_utils.dart';
-
 
 class ValidationException implements Exception {
   final String message;
@@ -14,15 +11,14 @@ class ValidationException implements Exception {
   const ValidationException(this.message, {this.field});
 
   @override
-  String toString() =>
-      field == null ? 'ValidationException: $message'
-                    : 'ValidationException($field): $message';
+  String toString() => field == null
+      ? 'ValidationException: $message'
+      : 'ValidationException($field): $message';
 }
 
 class Validators {
   Validators._();
 
-  
   static final RegExp _email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
   static bool isValidEmail(String? value) {
@@ -45,9 +41,11 @@ class Validators {
     return null;
   }
 
-  
   static String? requiredField(String? value, {String? label}) {
-    if (value == null || value.trim().isEmpty) return 'field_is_required'.tr(namedArgs: {'field': label ?? 'this_field'.tr()});
+    if (value == null || value.trim().isEmpty)
+      return 'field_is_required'.tr(
+        namedArgs: {'field': label ?? 'this_field'.tr()},
+      );
     return null;
   }
 
@@ -58,7 +56,6 @@ class Validators {
     return null;
   }
 
-  
   static double? parseAmount(dynamic raw) {
     if (raw == null) return null;
     if (raw is num) return raw.toDouble();
@@ -70,7 +67,6 @@ class Validators {
   static String _str(Map<String, dynamic> m, String key) =>
       (m[key] ?? '').toString().trim();
 
-  
   static void validateWorker(Map<String, dynamic> w) {
     if (_str(w, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
@@ -122,10 +118,7 @@ class Validators {
     }
     final amount = parseAmount(e['amount']);
     if (amount == null) {
-      throw ValidationException(
-        'valid_amount_required'.tr(),
-        field: 'amount',
-      );
+      throw ValidationException('valid_amount_required'.tr(), field: 'amount');
     }
     if (amount <= 0) {
       throw ValidationException(
@@ -136,6 +129,9 @@ class Validators {
   }
 
   static void validateAttendance(Map<String, dynamic> a) {
+    if (_str(a, 'workerId').isEmpty) {
+      throw ValidationException('worker_id_required'.tr(), field: 'workerId');
+    }
     if (_str(a, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
@@ -149,31 +145,28 @@ class Validators {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
     if (_str(p, 'status').isEmpty) {
-      throw ValidationException('payment_status_required'.tr(), field: 'status');
+      throw ValidationException(
+        'payment_status_required'.tr(),
+        field: 'status',
+      );
     }
   }
 
   static void validateTimeOff(Map<String, dynamic> t) {
+    if (_str(t, 'workerId').isEmpty) {
+      throw ValidationException('worker_id_required'.tr(), field: 'workerId');
+    }
     if (_str(t, 'name').isEmpty) {
       throw ValidationException('worker_name_required'.tr(), field: 'name');
     }
     if (_str(t, 'action').isEmpty) {
-      throw ValidationException(
-        'leave_type_required'.tr(),
-        field: 'action',
-      );
+      throw ValidationException('leave_type_required'.tr(), field: 'action');
     }
     if (_str(t, 'startDate').isEmpty) {
-      throw ValidationException(
-        'start_date_required'.tr(),
-        field: 'startDate',
-      );
+      throw ValidationException('start_date_required'.tr(), field: 'startDate');
     }
     if (_str(t, 'endDate').isEmpty) {
-      throw ValidationException(
-        'end_date_required'.tr(),
-        field: 'endDate',
-      );
+      throw ValidationException('end_date_required'.tr(), field: 'endDate');
     }
   }
 

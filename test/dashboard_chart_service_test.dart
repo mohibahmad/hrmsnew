@@ -2,6 +2,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/dashboard_chart_service.dart';
 
 void main() {
+  test('cancelled payroll is excluded from dashboard salary totals', () {
+    final series = DashboardChartService.buildSeries(
+      records: [
+        {
+          'status': 'Paid',
+          'netSalary': 50000,
+          'payPeriod': DateTime(2026, 7, 1),
+        },
+        {
+          'status': 'Cancelled',
+          'netSalary': 30000,
+          'payPeriod': DateTime(2026, 7, 1),
+        },
+      ],
+      valueOf: (record) => (record['netSalary'] as num).toDouble(),
+      period: 'Month',
+      now: DateTime(2026, 7, 10),
+    );
+
+    expect(series.total, 50000);
+  });
+
   test('yearly series groups real values by calendar month', () {
     final series = DashboardChartService.buildSeries(
       records: [

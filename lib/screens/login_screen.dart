@@ -600,7 +600,6 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Row(
             children: [
-              
               if (isDesktop)
                 Expanded(
                   flex: 11,
@@ -608,16 +607,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: const Color(0xFF165CDB),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        
-                        final scale = (constraints.maxWidth / 880.0).clamp(
-                          0.4,
-                          1.2,
+                        final panelWidth = constraints.maxWidth.clamp(
+                          0.0,
+                          880.0,
                         );
+                        final scale = (panelWidth / 880.0).clamp(0.4, 1.0);
+                        final mockupWidth = panelWidth + (520 * scale) - 80;
 
                         return Stack(
                           clipBehavior: Clip.hardEdge,
                           children: [
-                            
                             Positioned(
                               top: 40,
                               left: 80,
@@ -643,7 +642,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                       fontFamily: 'SF Pro Display',
                                       height: 1.4,
-                                      letterSpacing: 2,
+                                      letterSpacing: 2.2,
                                     ),
                                   ),
                                 ],
@@ -653,11 +652,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             Positioned(
                               top: 380 * scale,
                               left: -520 * scale,
-                              right: 80,
                               child: Transform.rotate(
                                 angle: -0.18,
                                 child: Container(
-                                  width: 1200 * scale,
+                                  width: mockupWidth,
                                   height: 800 * scale,
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -707,7 +705,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-              
               Expanded(
                 flex: 9,
                 child: Center(
@@ -733,7 +730,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
 
-          
           Positioned(
             top: 40,
             right: 40,
