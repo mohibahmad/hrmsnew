@@ -74,22 +74,29 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       _workers = List<Map<String, dynamic>>.from(DummyData.workers);
     } else {
       _isLoading = true;
-      _workersSub = _firestore.workersStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            _workers = snapshot.docs.map((doc) {
-              return {...doc.data() as Map<String, dynamic>, 'id': doc.id};
-            }).toList();
-            _isLoading = false;
-          });
-        }
-      });
+      _workersSub = _firestore.workersStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              _workers = snapshot.docs.map((doc) {
+                return {...doc.data() as Map<String, dynamic>, 'id': doc.id};
+              }).toList();
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (_) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+        },
+      );
     }
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
-    if (_searchQuery.isEmpty) return _workers;
-    final q = _searchQuery.toLowerCase();
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return _workers;
     return _workers.where((w) {
       final name = (w['name'] ?? '').toString().toLowerCase();
       final position = (w['position'] ?? '').toString().toLowerCase();
@@ -136,7 +143,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 children: [
                   Text(
                     _editingWorker != null
-                        ? (_editingWorker!['name'] ?? 'Unknown').toString()
+                        ? (_editingWorker!['name'] ?? 'worker_fallback'.tr())
+                              .toString()
                         : 'workforce'.tr(),
                     style: TextStyle(
                       color: const Color(0xFF000000),
@@ -294,7 +302,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Widget _buildWorkerCard(Map<String, dynamic> worker) {
-    final name = (worker['name'] ?? 'Unknown').toString();
+    final name = (worker['name'] ?? 'worker_fallback'.tr()).toString();
     final position = (worker['position'] ?? '').toString();
 
     return Padding(
@@ -443,9 +451,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   late FirestoreService _firestore;
 
   String? _firstNonEmpty(List<String?> values) {
-    for (final v in values) {
-      final s = v?.toString();
-      if (s != null && s.isNotEmpty && s != 'null') return s;
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
     }
     return null;
   }
@@ -472,16 +480,37 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     widget.worker['cv_url']?.toString(),
   ]);
 
-  String get _workerId => widget.worker['id'] ?? '';
-  String get _workerName => (widget.worker['name'] ?? 'Unknown').toString();
+  String get _workerId => (widget.worker['id'] ?? '').toString().trim();
+  String get _workerName =>
+      (widget.worker['name'] ?? 'worker_fallback'.tr()).toString().trim();
 
-  String _cleanFileName(String url) {
+  String _cleanFileName(String value) {
     try {
-      final name = url.split('/').last.split('?').first;
+      if (value.startsWith('data:')) return 'cv';
+      var cleanValue = value.split('?').first;
+      cleanValue = Uri.decodeComponent(cleanValue);
+      final name = cleanValue.split('/').last.trim();
       return name.isNotEmpty ? name : 'cv';
     } catch (_) {
       return 'cv';
     }
+  }
+
+  Uint8List? _decodeDataUrl(String value) {
+    try {
+      if (!value.startsWith('data:') || !value.contains(',')) return null;
+      final bytes = base64Decode(value.split(',').last);
+      return bytes.isEmpty ? null : bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _documentErrorMessage(Object error) {
+    return error
+        .toString()
+        .replaceFirst(RegExp(r'^(Exception|StateError|Bad state):\s*'), '')
+        .trim();
   }
 
   String _getMimeType(String fileName) {
@@ -517,46 +546,100 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
   }
 
   Future<void> _pickFile(String field) async {
-    final result = await FilePicker.pickFiles(
-      type: field == 'cv' ? FileType.custom : FileType.image,
-      allowedExtensions: field == 'cv' ? ['pdf', 'doc', 'docx'] : null,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return;
+    if (_isUploading) return;
 
-    final file = result.files.first;
-    if (file.bytes == null) return;
+    try {
+      final result = await FilePicker.pickFiles(
+        type: field == 'cv' ? FileType.custom : FileType.image,
+        allowedExtensions: field == 'cv' ? ['pdf', 'doc', 'docx'] : null,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
 
-    
-    if (file.bytes!.length > 10 * 1024 * 1024) {
+      final file = result.files.first;
+      if (file.size > UploadService.maxFileBytes) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      Uint8List? bytes = file.bytes;
+      if (bytes == null && file.path != null) {
+        final selectedFile = io.File(file.path!);
+        final fileLength = await selectedFile.length();
+        if (fileLength > UploadService.maxFileBytes) {
+          if (mounted) {
+            FlashySnackBar.show(
+              context,
+              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+              isError: true,
+            );
+          }
+          return;
+        }
+        bytes = await selectedFile.readAsBytes();
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'upload_failed'.tr(
+              namedArgs: {'error': 'Failed to pick file'.tr()},
+            ),
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      if (bytes.length > UploadService.maxFileBytes) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        if (field == 'frontId') {
+          _frontIdBytes = bytes;
+          _frontIdName = file.name;
+        } else if (field == 'backId') {
+          _backIdBytes = bytes;
+          _backIdName = file.name;
+        } else if (field == 'cv') {
+          _cvBytes = bytes;
+          _cvName = file.name;
+          _isCvUploaded = true;
+        }
+      });
+
+      await _uploadAndSave(field);
+    } catch (error) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
+          message: 'upload_failed'.tr(
+            namedArgs: {'error': _documentErrorMessage(error)},
+          ),
           isError: true,
         );
       }
-      return;
     }
-
-    setState(() {
-      if (field == 'frontId') {
-        _frontIdBytes = file.bytes;
-        _frontIdName = file.name;
-      } else if (field == 'backId') {
-        _backIdBytes = file.bytes;
-        _backIdName = file.name;
-      } else if (field == 'cv') {
-        _cvBytes = file.bytes;
-        _cvName = file.name;
-        _isCvUploaded = true;
-      }
-    });
-
-    await _uploadAndSave(field);
   }
 
   Future<void> _uploadAndSave(String field) async {
+    if (_isUploading) return;
+
     Uint8List? bytes;
     String? fileName;
     String? existingUrl;
@@ -573,15 +656,30 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       bytes = _cvBytes;
       fileName = _cvName;
       existingUrl = _existingCv;
+    } else {
+      return;
     }
 
     if (bytes == null && (existingUrl == null || existingUrl.isEmpty)) return;
+
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (!isGuest && _workerId.isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'upload_failed'.tr(
+            namedArgs: {'error': 'Worker not found'.tr()},
+          ),
+          isError: true,
+        );
+      }
+      return;
+    }
 
     setState(() => _isUploading = true);
 
     try {
       String? url;
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
 
       if (bytes != null) {
         if (isGuest) {
@@ -591,8 +689,8 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           final folder = field == 'frontId'
               ? 'front_ids'
               : field == 'backId'
-                  ? 'back_ids'
-                  : 'cvs';
+              ? 'back_ids'
+              : 'cvs';
 
           final results = await UploadService.uploadFiles(
             files: [
@@ -606,7 +704,15 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
           );
 
           if (results.isEmpty || !results.first.isSuccess) {
-            throw Exception('Failed to upload file');
+            final error = results.isEmpty
+                ? 'file_upload_failed'.tr(
+                    namedArgs: {'file': fileName ?? 'file'},
+                  )
+                : results.first.error ??
+                      'file_upload_failed'.tr(
+                        namedArgs: {'file': fileName ?? 'file'},
+                      );
+            throw Exception(error);
           }
 
           url = results.first.url;
@@ -615,85 +721,76 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         url = existingUrl;
       }
 
+      if (url == null || url.trim().isEmpty) {
+        throw Exception(
+          'file_upload_failed'.tr(namedArgs: {'file': fileName ?? 'file'}),
+        );
+      }
+
       final updates = <String, dynamic>{};
-      if (url != null && url.isNotEmpty) {
-        if (field == 'frontId') {
-          updates['frontId'] = url;
-          updates['front_id'] = url;
-          updates['idFront'] = url;
-          updates['id_front'] = url;
-        } else if (field == 'backId') {
-          updates['backId'] = url;
-          updates['back_id'] = url;
-          updates['idBack'] = url;
-          updates['id_back'] = url;
-        } else {
-          updates[field] = url;
-        }
+      if (field == 'frontId') {
+        updates['frontId'] = url;
+        updates['front_id'] = url;
+        updates['idFront'] = url;
+        updates['id_front'] = url;
+      } else if (field == 'backId') {
+        updates['backId'] = url;
+        updates['back_id'] = url;
+        updates['idBack'] = url;
+        updates['id_back'] = url;
+      } else {
+        updates['cv'] = url;
       }
-      if (updates.isNotEmpty) {
-        updates['name'] = _workerName;
-        if (isGuest) {
-          final workerIndex = DummyData.workers.indexWhere((worker) {
-            final workerId = (worker['id'] ?? '').toString();
-            final workerEmail = (worker['email'] ?? '')
-                .toString()
-                .trim()
-                .toLowerCase();
-            final targetEmail = (widget.worker['email'] ?? '')
-                .toString()
-                .trim()
-                .toLowerCase();
-            return (workerId.isNotEmpty && workerId == _workerId) ||
-                (workerEmail.isNotEmpty && workerEmail == targetEmail);
-          });
-          if (workerIndex != -1) {
-            DummyData.workers[workerIndex].addAll(updates);
-            await DummyData.saveToPrefs();
-          }
-        } else {
-          await _firestore.updateWorker(_workerId, updates);
-        }
-        updates.forEach((key, value) {
-          widget.worker[key] = value;
+      updates['name'] = _workerName;
+
+      if (isGuest) {
+        final workerIndex = DummyData.workers.indexWhere((worker) {
+          final workerId = (worker['id'] ?? '').toString();
+          final workerEmail = (worker['email'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          final targetEmail = (widget.worker['email'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          return (workerId.isNotEmpty && workerId == _workerId) ||
+              (workerEmail.isNotEmpty && workerEmail == targetEmail);
         });
-        widget.onDocumentsUpdated();
+        if (workerIndex != -1) {
+          DummyData.workers[workerIndex].addAll(updates);
+          await DummyData.saveToPrefs();
+        }
+      } else {
+        final completeWorker = <String, dynamic>{...widget.worker, ...updates}
+          ..remove('id');
+        await _firestore.updateWorker(_workerId, completeWorker);
       }
-      
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          if (url != null && url.isNotEmpty) {
-            FlashySnackBar.show(
-              context,
-              message: field == 'frontId'
-                  ? 'cnic_front_updated'.tr(namedArgs: {'name': _workerName})
-                  : field == 'backId'
-                  ? 'cnic_back_updated'.tr(namedArgs: {'name': _workerName})
-                  : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
-            );
-          } else {
-            FlashySnackBar.show(
-              context,
-              message: 'upload_failed'.tr(
-                namedArgs: {
-                  'error': 'Failed to upload file. Please try again.',
-                },
-              ),
-              isError: true,
-            );
-          }
-        }
+
+      updates.forEach((key, value) {
+        widget.worker[key] = value;
       });
-    } catch (e) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'upload_failed'.tr(namedArgs: {'error': '$e'}),
-            isError: true,
-          );
-        }
-      });
+      widget.onDocumentsUpdated();
+
+      if (!mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: field == 'frontId'
+            ? 'cnic_front_updated'.tr(namedArgs: {'name': _workerName})
+            : field == 'backId'
+            ? 'cnic_back_updated'.tr(namedArgs: {'name': _workerName})
+            : 'cv_updated'.tr(namedArgs: {'name': _workerName}),
+      );
+    } catch (error) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'upload_failed'.tr(
+            namedArgs: {'error': _documentErrorMessage(error)},
+          ),
+          isError: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
@@ -708,14 +805,15 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     if (url == null || url.isEmpty) return;
     if (!isPdf) {
       final lower = url.toLowerCase();
-      isPdf = lower.endsWith('.pdf') ||
+      isPdf =
+          lower.endsWith('.pdf') ||
           lower.contains('application/pdf') ||
           lower.contains('/pdf/');
     }
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Close',
+      barrierLabel: 'close'.tr(),
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (ctx, anim, secAnim) => _FullScreenDocumentViewer(
@@ -1033,21 +1131,40 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
     final cleanUrl = (existingUrl ?? '').split('?').first.toLowerCase();
     final cleanName = (fileName ?? '').toLowerCase();
-    final bool isPdf = cleanName.endsWith('.pdf') || cleanUrl.endsWith('.pdf');
+    final bool isPdf =
+        cleanName.endsWith('.pdf') ||
+        cleanUrl.endsWith('.pdf') ||
+        cleanUrl.startsWith('data:application/pdf');
     final bool isImage =
+        bytes != null ||
         cleanName.endsWith('.png') ||
         cleanName.endsWith('.jpg') ||
         cleanName.endsWith('.jpeg') ||
+        cleanName.endsWith('.gif') ||
+        cleanName.endsWith('.webp') ||
+        cleanName.endsWith('.bmp') ||
         cleanUrl.endsWith('.png') ||
         cleanUrl.endsWith('.jpg') ||
         cleanUrl.endsWith('.jpeg') ||
-        (existingUrl != null && existingUrl.startsWith('data:image'));
+        cleanUrl.endsWith('.gif') ||
+        cleanUrl.endsWith('.webp') ||
+        cleanUrl.endsWith('.bmp') ||
+        cleanUrl.startsWith('data:image') ||
+        (cleanUrl.startsWith('http') && !isPdf);
+    final decodedDataImage = existingUrl == null
+        ? null
+        : _decodeDataUrl(existingUrl);
 
     return GestureDetector(
       onTap: hasFile
           ? () {
               if (bytes != null) {
-                final dataUrl = 'data:image/png;base64,${base64Encode(bytes)}';
+                final mimeType = _getMimeType(fileName ?? 'file');
+                final safeMimeType = mimeType.startsWith('image/')
+                    ? mimeType
+                    : 'image/jpeg';
+                final dataUrl =
+                    'data:$safeMimeType;base64,${base64Encode(bytes)}';
                 _viewDocument(dataUrl, true, label);
               } else if (existingUrl != null && existingUrl.isNotEmpty) {
                 _viewDocument(existingUrl, isImage, label, isPdf: isPdf);
@@ -1075,7 +1192,12 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                   if (isPdf)
                     PdfPagePreview(cvBytes: bytes, existingCvUrl: existingUrl)
                   else if (bytes != null)
-                    Image.memory(bytes, fit: BoxFit.cover)
+                    Image.memory(
+                      bytes,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildIdPlaceholder(label, hasFile),
+                    )
                   else if (existingUrl != null &&
                       existingUrl.startsWith('http'))
                     CachedNetworkImage(
@@ -1084,10 +1206,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                       errorWidget: (context, url, error) =>
                           _buildIdPlaceholder(label, hasFile),
                     )
-                  else if (existingUrl != null &&
-                      existingUrl.startsWith('data:image'))
+                  else if (decodedDataImage != null)
                     Image.memory(
-                      base64Decode(existingUrl.split(',').last),
+                      decodedDataImage,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           _buildIdPlaceholder(label, hasFile),
@@ -1256,28 +1377,28 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
   Widget _buildCvPreview() {
     final cvUrl = _existingCv;
-    final lowerUrl = cvUrl?.toLowerCase() ?? '';
-    final cvNameLower = (_cvName ?? '').toLowerCase();
+    final detectedName = (_cvName == null || _cvName!.trim().isEmpty)
+        ? _cleanFileName(cvUrl ?? '')
+        : _cvName!.trim();
+    final cvNameLower = detectedName.toLowerCase();
+    final lowerUrl = (cvUrl ?? '').toLowerCase();
     final isPdf =
         cvNameLower.endsWith('.pdf') ||
-        lowerUrl.endsWith('.pdf') ||
-        lowerUrl.contains('application/pdf') ||
-        lowerUrl.contains('/cvs/');
+        lowerUrl.startsWith('data:application/pdf');
     final isImage =
         cvNameLower.endsWith('.png') ||
         cvNameLower.endsWith('.jpg') ||
         cvNameLower.endsWith('.jpeg') ||
-        lowerUrl.endsWith('.png') ||
-        lowerUrl.endsWith('.jpg') ||
-        lowerUrl.endsWith('.jpeg') ||
-        lowerUrl.contains('image/');
+        cvNameLower.endsWith('.gif') ||
+        cvNameLower.endsWith('.webp') ||
+        cvNameLower.endsWith('.bmp') ||
+        lowerUrl.startsWith('data:image/');
     final isDoc = cvNameLower.endsWith('.doc') || cvNameLower.endsWith('.docx');
 
     void onTapCv() {
       if (_cvBytes != null) {
         final mimeType = _getMimeType(_cvName ?? 'file');
-        final dataUrl =
-            'data:$mimeType;base64,${base64Encode(_cvBytes!)}';
+        final dataUrl = 'data:$mimeType;base64,${base64Encode(_cvBytes!)}';
         _viewDocument(
           dataUrl,
           isImage,
@@ -1390,7 +1511,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 }
 
 String _cleanDocumentFileName(String rawName) {
-  if (rawName.trim().isEmpty) return 'Document';
+  if (rawName.trim().isEmpty) return 'Document'.tr();
   String name = rawName.split('?').first;
   try {
     name = Uri.decodeComponent(name);
@@ -1399,7 +1520,7 @@ String _cleanDocumentFileName(String rawName) {
     name = name.split('/').last;
   }
   name = name.replaceFirst(RegExp(r'^\d+_'), '');
-  return name.trim().isNotEmpty ? name.trim() : 'Document';
+  return name.trim().isNotEmpty ? name.trim() : 'Document'.tr();
 }
 
 class _FullScreenPdfPreview extends StatefulWidget {
@@ -1430,31 +1551,44 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
       _pageImages = [];
     });
 
+    PdfDocument? document;
     try {
-      PdfDocument? document;
-      if (widget.url != null && widget.url!.isNotEmpty) {
-        if (widget.url!.startsWith('http')) {
-          final request = await io.HttpClient().getUrl(Uri.parse(widget.url!));
-          final response = await request.close();
-          final bytesBuilder = BytesBuilder();
-          await for (var chunk in response) {
-            bytesBuilder.add(chunk);
-          }
-          final bytes = bytesBuilder.takeBytes();
-          document = await PdfDocument.openData(bytes);
-        } else if (widget.url!.startsWith('data:application/pdf')) {
-          final base64Content = widget.url!.split(',').last;
-          final bytes = base64Decode(base64Content);
-          document = await PdfDocument.openData(bytes);
-        }
+      final source = widget.url?.trim() ?? '';
+      if (source.isEmpty) {
+        throw StateError('Failed to load PDF'.tr());
       }
 
-      if (document != null) {
-        final pages = <Uint8List>[];
-        final totalPages = document.pagesCount;
+      Uint8List bytes;
+      if (source.startsWith('http://') || source.startsWith('https://')) {
+        final downloaded = await UploadService.downloadRemoteFile(
+          url: source,
+          folder: 'document_previews',
+          fallbackFileName: 'document.pdf',
+          fallbackMimeType: 'application/pdf',
+        );
+        bytes = downloaded.bytes;
+      } else if (source.startsWith('data:application/pdf')) {
+        if (!source.contains(',')) {
+          throw const FormatException('Invalid PDF data');
+        }
+        bytes = base64Decode(source.split(',').last);
+      } else {
+        throw StateError('Failed to load PDF'.tr());
+      }
 
-        for (int i = 1; i <= totalPages; i++) {
-          final page = await document.getPage(i);
+      if (bytes.isEmpty) {
+        throw StateError('Failed to load PDF'.tr());
+      }
+      if (bytes.length > UploadService.maxFileBytes) {
+        throw StateError('file_too_large'.tr(namedArgs: {'size': '10MB'}));
+      }
+
+      document = await PdfDocument.openData(bytes);
+      final pages = <Uint8List>[];
+
+      for (var index = 1; index <= document.pagesCount; index++) {
+        final page = await document.getPage(index);
+        try {
           final pageImage = await page.render(
             width: page.width * 3,
             height: page.height * 3,
@@ -1463,41 +1597,36 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
           if (pageImage != null) {
             pages.add(pageImage.bytes);
           }
+        } finally {
           await page.close();
         }
-
-        if (mounted) {
-          setState(() {
-            _pageImages = pages;
-            _isLoading = false;
-          });
-        }
-        await document.close();
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
       }
-    } catch (e) {
+
+      if (!mounted) return;
+      setState(() {
+        _pageImages = pages;
+        _isLoading = false;
+      });
+    } catch (error) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = error.toString();
           _isLoading = false;
         });
       }
+    } finally {
+      await document?.close();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 32,
               height: 32,
               child: CircularProgressIndicator(
@@ -1505,10 +1634,10 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
                 color: Color(0xFF0247C4),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              'Loading PDF...',
-              style: TextStyle(
+              'Loading PDF...'.tr(),
+              style: const TextStyle(
                 fontSize: 13,
                 color: Colors.grey,
                 fontFamily: 'SF Pro Display',
@@ -1526,7 +1655,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
             const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
             const SizedBox(height: 12),
             Text(
-              'Failed to load PDF',
+              'Failed to load PDF'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey.shade600,
@@ -1538,10 +1667,13 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
       );
     }
     if (_pageImages.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No pages found',
-          style: TextStyle(color: Colors.grey, fontFamily: 'SF Pro Display'),
+          'No pages found'.tr(),
+          style: const TextStyle(
+            color: Colors.grey,
+            fontFamily: 'SF Pro Display',
+          ),
         ),
       );
     }
@@ -1606,6 +1738,12 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
             width: double.infinity,
             height: double.infinity,
             fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Center(
+              child: Text(
+                failedToLoadText,
+                style: const TextStyle(color: Color(0xFF9E9E9E)),
+              ),
+            ),
           )
         : CachedNetworkImage(
             imageUrl: widget.url,
@@ -1757,13 +1895,32 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                                 if (widget.url.startsWith('http') ||
                                     widget.url.startsWith('file'))
                                   GestureDetector(
-                                    onTap: () {
+                                    onTap: () async {
                                       try {
-                                        launchUrl(
-                                          Uri.parse(widget.url),
+                                        final uri = Uri.tryParse(widget.url);
+                                        if (uri == null) {
+                                          throw const FormatException();
+                                        }
+                                        final opened = await launchUrl(
+                                          uri,
                                           mode: LaunchMode.externalApplication,
                                         );
-                                      } catch (_) {}
+                                        if (!opened && context.mounted) {
+                                          FlashySnackBar.show(
+                                            context,
+                                            message: 'failed_to_load'.tr(),
+                                            isError: true,
+                                          );
+                                        }
+                                      } catch (_) {
+                                        if (context.mounted) {
+                                          FlashySnackBar.show(
+                                            context,
+                                            message: 'failed_to_load'.tr(),
+                                            isError: true,
+                                          );
+                                        }
+                                      }
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -1774,18 +1931,18 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                                         color: const Color(0xFF0247C4),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: const Row(
+                                      child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.open_in_new,
                                             color: Colors.white,
                                             size: 16,
                                           ),
-                                          SizedBox(width: 8),
+                                          const SizedBox(width: 8),
                                           Text(
-                                            'Open Document',
-                                            style: TextStyle(
+                                            'Open Document'.tr(),
+                                            style: const TextStyle(
                                               color: Color(0xFFFFFFFF),
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
