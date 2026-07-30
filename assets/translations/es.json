@@ -921,7 +921,7 @@
   "csv_empty_fields": "Campos vacíos encontrados: {fields}",
   "csv_duplicates_found": "{count} duplicado(s) — mismo correo o documento de identidad ya existe",
   "hint_enter_full_name": "Ingrese el nombre completo del trabajador",
-  "hint_enter_email": "ej., trabajador@ejemplo.com",
+  "hint_enter_email": "ej., trabajador@gmail.com",
   "hint_enter_phone": "ej., +1 234 567 8900",
   "hint_enter_father_name": "ej., Juan Pérez Sr.",
   "hint_enter_religion": "ej., Cristianismo, Islam, Hinduismo",

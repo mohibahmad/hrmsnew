@@ -919,7 +919,7 @@
   "csv_empty_fields": "Найдены пустые поля: {fields}",
   "csv_duplicates_found": "{count} дубликат(ов) — тот же адрес электронной почты или национальный ID уже существует",
   "hint_enter_full_name": "Введите полное имя работника",
-  "hint_enter_email": "напр., работник@пример.com",
+  "hint_enter_email": "напр., работник@gmail.com",
   "hint_enter_phone": "напр., +1 234 567 8900",
   "hint_enter_father_name": "напр., Иванов Иван Иванович",
   "hint_enter_religion": "напр., Христианство, Ислам, Индуизм",

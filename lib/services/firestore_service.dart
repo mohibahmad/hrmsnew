@@ -217,16 +217,17 @@ class FirestoreService {
     final coll = _workers;
     if (coll == null)
       return BulkWorkerResult(imported: 0, skipped: workersList.length);
-    var batch = _db.batch();
-    int count = 0;
-    int skipped = 0;
+
     final existingSnapshot = await coll.get();
     final existingWorkers = existingSnapshot.docs
         .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
         .toList();
-    final acceptedWorkers = <Map<String, dynamic>>[];
 
+    final acceptedWorkers = <Map<String, dynamic>>[];
+    final validWorkers = <Map<String, dynamic>>[];
     final skipReasons = <String>[];
+    int skipped = 0;
+
     for (var worker in workersList) {
       try {
         Validators.validateWorker(worker);
@@ -241,18 +242,8 @@ class FirestoreService {
           );
           continue;
         }
-        final docRef = coll.doc();
-        batch.set(docRef, {
-          ..._withNormalizedCurrency(worker),
-          'createdAt': FieldValue.serverTimestamp(),
-        });
         acceptedWorkers.add(worker);
-        count++;
-
-        if (count % 500 == 0) {
-          await batch.commit();
-          batch = _db.batch();
-        }
+        validWorkers.add(worker);
       } catch (e) {
         skipped++;
         skipReasons.add('Validation error: ${e.toString().substring(0, 100)}');
@@ -260,8 +251,19 @@ class FirestoreService {
       }
     }
 
-    if (count % 500 != 0 && count > 0) {
-      await batch.commit();
+    int count = 0;
+    if (validWorkers.isNotEmpty) {
+      const batchSize = 500;
+      final batches = <Future<void>>[];
+      for (var i = 0; i < validWorkers.length; i += batchSize) {
+        final chunk = validWorkers.sublist(
+          i,
+          (i + batchSize).clamp(0, validWorkers.length),
+        );
+        batches.add(_commitBatch(coll, chunk));
+      }
+      await Future.wait(batches);
+      count = validWorkers.length;
     }
 
     if (count > 0) {
@@ -278,6 +280,29 @@ class FirestoreService {
       skipped: skipped,
       skipReasons: skipReasons,
     );
+  }
+
+  Future<void> _commitBatch(
+    CollectionReference coll,
+    List<Map<String, dynamic>> workers,
+  ) async {
+    var batch = _db.batch();
+    int count = 0;
+    for (final worker in workers) {
+      final docRef = coll.doc();
+      batch.set(docRef, {
+        ..._withNormalizedCurrency(worker),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      count++;
+      if (count % 500 == 0) {
+        await batch.commit();
+        batch = _db.batch();
+      }
+    }
+    if (count % 500 != 0) {
+      await batch.commit();
+    }
   }
 
   Future<void> updateWorker(String id, Map<String, dynamic> data) async {

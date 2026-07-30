@@ -59,30 +59,33 @@ void main() {
     expect(duplicate, isNull);
   });
 
-  test('detects a reused front ID card image', () {
+  test('same frontId URL is not a duplicate', () {
     final duplicate = WorkerIdentity.duplicateField(
       const {
         'name': 'Different Worker',
+        'email': 'different@example.com',
         'frontId': ' HTTPS://EXAMPLE.COM/id-card.jpg ',
       },
       const [
         {
           'name': 'Existing Worker',
+          'email': 'existing@example.com',
           'frontId': 'https://example.com/id-card.jpg',
         },
       ],
     );
 
-    expect(duplicate, DuplicateWorkerField.frontId);
+    expect(duplicate, isNull);
   });
 
-  test('front and back ID images cannot be the same', () {
+  test('same frontId and backId URLs are allowed', () {
     final duplicate = WorkerIdentity.duplicateField(const {
       'name': 'Different Worker',
+      'email': 'different@example.com',
       'frontId': 'https://example.com/same-card.jpg',
       'backId': 'https://example.com/same-card.jpg',
     }, const []);
 
-    expect(duplicate, DuplicateWorkerField.backId);
+    expect(duplicate, isNull);
   });
 }

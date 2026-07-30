@@ -48,15 +48,17 @@ Future<bool> tryShowFirstMilestoneRateUs(String milestone) async {
 }
 
 Future<void> _requestReview() async {
-  final inAppReview = InAppReview.instance;
-  if (await inAppReview.isAvailable()) {
-    await inAppReview.requestReview();
-  } else {
-    await launchUrl(
-      Uri.parse(
-        'https://apps.apple.com/app/hrms-workforce-manager/id6743024022',
-      ),
-      mode: LaunchMode.externalApplication,
-    );
-  }
+  try {
+    final inAppReview = InAppReview.instance;
+    if (await inAppReview.isAvailable()) {
+      await inAppReview.requestReview();
+    } else {
+      await launchUrl(
+        Uri.parse(
+          'https://apps.apple.com/app/hrms-workforce-manager/id6743024022',
+        ),
+        mode: LaunchMode.externalApplication,
+      );
+    }
+  } catch (_) {}
 }

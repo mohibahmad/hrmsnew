@@ -936,7 +936,7 @@
   "csv_empty_fields": "Empty fields found: {fields}",
   "csv_duplicates_found": "{count} duplicate(s) — same Email or National ID already exists",
   "hint_enter_full_name": "Enter the full name of the worker",
-  "hint_enter_email": "e.g., worker@example.com",
+  "hint_enter_email": "e.g., worker@gmail.com",
   "hint_enter_phone": "e.g., +1 234 567 8900",
   "hint_enter_father_name": "e.g., John Doe Sr.",
   "hint_enter_religion": "e.g., Christianity, Islam, Hinduism",

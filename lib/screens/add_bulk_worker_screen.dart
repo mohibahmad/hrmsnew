@@ -4,6 +4,7 @@ import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'dart:math';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/services.dart';
 import '../widgets/clickable_gesture_detector.dart';
@@ -548,43 +549,43 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'Profile Image URL,Front ID Image URL,Back ID Image URL,CV URL';
 
     const dataRows =
-        'John Doe,1234567890,john@example.com,Robert Doe,37405-1234567-1,'
+        'John Doe,1234567890,john@gmail.com,Robert Doe,37405-1234567-1,'
         'Christianity,1990-05-15,Male,123 Street California,Single,'
         'Software Engineer,Full-Time,On-Site,Mid-Level,Bachelor\'s,'
         'Monthly,USD,5000,15,1/15/2025,'
         'https://i.pravatar.cc/150?u=john,https://picsum.photos/seed/john_front/400/300,'
         'https://picsum.photos/seed/john_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
-        'Jane Smith,0987654321,jane@example.com,David Smith,37405-7654321-2,'
+        'Jane Smith,0987654321,jane@gmail.com,David Smith,37405-7654321-2,'
         'Islam,1995-10-20,Female,456 Avenue New York,Married,'
         'UI Designer,Part-Time,Remote,Senior,Bachelor\'s,'
         'Monthly,USD,6000,15,1/15/2025,'
         'https://i.pravatar.cc/150?u=jane,https://picsum.photos/seed/jane_front/400/300,'
         'https://picsum.photos/seed/jane_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
-        'Michael Johnson,1122334455,michael@example.com,Alan Johnson,37405-1122334-3,'
+        'Michael Johnson,1122334455,michael@gmail.com,Alan Johnson,37405-1122334-3,'
         'None,1988-02-28,Male,789 Road Texas,Single,'
         'Project Manager,Contract,Hybrid,Senior,Master\'s,'
         'Monthly,USD,7500,15,1/15/2025,'
         'https://i.pravatar.cc/150?u=michael,https://picsum.photos/seed/michael_front/400/300,'
         'https://picsum.photos/seed/michael_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
-        'Emily Brown,5551234567,emily@example.com,Thomas Brown,37405-9988776-5,'
+        'Emily Brown,5551234567,emily@gmail.com,Thomas Brown,37405-9988776-5,'
         'Christianity,1992-07-08,Female,321 Oak Avenue Chicago,Married,'
         'Marketing Manager,Full-Time,On-Site,Senior,Master\'s,'
         'Monthly,USD,8500,20,1/20/2025,'
         'https://i.pravatar.cc/150?u=emily,https://picsum.photos/seed/emily_front/400/300,'
         'https://picsum.photos/seed/emily_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
-        'Carlos Garcia,5559876543,carlos@example.com,Luis Garcia,37405-4433221-4,'
+        'Carlos Garcia,5559876543,carlos@gmail.com,Luis Garcia,37405-4433221-4,'
         'Catholic,1985-03-22,Male,654 Pine Road Miami,Single,'
         'DevOps Engineer,Full-Time,On-Site,Senior,Bachelor\'s,'
         'Monthly,USD,9500,18,2/1/2025,'
         'https://i.pravatar.cc/150?u=carlos,https://picsum.photos/seed/carlos_front/400/300,'
         'https://picsum.photos/seed/carlos_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
-        'Aisha Khan,5552468135,aisha@example.com,Imran Khan,37405-5566778-7,'
+        'Aisha Khan,5552468135,aisha@gmail.com,Imran Khan,37405-5566778-7,'
         'Islam,1993-11-12,Female,789 Maple Drive Houston,Single,'
         'Data Analyst,Full-Time,Hybrid,Mid-Level,Bachelor\'s,'
         'Monthly,USD,7000,15,2/5/2025,'
         'https://i.pravatar.cc/150?u=aisha,https://picsum.photos/seed/aisha_front/400/300,'
         'https://picsum.photos/seed/aisha_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n'
-        'Robert Wilson,5553691479,robert@example.com,James Wilson,37405-1122334-8,'
+        'Robert Wilson,5553691479,robert@gmail.com,James Wilson,37405-1122334-8,'
         'None,1980-09-05,Male,147 Elm Street Seattle,Married,'
         'HR Director,Full-Time,On-Site,Senior,Master\'s,'
         'Annual,USD,110000,20,1/10/2025,'
@@ -1213,14 +1214,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             namedArgs: {'count': '${bulkResult.skipReasons.length}'},
           ),
         );
-        final reasonCounts = <String, int>{};
         for (final reason in bulkResult.skipReasons) {
-          final key = reason.contains('Duplicate') ? 'Duplicate' : 'Validation';
-          reasonCounts[key] = (reasonCounts[key] ?? 0) + 1;
+          summaryParts.add('  • $reason');
         }
-        reasonCounts.forEach((key, count) {
-          summaryParts.add('  • $count $key');
-        });
       } else if (finalSkippedDuplicates > 0) {
         summaryParts.add(
           'skipped_duplicates_message'.tr(
@@ -1338,6 +1334,302 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  bool _isDateField(String fieldKey) =>
+      fieldKey == 'dob' || fieldKey == 'joiningDate';
+
+  DateTime? _parseDate(String dateStr) {
+    if (dateStr.isEmpty) return null;
+    try {
+      final parts = dateStr.split('/');
+      if (parts.length == 3) {
+        final day = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final year = int.parse(parts[2]);
+        return DateTime(year, month, day);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  bool _isAtLeast18(DateTime dob) {
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+    return age >= 18;
+  }
+
+  String _formatDateForField(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  Widget _buildDateField({
+    required BuildContext context,
+    required String fieldKey,
+    required String currentValue,
+    required String label,
+    required void Function(VoidCallback) setDialogState,
+    required void Function(String) onDateSelected,
+  }) {
+    final parsed = _parseDate(currentValue);
+    final displayText =
+        currentValue.isNotEmpty ? currentValue : 'Select date';
+    final hasError = fieldKey == 'dob' && parsed != null && !_isAtLeast18(parsed);
+
+    return GestureDetector(
+      onTap: () => _showCupertinoDatePicker(
+        context: context,
+        fieldKey: fieldKey,
+        label: label,
+        currentDate: parsed,
+        setDialogState: setDialogState,
+        onDateSelected: onDateSelected,
+      ),
+      child: Container(
+        clipBehavior: Clip.hardEdge,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: hasError ? const Color(0xFFDC2626) : const Color(0xFFD1D5DB),
+            width: 1.2,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Text(
+                  displayText,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                    color: currentValue.isEmpty
+                        ? const Color(0xFF9CA3AF)
+                        : const Color(0xFF111827),
+                  ),
+                ),
+              ),
+            ),
+            const Icon(
+              CupertinoIcons.calendar,
+              size: 20,
+              color: Color(0xFF0247C4),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCupertinoDatePicker({
+    required BuildContext context,
+    required String fieldKey,
+    required String label,
+    required DateTime? currentDate,
+    required void Function(VoidCallback) setDialogState,
+    required void Function(String) onDateSelected,
+  }) {
+    final now = DateTime.now();
+    DateTime selected =
+        currentDate ?? (fieldKey == 'dob' ? DateTime(2000, 1, 1) : now);
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Date Picker',
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(
+            opacity: anim,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
+              child: Center(
+                child: StatefulBuilder(
+                  builder: (_, setPickerState) {
+                    return Container(
+                      width: 380,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0247C4)
+                                .withValues(alpha: 0.18),
+                            blurRadius: 40,
+                            offset: const Offset(0, 12),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.calendar,
+                                  size: 20,
+                                  color: const Color(0xFF0247C4),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827),
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (fieldKey == 'dob')
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.exclamationmark_circle,
+                                    size: 14,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'worker_must_be_18'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF6B7280),
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 200,
+                            child: CupertinoDatePicker(
+                              mode: CupertinoDatePickerMode.date,
+                              initialDateTime: selected,
+                              minimumDate:
+                                  fieldKey == 'dob' ? DateTime(1920) : DateTime(2000),
+                              maximumDate: now,
+                              onDateTimeChanged: (DateTime newDate) {
+                                setPickerState(() {
+                                  selected = newDate;
+                                });
+                              },
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.of(ctx).pop(),
+                                    child: Container(
+                                      padding:
+                                          const EdgeInsets.symmetric(vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'cancel'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (fieldKey == 'dob' &&
+                                          !_isAtLeast18(selected)) {
+                                        FlashySnackBar.show(
+                                          context,
+                                          message: 'worker_must_be_18'.tr(),
+                                          isError: true,
+                                        );
+                                        return;
+                                      }
+                                      final dateStr = _formatDateForField(selected);
+                                      onDateSelected(dateStr);
+                                      setDialogState(() {});
+                                      Navigator.of(ctx).pop();
+                                    },
+                                    child: Container(
+                                      padding:
+                                          const EdgeInsets.symmetric(vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0247C4),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                          child: Text(
+                                          'done'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1556,7 +1848,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Container(
+                                if (_isDateField(fieldKey))
+                                  _buildDateField(
+                                    context: ctx,
+                                    fieldKey: fieldKey,
+                                    currentValue: currentValue,
+                                    label: label,
+                                    setDialogState: setDialogState,
+                                    onDateSelected: (dateStr) {
+                                      controller.text = dateStr;
+                                    },
+                                  )
+                                else
+                                  Container(
                                   clipBehavior: Clip.hardEdge,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
@@ -2801,13 +3105,13 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               ? 'document.pdf'
               : 'image.jpg';
         } else {
-          displayText = text.split('/').last;
+          displayText = _extractFileName(text, fieldKey);
         }
       } else if (text.startsWith('data:')) {
         final mime = text.split(';').first.split(':').last;
         displayText = mime == 'application/pdf' ? 'document.pdf' : 'image.jpg';
       } else {
-        displayText = text.split('/').last;
+        displayText = _extractFileName(text, fieldKey);
       }
     } else if (text.isEmpty) {
       displayText = '-';
@@ -2866,6 +3170,29 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         ],
       ),
     );
+  }
+
+  String _extractFileName(String url, String? fieldKey) {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return url;
+      final path = uri.path;
+      if (path.isEmpty || path == '/') return url;
+      final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+      if (segments.isEmpty) return url;
+      final lastSegment = segments.last;
+      if (lastSegment.contains('.')) return lastSegment;
+      final defaultName = switch (fieldKey) {
+        'profileImage' => 'profile.jpg',
+        'frontId' => 'front_id.jpg',
+        'backId' => 'back_id.jpg',
+        'cv' => 'document.pdf',
+        _ => 'file',
+      };
+      return defaultName;
+    } catch (_) {
+      return url;
+    }
   }
 
   Widget _buildMediaThumbnail(String value, String? fieldKey) {

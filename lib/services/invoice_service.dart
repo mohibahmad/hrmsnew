@@ -26,6 +26,20 @@ class InvoiceService {
   }) async {
     final pdf = pw.Document();
 
+    pw.Font? regularFont;
+    pw.Font? boldFont;
+    try {
+      final regularData = await rootBundle.load('assets/fonts/SFPRODISPLAYREGULAR.OTF');
+      regularFont = pw.Font.ttf(regularData);
+      final boldData = await rootBundle.load('assets/fonts/SFPRODISPLAYMEDIUM.OTF');
+      boldFont = pw.Font.ttf(boldData);
+    } catch (_) {}
+
+    final theme = pw.ThemeData.withFont(
+      base: regularFont ?? pw.Font.helvetica(),
+      bold: boldFont ?? pw.Font.helveticaBold(),
+    );
+
     final PdfColor primaryNavy = PdfColor.fromHex('#16215B');
     final PdfColor appBlue = PdfColor.fromHex('#0247C4');
     final PdfColor textColor = PdfColor.fromHex('#16215B');
@@ -43,6 +57,7 @@ class InvoiceService {
 
     pdf.addPage(
       pw.MultiPage(
+        theme: theme,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(45, 50, 45, 50),
         build: (context) => [

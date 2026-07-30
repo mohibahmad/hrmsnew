@@ -913,7 +913,7 @@
   "csv_empty_fields": "Champs vides trouvés : {fields}",
   "csv_duplicates_found": "{count} doublon(s) — même e-mail ou numéro national déjà existant",
   "hint_enter_full_name": "Entrez le nom complet du travailleur",
-  "hint_enter_email": "ex., travailleur@exemple.com",
+  "hint_enter_email": "ex., travailleur@gmail.com",
   "hint_enter_phone": "ex., +1 234 567 8900",
   "hint_enter_father_name": "ex., Jean Dupont Sr.",
   "hint_enter_religion": "ex., Christianisme, Islam, Hindouisme",

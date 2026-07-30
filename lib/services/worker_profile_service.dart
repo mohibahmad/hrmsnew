@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -29,6 +29,20 @@ class WorkerProfileService {
   }) async {
     final pdf = pw.Document();
 
+    pw.Font? regularFont;
+    pw.Font? boldFont;
+    try {
+      final regularData = await rootBundle.load('assets/fonts/SFPRODISPLAYREGULAR.OTF');
+      regularFont = pw.Font.ttf(regularData);
+      final boldData = await rootBundle.load('assets/fonts/SFPRODISPLAYMEDIUM.OTF');
+      boldFont = pw.Font.ttf(boldData);
+    } catch (_) {}
+
+    final theme = pw.ThemeData.withFont(
+      base: regularFont ?? pw.Font.helvetica(),
+      bold: boldFont ?? pw.Font.helveticaBold(),
+    );
+
     final navy = PdfColor.fromHex('#162036');
     final black = PdfColors.black;
     final lightGrey = PdfColor.fromHex('#F3F4F6');
@@ -41,6 +55,7 @@ class WorkerProfileService {
 
     pdf.addPage(
       pw.MultiPage(
+        theme: theme,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(40, 30, 40, 30),
         build: (context) => [

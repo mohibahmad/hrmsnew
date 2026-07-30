@@ -990,8 +990,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           DuplicateWorkerField.name => 'duplicate_name',
           DuplicateWorkerField.email => 'duplicate_email',
           DuplicateWorkerField.nationalId => 'duplicate_national_id',
-          DuplicateWorkerField.frontId => 'duplicate_front_id',
-          DuplicateWorkerField.backId => 'duplicate_back_id',
         };
         FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
         return;
@@ -1218,8 +1216,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           DuplicateWorkerField.name => 'duplicate_name',
           DuplicateWorkerField.email => 'duplicate_email',
           DuplicateWorkerField.nationalId => 'duplicate_national_id',
-          DuplicateWorkerField.frontId => 'duplicate_front_id',
-          DuplicateWorkerField.backId => 'duplicate_back_id',
         };
         FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
       }
@@ -1374,8 +1370,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           DuplicateWorkerField.name => 'duplicate_name',
           DuplicateWorkerField.email => 'duplicate_email',
           DuplicateWorkerField.nationalId => 'duplicate_national_id',
-          DuplicateWorkerField.frontId => 'duplicate_front_id',
-          DuplicateWorkerField.backId => 'duplicate_back_id',
         };
         FlashySnackBar.show(context, message: messageKey.tr(), isError: true);
         return;
