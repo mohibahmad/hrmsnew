@@ -967,8 +967,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _cachedFiltered = null;
     _filterCacheKey = '';
 
-    final isToday = _selectedTimeframe == 'Today';
-
     final periodAttendance = _rawAttendanceDocs
         .where(
           (record) => AppDateUtils.isAttendanceRecordWithinPeriod(
@@ -987,75 +985,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (byDate != 0) return byDate;
       return (b['id'] ?? '').toString().compareTo((a['id'] ?? '').toString());
     });
-
-    if (isToday) {
-      _attendanceDocs =
-          AttendanceService.combineAttendance(
-            workersList: _workersList,
-            rawAttendanceDocs: periodAttendance,
-          ).map((record) {
-            final isOnLeave = TimeOffService.isWorkerOnLeave(
-              record,
-              _timeOffRecords,
-            );
-            if (isOnLeave) {
-              return {...record, 'status': 'Leave'};
-            }
-            return record;
-          }).toList();
-    } else {
-      final combined = <Map<String, dynamic>>[];
-      for (final worker in _workersList) {
-        final workerRecords = AttendanceService.recordsForWorker(
-          worker: worker,
-          attendanceRecords: periodAttendance,
-        );
-
-        int presents = 0;
-        int absents = 0;
-        int leaves = 0;
-        for (final r in workerRecords) {
-          final st = (r['status'] ?? '').toString();
-          if (st == 'Present') {
-            presents++;
-          } else if (st == 'Absent') {
-            absents++;
-          } else if (st == 'Leave') {
-            leaves++;
+    _attendanceDocs =
+        AttendanceService.combineAttendance(
+          workersList: _workersList,
+          rawAttendanceDocs: periodAttendance,
+        ).map((record) {
+          final isOnLeave = TimeOffService.isWorkerOnLeave(
+            record,
+            _timeOffRecords,
+          );
+          if (isOnLeave) {
+            return {...record, 'status': 'Leave'};
           }
-        }
-
-        final workerOnLeave = TimeOffService.isWorkerOnLeave(
-          worker,
-          _timeOffRecords,
-        );
-        if (workerOnLeave && !workerRecords.any((r) => r['status'] == 'Leave')) {
-          leaves++;
-        }
-
-        final hasRecords = workerRecords.isNotEmpty;
-        combined.add({
-          'id': 'summary_${worker['id'] ?? ''}',
-          'workerId': worker['id'],
-          'name': worker['name'] ?? 'Worker',
-          'email': worker['email'] ?? '',
-          'role': worker['position'] ?? '',
-          'attendanceType': worker['type2'] ?? 'On-Site',
-          'workType': worker['type1'] ?? 'Full Time',
-          'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
-          'status': hasRecords ? 'Summary' : '',
-          'periodPresents': presents,
-          'periodAbsents': absents,
-          'periodLeaves': leaves,
-          'hasAttendanceRecords': hasRecords,
-          'createdAt': workerRecords.isNotEmpty
-              ? workerRecords.first['createdAt']
-              : null,
-        });
-      }
-      _attendanceDocs = combined;
-    }
+          return record;
+        }).toList();
 
     if (_workersLoaded && _attendanceLoaded) {
       _isLoading = false;
@@ -1196,7 +1139,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
     _filterCacheKey = key;
     final query = _searchQuery.toLowerCase();
-    final isToday = _selectedTimeframe == 'Today';
     _cachedFiltered = _attendanceDocs.where((doc) {
       if (!_matchesPeriod(doc)) return false;
       if (query.isNotEmpty) {
@@ -1206,19 +1148,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
       final status = (doc['status'] ?? '').toString();
       if (_selectedTab == 'All') return true;
-
-      if (isToday) {
-        if (_selectedTab == 'Present') return status == 'Present';
-        if (_selectedTab == 'Absent') return status == 'Absent';
-        if (_selectedTab == 'Leaves') return status == 'Leave';
-      } else {
-        final presents = doc['periodPresents'] ?? 0;
-        final absents = doc['periodAbsents'] ?? 0;
-        final leaves = doc['periodLeaves'] ?? 0;
-        if (_selectedTab == 'Present') return presents > 0;
-        if (_selectedTab == 'Absent') return absents > 0;
-        if (_selectedTab == 'Leaves') return leaves > 0;
-      }
+      if (_selectedTab == 'Present') return status == 'Present';
+      if (_selectedTab == 'Absent') return status == 'Absent';
+      if (_selectedTab == 'Leaves') return status == 'Leave';
       return false;
     }).toList();
     return _cachedFiltered!;
@@ -1888,6 +1820,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 final name = (doc['name'] ?? '').toString();
                 final email = (doc['email'] ?? '').toString();
                 final role = (doc['role'] ?? '').toString();
+                final status = (doc['status'] ?? '').toString();
                 final workType = (doc['workType'] ?? 'Full Time').toString();
 
                 final localizeWorkType = LocalizationHelper.localizeWorkType;
@@ -2017,10 +1950,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildStatusText(Map<String, dynamic> doc) {
-    final bool isToday = _selectedTimeframe == 'Today';
-    if (isToday) {
-      final status = (doc['status'] ?? '').toString();
+  Widget _buildStatusText(Map<String, dynamic> worker) {
+    final status = (worker['status'] ?? '').toString();
+
+    // Today shows the worker's current attendance status.
+    if (_selectedTimeframe == 'Today') {
       return Text(
         status.isEmpty ? '-' : status.toLowerCase().tr(),
         style: TextStyle(
@@ -2038,60 +1972,53 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }
 
-    final hasRecords = doc['hasAttendanceRecords'] == true;
-    if (!hasRecords) {
-      return Text(
-        'no_attendance_record'.tr(),
-        style: const TextStyle(
+    // Week, Month, 6 Month and Yearly show an attendance summary
+    // instead of the hard-coded dash that was previously displayed.
+    final periodRecords = AttendanceService.recordsForWorker(
+      worker: worker,
+      attendanceRecords: _rawAttendanceDocs.where(_matchesPeriod).toList(),
+    );
+
+    int present = 0;
+    int absent = 0;
+    int leave = 0;
+
+    for (final record in periodRecords) {
+      switch ((record['status'] ?? '').toString()) {
+        case 'Present':
+          present++;
+          break;
+        case 'Absent':
+          absent++;
+          break;
+        case 'Leave':
+          leave++;
+          break;
+      }
+    }
+
+    if (present == 0 && absent == 0 && leave == 0) {
+      return const Text(
+        '-',
+        style: TextStyle(
           color: Colors.grey,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
           fontFamily: 'SF Pro Display',
         ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
       );
     }
 
-    final presents = doc['periodPresents'] ?? 0;
-    final absents = doc['periodAbsents'] ?? 0;
-    final leaves = doc['periodLeaves'] ?? 0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (presents > 0)
-          Text(
-            '$presents ${'present_tab'.tr()}',
-            style: const TextStyle(
-              color: greenPresent,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        if (absents > 0)
-          Text(
-            '$absents ${'absent_tab'.tr()}',
-            style: const TextStyle(
-              color: redAbsent,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-        if (leaves > 0)
-          Text(
-            '$leaves ${'leaves_tab'.tr()}',
-            style: const TextStyle(
-              color: orangeLeave,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'SF Pro Display',
-            ),
-          ),
-      ],
+    return Text(
+      '$present Present · $absent Absent · $leave Leave',
+      style: const TextStyle(
+        color: textDark,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        fontFamily: 'SF Pro Display',
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 

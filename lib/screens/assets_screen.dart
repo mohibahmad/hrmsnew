@@ -37,6 +37,28 @@ String _adts(dynamic value) {
   return value.toString();
 }
 
+bool _assetBool(dynamic value, {bool defaultValue = false}) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+
+  final text = value?.toString().trim().toLowerCase() ?? '';
+  if (text == 'true' || text == '1' || text == 'yes') return true;
+  if (text == 'false' || text == '0' || text == 'no') return false;
+  return defaultValue;
+}
+
+bool _assetReturned(Map<String, dynamic> data) {
+  final rawStatus = data['isReturned'];
+  if (rawStatus != null) {
+    return _assetBool(rawStatus);
+  }
+
+  final value = data['dateReturned'];
+  if (value == null) return false;
+  final text = value.toString().trim().toLowerCase();
+  return text.isNotEmpty && text != 'in_use' && text != '__in_use__';
+}
+
 class AssetsScreen extends StatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback onProfileTap;
@@ -97,8 +119,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
         return entry.key;
       }
     }
+    final assetName = asset.name.trim().toLowerCase();
     for (final entry in _workersMap.entries) {
-      if (entry.value['name']?.toString() == asset.name) return entry.key;
+      final workerName = (entry.value['name'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      if (workerName == assetName) return entry.key;
     }
     return null;
   }
@@ -144,45 +171,54 @@ class _AssetsScreenState extends State<AssetsScreen> {
       _setWorkerOptions(DummyData.workers.map(Map<String, dynamic>.from));
     } else {
       _isLoading = true;
-      _assetsSub = _firestore.assetsStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {
-            final sortedDocs = snapshot.docs.toList();
-            sortedDocs.sort((a, b) {
-              final aData = a.data() as Map<String, dynamic>;
-              final bData = b.data() as Map<String, dynamic>;
-              final aTime = aData['createdAt'];
-              final bTime = bData['createdAt'];
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return -1;
-              if (bTime == null) return 1;
-              if (aTime is Timestamp && bTime is Timestamp) {
-                return bTime.compareTo(aTime);
-              }
-              return 0;
+      _assetsSub = _firestore.assetsStream.listen(
+        (snapshot) {
+          if (mounted) {
+            setState(() {
+              final sortedDocs = snapshot.docs.toList();
+              sortedDocs.sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aTime = aData['createdAt'];
+                final bTime = bData['createdAt'];
+                if (aTime == null && bTime == null) return 0;
+                if (aTime == null) return -1;
+                if (bTime == null) return 1;
+                if (aTime is Timestamp && bTime is Timestamp) {
+                  return bTime.compareTo(aTime);
+                }
+                return 0;
+              });
+              _assets = sortedDocs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return AssetData(
+                  (data['name'] ?? '').toString(),
+                  (data['position'] ?? '').toString(),
+                  (data['type'] ?? '').toString(),
+                  _adts(data['dateLoaned']),
+                  _adts(data['dateReturned']),
+                  _assetReturned(data),
+                  id: doc.id,
+                  profileImage: data['profileImage']?.toString(),
+                  workerId: data['workerId']?.toString(),
+                  email: data['email']?.toString(),
+                  phone: data['phone']?.toString(),
+                  cnic: data['cnic']?.toString(),
+                  dateOfJoining: _adts(
+                    data['joiningDate'] ?? data['dateOfJoining'],
+                  ),
+                );
+              }).toList();
+              _isLoading = false;
             });
-            _assets = sortedDocs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return AssetData(
-                data['name'] ?? '',
-                data['position'] ?? '',
-                data['type'] ?? '',
-                _adts(data['dateLoaned']),
-                _adts(data['dateReturned']),
-                data['isReturned'] ?? false,
-                id: doc.id,
-                profileImage: data['profileImage']?.toString(),
-                workerId: data['workerId']?.toString(),
-                email: data['email']?.toString(),
-                phone: data['phone']?.toString(),
-                cnic: data['cnic']?.toString(),
-                dateOfJoining: _adts(data['dateOfJoining']),
-              );
-            }).toList();
-            _isLoading = false;
-          });
-        }
-      });
+          }
+        },
+        onError: (_) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+        },
+      );
       _workersSub = _firestore.workersStream.listen((snapshot) {
         if (mounted) {
           setState(() {
@@ -220,15 +256,13 @@ class _AssetsScreenState extends State<AssetsScreen> {
   }
 
   List<AssetData> get _filteredAssets {
-    return _assets.where((asset) {
-      final workerExists = _optionForAsset(asset) != null;
-      if (!workerExists) return false;
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return List<AssetData>.from(_assets);
 
-      final matchesSearch =
-          asset.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          asset.type.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          asset.position.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesSearch;
+    return _assets.where((asset) {
+      return asset.name.toLowerCase().contains(query) ||
+          asset.type.toLowerCase().contains(query) ||
+          asset.position.toLowerCase().contains(query);
     }).toList();
   }
 
@@ -290,7 +324,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0247C4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
@@ -302,12 +336,68 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           onPressed: isSaving
                               ? null
                               : () async {
+                                  final selectedOption = selectedWorkerName;
+                                  final assetType = typeController.text.trim();
+                                  final position = positionController.text
+                                      .trim();
+
+                                  if (selectedOption == null ||
+                                      selectedOption.trim().isEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'field_is_required'.tr(
+                                        namedArgs: {
+                                          'field': 'worker_name'.tr(),
+                                        },
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (assetType.isEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'field_is_required'.tr(
+                                        namedArgs: {'field': 'asset_type'.tr()},
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (position.isEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'field_is_required'.tr(
+                                        namedArgs: {'field': 'position'.tr()},
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (isReturned &&
+                                      returnedDate.isBefore(loanedDate)) {
+                                    returnedDate = loanedDate;
+                                  }
+
+                                  final selectedWorkerData =
+                                      _workersMap[selectedOption];
+                                  if (selectedWorkerData == null) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'no_workers_found'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
                                   if (selectedWorkerName != null &&
                                       typeController.text.isNotEmpty &&
                                       positionController.text.isNotEmpty) {
                                     setModalState(() => isSaving = true);
-                                    final workerData =
-                                        _workersMap[selectedWorkerName] ?? {};
+                                    final workerData = selectedWorkerData;
                                     final actualWorkerName =
                                         (workerData['name'] ?? '').toString();
                                     final selectedWorkerId =
@@ -324,6 +414,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                             ?.toString();
                                     final workerDateOfJoining =
                                         workerData['dateOfJoining']?.toString();
+                                    final workerJoiningDate =
+                                        (workerData['joiningDate'] ??
+                                                workerData['dateOfJoining'])
+                                            ?.toString();
                                     final assetMap = {
                                       'workerId': selectedWorkerId,
                                       'name': actualWorkerName,
@@ -340,6 +434,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       'cnic': workerCnic ?? '',
                                       'dateOfJoining':
                                           workerDateOfJoining ?? '',
+                                    };
+                                    final firestoreAssetMap = <String, dynamic>{
+                                      ...assetMap,
+                                      'position': position,
+                                      'type': assetType,
+                                      'dateOfJoining': workerJoiningDate ?? '',
                                     };
                                     final isGuest =
                                         _authService.currentUser?.isAnonymous ??
@@ -389,7 +489,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       setModalState(() => isSaving = false);
                                     } else {
                                       try {
-                                        await _firestore.addAsset(assetMap);
+                                        await _firestore.addAsset(
+                                          firestoreAssetMap,
+                                        );
                                       } catch (e) {
                                         setModalState(() => isSaving = false);
                                         if (!context.mounted) return;
@@ -398,6 +500,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                           message: 'failed_to_add_asset'.tr(
                                             namedArgs: {'error': e.toString()},
                                           ),
+                                          isError: true,
                                         );
                                         return;
                                       }
@@ -513,8 +616,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       child: CupertinoDatePicker(
                                         mode: CupertinoDatePickerMode.date,
                                         initialDateTime: tempDate,
-                                        minimumYear: 2020,
-                                        maximumYear: 2030,
+                                        minimumDate: DateTime(1900, 1, 1),
+                                        maximumDate: DateTime.now(),
                                         onDateTimeChanged: (DateTime picked) {
                                           tempDate = picked;
                                         },
@@ -556,6 +659,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                           onPressed: () {
                                             setModalState(() {
                                               loanedDate = tempDate;
+                                              if (returnedDate.isBefore(
+                                                loanedDate,
+                                              )) {
+                                                returnedDate = loanedDate;
+                                              }
                                             });
                                             Navigator.of(context).pop();
                                           },
@@ -591,6 +699,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             if (val != null) {
                               setModalState(() {
                                 isReturned = val;
+                                if (isReturned &&
+                                    returnedDate.isBefore(loanedDate)) {
+                                  returnedDate = loanedDate;
+                                }
                               });
                             }
                           },
@@ -636,8 +748,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         child: CupertinoDatePicker(
                                           mode: CupertinoDatePickerMode.date,
                                           initialDateTime: tempDate,
-                                          minimumYear: 2020,
-                                          maximumYear: 2030,
+                                          minimumDate: loanedDate,
+                                          maximumDate: DateTime.now(),
                                           onDateTimeChanged: (DateTime picked) {
                                             tempDate = picked;
                                           },
@@ -1195,16 +1307,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Widget _buildDataRow(AssetData data, int index) {
     String? profileImage = data.profileImage;
-    String? email = data.email;
-    final nameClean = data.name.trim().toLowerCase();
-    final matchKey = _workersMap.keys.firstWhere(
-      (k) => k.trim().toLowerCase() == nameClean,
-      orElse: () => '',
-    );
+    final matchKey = _optionForAsset(data) ?? '';
     if ((profileImage == null || profileImage.isEmpty) && matchKey.isNotEmpty) {
       final workerData = _workersMap[matchKey]!;
       profileImage = workerData['profileImage']?.toString();
-      email ??= workerData['email']?.toString();
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1354,7 +1460,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
               content: 'delete_asset_desc'.tr(),
             );
             if (!confirmed) return;
-            if (data.id != null) await _firestore.deleteAsset(data.id!);
+            final assetId = data.id?.trim() ?? '';
+            if (assetId.isEmpty) return;
+            try {
+              await _firestore.deleteAsset(assetId);
+            } catch (e) {
+              if (mounted) {
+                FlashySnackBar.show(
+                  context,
+                  message: 'failed_to_delete_record'.tr(
+                    namedArgs: {'error': e.toString()},
+                  ),
+                  isError: true,
+                );
+              }
+            }
           }
         },
         itemBuilder: (context) => [
@@ -1442,8 +1562,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
     String? selectedWorkerName = _optionForAsset(data);
     final typeController = TextEditingController(text: data.type);
     final positionController = TextEditingController(text: data.position);
-    DateTime loanedDate = _parseDate(data.dateLoaned) ?? DateTime(2025, 1, 1);
-    DateTime returnedDate = _parseDate(data.dateReturned) ?? DateTime.now();
+    final now = DateTime.now();
+    final minimumAssetDate = DateTime(1900, 1, 1);
+    DateTime loanedDate = _parseDate(data.dateLoaned) ?? now;
+    if (loanedDate.isBefore(minimumAssetDate)) loanedDate = minimumAssetDate;
+    if (loanedDate.isAfter(now)) loanedDate = now;
+    DateTime returnedDate = _parseDate(data.dateReturned) ?? now;
+    if (returnedDate.isAfter(now)) returnedDate = now;
+    if (returnedDate.isBefore(loanedDate)) returnedDate = loanedDate;
     bool isReturned = data.isReturned;
     var isSaving = false;
 
@@ -1507,12 +1633,68 @@ class _AssetsScreenState extends State<AssetsScreen> {
                           onPressed: isSaving
                               ? null
                               : () async {
+                                  final selectedOption = selectedWorkerName;
+                                  final assetType = typeController.text.trim();
+                                  final position = positionController.text
+                                      .trim();
+
+                                  if (selectedOption == null ||
+                                      selectedOption.trim().isEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'field_is_required'.tr(
+                                        namedArgs: {
+                                          'field': 'worker_name'.tr(),
+                                        },
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (assetType.isEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'field_is_required'.tr(
+                                        namedArgs: {'field': 'asset_type'.tr()},
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (position.isEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'field_is_required'.tr(
+                                        namedArgs: {'field': 'position'.tr()},
+                                      ),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (isReturned &&
+                                      returnedDate.isBefore(loanedDate)) {
+                                    returnedDate = loanedDate;
+                                  }
+
+                                  final selectedWorkerData =
+                                      _workersMap[selectedOption];
+                                  if (selectedWorkerData == null) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'no_workers_found'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
                                   if (selectedWorkerName != null &&
                                       typeController.text.isNotEmpty &&
                                       positionController.text.isNotEmpty) {
                                     setModalState(() => isSaving = true);
-                                    final workerData =
-                                        _workersMap[selectedWorkerName] ?? {};
+                                    final workerData = selectedWorkerData;
                                     final actualWorkerName =
                                         (workerData['name'] ?? '').toString();
                                     final selectedWorkerId =
@@ -1529,6 +1711,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                             ?.toString();
                                     final workerDateOfJoining =
                                         workerData['dateOfJoining']?.toString();
+                                    final workerJoiningDate =
+                                        (workerData['joiningDate'] ??
+                                                workerData['dateOfJoining'])
+                                            ?.toString();
                                     final assetMap = {
                                       'workerId': selectedWorkerId,
                                       'name': actualWorkerName,
@@ -1545,6 +1731,12 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       'cnic': workerCnic ?? '',
                                       'dateOfJoining':
                                           workerDateOfJoining ?? '',
+                                    };
+                                    final firestoreAssetMap = <String, dynamic>{
+                                      ...assetMap,
+                                      'position': position,
+                                      'type': assetType,
+                                      'dateOfJoining': workerJoiningDate ?? '',
                                     };
                                     final isGuest =
                                         _authService.currentUser?.isAnonymous ??
@@ -1594,7 +1786,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         try {
                                           await _firestore.updateAsset(
                                             data.id!,
-                                            assetMap,
+                                            firestoreAssetMap,
                                           );
                                         } catch (e) {
                                           setModalState(() => isSaving = false);
@@ -1607,6 +1799,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                                     'error': e.toString(),
                                                   },
                                                 ),
+                                            isError: true,
                                           );
                                           return;
                                         }
@@ -1744,8 +1937,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                       child: CupertinoDatePicker(
                                         mode: CupertinoDatePickerMode.date,
                                         initialDateTime: tempDate,
-                                        minimumYear: 2020,
-                                        maximumYear: 2030,
+                                        minimumDate: DateTime(1900, 1, 1),
+                                        maximumDate: DateTime.now(),
                                         onDateTimeChanged: (DateTime picked) {
                                           tempDate = picked;
                                         },
@@ -1787,6 +1980,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                           onPressed: () {
                                             setModalState(() {
                                               loanedDate = tempDate;
+                                              if (returnedDate.isBefore(
+                                                loanedDate,
+                                              )) {
+                                                returnedDate = loanedDate;
+                                              }
                                             });
                                             Navigator.of(context).pop();
                                           },
@@ -1821,6 +2019,10 @@ class _AssetsScreenState extends State<AssetsScreen> {
                             if (val != null) {
                               setModalState(() {
                                 isReturned = val;
+                                if (isReturned &&
+                                    returnedDate.isBefore(loanedDate)) {
+                                  returnedDate = loanedDate;
+                                }
                               });
                             }
                           },
@@ -1865,8 +2067,8 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                         child: CupertinoDatePicker(
                                           mode: CupertinoDatePickerMode.date,
                                           initialDateTime: tempDate,
-                                          minimumYear: 2020,
-                                          maximumYear: 2030,
+                                          minimumDate: loanedDate,
+                                          maximumDate: DateTime.now(),
                                           onDateTimeChanged: (DateTime picked) {
                                             tempDate = picked;
                                           },

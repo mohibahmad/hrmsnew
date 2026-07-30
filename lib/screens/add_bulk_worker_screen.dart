@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:ui' as ui;
-import 'dart:math';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart' hide GestureDetector;
 import 'package:flutter/material.dart' hide GestureDetector;
@@ -444,7 +443,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               '${_readableSaveError(error)}',
             );
           }
-          final isImage = remoteFile.mimeType.startsWith('image/');
           if (!_isSupportedMediaType(field, remoteFile.mimeType)) {
             final workerName = (worker['name'] ?? 'Worker').toString();
             throw StateError(
@@ -532,12 +530,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   String _computeFileHash(Uint8List bytes) {
-    int hash = 0;
-    final minLen = min(bytes.length, 8192);
-    for (int i = 0; i < minLen; i++) {
-      hash = ((hash << 5) + hash + bytes[i]) & 0xFFFFFFFF;
+    int hash = 0x811C9DC5;
+    for (final byte in bytes) {
+      hash ^= byte;
+      hash = (hash * 0x01000193) & 0xFFFFFFFF;
     }
-    return hash.toRadixString(16);
+    return '${bytes.length}_${hash.toRadixString(16)}';
   }
 
   Future<void> _downloadTemplate() async {
@@ -688,8 +686,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       final rows = Csv(dynamicTyping: false).decode(csvString);
 
       if (!mounted) return;
-      await _processCsvData(rows);
-      _lastFileHash = fileHash;
+      final didParse = await _processCsvData(rows);
+      if (didParse) {
+        _lastFileHash = fileHash;
+      }
     } catch (_) {
       if (mounted) {
         FlashySnackBar.show(
@@ -701,27 +701,260 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  Future<void> _processCsvData(List<List<dynamic>> rows) async {
-    if (rows.isEmpty) return;
+  Map<String, String> _validateWorkerData(
+    Map<String, dynamic> workerData, {
+    required Set<String> existingEmails,
+    required Set<String> existingNationalIds,
+    required Set<String> csvEmails,
+    required Set<String> csvNationalIds,
+  }) {
+    final fieldErrors = <String, String>{};
+    final requiredMessage = 'validation_required'.tr();
 
-    setState(() {
-      _invalidDobCount = 0;
-      _invalidGenderCount = 0;
-      _missingRequiredCount = 0;
-      _duplicateCount = 0;
-    });
+    for (final field in _requiredFields) {
+      final value = workerData[field]?.toString().trim() ?? '';
+      if (value.isEmpty) {
+        fieldErrors[field] = requiredMessage;
+      }
+    }
+
+    final currency = workerData['currency']?.toString().trim() ?? '';
+    if (currency.isNotEmpty) {
+      if (!CurrencyUtils.isSupported(currency)) {
+        fieldErrors['currency'] = 'invalid_currency_value'.tr();
+      } else {
+        workerData['currency'] = CurrencyUtils.normalize(currency);
+      }
+    }
+
+    final dobStr = workerData['dob']?.toString().trim() ?? '';
+    if (dobStr.isNotEmpty) {
+      final dob = AppDateUtils.parseDateString(dobStr);
+      if (dob == null) {
+        fieldErrors['dob'] = 'validation_invalid_date'.tr();
+      } else if (!_isAtLeast18(dob)) {
+        fieldErrors['dob'] = 'validation_min_age'.tr();
+      }
+    }
+
+    final gender = workerData['gender']?.toString().trim() ?? '';
+    if (gender.isNotEmpty) {
+      final normalizedGender = gender.toLowerCase();
+      const validGenders = {'male', 'female', 'other', 'others'};
+      if (!validGenders.contains(normalizedGender)) {
+        fieldErrors['gender'] = 'validation_invalid_gender'.tr();
+      } else {
+        workerData['gender'] = normalizedGender == 'male'
+            ? 'Male'
+            : normalizedGender == 'female'
+            ? 'Female'
+            : 'Other';
+      }
+    }
+
+    final relationshipStatus =
+        workerData['relationshipStatus']?.toString().trim() ?? '';
+    if (relationshipStatus.isNotEmpty) {
+      final normalized = relationshipStatus.toLowerCase();
+      const valid = {'single', 'married', 'divorced', 'widowed'};
+      if (!valid.contains(normalized)) {
+        fieldErrors['relationshipStatus'] = 'validation_invalid_relationship'
+            .tr();
+      } else {
+        workerData['relationshipStatus'] =
+            normalized[0].toUpperCase() + normalized.substring(1);
+      }
+    }
+
+    final employeeType = workerData['type1']?.toString().trim() ?? '';
+    if (employeeType.isNotEmpty) {
+      final normalized = employeeType.toLowerCase();
+      const valid = {
+        'full-time',
+        'full time',
+        'part-time',
+        'part time',
+        'contract',
+        'intern',
+      };
+      if (!valid.contains(normalized)) {
+        fieldErrors['type1'] = 'validation_invalid_employee_type'.tr();
+      } else if (normalized == 'full-time' || normalized == 'full time') {
+        workerData['type1'] = 'Full-Time';
+      } else if (normalized == 'part-time' || normalized == 'part time') {
+        workerData['type1'] = 'Part-Time';
+      } else if (normalized == 'contract') {
+        workerData['type1'] = 'Contract';
+      } else {
+        workerData['type1'] = 'Intern';
+      }
+    }
+
+    final workModel = workerData['type2']?.toString().trim() ?? '';
+    if (workModel.isNotEmpty) {
+      final normalized = workModel.toLowerCase();
+      const valid = {'on-site', 'on site', 'onsite', 'remote', 'hybrid'};
+      if (!valid.contains(normalized)) {
+        fieldErrors['type2'] = 'validation_invalid_work_model'.tr();
+      } else if (normalized == 'remote') {
+        workerData['type2'] = 'Remote';
+      } else if (normalized == 'hybrid') {
+        workerData['type2'] = 'Hybrid';
+      } else {
+        workerData['type2'] = 'On-Site';
+      }
+    }
+
+    final salaryType = workerData['salaryType']?.toString().trim() ?? '';
+    if (salaryType.isNotEmpty) {
+      final normalized = salaryType.toLowerCase();
+      const valid = {'monthly', 'hourly', 'contract', 'annual'};
+      if (!valid.contains(normalized)) {
+        fieldErrors['salaryType'] = 'validation_invalid_salary_type'.tr();
+      } else {
+        workerData['salaryType'] =
+            normalized[0].toUpperCase() + normalized.substring(1);
+      }
+    }
+
+    final leavePolicy = workerData['leavePolicy']?.toString().trim() ?? '';
+    if (leavePolicy.isEmpty) {
+      workerData['leavePolicy'] = 'Standard';
+    }
+
+    final email = WorkerIdentity.normalizeEmail(workerData['email']);
+    if (email.isEmpty) {
+      if ((workerData['email']?.toString().trim() ?? '').isNotEmpty) {
+        fieldErrors['email'] = requiredMessage;
+      }
+    } else if (!Validators.isValidEmail(email)) {
+      fieldErrors['email'] = 'validation_invalid_email'.tr();
+    } else {
+      workerData['email'] = email;
+      if (existingEmails.contains(email) || csvEmails.contains(email)) {
+        fieldErrors['email'] = 'validation_duplicate_email'.tr();
+      }
+    }
+
+    final nationalId = WorkerIdentity.normalizeNationalId(
+      workerData['nationalId'],
+    );
+    if (nationalId.isNotEmpty &&
+        (existingNationalIds.contains(nationalId) ||
+            csvNationalIds.contains(nationalId))) {
+      fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
+    }
+
+    final salaryText = workerData['salaryAmount']?.toString().trim() ?? '';
+    if (salaryText.isNotEmpty) {
+      final amount = Validators.parseAmount(salaryText);
+      if (amount == null) {
+        fieldErrors['salaryAmount'] = 'valid_amount_required'.tr();
+      } else if (amount <= 0) {
+        fieldErrors['salaryAmount'] = 'amount_must_be_positive'.tr();
+      }
+    }
+
+    final annualLeavesText =
+        workerData['annualLeaves']?.toString().trim() ?? '';
+    if (annualLeavesText.isNotEmpty) {
+      final annualLeaves = int.tryParse(annualLeavesText);
+      if (annualLeaves == null || annualLeaves < 0) {
+        fieldErrors['annualLeaves'] = 'invalid_number'.tr();
+        workerData['availableAnnualLeaves'] = 0;
+      } else {
+        workerData['annualLeaves'] = annualLeaves.toString();
+        workerData['availableAnnualLeaves'] = annualLeaves;
+      }
+    } else {
+      workerData['availableAnnualLeaves'] = 0;
+    }
+    workerData['leavesUsed'] = 0;
+
+    final joiningDateText = workerData['joiningDate']?.toString().trim() ?? '';
+    if (joiningDateText.isNotEmpty) {
+      final joiningDate = AppDateUtils.parseDateString(joiningDateText);
+      if (joiningDate == null) {
+        fieldErrors['joiningDate'] = 'validation_invalid_date'.tr();
+      } else {
+        final today = DateTime.now();
+        final todayOnly = DateTime(today.year, today.month, today.day);
+        final joiningOnly = DateTime(
+          joiningDate.year,
+          joiningDate.month,
+          joiningDate.day,
+        );
+        if (joiningOnly.isAfter(todayOnly)) {
+          fieldErrors['joiningDate'] = 'joining_date_cannot_be_future'.tr();
+        }
+      }
+    }
+
+    return fieldErrors;
+  }
+
+  ({int missing, int invalidDob, int invalidGender, int duplicate})
+  _validationCounts(List<Map<String, dynamic>> workers) {
+    final requiredMessage = 'validation_required'.tr();
+    final duplicateEmailMessage = 'validation_duplicate_email'.tr();
+    final duplicateNationalIdMessage = 'validation_duplicate_national_id'.tr();
+
+    int missing = 0;
+    int invalidDob = 0;
+    int invalidGender = 0;
+    int duplicate = 0;
+
+    for (final worker in workers) {
+      final errors = _fieldErrors(worker);
+      if (errors.values.contains(requiredMessage)) {
+        missing++;
+      }
+      if (errors.containsKey('dob') && errors['dob'] != requiredMessage) {
+        invalidDob++;
+      }
+      if (errors.containsKey('gender') && errors['gender'] != requiredMessage) {
+        invalidGender++;
+      }
+      if (errors['email'] == duplicateEmailMessage ||
+          errors['nationalId'] == duplicateNationalIdMessage) {
+        duplicate++;
+      }
+    }
+
+    return (
+      missing: missing,
+      invalidDob: invalidDob,
+      invalidGender: invalidGender,
+      duplicate: duplicate,
+    );
+  }
+
+  Future<bool> _processCsvData(List<List<dynamic>> rows) async {
+    if (rows.isEmpty) return false;
+
+    if (mounted) {
+      setState(() {
+        _invalidDobCount = 0;
+        _invalidGenderCount = 0;
+        _missingRequiredCount = 0;
+        _duplicateCount = 0;
+      });
+    }
 
     final headers = rows.first
         .map((e) => e.toString().trim().toLowerCase())
         .toList();
 
-    final Set<String> foundFields = {};
-    for (final h in headers) {
-      final mapped = _headerMap[h] ?? h;
-      if (_requiredFields.contains(mapped)) foundFields.add(mapped);
+    final foundFields = <String>{};
+    for (final header in headers) {
+      final mapped = _headerMap[header] ?? header;
+      if (_requiredFields.contains(mapped)) {
+        foundFields.add(mapped);
+      }
     }
-    final List<String> missingColumns = _requiredFields
-        .where((f) => !foundFields.contains(f))
+
+    final missingColumns = _requiredFields
+        .where((field) => !foundFields.contains(field))
         .toList();
 
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -759,15 +992,15 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             isError: true,
           );
         }
-        return;
+        return false;
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
-    final List<Map<String, dynamic>> parsedWorkers = [];
-    final Set<String> csvEmails = {};
-    final Set<String> csvNationalIds = {};
+    final parsedWorkers = <Map<String, dynamic>>[];
+    final csvEmails = <String>{};
+    final csvNationalIds = <String>{};
 
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
@@ -775,7 +1008,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         continue;
       }
 
-      final Map<String, dynamic> workerData = {
+      final workerData = <String, dynamic>{
         'name': '',
         'phone': '',
         'fatherName': '',
@@ -806,11 +1039,10 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       };
 
       for (int j = 0; j < headers.length && j < row.length; j++) {
-        final val = row[j].toString().trim();
-        if (val.isEmpty) continue;
+        final value = row[j].toString().trim();
+        if (value.isEmpty) continue;
 
         final mappedKey = _headerMap[headers[j]] ?? headers[j];
-
         String matchedKey = mappedKey;
         for (final key in workerData.keys) {
           if (key.toLowerCase() == mappedKey.toLowerCase()) {
@@ -818,137 +1050,92 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             break;
           }
         }
-        workerData[matchedKey] = val;
+        workerData[matchedKey] = value;
       }
 
-      final fieldErrors = <String, String>{};
-
-      final missingForWorker = _requiredFields
-          .where(
-            (f) =>
-                workerData[f] == null ||
-                workerData[f].toString().trim().isEmpty,
-          )
-          .toList();
-      if (missingForWorker.isNotEmpty) {
-        _missingRequiredCount++;
-        for (final f in missingForWorker) {
-          fieldErrors[f] = 'validation_required'.tr();
-        }
-      }
-
-      final currency = workerData['currency'].toString().trim();
-      if (currency.isNotEmpty) {
-        if (!CurrencyUtils.isSupported(currency)) {
-          fieldErrors['currency'] = 'invalid_currency_value'.tr();
-        } else {
-          workerData['currency'] = CurrencyUtils.normalize(currency);
-        }
-      }
-
-      final dobStr = workerData['dob'].toString().trim();
-      if (dobStr.isNotEmpty) {
-        final dob = AppDateUtils.parseDateString(dobStr);
-        if (dob == null) {
-          fieldErrors['dob'] = 'validation_invalid_date'.tr();
-          _invalidDobCount++;
-        } else {
-          final cutoff = DateTime.now().subtract(
-            const Duration(days: 365 * 18),
-          );
-          if (dob.isAfter(cutoff)) {
-            fieldErrors['dob'] = 'validation_min_age'.tr();
-            _invalidDobCount++;
-          }
-        }
-      }
-
-      final gender = workerData['gender'].toString().trim();
-      final normalizedGender = gender.toLowerCase();
-      if (gender.isNotEmpty) {
-        const validGenders = {'male', 'female', 'other', 'others'};
-        if (!validGenders.contains(normalizedGender)) {
-          fieldErrors['gender'] = 'validation_invalid_gender'.tr();
-          _invalidGenderCount++;
-        } else if (normalizedGender == 'others') {
-          workerData['gender'] = 'Other';
-        }
-      }
+      final fieldErrors = _validateWorkerData(
+        workerData,
+        existingEmails: existingEmails,
+        existingNationalIds: existingNationalIds,
+        csvEmails: csvEmails,
+        csvNationalIds: csvNationalIds,
+      );
 
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
-      if (email.isNotEmpty && !Validators.isValidEmail(email)) {
-        fieldErrors['email'] = 'validation_invalid_email'.tr();
-      }
-
       final nationalId = WorkerIdentity.normalizeNationalId(
         workerData['nationalId'],
       );
-
-      if (email.isNotEmpty &&
-          (existingEmails.contains(email) || csvEmails.contains(email))) {
-        fieldErrors['email'] = 'validation_duplicate_email'.tr();
-      }
-      if (nationalId.isNotEmpty &&
-          (existingNationalIds.contains(nationalId) ||
-              csvNationalIds.contains(nationalId))) {
-        fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
-      }
-
-      final duplicateFields = {'email', 'nationalId'};
-      if (fieldErrors.keys.any(
-        (k) => duplicateFields.contains(k) && fieldErrors[k] != null,
-      )) {
-        _duplicateCount++;
-      }
-
       if (email.isNotEmpty) csvEmails.add(email);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
 
-      workerData['availableAnnualLeaves'] =
-          int.tryParse(workerData['annualLeaves'].toString()) ?? 0;
-      workerData['leavesUsed'] = 0;
-
       workerData['_rowNumber'] = i + 1;
       workerData['_fieldErrors'] = fieldErrors;
-
       parsedWorkers.add(workerData);
     }
+
+    if (parsedWorkers.isEmpty) {
+      setState(() {
+        _validWorkers = [];
+        _hasParsedFile = false;
+        _hasUnsavedChanges = false;
+      });
+      FlashySnackBar.show(
+        context,
+        message: 'no_valid_workers_found_in_csv'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    final counts = _validationCounts(parsedWorkers);
 
     setState(() {
       _validWorkers = parsedWorkers;
       _hasParsedFile = true;
       _hasUnsavedChanges = true;
+      _missingRequiredCount = counts.missing;
+      _invalidDobCount = counts.invalidDob;
+      _invalidGenderCount = counts.invalidGender;
+      _duplicateCount = counts.duplicate;
     });
 
-    if (!mounted) return;
+    final requiredMessage = 'validation_required'.tr();
+    final duplicateEmailMessage = 'validation_duplicate_email'.tr();
+    final duplicateNationalIdMessage = 'validation_duplicate_national_id'.tr();
 
-    final Set<String> allMissingFieldNames = {};
-    for (final w in parsedWorkers) {
-      for (final entry in _fieldErrors(w).entries) {
-        if (entry.value == 'Required') allMissingFieldNames.add(entry.key);
+    final allMissingFieldNames = <String>{};
+    for (final worker in parsedWorkers) {
+      for (final entry in _fieldErrors(worker).entries) {
+        if (entry.value == requiredMessage) {
+          allMissingFieldNames.add(entry.key);
+        }
       }
     }
 
-    final int duplicateWorkers = parsedWorkers.where((w) {
-      return _fieldErrors(w).values.any((r) => r.startsWith('Duplicate'));
+    final duplicateWorkers = parsedWorkers.where((worker) {
+      final errors = _fieldErrors(worker);
+      return errors['email'] == duplicateEmailMessage ||
+          errors['nationalId'] == duplicateNationalIdMessage;
     }).length;
 
-    final bool hasAnyIssue =
-        allMissingFieldNames.isNotEmpty ||
-        missingColumns.isNotEmpty ||
-        duplicateWorkers > 0;
+    final hasAnyIssue =
+        missingColumns.isNotEmpty || parsedWorkers.any(_hasWorkerErrors);
 
     if (hasAnyIssue) {
       final snackParts = <String>[
         'csv_workers_found'.tr(namedArgs: {'count': '${parsedWorkers.length}'}),
       ];
       if (missingColumns.isNotEmpty) {
-        final cols = missingColumns.map((f) => _fieldLabels[f] ?? f).join(', ');
-        snackParts.add('csv_missing_columns'.tr(namedArgs: {'columns': cols}));
+        final columns = missingColumns
+            .map((field) => _fieldLabels[field] ?? field)
+            .join(', ');
+        snackParts.add(
+          'csv_missing_columns'.tr(namedArgs: {'columns': columns}),
+        );
       }
       if (allMissingFieldNames.isNotEmpty) {
         final fields = allMissingFieldNames
-            .map((f) => _fieldLabels[f] ?? f)
+            .map((field) => _fieldLabels[field] ?? field)
             .join(', ');
         snackParts.add('csv_empty_fields'.tr(namedArgs: {'fields': fields}));
       }
@@ -974,9 +1161,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         ),
       );
     }
+
+    return true;
   }
 
-  Future<void> _revalidateAllWorkers() async {
+  Future<bool> _revalidateAllWorkers() async {
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
     Set<String> existingEmails = {};
     Set<String> existingNationalIds = {};
@@ -1004,104 +1193,59 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             )
             .where((n) => n.isNotEmpty)
             .toSet();
-      } catch (_) {}
+      } catch (_) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'could_not_validate_csv_duplicates'.tr(),
+            isError: true,
+          );
+        }
+        return false;
+      }
     }
 
-    final Set<String> csvEmails = {};
-    final Set<String> csvNationalIds = {};
+    final csvEmails = <String>{};
+    final csvNationalIds = <String>{};
 
-    int duplicateCount = 0;
-    int missingCount = 0;
-    int invalidDobCount = 0;
-    int invalidGenderCount = 0;
-
-    for (int i = 0; i < _validWorkers.length; i++) {
-      final workerData = _validWorkers[i];
-      final Map<String, String> fieldErrors = {};
-
-      for (final reqField in _requiredFields) {
-        final val = workerData[reqField]?.toString().trim() ?? '';
-        if (val.isEmpty) {
-          fieldErrors[reqField] = 'Required';
-          missingCount++;
-        }
-      }
-
-      final dobStr = workerData['dob']?.toString().trim() ?? '';
-      if (dobStr.isNotEmpty) {
-        final dob = AppDateUtils.parseDateString(dobStr);
-        if (dob == null) {
-          fieldErrors['dob'] = 'validation_invalid_date'.tr();
-          invalidDobCount++;
-        } else {
-          final cutoff = DateTime.now().subtract(
-            const Duration(days: 365 * 18),
-          );
-          if (dob.isAfter(cutoff)) {
-            fieldErrors['dob'] = 'validation_min_age'.tr();
-            invalidDobCount++;
-          }
-        }
-      }
-
-      final gender = workerData['gender']?.toString().trim() ?? '';
-      final normalizedGender = gender.toLowerCase();
-      if (gender.isNotEmpty) {
-        const validGenders = {'male', 'female', 'other', 'others'};
-        if (!validGenders.contains(normalizedGender)) {
-          fieldErrors['gender'] = 'validation_invalid_gender'.tr();
-          invalidGenderCount++;
-        }
-      }
+    for (final workerData in _validWorkers) {
+      final fieldErrors = _validateWorkerData(
+        workerData,
+        existingEmails: existingEmails,
+        existingNationalIds: existingNationalIds,
+        csvEmails: csvEmails,
+        csvNationalIds: csvNationalIds,
+      );
 
       final email = WorkerIdentity.normalizeEmail(workerData['email']);
-      if (email.isNotEmpty && !Validators.isValidEmail(email)) {
-        fieldErrors['email'] = 'validation_invalid_email'.tr();
-      }
-
       final nationalId = WorkerIdentity.normalizeNationalId(
         workerData['nationalId'],
       );
-
-      if (email.isNotEmpty &&
-          (existingEmails.contains(email) || csvEmails.contains(email))) {
-        fieldErrors['email'] = 'validation_duplicate_email'.tr();
-      }
-      if (nationalId.isNotEmpty &&
-          (existingNationalIds.contains(nationalId) ||
-              csvNationalIds.contains(nationalId))) {
-        fieldErrors['nationalId'] = 'validation_duplicate_national_id'.tr();
-      }
-
-      const duplicateFields = {'email', 'nationalId'};
-      if (fieldErrors.keys.any(
-        (k) => duplicateFields.contains(k) && fieldErrors[k] != null,
-      )) {
-        duplicateCount++;
-      }
-
       if (email.isNotEmpty) csvEmails.add(email);
       if (nationalId.isNotEmpty) csvNationalIds.add(nationalId);
 
       workerData['_fieldErrors'] = fieldErrors;
     }
 
+    final counts = _validationCounts(_validWorkers);
+
     if (mounted) {
       setState(() {
-        _duplicateCount = duplicateCount;
-        _missingRequiredCount = missingCount;
-        _invalidDobCount = invalidDobCount;
-        _invalidGenderCount = invalidGenderCount;
+        _duplicateCount = counts.duplicate;
+        _missingRequiredCount = counts.missing;
+        _invalidDobCount = counts.invalidDob;
+        _invalidGenderCount = counts.invalidGender;
       });
     }
+
+    return true;
   }
 
   Future<void> _saveBulkWorkers() async {
-    if (_isSaving && mounted) {
-      setState(() => _isSaving = false);
-    }
+    if (_isSaving) return;
 
-    await _revalidateAllWorkers();
+    final revalidated = await _revalidateAllWorkers();
+    if (!revalidated || !mounted) return;
 
     if (_validWorkers.isEmpty) {
       FlashySnackBar.show(
@@ -1145,32 +1289,51 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           ),
         );
       }
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'csv_validation_errors_found'.tr(
-            namedArgs: {'errors': parts.join('\n')},
-          ),
-          isError: true,
-          displayDuration: const Duration(seconds: 10),
-        );
+
+      final invalidFields = workersWithErrors
+          .expand((worker) => _fieldErrors(worker).keys)
+          .toSet()
+          .map((field) => _fieldLabels[field] ?? field)
+          .join(', ');
+      if (invalidFields.isNotEmpty) {
+        parts.add(invalidFields);
       }
+
+      FlashySnackBar.show(
+        context,
+        message: 'csv_validation_errors_found'.tr(
+          namedArgs: {'errors': parts.join('\n')},
+        ),
+        isError: true,
+        displayDuration: const Duration(seconds: 10),
+        maxLines: null,
+      );
       return;
     }
+
+    final requiredMessage = 'validation_required'.tr();
+    final duplicateEmailMessage = 'validation_duplicate_email'.tr();
+    final duplicateNationalIdMessage = 'validation_duplicate_national_id'.tr();
 
     int localDuplicateCount = 0;
     int localMissingCount = 0;
     int localInvalidDobCount = 0;
     int localInvalidGenderCount = 0;
 
-    for (final w in workersWithErrors) {
-      final errors = _fieldErrors(w);
-      if (errors.values.any((r) => r.startsWith('Duplicate'))) {
+    for (final worker in workersWithErrors) {
+      final errors = _fieldErrors(worker);
+      if (errors['email'] == duplicateEmailMessage ||
+          errors['nationalId'] == duplicateNationalIdMessage) {
         localDuplicateCount++;
-      } else {
-        if (errors.containsKey('dob')) localInvalidDobCount++;
-        if (errors.containsKey('gender')) localInvalidGenderCount++;
+      }
+      if (errors.values.contains(requiredMessage)) {
         localMissingCount++;
+      }
+      if (errors.containsKey('dob') && errors['dob'] != requiredMessage) {
+        localInvalidDobCount++;
+      }
+      if (errors.containsKey('gender') && errors['gender'] != requiredMessage) {
+        localInvalidGenderCount++;
       }
     }
 
@@ -1181,7 +1344,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     try {
       int importedCount = workersReadyToSave.length;
-      int finalSkippedDuplicates = localDuplicateCount;
       BulkWorkerResult? bulkResult;
 
       if (isGuest) {
@@ -1196,33 +1358,35 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         );
         bulkResult = await _firestore.addBulkWorkers(workersReadyToSave);
         importedCount = bulkResult.imported;
-        if (bulkResult.skipped > 0)
-          finalSkippedDuplicates += bulkResult.skipped;
       }
 
       if (!mounted) return;
       Navigator.of(context).pop();
+
+      final serverDuplicateCount =
+          bulkResult?.skipReasons.where((reason) {
+            return reason.trim().toLowerCase().startsWith('duplicate ');
+          }).length ??
+          0;
+      final finalSkippedDuplicates = localDuplicateCount + serverDuplicateCount;
 
       final summaryParts = <String>[
         'workers_added_successfully'.tr(
           namedArgs: {'count': importedCount.toString()},
         ),
       ];
-      if (bulkResult != null && bulkResult.skipReasons.isNotEmpty) {
-        summaryParts.add(
-          'skipped_duplicates_message'.tr(
-            namedArgs: {'count': '${bulkResult.skipReasons.length}'},
-          ),
-        );
-        for (final reason in bulkResult.skipReasons) {
-          summaryParts.add('  • $reason');
-        }
-      } else if (finalSkippedDuplicates > 0) {
+
+      if (finalSkippedDuplicates > 0) {
         summaryParts.add(
           'skipped_duplicates_message'.tr(
             namedArgs: {'count': finalSkippedDuplicates.toString()},
           ),
         );
+      }
+      if (bulkResult != null && bulkResult.skipReasons.isNotEmpty) {
+        for (final reason in bulkResult.skipReasons) {
+          summaryParts.add('  • $reason');
+        }
       }
       if (localMissingCount > 0) {
         summaryParts.add(
@@ -1247,10 +1411,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       final hasSkipped =
-          finalSkippedDuplicates > 0 ||
-          localMissingCount > 0 ||
-          localInvalidDobCount > 0 ||
-          localInvalidGenderCount > 0;
+          workersWithErrors.isNotEmpty || (bulkResult?.skipped ?? 0) > 0;
 
       FlashySnackBar.show(
         context,
@@ -1265,12 +1426,22 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             : const Duration(seconds: 5),
       );
 
-      await tryShowFirstMilestoneRateUs('bulk_worker');
+      if (importedCount > 0) {
+        await tryShowFirstMilestoneRateUs('bulk_worker');
+      }
+
+      final keepInvalidWorkers = !isGuest && workersWithErrors.isNotEmpty;
 
       setState(() {
-        _validWorkers = [];
-        _hasParsedFile = false;
-        _hasUnsavedChanges = false;
+        if (keepInvalidWorkers) {
+          _validWorkers = workersWithErrors;
+          _hasParsedFile = true;
+          _hasUnsavedChanges = true;
+        } else {
+          _validWorkers = [];
+          _hasParsedFile = false;
+          _hasUnsavedChanges = false;
+        }
       });
 
       if (!isGuest) {
@@ -1282,7 +1453,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         DummyData.loadFromPrefs();
       }
 
-      widget.onBack?.call();
+      if (!keepInvalidWorkers) {
+        widget.onBack?.call();
+      }
     } catch (error, stackTrace) {
       debugPrint('Add bulk worker save failed: ${_readableSaveError(error)}');
       ErrorReporter.report(
@@ -1341,17 +1514,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       fieldKey == 'dob' || fieldKey == 'joiningDate';
 
   DateTime? _parseDate(String dateStr) {
-    if (dateStr.isEmpty) return null;
-    try {
-      final parts = dateStr.split('/');
-      if (parts.length == 3) {
-        final day = int.parse(parts[0]);
-        final month = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
-        return DateTime(year, month, day);
-      }
-    } catch (_) {}
-    return null;
+    if (dateStr.trim().isEmpty) return null;
+    return AppDateUtils.parseDateString(dateStr.trim());
   }
 
   bool _isAtLeast18(DateTime dob) {
@@ -1379,8 +1543,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     required void Function(String) onDateSelected,
   }) {
     final parsed = _parseDate(currentValue);
-    final displayText =
-        currentValue.isNotEmpty ? currentValue : 'Tap to select date';
+    final displayText = currentValue.isNotEmpty
+        ? currentValue
+        : 'Tap to select date';
     final hasError =
         (fieldKey == 'dob' && parsed != null && !_isAtLeast18(parsed)) ||
         (fieldKey == 'joiningDate' &&
@@ -1446,8 +1611,15 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     required void Function(String) onDateSelected,
   }) {
     final now = DateTime.now();
+    final minimumDate = fieldKey == 'dob' ? DateTime(1920) : DateTime(2000);
     DateTime selected =
         currentDate ?? (fieldKey == 'dob' ? DateTime(2000, 1, 1) : now);
+    if (selected.isBefore(minimumDate)) {
+      selected = minimumDate;
+    }
+    if (selected.isAfter(now)) {
+      selected = now;
+    }
 
     showGeneralDialog(
       context: context,
@@ -1479,8 +1651,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0247C4)
-                                .withValues(alpha: 0.18),
+                            color: const Color(
+                              0xFF0247C4,
+                            ).withValues(alpha: 0.18),
                             blurRadius: 40,
                             offset: const Offset(0, 12),
                           ),
@@ -1546,8 +1719,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             child: CupertinoDatePicker(
                               mode: CupertinoDatePickerMode.date,
                               initialDateTime: selected,
-                              minimumDate:
-                                  fieldKey == 'dob' ? DateTime(1920) : DateTime(2000),
+                              minimumDate: minimumDate,
                               maximumDate: now,
                               onDateTimeChanged: (DateTime newDate) {
                                 setPickerState(() {
@@ -1564,8 +1736,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   child: GestureDetector(
                                     onTap: () => Navigator.of(ctx).pop(),
                                     child: Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFF3F4F6),
                                         borderRadius: BorderRadius.circular(10),
@@ -1608,20 +1781,23 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         );
                                         return;
                                       }
-                                      final dateStr = _formatDateForField(selected);
+                                      final dateStr = _formatDateForField(
+                                        selected,
+                                      );
                                       onDateSelected(dateStr);
                                       setDialogState(() {});
                                       Navigator.of(ctx).pop();
                                     },
                                     child: Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFF0247C4),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Center(
-                                          child: Text(
+                                        child: Text(
                                           'done'.tr(),
                                           style: const TextStyle(
                                             fontSize: 15,
@@ -1692,10 +1868,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         TextInputType? keyboardTypeForField() {
           if (fieldKey == 'phone') return TextInputType.phone;
           if (fieldKey == 'email') return TextInputType.emailAddress;
-          if (fieldKey == 'salaryAmount' || fieldKey == 'annualLeaves') {
+          if (fieldKey == 'salaryAmount') {
             return const TextInputType.numberWithOptions(decimal: true);
           }
-          if (fieldKey == 'nationalId') return TextInputType.number;
+          if (fieldKey == 'annualLeaves' || fieldKey == 'nationalId') {
+            return TextInputType.number;
+          }
           return null;
         }
 
@@ -1747,10 +1925,16 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               fieldKey == 'cv') {
             return [LengthLimitingTextInputFormatter(500)];
           }
-          if (fieldKey == 'salaryAmount' || fieldKey == 'annualLeaves') {
+          if (fieldKey == 'salaryAmount') {
             return [
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
               LengthLimitingTextInputFormatter(15),
+            ];
+          }
+          if (fieldKey == 'annualLeaves') {
+            return [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(3),
             ];
           }
           return null;
@@ -1797,8 +1981,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                       );
                       if (result != null && result.files.isNotEmpty) {
                         final file = result.files.first;
-                        if (file.bytes != null &&
-                            file.bytes!.length > 10 * 1024 * 1024) {
+                        Uint8List? bytes = file.bytes;
+                        if (bytes != null && bytes.length > 10 * 1024 * 1024) {
                           setDialogState(() {
                             dialogError = 'file_too_large'.tr(
                               namedArgs: {'size': '10MB'},
@@ -1806,11 +1990,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                           });
                           return;
                         }
-                        Uint8List? bytes = file.bytes;
                         if (bytes == null && file.path != null) {
-                          bytes = io.File(file.path!).readAsBytesSync();
+                          final selectedFile = io.File(file.path!);
+                          if (await selectedFile.length() > 10 * 1024 * 1024) {
+                            setDialogState(() {
+                              dialogError = 'file_too_large'.tr(
+                                namedArgs: {'size': '10MB'},
+                              );
+                            });
+                            return;
+                          }
+                          bytes = await selectedFile.readAsBytes();
                         }
-                        if (bytes != null) {
+                        if (bytes != null && bytes.isNotEmpty) {
                           final ext = file.name.split('.').last.toLowerCase();
                           const mimeMap = {
                             'pdf': 'application/pdf',
@@ -1878,121 +2070,106 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   )
                                 else
                                   Container(
-                                  clipBehavior: Clip.hardEdge,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: const Color(0xFFD1D5DB),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                  ),
-                                  child: TextField(
-                                    controller: controller,
-                                    readOnly:
-                                        isMediaField &&
-                                        (mediaDataUrl != null ||
-                                            hasExistingUpload),
-                                    autofocus: !isMediaField,
-                                    maxLines: isMediaField ? 1 : null,
-                                    minLines: 1,
-                                    expands: false,
-                                    keyboardType: keyboardTypeForField(),
-                                    inputFormatters: inputFormattersForField(),
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontFamily: 'SF Pro Display',
-                                      color:
-                                          (isMediaField &&
-                                              (mediaDataUrl != null ||
-                                                  hasExistingUpload))
-                                          ? const Color(0xFF9CA3AF)
-                                          : const Color(0xFF111827),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    decoration: InputDecoration(
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            vertical: 14,
-                                          ),
-                                      hintText: 'edit_cell_enter_value'.tr(
-                                        namedArgs: {'label': label},
+                                    clipBehavior: Clip.hardEdge,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFFD1D5DB),
+                                        width: 1.2,
                                       ),
-                                      hintStyle: const TextStyle(
-                                        color: Color(0xFF9CA3AF),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                    ),
+                                    child: TextField(
+                                      controller: controller,
+                                      readOnly:
+                                          isMediaField &&
+                                          (mediaDataUrl != null ||
+                                              hasExistingUpload),
+                                      autofocus: !isMediaField,
+                                      maxLines: isMediaField ? 1 : null,
+                                      minLines: 1,
+                                      expands: false,
+                                      keyboardType: keyboardTypeForField(),
+                                      inputFormatters:
+                                          inputFormattersForField(),
+                                      style: TextStyle(
                                         fontSize: 15,
                                         fontFamily: 'SF Pro Display',
+                                        color:
+                                            (isMediaField &&
+                                                (mediaDataUrl != null ||
+                                                    hasExistingUpload))
+                                            ? const Color(0xFF9CA3AF)
+                                            : const Color(0xFF111827),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      suffixIcon:
-                                          (fieldKey == 'profileImage' ||
-                                              fieldKey == 'frontId' ||
-                                              fieldKey == 'backId' ||
-                                              fieldKey == 'cv')
-                                          ? GestureDetector(
-                                              onTap: () => _pickMediaFile(),
-                                              child: Container(
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 8,
-                                                    ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      (mediaDataUrl != null ||
-                                                          hasExistingUpload)
-                                                      ? const Color(0xFFDCFCE7)
-                                                      : const Color(0xFFEEF2FF),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      (mediaDataUrl != null ||
-                                                              hasExistingUpload)
-                                                          ? Icons
-                                                                .check_circle_rounded
-                                                          : fieldKey == 'cv'
-                                                          ? Icons
-                                                                .attach_file_rounded
-                                                          : fieldKey ==
-                                                                'profileImage'
-                                                          ? Icons
-                                                                .add_a_photo_rounded
-                                                          : Icons.badge_rounded,
-                                                      size: 18,
-                                                      color:
-                                                          (mediaDataUrl !=
-                                                                  null ||
-                                                              hasExistingUpload)
-                                                          ? const Color(
-                                                              0xFF16A34A,
-                                                            )
-                                                          : const Color(
-                                                              0xFF0247C4,
-                                                            ),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      (mediaDataUrl != null ||
-                                                              hasExistingUpload)
-                                                          ? 'uploaded'.tr()
-                                                          : fieldKey == 'cv'
-                                                          ? 'upload_cv'.tr()
-                                                          : 'upload_image'.tr(),
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w600,
+                                      decoration: InputDecoration(
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                        hintText: 'edit_cell_enter_value'.tr(
+                                          namedArgs: {'label': label},
+                                        ),
+                                        hintStyle: const TextStyle(
+                                          color: Color(0xFF9CA3AF),
+                                          fontSize: 15,
+                                          fontFamily: 'SF Pro Display',
+                                        ),
+                                        suffixIcon:
+                                            (fieldKey == 'profileImage' ||
+                                                fieldKey == 'frontId' ||
+                                                fieldKey == 'backId' ||
+                                                fieldKey == 'cv')
+                                            ? GestureDetector(
+                                                onTap: () => _pickMediaFile(),
+                                                child: Container(
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 8,
+                                                      ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        (mediaDataUrl != null ||
+                                                            hasExistingUpload)
+                                                        ? const Color(
+                                                            0xFFDCFCE7,
+                                                          )
+                                                        : const Color(
+                                                            0xFFEEF2FF,
+                                                          ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        (mediaDataUrl != null ||
+                                                                hasExistingUpload)
+                                                            ? Icons
+                                                                  .check_circle_rounded
+                                                            : fieldKey == 'cv'
+                                                            ? Icons
+                                                                  .attach_file_rounded
+                                                            : fieldKey ==
+                                                                  'profileImage'
+                                                            ? Icons
+                                                                  .add_a_photo_rounded
+                                                            : Icons
+                                                                  .badge_rounded,
+                                                        size: 18,
                                                         color:
                                                             (mediaDataUrl !=
                                                                     null ||
@@ -2003,21 +2180,45 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                             : const Color(
                                                                 0xFF0247C4,
                                                               ),
-                                                        fontFamily:
-                                                            'SF Pro Display',
                                                       ),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      maxLines: 1,
-                                                    ),
-                                                  ],
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        (mediaDataUrl != null ||
+                                                                hasExistingUpload)
+                                                            ? 'uploaded'.tr()
+                                                            : fieldKey == 'cv'
+                                                            ? 'upload_cv'.tr()
+                                                            : 'upload_image'
+                                                                  .tr(),
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color:
+                                                              (mediaDataUrl !=
+                                                                      null ||
+                                                                  hasExistingUpload)
+                                                              ? const Color(
+                                                                  0xFF16A34A,
+                                                                )
+                                                              : const Color(
+                                                                  0xFF0247C4,
+                                                                ),
+                                                          fontFamily:
+                                                              'SF Pro Display',
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        maxLines: 1,
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                              ),
-                                            )
-                                          : null,
+                                              )
+                                            : null,
+                                      ),
                                     ),
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -2170,7 +2371,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                     .tr();
                                           });
                                         } else {
-                                          Navigator.of(ctx).pop(val);
+                                          Navigator.of(
+                                            ctx,
+                                          ).pop(normalizedEmail);
                                         }
                                       }
                                     } else if (fieldKey == 'nationalId' &&
@@ -2261,12 +2464,16 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               'validation_invalid_employee_type'
                                                   .tr();
                                         });
+                                      } else if (normalized == 'full-time' ||
+                                          normalized == 'full time') {
+                                        Navigator.of(ctx).pop('Full-Time');
+                                      } else if (normalized == 'part-time' ||
+                                          normalized == 'part time') {
+                                        Navigator.of(ctx).pop('Part-Time');
+                                      } else if (normalized == 'contract') {
+                                        Navigator.of(ctx).pop('Contract');
                                       } else {
-                                        final display = normalized.replaceAll(
-                                          ' ',
-                                          '-',
-                                        );
-                                        Navigator.of(ctx).pop(display);
+                                        Navigator.of(ctx).pop('Intern');
                                       }
                                     } else if (fieldKey == 'type2') {
                                       final normalized = val.toLowerCase();
@@ -2283,12 +2490,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               'validation_invalid_work_model'
                                                   .tr();
                                         });
+                                      } else if (normalized == 'remote') {
+                                        Navigator.of(ctx).pop('Remote');
+                                      } else if (normalized == 'hybrid') {
+                                        Navigator.of(ctx).pop('Hybrid');
                                       } else {
-                                        final display = normalized.replaceAll(
-                                          ' ',
-                                          '-',
-                                        );
-                                        Navigator.of(ctx).pop(display);
+                                        Navigator.of(ctx).pop('On-Site');
                                       }
                                     } else if (fieldKey == 'salaryType') {
                                       final normalized = val
@@ -2317,6 +2524,46 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             normalized.substring(1);
                                         Navigator.of(ctx).pop(display);
                                       }
+                                    } else if (fieldKey == 'currency') {
+                                      if (!CurrencyUtils.isSupported(val)) {
+                                        setDialogState(() {
+                                          dialogError = 'invalid_currency_value'
+                                              .tr();
+                                        });
+                                      } else {
+                                        Navigator.of(
+                                          ctx,
+                                        ).pop(CurrencyUtils.normalize(val));
+                                      }
+                                    } else if (fieldKey == 'salaryAmount') {
+                                      final amount = Validators.parseAmount(
+                                        val,
+                                      );
+                                      if (amount == null) {
+                                        setDialogState(() {
+                                          dialogError = 'valid_amount_required'
+                                              .tr();
+                                        });
+                                      } else if (amount <= 0) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'amount_must_be_positive'.tr();
+                                        });
+                                      } else {
+                                        Navigator.of(ctx).pop(val);
+                                      }
+                                    } else if (fieldKey == 'annualLeaves') {
+                                      final annualLeaves = int.tryParse(val);
+                                      if (annualLeaves == null ||
+                                          annualLeaves < 0) {
+                                        setDialogState(() {
+                                          dialogError = 'invalid_number'.tr();
+                                        });
+                                      } else {
+                                        Navigator.of(
+                                          ctx,
+                                        ).pop(annualLeaves.toString());
+                                      }
                                     } else if (fieldKey == 'dob') {
                                       final dob = AppDateUtils.parseDateString(
                                         val,
@@ -2326,14 +2573,39 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           dialogError =
                                               'validation_invalid_date'.tr();
                                         });
+                                      } else if (!_isAtLeast18(dob)) {
+                                        setDialogState(() {
+                                          dialogError = 'validation_min_age'
+                                              .tr();
+                                        });
                                       } else {
-                                        final cutoff = DateTime.now().subtract(
-                                          const Duration(days: 365 * 18),
+                                        Navigator.of(ctx).pop(val);
+                                      }
+                                    } else if (fieldKey == 'joiningDate') {
+                                      final joiningDate =
+                                          AppDateUtils.parseDateString(val);
+                                      if (joiningDate == null) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_date'.tr();
+                                        });
+                                      } else {
+                                        final now = DateTime.now();
+                                        final today = DateTime(
+                                          now.year,
+                                          now.month,
+                                          now.day,
                                         );
-                                        if (dob.isAfter(cutoff)) {
+                                        final joiningOnly = DateTime(
+                                          joiningDate.year,
+                                          joiningDate.month,
+                                          joiningDate.day,
+                                        );
+                                        if (joiningOnly.isAfter(today)) {
                                           setDialogState(() {
-                                            dialogError = 'validation_min_age'
-                                                .tr();
+                                            dialogError =
+                                                'joining_date_cannot_be_future'
+                                                    .tr();
                                           });
                                         } else {
                                           Navigator.of(ctx).pop(val);
@@ -2391,18 +2663,20 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               !cvExts.contains(ext)) {
                                             setDialogState(() {
                                               dialogError =
-                                                  'bulk_media_cv_format_error'.tr();
+                                                  'bulk_media_cv_format_error'
+                                                      .tr();
                                             });
                                           } else if (fieldKey != 'cv' &&
                                               ext.isNotEmpty &&
                                               !imageExts.contains(ext)) {
                                             setDialogState(() {
                                               dialogError =
-                                                  'bulk_media_image_format_error'.tr(
-                                                    namedArgs: {
-                                                      'received': ext,
-                                                    },
-                                                  );
+                                                  'bulk_media_image_format_error'
+                                                      .tr(
+                                                        namedArgs: {
+                                                          'received': ext,
+                                                        },
+                                                      );
                                             });
                                           } else {
                                             worker['${fieldKey}_name'] = val
@@ -2455,6 +2729,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     if (result != null && mounted) {
       setState(() {
         _validWorkers[workerIndex][fieldKey] = result;
+        if (fieldKey == 'annualLeaves') {
+          final annualLeaves = int.tryParse(result) ?? 0;
+          _validWorkers[workerIndex]['availableAnnualLeaves'] = annualLeaves;
+          _validWorkers[workerIndex]['leavesUsed'] = 0;
+        }
         _hasUnsavedChanges = true;
       });
       await _revalidateAllWorkers();

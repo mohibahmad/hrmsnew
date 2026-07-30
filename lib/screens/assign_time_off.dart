@@ -114,12 +114,45 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     _loadWorkers();
   }
 
+  bool _sameInitialSelection(
+    Map<String, dynamic>? first,
+    Map<String, dynamic>? second,
+  ) {
+    if (identical(first, second)) return true;
+    if (first == null || second == null) return false;
+
+    final firstId = (first['id'] ?? '').toString().trim();
+    final secondId = (second['id'] ?? '').toString().trim();
+    final firstAction = (first['action'] ?? first['type'] ?? '')
+        .toString()
+        .trim();
+    final secondAction = (second['action'] ?? second['type'] ?? '')
+        .toString()
+        .trim();
+
+    return firstId == secondId &&
+        firstAction == secondAction &&
+        _sameWorker(first, second);
+  }
+
   @override
   void didUpdateWidget(covariant AssignTimeOffScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialWorker != null &&
-        widget.initialWorker!['email'] != oldWidget.initialWorker?['email']) {
-      _selectedWorker = widget.initialWorker;
+
+    final isGuest =
+        _initialized && (_authService.currentUser?.isAnonymous ?? false);
+    if (isGuest) {
+      if (widget.initialWorker != null &&
+          widget.initialWorker!['email'] != oldWidget.initialWorker?['email']) {
+        _selectedWorker = widget.initialWorker;
+        _resetFormFields();
+      }
+      return;
+    }
+
+    if (!_sameInitialSelection(widget.initialWorker, oldWidget.initialWorker)) {
+      _selectedWorker =
+          widget.initialWorker ?? (_workers.isNotEmpty ? _workers.first : null);
       _resetFormFields();
     }
   }
@@ -306,13 +339,37 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     'December',
   ];
 
+  bool get _isGuest => _authService.currentUser?.isAnonymous ?? false;
+
+  Map<String, dynamic> get _selectedWorkerForService {
+    final worker = _selectedWorker;
+    if (worker == null || _isGuest) return worker ?? <String, dynamic>{};
+
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    if (workerId.isEmpty) return worker;
+
+    return {...worker, 'id': workerId, 'workerId': workerId};
+  }
+
   Map<String, dynamic>? _holidayForDate(DateTime date) {
     final monthName = _monthNames[date.month - 1];
     for (final holiday in _holidays) {
       if (holiday['isEnabled'] == false) continue;
       final holidayDay = int.tryParse((holiday['day'] ?? '').toString());
       final holidayMonth = (holiday['month'] ?? '').toString();
-      if (holidayDay == date.day && holidayMonth == monthName) return holiday;
+      if (holidayDay != date.day || holidayMonth != monthName) continue;
+      if (_isGuest) return holiday;
+
+      final isRecurring = holiday['isRecurring'] == true;
+      final holidayYear = int.tryParse((holiday['year'] ?? '').toString());
+      if (isRecurring ||
+          holidayYear == null ||
+          holidayYear == 0 ||
+          holidayYear == date.year) {
+        return holiday;
+      }
     }
     return null;
   }
@@ -326,10 +383,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   bool get _isPaidLeave => _paidLeaveTypes.contains(_timeOffType);
 
-  bool get _requestedDaysExceedAvailable => _selectedDaysCount > _availableDays;
+  bool get _usesPaidAllowance => _isGuest || _isPaidLeave;
+
+  bool get _requestedDaysExceedAvailable =>
+      _usesPaidAllowance && _selectedDaysCount > _availableDays;
 
   int get _requestedDays =>
       _requestedDaysExceedAvailable ? 0 : _selectedDaysCount;
+
+  int get _remainingDaysAfterRequest {
+    if (!_isGuest && !_isPaidLeave) return _availableDays;
+    return _availableDays - _requestedDays;
+  }
 
   String get _selectedDatesSummary {
     final dates = _sortedSelectedDates;
@@ -341,11 +406,22 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   int get _availableDays {
     if (_selectedWorker == null) return 0;
-    return TimeOffService.remainingPaidLeave(
-      _selectedWorker!,
+    if (_isGuest) {
+      return TimeOffService.remainingPaidLeave(
+        _selectedWorker!,
+        _timeoffRecords,
+        excludingRecordId: _editingId,
+      );
+    }
+
+    final worker = _selectedWorkerForService;
+    final total = TimeOffService.configuredPaidLeaveAllowance(worker);
+    final used = TimeOffService.paidDaysUsedForWorker(
+      worker,
       _timeoffRecords,
       excludingRecordId: _editingId,
     );
+    return (total - used).clamp(0, total);
   }
 
   @override
@@ -435,7 +511,10 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   Widget _buildMainCard() {
     final bool isExhausted =
-        _selectedWorker != null && _editingId == null && _availableDays <= 0;
+        _selectedWorker != null &&
+        _editingId == null &&
+        _availableDays <= 0 &&
+        (_isGuest || _isPaidLeave);
 
     if (isExhausted) {
       return Container(
@@ -1036,7 +1115,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         for (final date in TimeOffService.inclusiveDateRange(anchor, current)) {
           if (candidate.contains(date)) continue;
           if (_isNonWorkingDate(date)) continue;
-          if (candidate.length >= _availableDays) {
+          if (_usesPaidAllowance && candidate.length >= _availableDays) {
+            if (!_isGuest) exceededAvailableDays = true;
             break;
           }
           candidate.add(date);
@@ -1093,7 +1173,9 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       );
       return;
     }
-    if (!isRemoving && _selectedDates.length >= _availableDays) {
+    if (!isRemoving &&
+        _usesPaidAllowance &&
+        _selectedDates.length >= _availableDays) {
       FlashySnackBar.show(
         context,
         message: 'requested_leaves_exceed_available'.tr(),
@@ -1232,8 +1314,8 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
             ),
             _buildSummaryRow(
               'remaining_days'.tr(),
-              '${_availableDays - _requestedDays}',
-              _availableDays - _requestedDays >= 0 ? Colors.black : Colors.red,
+              '$_remainingDaysAfterRequest',
+              _remainingDaysAfterRequest >= 0 ? Colors.black : Colors.red,
             ),
           ],
         );
@@ -1340,7 +1422,7 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     }
 
     if (TimeOffService.hasOverlappingApprovedLeave(
-      _selectedWorker!,
+      _isGuest ? _selectedWorker! : _selectedWorkerForService,
       _timeoffRecords,
       _selectedDates,
       excludingRecordId: _editingId,
@@ -1366,9 +1448,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
+      final workerIdentity =
+          _selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '';
+      final workerId = workerIdentity.toString().trim();
+      if (!isGuest && workerId.isEmpty) {
+        throw StateError('Missing worker id');
+      }
+
       final recordMap = <String, dynamic>{
-        'workerId':
-            _selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '',
+        'workerId': isGuest ? workerIdentity : workerId,
         'name': _selectedWorker!['name'] ?? 'Worker',
         'email': _selectedWorker!['email'] ?? '',
         'position': _selectedWorker!['position'] ?? 'Worker',
@@ -1392,12 +1480,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               .map(Map<String, dynamic>.from)
               .toList()
             ..add({...recordMap, 'id': _editingId ?? 'pending_time_off'});
-      final usedLeaveDays = TimeOffService.leaveDaysUsedForWorker(
-        _selectedWorker!,
-        projectedRecords,
-      );
+      final serviceWorker = _selectedWorkerForService;
+      final usedLeaveDays = isGuest
+          ? TimeOffService.leaveDaysUsedForWorker(
+              _selectedWorker!,
+              projectedRecords,
+            )
+          : TimeOffService.paidDaysUsedForWorker(
+              serviceWorker,
+              projectedRecords,
+            );
       final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(
-        _selectedWorker!,
+        isGuest ? _selectedWorker! : serviceWorker,
       );
       final remainingPaidDays = (totalPaidDays - usedLeaveDays).clamp(
         0,
@@ -1432,21 +1526,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         }
         await DummyData.saveToPrefs();
       } else {
-        final workerId =
-            (_selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '')
-                .toString();
-        if (workerId.isNotEmpty) {
-          await _firestore.saveTimeOffWithWorkerBalance(
-            timeOffId: _editingId,
-            record: recordMap,
-            workerId: workerId,
-            balance: balanceUpdate,
-          );
-        } else if (_editingId != null) {
-          await _firestore.updateTimeOffRecord(_editingId!, recordMap);
-        } else {
-          await _firestore.addTimeOffRecord(recordMap);
-        }
+        await _firestore.saveTimeOffWithWorkerBalance(
+          timeOffId: _editingId,
+          record: recordMap,
+          workerId: workerId,
+          balance: balanceUpdate,
+        );
       }
 
       if (mounted) {
@@ -1491,12 +1576,19 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           'cancelledAt': DateTime.now(),
         };
       }).toList();
-      final usedLeaveDays = TimeOffService.leaveDaysUsedForWorker(
-        _selectedWorker!,
-        projectedRecords,
-      );
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+      final serviceWorker = _selectedWorkerForService;
+      final usedLeaveDays = isGuest
+          ? TimeOffService.leaveDaysUsedForWorker(
+              _selectedWorker!,
+              projectedRecords,
+            )
+          : TimeOffService.paidDaysUsedForWorker(
+              serviceWorker,
+              projectedRecords,
+            );
       final totalPaidDays = TimeOffService.configuredPaidLeaveAllowance(
-        _selectedWorker!,
+        isGuest ? _selectedWorker! : serviceWorker,
       );
       final balanceUpdate = <String, dynamic>{
         'availableAnnualLeaves': (totalPaidDays - usedLeaveDays)
@@ -1505,7 +1597,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
         'leavesUsed': usedLeaveDays.toString(),
       };
 
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
       final workerId =
           (_selectedWorker!['workerId'] ?? _selectedWorker!['id'] ?? '')
               .toString()
@@ -1531,14 +1622,15 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           DummyData.workers[workerIndex].addAll(balanceUpdate);
         }
         await DummyData.saveToPrefs();
-      } else if (workerId.isNotEmpty) {
+      } else {
+        if (workerId.isEmpty) {
+          throw StateError('Missing worker id');
+        }
         await _firestore.cancelTimeOffWithWorkerBalance(
           timeOffId: cancelledRecordId,
           workerId: workerId,
           balance: balanceUpdate,
         );
-      } else {
-        await _firestore.cancelTimeOffRecord(cancelledRecordId);
       }
 
       if (!mounted) return;
@@ -1680,11 +1772,12 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
       final currentAnnual =
           int.tryParse(_selectedWorker!['annualLeaves']?.toString() ?? '12') ??
           12;
-      final currentAvailable =
-          int.tryParse(
-            _selectedWorker!['availableAnnualLeaves']?.toString() ?? '0',
-          ) ??
-          0;
+      final currentAvailable = isGuest
+          ? int.tryParse(
+                  _selectedWorker!['availableAnnualLeaves']?.toString() ?? '0',
+                ) ??
+                0
+          : _availableDays;
       final newAnnual = currentAnnual + amount;
       final newAvailable = currentAvailable + amount;
 
@@ -1714,20 +1807,21 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
           });
         }
       } else {
-        if (workerId.isNotEmpty) {
-          await _firestore.updateWorkerLeaves(workerId, {
+        if (workerId.isEmpty) {
+          throw StateError('Missing worker id');
+        }
+        await _firestore.updateWorkerLeaves(workerId, {
+          'annualLeaves': newAnnual.toString(),
+          'availableAnnualLeaves': newAvailable.toString(),
+        });
+
+        setState(() {
+          _selectedWorker = {
+            ..._selectedWorker!,
             'annualLeaves': newAnnual.toString(),
             'availableAnnualLeaves': newAvailable.toString(),
-          });
-
-          setState(() {
-            _selectedWorker = {
-              ..._selectedWorker!,
-              'annualLeaves': newAnnual.toString(),
-              'availableAnnualLeaves': newAvailable.toString(),
-            };
-          });
-        }
+          };
+        });
       }
 
       if (mounted) {

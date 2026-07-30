@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
@@ -357,11 +358,29 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
 
     int selectedDay = _salaryPaymentDay ?? -1;
-    final result = await showDialog<int>(
+    final result = await showGeneralDialog<int>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      barrierDismissible: true,
+      barrierLabel: 'SalaryDayDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: StatefulBuilder(
+                builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -467,7 +486,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () => Navigator.of(context).pop(),
               child: Text('cancel'.tr()),
             ),
             ElevatedButton(
@@ -478,12 +497,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   borderRadius: BorderRadius.circular(7),
                 ),
               ),
-              onPressed: () => Navigator.of(dialogContext).pop(selectedDay),
+              onPressed: () => Navigator.of(context).pop(selectedDay),
               child: Text('save'.tr()),
             ),
           ],
         ),
       ),
+    ),
+  ),
+);
+      },
     );
     if (result != null && mounted) {
       await _saveCompanySalaryDay(result == -1 ? null : result);
@@ -1372,29 +1395,47 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
 
-    final result = await showDialog<String>(
+    final result = await showGeneralDialog<String>(
       context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Center(
-          child: Container(
-            width: dialogWidth,
-            height: 430,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: Color(0xFFFFFFFF),
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0xFF000000).withValues(alpha: 0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+      barrierDismissible: true,
+      barrierLabel: 'PayrollDataDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Center(
+                  child: Container(
+                    width: dialogWidth,
+                    height: 430,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF000000).withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
             child: Column(
               children: [
                 Container(
@@ -1570,6 +1611,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
           ),
         ),
       ),
+    ),
+  ),
+);
+      },
     );
 
     if (result == 'edit' && mounted) {

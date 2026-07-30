@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -446,121 +447,250 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       netSalary: (cr['formattedNet'] as String?) ?? '',
     );
 
-    if (mounted) _showInvoicePreviewDialog(bytes, fileName);
+    if (mounted) await _showInvoicePreviewDialog(bytes, fileName);
   }
 
-  void _showInvoicePreviewDialog(Uint8List pdfBytes, String fileName) {
-    bool disposed = false;
+  Future<void> _showInvoicePreviewDialog(
+    Uint8List pdfBytes,
+    String fileName,
+  ) async {
+    bool isSharing = false;
     final controller = pdfx.PdfController(
       document: pdfx.PdfDocument.openData(pdfBytes),
     );
 
-    showDialog(
-      context: context,
-      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          width: 720,
-          height: 800,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F3F6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: const Icon(
-                        Icons.close,
-                        size: 24,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'invoice_preview'.tr(),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0247C4),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () async {
-                        try {
-                          await InvoiceService.shareInvoice(pdfBytes, fileName);
-                        } catch (e) {
-                          if (ctx.mounted) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          }
-                        }
-                      },
-                      icon: SvgPicture.asset(
-                        'assets/share1.svg',
-                        width: 16,
-                        height: 16,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      label: Text(
-                        'share'.tr(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(height: 1, color: const Color(0xFFE5E7EB)),
-              const SizedBox(height: 12),
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.55),
+        builder: (ctx) {
+          final screenSize = MediaQuery.of(ctx).size;
+          final dialogWidth = screenSize.width > 620
+              ? 540.0
+              : screenSize.width - 16;
+          final dialogHeight = screenSize.height > 900
+              ? 860.0
+              : screenSize.height - 32;
 
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: pdfx.PdfView(controller: controller),
+          return StatefulBuilder(
+            builder: (ctx, setDialogState) {
+              return BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                child: Dialog(
+                  backgroundColor: Colors.transparent,
+                elevation: 0,
+                insetPadding: const EdgeInsets.all(16),
+                child: Container(
+                  width: dialogWidth,
+                  height: dialogHeight,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.18),
+                        blurRadius: 30,
+                        offset: const Offset(0, 14),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            bottom: BorderSide(color: Color(0xFFE5E7EB)),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF0247C4,
+                                ).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: SvgPicture.asset(
+                                'assets/app_icon.svg',
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'invoice_preview'.tr(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: 'SF Pro Display',
+                                      color: Color(0xFF111827),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    fileName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w400,
+                                      fontFamily: 'SF Pro Display',
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0247C4),
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: const Color(
+                                  0xFF0247C4,
+                                ).withValues(alpha: 0.55),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                              ),
+                              onPressed: isSharing
+                                  ? null
+                                  : () async {
+                                      setDialogState(() => isSharing = true);
+                                      try {
+                                        await InvoiceService.shareInvoice(
+                                          pdfBytes,
+                                          fileName,
+                                        );
+                                      } catch (_) {
+                                        if (ctx.mounted) {
+                                          FlashySnackBar.show(
+                                            ctx,
+                                            message: 'unexpected_error'.tr(),
+                                            isError: true,
+                                          );
+                                        }
+                                      } finally {
+                                        if (ctx.mounted) {
+                                          setDialogState(
+                                            () => isSharing = false,
+                                          );
+                                        }
+                                      }
+                                    },
+                              icon: isSharing
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : SvgPicture.asset(
+                                      'assets/share1.svg',
+                                      width: 16,
+                                      height: 16,
+                                      colorFilter: const ColorFilter.mode(
+                                        Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                              label: Text(
+                                'share'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Tooltip(
+                              message: 'close'.tr(),
+                              child: Material(
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(9),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(9),
+                                  onTap: () => Navigator.pop(ctx),
+                                  child: const SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 22,
+                                      color: Color(0xFF475569),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFDDE3EA),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF0F172A,
+                                  ).withValues(alpha: 0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: pdfx.PdfView(controller: controller),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    ).then((_) {
-      if (!disposed) {
-        disposed = true;
-        try {
-          controller.dispose();
-        } catch (_) {}
-      }
-    });
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      try {
+        controller.dispose();
+      } catch (_) {}
+    }
   }
 
   void _toggleNotifications() {

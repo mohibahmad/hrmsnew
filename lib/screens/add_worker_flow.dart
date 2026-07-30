@@ -143,6 +143,20 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (_dobController.text.trim().isNotEmpty) return true;
     if (_addressController.text.trim().isNotEmpty) return true;
     if (_positionController.text.trim().isNotEmpty) return true;
+    if (_genderController.text.trim() != 'Male') return true;
+    if (_relationshipStatus != 'Single') return true;
+    if (_type1Controller.text.trim() != 'Full-Time') return true;
+    if (_type2Controller.text.trim() != 'On-Site') return true;
+    if (_experienceLevelController.text.trim() != 'Mid-Level') return true;
+    if (_educationController.text.trim() != 'Bachelor') return true;
+    if (_salaryTypeController.text.trim() != 'Monthly') return true;
+    if (CurrencyUtils.normalize(_currencyController.text) != 'USD') return true;
+    if (_salaryAmountController.text.trim().isNotEmpty) return true;
+    if (_leavePolicyController.text.trim() != 'Standard') return true;
+    if (_annualLeavesController.text.trim().isNotEmpty) return true;
+    if (_sickLeavesController.text.trim().isNotEmpty) return true;
+    if (_casualLeavesController.text.trim().isNotEmpty) return true;
+    if ((_joiningDate ?? '').trim().isNotEmpty) return true;
     if (_frontIdBytes != null) return true;
     if (_backIdBytes != null) return true;
     if (_cvBytes != null) return true;
@@ -313,7 +327,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       _fatherNameController.text = (widget.workerToEdit!['fatherName'] ?? '')
           .toString();
       _emailController.text = (widget.workerToEdit!['email'] ?? '').toString();
-      _phoneController.text = (widget.workerToEdit!['phone'] ?? '').toString();
+      _phoneController.text =
+          (widget.workerToEdit!['phone'] ??
+                  widget.workerToEdit!['contact'] ??
+                  '')
+              .toString();
       _nationalIdController.text = (widget.workerToEdit!['nationalId'] ?? '')
           .toString();
       _religionController.text = (widget.workerToEdit!['religion'] ?? '')
@@ -384,17 +402,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           if (s != null && s.isNotEmpty && s != 'null') return s;
         }
         return null;
-      }
-
-      _existingFrontIdUrl = _firstNonEmpty([
-        widget.workerToEdit!['frontId']?.toString(),
-        widget.workerToEdit!['front_id']?.toString(),
-        widget.workerToEdit!['idFront']?.toString(),
-        widget.workerToEdit!['frontID']?.toString(),
-        widget.workerToEdit!['id_front']?.toString(),
-      ]);
-      if (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty) {
-        _frontIdName = _cleanFileName(_existingFrontIdUrl!);
       }
 
       _existingFrontIdUrl = _firstNonEmpty([
@@ -506,6 +513,239 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     }
   }
 
+  DateTime _adultCutoff() {
+    final now = DateTime.now();
+    return DateTime(now.year - 18, now.month, now.day);
+  }
+
+  Future<Uint8List?> _readPickedFileBytes(
+    PlatformFile file, {
+    required int maxBytes,
+    required String sizeLabel,
+  }) async {
+    final memoryBytes = file.bytes;
+    if (memoryBytes != null) {
+      if (memoryBytes.length > maxBytes) {
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'file_too_large'.tr(namedArgs: {'size': sizeLabel}),
+            isError: true,
+          );
+        }
+        return null;
+      }
+      return memoryBytes;
+    }
+
+    final path = file.path;
+    if (path == null || path.trim().isEmpty) {
+      throw StateError('failed_to_pick_file'.tr());
+    }
+
+    final diskFile = io.File(path);
+    final fileSize = await diskFile.length();
+    if (fileSize > maxBytes) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'file_too_large'.tr(namedArgs: {'size': sizeLabel}),
+          isError: true,
+        );
+      }
+      return null;
+    }
+
+    return diskFile.readAsBytes();
+  }
+
+  String _mimeTypeForFileName(String fileName) {
+    final extension = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : '';
+
+    return switch (extension) {
+      'pdf' => 'application/pdf',
+      'doc' => 'application/msword',
+      'docx' =>
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'bmp' => 'image/bmp',
+      'webp' => 'image/webp',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      _ => 'application/octet-stream',
+    };
+  }
+
+  String _jpegFileName(String fileName, String fallback) {
+    final cleanName = fileName.trim().isEmpty ? fallback : fileName.trim();
+    final dotIndex = cleanName.lastIndexOf('.');
+    final baseName = dotIndex > 0
+        ? cleanName.substring(0, dotIndex)
+        : cleanName;
+    return '$baseName.jpg';
+  }
+
+  UploadFile _prepareUploadFile({
+    required String folder,
+    required String? fileName,
+    required String fallbackFileName,
+    required Uint8List bytes,
+    required bool compressImages,
+  }) {
+    final resolvedName = fileName?.trim().isNotEmpty == true
+        ? fileName!.trim()
+        : fallbackFileName;
+    final mimeType = _mimeTypeForFileName(resolvedName);
+
+    if (compressImages && mimeType.startsWith('image/')) {
+      final decodedImage = img.decodeImage(bytes);
+      if (decodedImage != null) {
+        return UploadFile(
+          folder: folder,
+          fileName: _jpegFileName(resolvedName, fallbackFileName),
+          bytes: _compressImage(bytes),
+          mimeType: 'image/jpeg',
+        );
+      }
+    }
+
+    return UploadFile(
+      folder: folder,
+      fileName: resolvedName,
+      bytes: bytes,
+      mimeType: mimeType,
+    );
+  }
+
+  DateTime? _parseWorkerDate(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+
+    final parsed = AppDateUtils.parseDateString(text);
+    if (parsed != null) {
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    }
+
+    final normalized = text.replaceAll(',', '').trim();
+    final parts = normalized.split(RegExp(r'\s+'));
+    if (parts.length == 3) {
+      final day = int.tryParse(parts[1]);
+      final year = int.tryParse(parts[2]);
+      final englishMonthIndex = _months.indexWhere(
+        (month) => month.toLowerCase() == parts[0].toLowerCase(),
+      );
+      final localizedMonthIndex = List<int>.generate(12, (index) => index + 1)
+          .indexWhere(
+            (month) =>
+                _localizedMonth(month).toLowerCase() == parts[0].toLowerCase(),
+          );
+      final monthIndex = englishMonthIndex >= 0
+          ? englishMonthIndex
+          : localizedMonthIndex;
+      if (day != null &&
+          year != null &&
+          monthIndex >= 0 &&
+          day >= 1 &&
+          day <= DateTime(year, monthIndex + 2, 0).day) {
+        return DateTime(year, monthIndex + 1, day);
+      }
+    }
+
+    return null;
+  }
+
+  bool _sameWorkerDate(String? first, String? second) {
+    final firstDate = _parseWorkerDate(first);
+    final secondDate = _parseWorkerDate(second);
+
+    if (firstDate == null || secondDate == null) {
+      return (first ?? '').trim() == (second ?? '').trim();
+    }
+
+    return firstDate.year == secondDate.year &&
+        firstDate.month == secondDate.month &&
+        firstDate.day == secondDate.day;
+  }
+
+  bool _validateExperienceData() {
+    final position = _positionController.text.trim();
+    final salaryText = _salaryAmountController.text.trim().replaceAll(',', '');
+    final annualLeavesText = _annualLeavesController.text.trim();
+    final joiningDateText = (_joiningDate ?? '').trim();
+
+    if (position.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_job_position'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    final salaryAmount = double.tryParse(salaryText);
+    if (salaryAmount == null || !salaryAmount.isFinite || salaryAmount <= 0) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_salary_amount'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    final annualLeaves = int.tryParse(annualLeavesText);
+    if (annualLeaves == null || annualLeaves < 0) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_annual_leaves'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    if (!CurrencyUtils.isSupported(_currencyController.text)) {
+      FlashySnackBar.show(
+        context,
+        message: 'invalid_currency_value'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    if (joiningDateText.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_select_a_joining_date'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    final joiningDate = _parseWorkerDate(joiningDateText);
+    if (joiningDate == null) {
+      FlashySnackBar.show(
+        context,
+        message: 'invalid_date_format'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (joiningDate.isAfter(today)) {
+      FlashySnackBar.show(
+        context,
+        message: 'joining_date_cannot_be_future'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   Future<void> _pickProfileImage() async {
     try {
       final result = await FilePicker.pickFiles(
@@ -515,20 +755,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
-        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
-              isError: true,
-            );
-          }
-          return;
-        }
-        Uint8List? bytes = file.bytes;
-        if (bytes == null && file.path != null) {
-          bytes = io.File(file.path!).readAsBytesSync();
-        }
+        final bytes = await _readPickedFileBytes(
+          file,
+          maxBytes: 10 * 1024 * 1024,
+          sizeLabel: '10MB',
+        );
+        if (bytes == null || !mounted) return;
         setState(() {
           _profileImageBytes = bytes;
           _profileImageName = file.name;
@@ -565,20 +797,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
-        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
-              isError: true,
-            );
-          }
-          return;
-        }
-        Uint8List? bytes = file.bytes;
-        if (bytes == null && file.path != null) {
-          bytes = io.File(file.path!).readAsBytesSync();
-        }
+        final bytes = await _readPickedFileBytes(
+          file,
+          maxBytes: 10 * 1024 * 1024,
+          sizeLabel: '10MB',
+        );
+        if (bytes == null || !mounted) return;
         setState(() {
           _frontIdBytes = bytes;
           _frontIdName = file.name;
@@ -615,20 +839,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
-        if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
-              isError: true,
-            );
-          }
-          return;
-        }
-        Uint8List? bytes = file.bytes;
-        if (bytes == null && file.path != null) {
-          bytes = io.File(file.path!).readAsBytesSync();
-        }
+        final bytes = await _readPickedFileBytes(
+          file,
+          maxBytes: 10 * 1024 * 1024,
+          sizeLabel: '10MB',
+        );
+        if (bytes == null || !mounted) return;
         setState(() {
           _backIdBytes = bytes;
           _backIdName = file.name;
@@ -665,20 +881,12 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       if (result != null && result.files.isNotEmpty && mounted) {
         final file = result.files.first;
-        if (file.bytes != null && file.bytes!.length > 20 * 1024 * 1024) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'file_too_large'.tr(namedArgs: {'size': '20MB'}),
-              isError: true,
-            );
-          }
-          return;
-        }
-        Uint8List? bytes = file.bytes;
-        if (bytes == null && file.path != null) {
-          bytes = io.File(file.path!).readAsBytesSync();
-        }
+        final bytes = await _readPickedFileBytes(
+          file,
+          maxBytes: 20 * 1024 * 1024,
+          sizeLabel: '20MB',
+        );
+        if (bytes == null || !mounted) return;
         setState(() {
           _cvBytes = bytes;
           _cvName = file.name;
@@ -714,7 +922,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       return null;
     }
-    final cutoff = DateTime.now().subtract(const Duration(days: 365 * 18));
+    final cutoff = _adultCutoff();
     if (dob.isAfter(cutoff)) {
       FlashySnackBar.show(
         context,
@@ -730,77 +938,134 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     if (widget.workerToEdit == null) return true;
     final edit = widget.workerToEdit!;
 
-    if (_nameController.text.trim() != (edit['name'] ?? '').toString().trim())
+    String firstNonEmpty(List<dynamic> values) {
+      for (final value in values) {
+        final text = value?.toString().trim() ?? '';
+        if (text.isNotEmpty && text != 'null') return text;
+      }
+      return '';
+    }
+
+    if (_nameController.text.trim() != (edit['name'] ?? '').toString().trim()) {
       return true;
+    }
     if (_fatherNameController.text.trim() !=
-        (edit['fatherName'] ?? '').toString().trim())
+        (edit['fatherName'] ?? '').toString().trim()) {
       return true;
-    if (_emailController.text.trim() != (edit['email'] ?? '').toString().trim())
+    }
+    if (WorkerIdentity.normalizeEmail(_emailController.text) !=
+        WorkerIdentity.normalizeEmail(edit['email'])) {
       return true;
-    if (_phoneController.text.trim() != (edit['phone'] ?? '').toString().trim())
+    }
+    if (_phoneController.text.trim() !=
+        (edit['phone'] ?? edit['contact'] ?? '').toString().trim()) {
       return true;
-    if (_nationalIdController.text.trim() !=
-        (edit['nationalId'] ?? '').toString().trim())
+    }
+    if (WorkerIdentity.normalizeNationalId(_nationalIdController.text) !=
+        WorkerIdentity.normalizeNationalId(edit['nationalId'])) {
       return true;
+    }
     if (_religionController.text.trim() !=
-        (edit['religion'] ?? '').toString().trim())
+        (edit['religion'] ?? '').toString().trim()) {
       return true;
-    if (_dobController.text.trim() != (edit['dob'] ?? '').toString().trim())
+    }
+    if (!_sameWorkerDate(_dobController.text, edit['dob']?.toString())) {
       return true;
+    }
     if (_genderController.text.trim() !=
-        (edit['gender'] ?? '').toString().trim())
+        (edit['gender'] ?? 'Male').toString().trim()) {
       return true;
+    }
     if (_addressController.text.trim() !=
-        (edit['address'] ?? '').toString().trim())
+        (edit['address'] ?? '').toString().trim()) {
       return true;
-    if (_relationshipStatus != (edit['relationshipStatus'] ?? 'Single'))
+    }
+    if (_relationshipStatus.trim() !=
+        (edit['relationshipStatus'] ?? 'Single').toString().trim()) {
       return true;
-
+    }
     if (_positionController.text.trim() !=
-        (edit['position'] ?? '').toString().trim())
+        (edit['position'] ?? '').toString().trim()) {
       return true;
-    if (_type1Controller.text.trim() != (edit['type1'] ?? '').toString().trim())
+    }
+    if (_type1Controller.text.trim() !=
+        (edit['type1'] ?? 'Full-Time').toString().trim()) {
       return true;
-    if (_type2Controller.text.trim() != (edit['type2'] ?? '').toString().trim())
+    }
+    if (_type2Controller.text.trim() !=
+        (edit['type2'] ?? 'On-Site').toString().trim()) {
       return true;
+    }
     if (_experienceLevelController.text.trim() !=
-        (edit['experienceLevel'] ?? '').toString().trim())
+        (edit['experienceLevel'] ?? 'Mid-Level').toString().trim()) {
       return true;
+    }
     if (_educationController.text.trim() !=
-        (edit['education'] ?? '').toString().trim())
+        (edit['education'] ?? 'Bachelor').toString().trim()) {
       return true;
+    }
     if (_salaryTypeController.text.trim() !=
-        (edit['salaryType'] ?? '').toString().trim())
+        (edit['salaryType'] ?? 'Monthly').toString().trim()) {
       return true;
-    if (_currencyController.text.trim() !=
-        (edit['currency'] ?? '').toString().trim())
+    }
+    if (CurrencyUtils.normalize(_currencyController.text) !=
+        CurrencyUtils.normalize(edit['currency'])) {
       return true;
+    }
     if (_salaryAmountController.text.trim() !=
-        (edit['salaryAmount'] ?? '').toString().trim())
+        (edit['salaryAmount'] ?? '').toString().trim()) {
       return true;
+    }
     if (_leavePolicyController.text.trim() !=
-        (edit['leavePolicy'] ?? '').toString().trim())
+        (edit['leavePolicy'] ?? 'Standard').toString().trim()) {
       return true;
+    }
     if (_annualLeavesController.text.trim() !=
-        (edit['annualLeaves'] ?? '').toString().trim())
+        (edit['annualLeaves'] ?? '').toString().trim()) {
       return true;
+    }
     if (_sickLeavesController.text.trim() !=
-        (edit['sickLeaves'] ?? '').toString().trim())
+        (edit['sickLeaves'] ?? '').toString().trim()) {
       return true;
+    }
     if (_casualLeavesController.text.trim() !=
-        (edit['casualLeaves'] ?? '').toString().trim())
+        (edit['casualLeaves'] ?? '').toString().trim()) {
       return true;
-
-    final editJoiningDate = edit['joiningDate']?.toString();
-    if (_joiningDate != editJoiningDate) return true;
-
-    if (_profileImageBytes != null) return true;
-    if (_frontIdBytes != null) return true;
-    if (_backIdBytes != null) return true;
-    if (_cvBytes != null) return true;
-
-    final editCv = (edit['cv'] ?? '').toString();
-    if (_isCvUploaded == false && editCv.isNotEmpty) return true;
+    }
+    if (!_sameWorkerDate(_joiningDate, edit['joiningDate']?.toString())) {
+      return true;
+    }
+    if (_profileImageBytes != null ||
+        (_existingProfileImageUrl ?? '').trim() !=
+            (edit['profileImage'] ?? '').toString().trim()) {
+      return true;
+    }
+    if (_frontIdBytes != null ||
+        (_existingFrontIdUrl ?? '').trim() !=
+            firstNonEmpty([
+              edit['frontId'],
+              edit['front_id'],
+              edit['idFront'],
+              edit['frontID'],
+              edit['id_front'],
+            ])) {
+      return true;
+    }
+    if (_backIdBytes != null ||
+        (_existingBackIdUrl ?? '').trim() !=
+            firstNonEmpty([
+              edit['backId'],
+              edit['back_id'],
+              edit['idBack'],
+              edit['backID'],
+              edit['id_back'],
+            ])) {
+      return true;
+    }
+    if (_cvBytes != null ||
+        (_existingCvUrl ?? '').trim() != (edit['cv'] ?? '').toString().trim()) {
+      return true;
+    }
 
     return false;
   }
@@ -819,6 +1084,8 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   }
 
   Future<void> _saveWorker() async {
+    if (_isSaving) return;
+
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
@@ -906,6 +1173,14 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       return;
     }
 
+    final dob = _validateAndParseDob();
+    if (dob == null) return;
+
+    if (!_validateExperienceData()) return;
+
+    final joiningDate = _parseWorkerDate(_joiningDate);
+    if (joiningDate == null) return;
+
     final hasFrontId =
         _frontIdBytes != null ||
         (_existingFrontIdUrl != null && _existingFrontIdUrl!.isNotEmpty);
@@ -956,9 +1231,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       return;
     }
-
-    final dob = _validateAndParseDob();
-    if (dob == null) return;
 
     setState(() {
       _isSaving = true;
@@ -1020,41 +1292,45 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         final uploadFiles = <UploadFile>[];
         if (_profileImageBytes != null) {
           uploadFiles.add(
-            UploadFile(
+            _prepareUploadFile(
               folder: 'profile_images',
-              fileName: _profileImageName ?? 'profile.jpg',
-              bytes: _compressImage(_profileImageBytes!),
-              mimeType: 'image/jpeg',
+              fileName: _profileImageName,
+              fallbackFileName: 'profile.jpg',
+              bytes: _profileImageBytes!,
+              compressImages: true,
             ),
           );
         }
         if (_frontIdBytes != null) {
           uploadFiles.add(
-            UploadFile(
+            _prepareUploadFile(
               folder: 'id_cards/front',
-              fileName: _frontIdName ?? 'front.jpg',
-              bytes: _compressImage(_frontIdBytes!),
-              mimeType: 'image/jpeg',
+              fileName: _frontIdName,
+              fallbackFileName: 'front.jpg',
+              bytes: _frontIdBytes!,
+              compressImages: true,
             ),
           );
         }
         if (_backIdBytes != null) {
           uploadFiles.add(
-            UploadFile(
+            _prepareUploadFile(
               folder: 'id_cards/back',
-              fileName: _backIdName ?? 'back.jpg',
-              bytes: _compressImage(_backIdBytes!),
-              mimeType: 'image/jpeg',
+              fileName: _backIdName,
+              fallbackFileName: 'back.jpg',
+              bytes: _backIdBytes!,
+              compressImages: true,
             ),
           );
         }
         if (_cvBytes != null) {
           uploadFiles.add(
-            UploadFile(
+            _prepareUploadFile(
               folder: 'cvs',
-              fileName: _cvName ?? 'cv.pdf',
+              fileName: _cvName,
+              fallbackFileName: 'cv.pdf',
               bytes: _cvBytes!,
-              mimeType: 'application/pdf',
+              compressImages: false,
             ),
           );
         }
@@ -1102,7 +1378,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'phone': phone,
         'nationalId': _nationalIdController.text.trim(),
         'religion': _religionController.text.trim(),
-        'dob': _dobController.text.trim(),
+        'dob': isGuest
+            ? _dobController.text.trim()
+            : AppDateUtils.formatDate(dob),
         'gender': _genderController.text.trim(),
         'address': _addressController.text.trim(),
         'relationshipStatus': _relationshipStatus,
@@ -1124,7 +1402,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'annualLeaves': _annualLeavesController.text.trim(),
         'sickLeaves': _sickLeavesController.text.trim(),
         'casualLeaves': _casualLeavesController.text.trim(),
-        'joiningDate': _joiningDate ?? '',
+        'joiningDate': isGuest
+            ? (_joiningDate ?? '')
+            : AppDateUtils.formatDate(joiningDate),
         'profileImage': profileImageUrl,
 
         'frontId': frontIdUrl,
@@ -1141,13 +1421,40 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         'payroll_initialized': true,
       };
 
+      final annualLeaveTotal =
+          int.tryParse(_annualLeavesController.text.trim()) ?? 0;
+
       if (!isEditing) {
-        final annualLeaveTotal =
-            int.tryParse(_annualLeavesController.text.trim()) ?? 0;
         data.addAll({
           'leavesUsed': '0',
           'availableAnnualLeaves': annualLeaveTotal,
         });
+      } else if (!isGuest) {
+        final previousAnnual =
+            int.tryParse(
+              widget.workerToEdit?['annualLeaves']?.toString() ?? '',
+            ) ??
+            0;
+        final previousAvailable =
+            int.tryParse(
+              widget.workerToEdit?['availableAnnualLeaves']?.toString() ?? '',
+            ) ??
+            previousAnnual;
+        final recordedUsed =
+            int.tryParse(
+              widget.workerToEdit?['leavesUsed']?.toString() ?? '',
+            ) ??
+            0;
+        final inferredUsed = previousAnnual > previousAvailable
+            ? previousAnnual - previousAvailable
+            : 0;
+        final usedLeaves = recordedUsed > inferredUsed
+            ? recordedUsed
+            : inferredUsed;
+        data['leavesUsed'] = usedLeaves.toString();
+        data['availableAnnualLeaves'] = annualLeaveTotal > usedLeaves
+            ? annualLeaveTotal - usedLeaves
+            : 0;
       }
 
       if (widget.workerToEdit != null) {
@@ -1194,13 +1501,11 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         _isSaving = false;
       });
       if (!context.mounted) return;
-      final workerName = widget.workerToEdit?['name']?.toString() ?? '';
+      final workerName = name;
       FlashySnackBar.show(
         context,
         message: widget.workerToEdit != null
-            ? 'worker_updated_successfully'.tr(
-                namedArgs: {'name': workerName},
-              )
+            ? 'worker_updated_successfully'.tr(namedArgs: {'name': workerName})
             : 'worker_added_successfully'.tr(),
       );
       await tryShowFirstMilestoneRateUs('worker');
@@ -1380,45 +1685,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
   }
 
   void _validateAndGoToDocumentation() {
-    final position = _positionController.text.trim();
-    final salaryAmount = _salaryAmountController.text.trim();
-
-    if (position.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_enter_job_position'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (salaryAmount.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_enter_salary_amount'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (_annualLeavesController.text.trim().isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_enter_annual_leaves'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
-    if (_joiningDate == null || _joiningDate!.isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'please_select_a_joining_date'.tr(),
-        isError: true,
-      );
-      return;
-    }
-
+    if (!_validateExperienceData()) return;
     setState(() => _activeTabIndex = 2);
   }
 
@@ -2064,8 +2331,10 @@ class WorkerDetailFormSection extends StatelessWidget {
                     mode: import_cupertino.CupertinoDatePickerMode.date,
                     initialDateTime: initialDate,
                     minimumDate: DateTime(1950),
-                    maximumDate: DateTime.now().subtract(
-                      const Duration(days: 365 * 18),
+                    maximumDate: DateTime(
+                      DateTime.now().year - 18,
+                      DateTime.now().month,
+                      DateTime.now().day,
                     ),
                     onDateTimeChanged: (DateTime newDate) {
                       tempPickedDate = newDate;
@@ -2182,6 +2451,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             'contact_no_label'.tr(),
                             'enter_contact_number'.tr(),
                             controller: phoneController,
+                            isContact: true,
                           ),
                         ),
                       ],
@@ -2194,6 +2464,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             'national_id'.tr(),
                             'hint_enter_national_id'.tr(),
                             controller: nationalIdController,
+                            isNationalId: true,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -2202,6 +2473,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                             'professed_religion'.tr(),
                             'enter_your_religion'.tr(),
                             controller: religionController,
+                            isReligion: true,
                           ),
                         ),
                       ],
@@ -2212,11 +2484,26 @@ class WorkerDetailFormSection extends StatelessWidget {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
+                              final now = DateTime.now();
+                              final minimumDob = DateTime(1950);
+                              final maximumDob = DateTime(
+                                now.year - 18,
+                                now.month,
+                                now.day,
+                              );
+                              final parsedDob = AppDateUtils.parseDateString(
+                                dobController.text.trim(),
+                              );
+                              final initialDob = parsedDob == null
+                                  ? maximumDob
+                                  : parsedDob.isBefore(minimumDob)
+                                  ? minimumDob
+                                  : parsedDob.isAfter(maximumDob)
+                                  ? maximumDob
+                                  : parsedDob;
                               _showCupertinoDatePicker(
                                 context: context,
-                                initialDate: DateTime.now().subtract(
-                                  const Duration(days: 365 * 18),
-                                ),
+                                initialDate: initialDob,
                                 onDateSelected: (date) {
                                   final day = date.day.toString().padLeft(
                                     2,
@@ -2376,7 +2663,7 @@ class WorkerDetailFormSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             color: Colors.black.withValues(alpha: 0.54),
             child: Text(
-              profileImageName ?? 'Profile Image',
+              profileImageName ?? 'worker_profile'.tr(),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -2654,6 +2941,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   final Color formBgGrey = const Color(0xFFF2F3F6);
   late DateTime _calendarMonth;
   DateTime? _selectedDate;
+  bool _dependenciesReady = false;
 
   @override
   void initState() {
@@ -2662,10 +2950,18 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_dependenciesReady) return;
+    _dependenciesReady = true;
+    _parseSelectedDate(includeLocalizedMonth: true);
+  }
+
+  @override
   void didUpdateWidget(covariant ExperienceFormSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedJoiningDate != oldWidget.selectedJoiningDate) {
-      _parseSelectedDate();
+      _parseSelectedDate(includeLocalizedMonth: true);
     }
   }
 
@@ -2682,50 +2978,52 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
   String _localizeCurrency(String value) =>
       LocalizationHelper.localizeCurrency(value);
 
-  void _parseSelectedDate() {
-    if (widget.selectedJoiningDate != null &&
-        widget.selectedJoiningDate!.isNotEmpty) {
-      final dateStr = widget.selectedJoiningDate!;
+  void _parseSelectedDate({bool includeLocalizedMonth = false}) {
+    final dateStr = widget.selectedJoiningDate?.trim() ?? '';
+    DateTime? parsedDate;
 
-      try {
-        final parts = dateStr.split(' ');
-        if (parts.length >= 3) {
-          final monthName = parts[0];
-          final day = int.parse(parts[1].replaceAll(',', ''));
-          final year = int.parse(parts[2]);
-          final monthIndex = _months.indexWhere(
-            (m) => m.toLowerCase() == monthName.toLowerCase(),
-          );
-          if (monthIndex != -1) {
-            setState(() {
-              _selectedDate = DateTime(year, monthIndex + 1, day);
-              _calendarMonth = DateTime(year, monthIndex + 1, 1);
-            });
-            return;
-          }
-        }
-      } catch (e) {}
+    if (dateStr.isNotEmpty) {
+      parsedDate = AppDateUtils.parseDateString(dateStr);
 
-      try {
-        final parts = dateStr.split('/');
+      if (parsedDate == null) {
+        final normalized = dateStr.replaceAll(',', '').trim();
+        final parts = normalized.split(RegExp(r'\s+'));
         if (parts.length == 3) {
-          final month = int.parse(parts[0]);
-          final day = int.parse(parts[1]);
-          final year = int.parse(parts[2]);
-          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-            setState(() {
-              _selectedDate = DateTime(year, month, day);
-              _calendarMonth = DateTime(year, month, 1);
-            });
-            return;
+          final day = int.tryParse(parts[1]);
+          final year = int.tryParse(parts[2]);
+          final englishMonthIndex = _months.indexWhere(
+            (month) => month.toLowerCase() == parts[0].toLowerCase(),
+          );
+          final localizedMonthIndex = includeLocalizedMonth
+              ? List<int>.generate(12, (index) => index + 1).indexWhere(
+                  (month) =>
+                      DateFormat(
+                        'MMMM',
+                        context.locale.toString(),
+                      ).format(DateTime(2000, month)).toLowerCase() ==
+                      parts[0].toLowerCase(),
+                )
+              : -1;
+          final monthIndex = englishMonthIndex >= 0
+              ? englishMonthIndex
+              : localizedMonthIndex;
+          if (day != null &&
+              year != null &&
+              monthIndex >= 0 &&
+              day >= 1 &&
+              day <= DateTime(year, monthIndex + 2, 0).day) {
+            parsedDate = DateTime(year, monthIndex + 1, day);
           }
         }
-      } catch (e) {}
+      }
     }
-    setState(() {
-      _selectedDate = null;
-      _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    });
+
+    _selectedDate = parsedDate == null
+        ? null
+        : DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
+    _calendarMonth = parsedDate == null
+        ? DateTime(DateTime.now().year, DateTime.now().month, 1)
+        : DateTime(parsedDate.year, parsedDate.month, 1);
   }
 
   @override
@@ -3286,6 +3584,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             'salary_amount_label'.tr(),
                             'enter_your_amount'.tr(),
                             controller: widget.salaryAmountController,
+                            isAmount: true,
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -3294,6 +3593,7 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                             'annual_leaves_days'.tr(),
                             'hint_annual_leaves'.tr(),
                             controller: widget.annualLeavesController,
+                            isLeaves: true,
                           ),
                         ),
                       ],
@@ -3711,9 +4011,27 @@ class DocumentationSection extends StatelessWidget {
   }) {
     final bool hasFile =
         bytes != null || (existingUrl != null && existingUrl.isNotEmpty);
-    final bool isPdf = bytes != null
-        ? (fileName != null && fileName.toLowerCase().endsWith('.pdf'))
-        : (existingUrl != null && existingUrl.toLowerCase().endsWith('.pdf'));
+    var sourceName = fileName?.trim() ?? '';
+    if (sourceName.isEmpty && existingUrl != null && existingUrl.isNotEmpty) {
+      try {
+        final decodedPath = Uri.decodeComponent(Uri.parse(existingUrl).path);
+        sourceName = decodedPath.split('/').last;
+      } catch (_) {
+        sourceName = existingUrl.split('?').first.split('/').last;
+      }
+    }
+    final lowerSourceName = sourceName.toLowerCase();
+    final bool isPdf =
+        lowerSourceName.endsWith('.pdf') ||
+        (existingUrl?.startsWith('data:application/pdf') ?? false);
+    final bool isImage =
+        lowerSourceName.endsWith('.jpg') ||
+        lowerSourceName.endsWith('.jpeg') ||
+        lowerSourceName.endsWith('.png') ||
+        lowerSourceName.endsWith('.gif') ||
+        lowerSourceName.endsWith('.bmp') ||
+        lowerSourceName.endsWith('.webp') ||
+        (existingUrl?.startsWith('data:image') ?? false);
 
     return GestureDetector(
       onTap: hasFile ? null : onTap,
@@ -3737,10 +4055,16 @@ class DocumentationSection extends StatelessWidget {
                 children: [
                   if (isPdf)
                     PdfPagePreview(cvBytes: bytes, existingCvUrl: existingUrl)
-                  else if (bytes != null)
-                    Image.memory(bytes, fit: BoxFit.cover)
+                  else if (bytes != null && isImage)
+                    Image.memory(
+                      bytes,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildIdPlaceholder(label, hasFile),
+                    )
                   else if (existingUrl != null &&
-                      existingUrl.startsWith('http'))
+                      existingUrl.startsWith('http') &&
+                      isImage)
                     CachedNetworkImage(
                       imageUrl: existingUrl,
                       fit: BoxFit.cover,
@@ -3966,7 +4290,7 @@ class DocumentationSection extends StatelessWidget {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            cvName ?? 'Document',
+                                            cvName ?? 'documentation'.tr(),
                                             style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey.shade600,
@@ -4007,7 +4331,7 @@ class DocumentationSection extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  cvName ?? 'CV',
+                                  cvName ?? 'upload_cv_label'.tr(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey.shade600,
@@ -4105,19 +4429,15 @@ Widget _buildInputField(
   bool isDropdown = false,
   bool isTextArea = false,
   bool isEmail = false,
+  bool isAmount = false,
+  bool isLeaves = false,
+  bool isContact = false,
+  bool isNationalId = false,
+  bool isReligion = false,
   TextEditingController? controller,
   TextAlign textAlign = TextAlign.start,
 }) {
-  final isAmount = label.toLowerCase().contains('amount');
-  final isLeaves = label.toLowerCase().contains('leaves');
-  final isContact =
-      label.toLowerCase().contains('contact') ||
-      label.toLowerCase().contains('phone');
-  final isNationalId =
-      label.toLowerCase().contains('national id') ||
-      label.toLowerCase().contains('national_id');
-  final isEmailField = isEmail || label.toLowerCase().contains('mail');
-  final isReligion = label.toLowerCase().contains('religion');
+  final isEmailField = isEmail;
   final isNumeric = isAmount || isLeaves || isContact || isNationalId;
 
   return Column(
@@ -4303,41 +4623,73 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
 
   Future<void> _renderPdfPages() async {
     if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _error = null;
       _pageImages = [];
     });
 
+    PdfDocument? document;
+    io.HttpClient? client;
+
     try {
-      PdfDocument? document;
       if (widget.cvBytes != null) {
         document = await PdfDocument.openData(widget.cvBytes!);
       } else if (widget.existingCvUrl != null &&
           widget.existingCvUrl!.isNotEmpty) {
         if (widget.existingCvUrl!.startsWith('http')) {
-          final request = await io.HttpClient().getUrl(
-            Uri.parse(widget.existingCvUrl!),
+          client = io.HttpClient()
+            ..connectionTimeout = const Duration(seconds: 15);
+          final request = await client
+              .getUrl(Uri.parse(widget.existingCvUrl!))
+              .timeout(const Duration(seconds: 15));
+          final response = await request.close().timeout(
+            const Duration(seconds: 20),
           );
-          final response = await request.close();
+
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            throw io.HttpException(
+              'HTTP ${response.statusCode}',
+              uri: Uri.parse(widget.existingCvUrl!),
+            );
+          }
+
+          const maxPreviewBytes = 20 * 1024 * 1024;
+          if (response.contentLength > maxPreviewBytes) {
+            throw const FormatException('PDF preview file is too large.');
+          }
+
           final bytesBuilder = BytesBuilder();
-          await for (var chunk in response) {
+          var receivedBytes = 0;
+          await for (final chunk in response) {
+            receivedBytes += chunk.length;
+            if (receivedBytes > maxPreviewBytes) {
+              throw const FormatException('PDF preview file is too large.');
+            }
             bytesBuilder.add(chunk);
           }
-          final bytes = bytesBuilder.takeBytes();
-          document = await PdfDocument.openData(bytes);
+
+          document = await PdfDocument.openData(bytesBuilder.takeBytes());
         } else if (widget.existingCvUrl!.startsWith('data:application/pdf')) {
           final base64Content = widget.existingCvUrl!.split(',').last;
-          final bytes = base64Decode(base64Content);
-          document = await PdfDocument.openData(bytes);
+          document = await PdfDocument.openData(base64Decode(base64Content));
         }
       }
 
-      if (document != null) {
-        final pages = <Uint8List>[];
+      if (document == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        return;
+      }
 
-        if (document.pagesCount >= 1) {
-          final page = await document.getPage(1);
+      final pages = <Uint8List>[];
+      if (document.pagesCount >= 1) {
+        final page = await document.getPage(1);
+        try {
           final pageImage = await page.render(
             width: page.width * 3,
             height: page.height * 3,
@@ -4346,21 +4698,16 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
           if (pageImage != null) {
             pages.add(pageImage.bytes);
           }
+        } finally {
           await page.close();
         }
-        if (mounted) {
-          setState(() {
-            _pageImages = pages;
-            _isLoading = false;
-          });
-        }
-        await document.close();
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _pageImages = pages;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -4369,25 +4716,32 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
           _isLoading = false;
         });
       }
+    } finally {
+      if (document != null) {
+        try {
+          await document.close();
+        } catch (_) {}
+      }
+      client?.close(force: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2.0),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Loading document...',
-              style: TextStyle(
+              'documentation'.tr(),
+              style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
                 fontFamily: 'SF Pro Display',

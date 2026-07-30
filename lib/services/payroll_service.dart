@@ -547,13 +547,13 @@ class PayrollService {
       'formattedOvertime': _fmt(overtimePay, p),
       'formattedAbsentDeduct': absentDeduction > 0
           ? '-${_fmt(absentDeduction, p)}'
-          : '-${_fmt(0.0, p)}',
+          : _fmt(0.0, p),
       'formattedLeaveDeduct': leaveDeduction > 0
           ? '-${_fmt(leaveDeduction, p)}'
-          : '-${_fmt(0.0, p)}',
+          : _fmt(0.0, p),
       'formattedTotalDeductions': totalDeductions > 0
           ? '-${_fmt(totalDeductions, p)}'
-          : '-${_fmt(0.0, p)}',
+          : _fmt(0.0, p),
       'formattedNet': _fmt(netSalary, p),
     };
   }
