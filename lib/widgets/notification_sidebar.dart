@@ -106,8 +106,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         return args.containsKey('count')
             ? 'notif_title_bulk_workers'.tr(namedArgs: args)
             : (args.containsKey('name')
-                ? 'notif_title_new_member'.tr(namedArgs: args)
-                : (notif['title'] ?? 'notif_title_new_member').toString());
+                  ? 'notif_title_new_member'.tr(namedArgs: args)
+                  : (notif['title'] ?? 'notif_title_new_member').toString());
       case 'attendance_marked':
         return args.containsKey('name')
             ? 'notif_title_attendance'.tr(namedArgs: args)
@@ -116,6 +116,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         return args.containsKey('name')
             ? 'notif_title_payroll'.tr(namedArgs: args)
             : (notif['title'] ?? 'notif_title_payroll').toString();
+      case 'payroll_due':
+        return 'notif_title_payroll_due'.tr();
       case 'time_off_added':
         return args.containsKey('name')
             ? 'notif_title_time_off'.tr(namedArgs: args)
@@ -125,7 +127,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
             ? 'notif_title_holiday'.tr(namedArgs: args)
             : (notif['title'] ?? 'notif_title_holiday').toString();
       case 'expense_added':
-        if (args.containsKey('category') && (args['category'] ?? '').isNotEmpty) {
+        if (args.containsKey('category') &&
+            (args['category'] ?? '').isNotEmpty) {
           return 'notif_title_expense_category'.tr(namedArgs: args);
         }
         if (args.containsKey('amount') && (args['amount'] ?? '').isNotEmpty) {
@@ -156,8 +159,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         return args.containsKey('count')
             ? 'notif_msg_bulk_workers'.tr(namedArgs: args)
             : (args.containsKey('name')
-                ? 'notif_msg_new_member'.tr(namedArgs: args)
-                : (notif['message'] ?? 'notif_msg_new_member').toString());
+                  ? 'notif_msg_new_member'.tr(namedArgs: args)
+                  : (notif['message'] ?? 'notif_msg_new_member').toString());
       case 'attendance_marked':
         return args.containsKey('name')
             ? 'notif_msg_attendance'.tr(namedArgs: args)
@@ -169,6 +172,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         return args.containsKey('name')
             ? 'notif_msg_payroll'.tr(namedArgs: args)
             : (notif['message'] ?? 'notif_msg_payroll').toString();
+      case 'payroll_due':
+        return args.containsKey('count') && args.containsKey('period')
+            ? 'notif_msg_payroll_due'.tr(namedArgs: args)
+            : (notif['message'] ?? '').toString();
       case 'time_off_added':
         return args.containsKey('name')
             ? 'notif_msg_time_off'.tr(namedArgs: args)
@@ -344,7 +351,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  
   Widget _buildHeader() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -400,7 +406,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
           ),
           Row(
             children: [
-              
               if (_notifications.length > 1)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
@@ -466,7 +471,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 
-  
   Widget _buildEmptyState() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
@@ -575,7 +579,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         ),
         child: Stack(
           children: [
-            
             Positioned(
               top: -20,
               right: -20,
@@ -698,9 +701,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                       GestureDetector(
                         onTap: () async {
                           if (notificationId.isNotEmpty) {
-                            await _firestore.deleteNotification(
-                              notificationId,
-                            );
+                            await _firestore.deleteNotification(notificationId);
                             setState(() {
                               _notifications.removeWhere(
                                 (n) => n['id'] == notificationId,
@@ -756,7 +757,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
       ),
       child: Stack(
         children: [
-          
           GestureDetector(
             onTap: () {
               if (notificationId.isNotEmpty) {
@@ -773,7 +773,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  
                   Container(
                     width: 44,
                     height: 44,
@@ -792,15 +791,11 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                                 BlendMode.srcIn,
                               ),
                             )
-                          : Icon(
-                              style.icon,
-                              size: 22,
-                              color: style.color,
-                            ),
+                          : Icon(style.icon, size: 22, color: style.color),
                     ),
                   ),
                   const SizedBox(width: 14),
-                  
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -887,7 +882,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               ),
             ),
           ),
-          
+
           Positioned(
             top: 8,
             right: 8,
@@ -924,7 +919,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     );
   }
 }
-
 
 class _NotifStyle {
   final IconData icon;

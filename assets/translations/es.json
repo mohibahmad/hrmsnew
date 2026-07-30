@@ -813,6 +813,7 @@
   "notif_title_bulk_workers": "Trabajadores añadidos en masa",
   "notif_title_attendance": "Asistencia marcada para {name}",
   "notif_title_payroll": "Nómina procesada para {name}",
+  "notif_title_payroll_due": "La nómina sigue pendiente",
   "notif_title_time_off": "Tiempo libre asignado a {name}",
   "notif_title_holiday": "El feriado \"{name}\" ha sido añadido",
   "notif_title_expense_category": "Nuevo gasto: {category}",
@@ -825,6 +826,7 @@
   "notif_msg_attendance": "La asistencia de {name} ha sido registrada.",
   "notif_msg_payroll_amount": "El salario de {amount} ha sido procesado para {name}.",
   "notif_msg_payroll": "La nómina de {name} ha sido registrada.",
+  "notif_msg_payroll_due": "Los salarios de {count} trabajadores para {period} siguen sin pagarse. El mes está terminando; procesa la nómina.",
   "notif_msg_time_off": "{type} ha sido asignado a {name}.",
   "notif_msg_holiday": "{name} se ha añadido al calendario de feriados.",
   "notif_msg_expense_amount": "Se ha registrado un gasto de {amount}.",
@@ -1009,5 +1011,16 @@
   "resend_email": "Reenviar correo",
   "check_email_reset_link": "Revise {email} para el enlace de restablecimiento.",
   "invoice_generation_failed_after_save": "La nómina se guardó, pero no se pudo generar la factura.",
-  "worker_id_required": "Se requiere el ID del trabajador."
+  "worker_id_required": "Se requiere el ID del trabajador.",
+  "media_field_profile_image": "Imagen de perfil",
+  "media_field_front_id": "Imagen del frente del ID",
+  "media_field_back_id": "Imagen del reverso del ID",
+  "media_field_cv": "CV",
+  "bulk_media_image_format_error": "La imagen debe ser JPG, JPEG o PNG. Recibido: {received}.",
+  "bulk_media_cv_format_error": "El CV debe ser PDF, DOC, DOCX, JPG, JPEG o PNG.",
+  "bulk_media_invalid_url": "Ingrese un enlace HTTP/HTTPS válido o suba un archivo.",
+  "bulk_media_upload_failed": "Error al subir.",
+  "bulk_media_download_timeout": "La descarga agotó el tiempo de espera.",
+  "bulk_media_unknown_error": "Error desconocido.",
+  "worker_updated_successfully": "¡{name} actualizado correctamente!"
 }

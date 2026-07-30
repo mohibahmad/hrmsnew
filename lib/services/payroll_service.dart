@@ -6,6 +6,13 @@ class PayrollService {
   factory PayrollService() => _instance;
   PayrollService._();
 
+  static DateTime currentPayrollMonth({DateTime? referenceDate}) {
+    final reference = referenceDate ?? DateTime.now();
+    return DateTime(reference.year, reference.month, 1);
+  }
+
+  /// Kept for older callers and stored data that explicitly need the last
+  /// fully completed calendar month.
   static DateTime completedPayrollMonth({DateTime? referenceDate}) {
     final reference = referenceDate ?? DateTime.now();
     return DateTime(reference.year, reference.month - 1, 1);
@@ -13,6 +20,57 @@ class PayrollService {
 
   static String payrollPeriodLabel(DateTime month) =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
+  static DateTime? parsePayrollPeriodLabel(dynamic value) {
+    final match = RegExp(
+      r'^(\d{4})-(\d{2})(?:-\d{2})?$',
+    ).firstMatch((value ?? '').toString().trim());
+    if (match == null) return null;
+    final year = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    if (year == null || month == null || month < 1 || month > 12) {
+      return null;
+    }
+    return DateTime(year, month, 1);
+  }
+
+  static DateTime nextPayrollMonth(DateTime month) =>
+      DateTime(month.year, month.month + 1, 1);
+
+  static bool isMonthBefore(DateTime month, DateTime other) {
+    final normalizedMonth = DateTime(month.year, month.month, 1);
+    final normalizedOther = DateTime(other.year, other.month, 1);
+    return normalizedMonth.isBefore(normalizedOther);
+  }
+
+  static bool isMonthEnding(DateTime date, {int reminderDays = 3}) {
+    if (reminderDays < 1) return false;
+    final lastDay = DateTime(date.year, date.month + 1, 0).day;
+    return date.day > lastDay - reminderDays;
+  }
+
+  static bool allWorkersPaidForMonth(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs,
+    DateTime month,
+  ) {
+    if (workersList.isEmpty) return true;
+    final combined = combinePayroll(workersList, rawPayrollDocs, month: month);
+    return combined.length == workersList.length &&
+        combined.every((worker) => worker['hasPayrollRecord'] == true);
+  }
+
+  static int unpaidWorkerCountForMonth(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> rawPayrollDocs,
+    DateTime month,
+  ) {
+    if (workersList.isEmpty) return 0;
+    final combined = combinePayroll(workersList, rawPayrollDocs, month: month);
+    return combined
+        .where((worker) => worker['hasPayrollRecord'] != true)
+        .length;
+  }
 
   static int effectiveSalaryDay(DateTime month, int configuredDay) {
     final lastDay = DateTime(month.year, month.month + 1, 0).day;
@@ -23,7 +81,7 @@ class PayrollService {
     if (configuredDay == null || configuredDay < 1 || configuredDay > 31) {
       return false;
     }
-    return date.day >= effectiveSalaryDay(date, configuredDay);
+    return date.day == effectiveSalaryDay(date, configuredDay);
   }
 
   static List<Map<String, dynamic>> combinePayroll(
@@ -33,18 +91,24 @@ class PayrollService {
     bool allowUndatedRecords = false,
   }) {
     final targetMonth = month ?? DateTime.now();
-    final monthlyPayrollDocs = rawPayrollDocs.where((record) {
-      if ((record['status'] ?? '').toString().trim().toLowerCase() ==
-          'cancelled') {
-        return false;
-      }
-      return isRecordInMonth(
-        record,
-        targetMonth,
-        allowUndated: allowUndatedRecords,
-      );
-    }).toList();
-    if (workersList.isEmpty) return monthlyPayrollDocs;
+    final monthlyPayrollDocs = rawPayrollDocs
+        .where((record) {
+          if ((record['status'] ?? '').toString().trim().toLowerCase() ==
+              'cancelled') {
+            return false;
+          }
+          return isRecordInMonth(
+            record,
+            targetMonth,
+            allowUndated: allowUndatedRecords,
+          );
+        })
+        .map(Map<String, dynamic>.from)
+        .toList();
+    // The workers collection is the source of truth for the active payroll
+    // roster. Historical payroll documents must not recreate workers that
+    // have since been deleted.
+    if (workersList.isEmpty) return const <Map<String, dynamic>>[];
 
     final combined = <Map<String, dynamic>>[];
     for (var worker in workersList) {
@@ -138,6 +202,47 @@ class PayrollService {
     }
 
     return combined;
+  }
+
+  static List<Map<String, dynamic>> payrollRecordsForActiveWorkers(
+    List<Map<String, dynamic>> workersList,
+    List<Map<String, dynamic>> payrollRecords,
+  ) {
+    if (workersList.isEmpty || payrollRecords.isEmpty) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    return payrollRecords.where((record) {
+      final payrollWorkerId = (record['workerId'] ?? '').toString().trim();
+      final payrollEmail = (record['email'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final payrollName = (record['name'] ?? record['workerName'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      return workersList.any((worker) {
+        final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+            .toString()
+            .trim();
+        if (payrollWorkerId.isNotEmpty && workerId.isNotEmpty) {
+          return payrollWorkerId == workerId;
+        }
+
+        final email = (worker['email'] ?? '').toString().trim().toLowerCase();
+        if (payrollEmail.isNotEmpty && email.isNotEmpty) {
+          return payrollEmail == email;
+        }
+
+        final name = (worker['name'] ?? '').toString().trim().toLowerCase();
+        return payrollEmail.isEmpty &&
+            payrollName.isNotEmpty &&
+            name.isNotEmpty &&
+            payrollName == name;
+      });
+    }).toList();
   }
 
   static bool isRecordInMonth(

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/date_utils.dart';
 
 class TimeOffService {
   static const Set<String> paidLeaveTypes = {
@@ -62,7 +63,7 @@ class TimeOffService {
       return DateTime(converted.year, converted.month, converted.day);
     }
 
-    final parsed = DateTime.tryParse(value.toString().trim());
+    final parsed = AppDateUtils.dateFromValue(value);
     return parsed == null
         ? null
         : DateTime(parsed.year, parsed.month, parsed.day);

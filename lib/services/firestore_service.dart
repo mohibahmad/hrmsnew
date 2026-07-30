@@ -1359,6 +1359,27 @@ class FirestoreService {
     }
   }
 
+  Future<bool> addNotificationIfAbsent(
+    String notificationKey,
+    Map<String, dynamic> notification,
+  ) async {
+    final coll = _notifications;
+    final normalizedKey = notificationKey.trim().replaceAll('/', '_');
+    if (coll == null || normalizedKey.isEmpty) return false;
+    final docRef = coll.doc(normalizedKey);
+    return _db.runTransaction<bool>((transaction) async {
+      final existing = await transaction.get(docRef);
+      if (existing.exists) return false;
+      transaction.set(docRef, {
+        ...notification,
+        'notificationKey': notificationKey.trim(),
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+  }
+
   Stream<QuerySnapshot> get notificationsStream {
     final coll = _notifications;
     if (coll == null) return const Stream.empty();

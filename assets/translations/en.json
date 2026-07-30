@@ -818,6 +818,7 @@
   "notif_title_bulk_workers": "Bulk Workers Added",
   "notif_title_attendance": "Attendance marked for {name}",
   "notif_title_payroll": "Payroll processed for {name}",
+  "notif_title_payroll_due": "Payroll is still pending",
   "notif_title_time_off": "Time Off assigned to {name}",
   "notif_title_holiday": "Holiday \"{name}\" has been added",
   "notif_title_expense_category": "New expense: {category}",
@@ -830,6 +831,7 @@
   "notif_msg_attendance": "Attendance has been recorded for {name}.",
   "notif_msg_payroll_amount": "Salary of {amount} has been processed for {name}.",
   "notif_msg_payroll": "Payroll has been recorded for {name}.",
+  "notif_msg_payroll_due": "{count} worker salaries for {period} are still unpaid. The month is ending—please process payroll.",
   "notif_msg_time_off": "{type} has been assigned to {name}.",
   "notif_msg_holiday": "{name} has been added to the holiday calendar.",
   "notif_msg_expense_amount": "An expense of {amount} has been recorded.",
@@ -1007,5 +1009,16 @@
   "resend_email": "Resend Email",
   "check_email_reset_link": "Check {email} for the password reset link.",
   "invoice_generation_failed_after_save": "Payroll was saved, but the invoice could not be generated.",
-  "worker_id_required": "Worker ID is required."
+  "worker_id_required": "Worker ID is required.",
+  "media_field_profile_image": "Profile image",
+  "media_field_front_id": "Front ID image",
+  "media_field_back_id": "Back ID image",
+  "media_field_cv": "CV",
+  "bulk_media_image_format_error": "Image must be JPG, JPEG, or PNG. Received {received}.",
+  "bulk_media_cv_format_error": "CV must be PDF, DOC, DOCX, JPG, JPEG, or PNG.",
+  "bulk_media_invalid_url": "Enter a valid HTTP/HTTPS link or upload a file.",
+  "bulk_media_upload_failed": "Upload failed.",
+  "bulk_media_download_timeout": "The download timed out.",
+  "bulk_media_unknown_error": "Unknown error.",
+  "worker_updated_successfully": "{name} updated successfully!"
 }

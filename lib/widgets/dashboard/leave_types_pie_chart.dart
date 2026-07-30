@@ -9,13 +9,13 @@ import '../custom_timeframe_dropdown.dart';
 class LeaveTypesPieChart extends StatelessWidget {
   final String period;
   final bool isEmpty;
-  final List<Map<String, dynamic>> attendanceDocs;
+  final List<Map<String, dynamic>> leaveDocs;
 
   const LeaveTypesPieChart({
     super.key,
     required this.period,
     this.isEmpty = false,
-    required this.attendanceDocs,
+    required this.leaveDocs,
   });
 
   @override
@@ -23,8 +23,9 @@ class LeaveTypesPieChart extends StatelessWidget {
     int casualCount = 0;
     int sickCount = 0;
     int medicalCount = 0;
+    int annualCount = 0;
 
-    for (final att in attendanceDocs) {
+    for (final att in leaveDocs) {
       final status = (att['status'] ?? '').toString().trim().toLowerCase();
       if (status != 'leave') continue;
       final type = (att['type'] ?? '').toString().trim();
@@ -34,27 +35,34 @@ class LeaveTypesPieChart extends StatelessWidget {
         sickCount++;
       } else if (type == 'Medical Leave') {
         medicalCount++;
+      } else if (type == 'Annual Leave') {
+        annualCount++;
       }
     }
 
-    final int total = casualCount + sickCount + medicalCount;
+    final int total = casualCount + sickCount + medicalCount + annualCount;
     final bool reallyEmpty = isEmpty || total == 0;
 
     final double casualPercent = total > 0 ? (casualCount / total) * 100 : 0;
     final double sickPercent = total > 0 ? (sickCount / total) * 100 : 0;
     final double medicalPercent = total > 0 ? (medicalCount / total) * 100 : 0;
+    final double annualPercent = total > 0 ? (annualCount / total) * 100 : 0;
 
     final double casualVal = total > 0 ? casualPercent : 0;
     final double sickVal = total > 0 ? sickPercent : 0;
     final double medicalVal = total > 0 ? medicalPercent : 0;
+    final double annualVal = total > 0 ? annualPercent : 0;
 
-    final double totalValue = casualVal + sickVal + medicalVal;
+    final double totalValue = casualVal + sickVal + medicalVal + annualVal;
     final double casualSweep = totalValue > 0
         ? (casualVal / totalValue) * 360
         : 0;
     final double sickSweep = totalValue > 0 ? (sickVal / totalValue) * 360 : 0;
     final double medicalSweep = totalValue > 0
         ? (medicalVal / totalValue) * 360
+        : 0;
+    final double annualSweep = totalValue > 0
+        ? (annualVal / totalValue) * 360
         : 0;
 
     final double casualStartAngle = 108;
@@ -63,6 +71,8 @@ class LeaveTypesPieChart extends StatelessWidget {
     final double sickMidAngle = sickStartAngle + sickSweep / 2;
     final double medicalStartAngle = sickStartAngle + sickSweep;
     final double medicalMidAngle = medicalStartAngle + medicalSweep / 2;
+    final double annualStartAngle = medicalStartAngle + medicalSweep;
+    final double annualMidAngle = annualStartAngle + annualSweep / 2;
 
     return Card(
       elevation: 0,
@@ -119,6 +129,13 @@ class LeaveTypesPieChart extends StatelessWidget {
                                     radius: 85,
                                     showTitle: false,
                                   ),
+                                if (annualVal > 0)
+                                  PieChartSectionData(
+                                    color: const Color(0xFFFFC857),
+                                    value: annualVal,
+                                    radius: 85,
+                                    showTitle: false,
+                                  ),
                               ],
                             ),
                           ),
@@ -130,9 +147,11 @@ class LeaveTypesPieChart extends StatelessWidget {
                               casualVal: casualVal,
                               sickVal: sickVal,
                               medicalVal: medicalVal,
+                              annualVal: annualVal,
                               casualMidAngle: casualMidAngle,
                               sickMidAngle: sickMidAngle,
                               medicalMidAngle: medicalMidAngle,
+                              annualMidAngle: annualMidAngle,
                             ),
                           ),
                         ],
@@ -177,7 +196,14 @@ class LeaveTypesPieChart extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 16),
-                            const Spacer(), 
+                            Expanded(
+                              child: buildLegendItem(
+                                const Color(0xFFFFC857),
+                                'annual_leave_chart'.tr(
+                                  namedArgs: {'value': '${annualVal.toInt()}'},
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -247,9 +273,11 @@ class _DonutCalloutPainter extends CustomPainter {
   final double casualVal;
   final double sickVal;
   final double medicalVal;
+  final double annualVal;
   final double casualMidAngle;
   final double sickMidAngle;
   final double medicalMidAngle;
+  final double annualMidAngle;
 
   const _DonutCalloutPainter({
     required this.center,
@@ -257,9 +285,11 @@ class _DonutCalloutPainter extends CustomPainter {
     required this.casualVal,
     required this.sickVal,
     required this.medicalVal,
+    required this.annualVal,
     required this.casualMidAngle,
     required this.sickMidAngle,
     required this.medicalMidAngle,
+    required this.annualMidAngle,
   });
 
   @override
@@ -276,7 +306,7 @@ class _DonutCalloutPainter extends CustomPainter {
       if (val <= 0) return;
 
       final angleRad = midAngle * math.pi / 180.0;
-      final innerRadius = radius - 35.0; 
+      final innerRadius = radius - 35.0;
       final p1 = Offset(
         center.dx + innerRadius * math.cos(angleRad),
         center.dy + innerRadius * math.sin(angleRad),
@@ -285,8 +315,7 @@ class _DonutCalloutPainter extends CustomPainter {
       final isRightSide = math.cos(angleRad) >= 0;
       final isTopSide = math.sin(angleRad) < 0;
 
-      final double D =
-          55.0; 
+      final double D = 55.0;
       final double dx = isRightSide ? D : -D;
       final double dy = isTopSide ? -D : D;
 
@@ -302,8 +331,8 @@ class _DonutCalloutPainter extends CustomPainter {
     processCallout('casual', casualVal, casualMidAngle);
     processCallout('sick', sickVal, sickMidAngle);
     processCallout('medical', medicalVal, medicalMidAngle);
+    processCallout('annual', annualVal, annualMidAngle);
 
-    
     leftLabels.sort(
       (a, b) => (a['p2'] as Offset).dy.compareTo((b['p2'] as Offset).dy),
     );
@@ -314,7 +343,7 @@ class _DonutCalloutPainter extends CustomPainter {
     void drawLabels(List<Map<String, dynamic>> labels, bool isRightSide) {
       final lineExtension = 65.0;
       double lastY = -9999;
-      final minSpacing = 35.0; 
+      final minSpacing = 35.0;
 
       for (final labelData in labels) {
         final val = labelData['val'] as double;
@@ -353,7 +382,7 @@ class _DonutCalloutPainter extends CustomPainter {
 
         final centerX = (p2.dx + p3.dx) / 2;
         final labelX = centerX - textPainter.width / 2;
-        final labelY = p2.dy - textPainter.height - 4; 
+        final labelY = p2.dy - textPainter.height - 4;
 
         textPainter.paint(canvas, Offset(labelX, labelY));
       }
@@ -364,5 +393,14 @@ class _DonutCalloutPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DonutCalloutPainter oldDelegate) {
+    return casualVal != oldDelegate.casualVal ||
+        sickVal != oldDelegate.sickVal ||
+        medicalVal != oldDelegate.medicalVal ||
+        annualVal != oldDelegate.annualVal ||
+        casualMidAngle != oldDelegate.casualMidAngle ||
+        sickMidAngle != oldDelegate.sickMidAngle ||
+        medicalMidAngle != oldDelegate.medicalMidAngle ||
+        annualMidAngle != oldDelegate.annualMidAngle;
+  }
 }

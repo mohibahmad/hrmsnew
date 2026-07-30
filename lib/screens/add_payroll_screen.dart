@@ -20,6 +20,7 @@ import 'package:provider/provider.dart';
 
 class AddPayrollScreen extends StatefulWidget {
   final Map<String, dynamic> workerData;
+  final DateTime payrollMonth;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onBack;
@@ -27,6 +28,7 @@ class AddPayrollScreen extends StatefulWidget {
   const AddPayrollScreen({
     super.key,
     required this.workerData,
+    required this.payrollMonth,
     this.onNotificationTap,
     this.onProfileTap,
     this.onBack,
@@ -87,7 +89,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   String get _salaryStr =>
       PayrollService.currentSalaryDisplay(widget.workerData);
 
-  DateTime get _payrollMonth => PayrollService.completedPayrollMonth();
+  DateTime get _payrollMonth =>
+      DateTime(widget.payrollMonth.year, widget.payrollMonth.month, 1);
 
   @override
   void initState() {

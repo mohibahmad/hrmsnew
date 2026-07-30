@@ -71,7 +71,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   bool _workersLoaded = false;
   bool _attendanceLoaded = false;
   bool _isDialogOpen = false;
-  bool _isSaving = false;
   String? _errorMessage;
   bool _isPremium = false;
   late AuthService _authService;
@@ -1041,6 +1040,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
       barrierDismissible: false,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext dialogContext) {
+        var dialogIsSaving = false;
         String selectedStatus = validStatuses.contains(initialStatus)
             ? initialStatus
             : 'Present';
@@ -1133,7 +1133,9 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                               ),
                               const Spacer(),
                               GestureDetector(
-                                onTap: () => Navigator.pop(dialogContext),
+                                onTap: dialogIsSaving
+                                    ? null
+                                    : () => Navigator.pop(dialogContext),
                                 child: const Icon(
                                   Icons.close,
                                   color: textDark,
@@ -1153,11 +1155,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 children: [
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () {
-                                        setDialogState(() {
-                                          selectedStatus = 'Present';
-                                        });
-                                      },
+                                      onTap: dialogIsSaving
+                                          ? null
+                                          : () {
+                                              setDialogState(() {
+                                                selectedStatus = 'Present';
+                                              });
+                                            },
                                       child: _buildToggleChip(
                                         'present'.tr(),
                                         'assets/present_worker.svg',
@@ -1168,12 +1172,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () {
-                                        setDialogState(() {
-                                          selectedStatus = 'Absent';
-                                          selectedLeaveType = 'Without Notice';
-                                        });
-                                      },
+                                      onTap: dialogIsSaving
+                                          ? null
+                                          : () {
+                                              setDialogState(() {
+                                                selectedStatus = 'Absent';
+                                                selectedLeaveType =
+                                                    'Without Notice';
+                                              });
+                                            },
                                       child: _buildToggleChip(
                                         'absent'.tr(),
                                         'assets/absent.svg',
@@ -1184,7 +1191,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: canSelectLeave
+                                      onTap: canSelectLeave && !dialogIsSaving
                                           ? () {
                                               setDialogState(() {
                                                 selectedStatus = 'Leave';
@@ -1249,13 +1256,15 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             ),
                                           )
                                           .toList(),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          setDialogState(() {
-                                            selectedLeaveType = value;
-                                          });
-                                        }
-                                      },
+                                      onChanged: dialogIsSaving
+                                          ? null
+                                          : (value) {
+                                              if (value != null) {
+                                                setDialogState(() {
+                                                  selectedLeaveType = value;
+                                                });
+                                              }
+                                            },
                                     ),
                                   ),
                                 ),
@@ -1286,6 +1295,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   ),
                                   child: TextField(
                                     controller: reasonController,
+                                    enabled: !dialogIsSaving,
                                     maxLines: null,
                                     maxLength: 100,
                                     onChanged: (_) => setDialogState(() {}),
@@ -1307,10 +1317,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   OutlinedButton(
-                                    onPressed: () {
-                                      setState(() => _isDialogOpen = false);
-                                      Navigator.pop(dialogContext);
-                                    },
+                                    onPressed: dialogIsSaving
+                                        ? null
+                                        : () {
+                                            setState(
+                                              () => _isDialogOpen = false,
+                                            );
+                                            Navigator.pop(dialogContext);
+                                          },
                                     style: OutlinedButton.styleFrom(
                                       backgroundColor: const Color(0xFF0247C4),
                                       side: const BorderSide(
@@ -1340,15 +1354,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                   const SizedBox(width: 12),
                                   ElevatedButton(
                                     onPressed:
-                                        _isSaving ||
+                                        dialogIsSaving ||
                                             (selectedStatus != 'Present' &&
                                                 reasonController.text
                                                     .trim()
                                                     .isEmpty)
                                         ? null
                                         : () async {
-                                            if (_isSaving) return;
-                                            setState(() => _isSaving = true);
+                                            if (dialogIsSaving) return;
+                                            setDialogState(
+                                              () => dialogIsSaving = true,
+                                            );
                                             final reason = reasonController.text
                                                 .trim();
                                             if (selectedStatus != 'Present' &&
@@ -1361,10 +1377,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                   isError: true,
                                                 );
                                               }
-                                              if (mounted)
-                                                setState(
-                                                  () => _isSaving = false,
+                                              if (dialogContext.mounted) {
+                                                setDialogState(
+                                                  () => dialogIsSaving = false,
                                                 );
+                                              }
                                               return;
                                             }
 
@@ -1405,9 +1422,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                                       isError: true,
                                                     );
                                                   }
-                                                  if (mounted) {
-                                                    setState(
-                                                      () => _isSaving = false,
+                                                  if (dialogContext.mounted) {
+                                                    setDialogState(
+                                                      () => dialogIsSaving =
+                                                          false,
                                                     );
                                                   }
                                                   return;
@@ -1582,10 +1600,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               }
 
                                               if (!context.mounted) {
-                                                if (mounted)
-                                                  setState(
-                                                    () => _isSaving = false,
+                                                if (dialogContext.mounted) {
+                                                  setDialogState(
+                                                    () =>
+                                                        dialogIsSaving = false,
                                                   );
+                                                }
                                                 return;
                                               }
                                               FlashySnackBar.show(
@@ -1600,10 +1620,12 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               );
                                             } catch (e) {
                                               if (!context.mounted) {
-                                                if (mounted)
-                                                  setState(
-                                                    () => _isSaving = false,
+                                                if (dialogContext.mounted) {
+                                                  setDialogState(
+                                                    () =>
+                                                        dialogIsSaving = false,
                                                   );
+                                                }
                                                 return;
                                               }
                                               FlashySnackBar.show(
@@ -1620,8 +1642,6 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                               );
                                             }
                                             if (mounted) Navigator.pop(context);
-                                            if (mounted)
-                                              setState(() => _isSaving = false);
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF0F52BA),
@@ -1641,7 +1661,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                       minimumSize: const Size(0, 40),
                                       elevation: 0,
                                     ),
-                                    child: _isSaving
+                                    child: dialogIsSaving
                                         ? const SizedBox(
                                             width: 20,
                                             height: 20,

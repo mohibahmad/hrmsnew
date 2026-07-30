@@ -183,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _totalSalarySum = 0.0;
   List<Map<String, dynamic>> _rawExpensesDocs = [];
   List<Map<String, dynamic>> _rawPayrollDocs = [];
+  List<Map<String, dynamic>> _workersDocs = [];
   List<DashboardChartPoint> _salaryChartPoints = [];
   List<DashboardChartPoint> _expenseChartPoints = [];
   List<Map<String, dynamic>> _holidays = [];
@@ -195,15 +196,19 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _notifSub;
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
   int _totalAttendanceCount = 0;
-  int _totalTimeoffCount = 0;
   int _unreadNotifCount = 0;
   List<Map<String, dynamic>> _allAttendanceDocs = [];
   List<Map<String, dynamic>> _attendanceDocs = [];
+  List<Map<String, dynamic>> _allTimeoffDocs = [];
 
   Map<String, dynamic>? _selectedTimeOffWorker;
   bool _isPremium = false;
   bool _dashboardReady = false;
   bool _initialized = false;
+  bool _workersLoaded = false;
+  bool _payrollLoaded = false;
+  bool _payrollReminderCheckInProgress = false;
+  String? _lastPayrollReminderPeriod;
 
   @override
   void dispose() {
@@ -376,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _maleWorkersCount = mCount;
         _femaleWorkersCount = fCount;
         _otherWorkersCount = oCount;
-        _totalTimeoffCount = DummyData.timeoff.length;
+        _allTimeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
         _recalculateDummyTotals(_selectedPeriod);
 
         final rawHolidays = DummyData.holidays.values
@@ -465,7 +470,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _unreadNotifCount = DummyData.notifications
             .where((n) => n['isRead'] != true)
             .length;
+        _workersDocs = List<Map<String, dynamic>>.from(DummyData.workers);
+        _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
+        _workersLoaded = true;
+        _payrollLoaded = true;
       });
+      _maybeCreatePayrollReminder();
     } else {
       setState(() {
         _holidays = [];
@@ -510,7 +520,11 @@ class _HomeScreenState extends State<HomeScreen> {
             _maleWorkersCount = mCount;
             _femaleWorkersCount = fCount;
             _otherWorkersCount = oCount;
+            _workersDocs = list;
+            _workersLoaded = true;
+            _recalculateSumsForPeriod(_selectedPeriod);
           });
+          _maybeCreatePayrollReminder();
         }
       });
 
@@ -545,7 +559,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _timeoffSub = _firestore.timeoffStream.listen((snap) {
         if (mounted) {
           setState(() {
-            _totalTimeoffCount = snap.docs.length;
+            _allTimeoffDocs = snap.docs
+                .map(
+                  (doc) => {
+                    ...doc.data() as Map<String, dynamic>,
+                    'id': doc.id,
+                  },
+                )
+                .toList();
           });
         }
       });
@@ -596,8 +617,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         .toDouble();
               return {...?data, 'id': doc.id, 'netSalary': netSalary};
             }).toList();
+            _payrollLoaded = true;
             _recalculateSumsForPeriod(_selectedPeriod);
           });
+          _maybeCreatePayrollReminder();
         }
       });
 
@@ -614,6 +637,68 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _maybeCreatePayrollReminder() async {
+    final now = DateTime.now();
+    if (!PayrollService.isMonthEnding(now) ||
+        !_workersLoaded ||
+        !_payrollLoaded ||
+        _payrollReminderCheckInProgress) {
+      return;
+    }
+    final month = PayrollService.currentPayrollMonth(referenceDate: now);
+    final period = PayrollService.payrollPeriodLabel(month);
+    if (_lastPayrollReminderPeriod == period) return;
+
+    final unpaidCount = PayrollService.unpaidWorkerCountForMonth(
+      _workersDocs,
+      _rawPayrollDocs,
+      month,
+    );
+    if (unpaidCount == 0) {
+      _lastPayrollReminderPeriod = period;
+      return;
+    }
+
+    _payrollReminderCheckInProgress = true;
+    final notificationKey = 'payroll_due_$period';
+    final notification = <String, dynamic>{
+      'type': 'payroll_due',
+      'title': 'notif_title_payroll_due'.tr(),
+      'message': 'notif_msg_payroll_due'.tr(
+        namedArgs: {'count': '$unpaidCount', 'period': period},
+      ),
+      'data': {'count': '$unpaidCount', 'period': period},
+    };
+    try {
+      final isGuest = _authService.currentUser?.isAnonymous ?? false;
+      if (isGuest) {
+        final exists = DummyData.notifications.any(
+          (item) => item['notificationKey'] == notificationKey,
+        );
+        if (!exists) {
+          DummyData.notifications.insert(0, {
+            ...notification,
+            'id': notificationKey,
+            'notificationKey': notificationKey,
+            'isRead': false,
+            'createdAt': now.toIso8601String(),
+          });
+          await DummyData.saveToPrefs();
+          if (mounted) {
+            setState(() => _unreadNotifCount++);
+          }
+        }
+      } else {
+        await _firestore.addNotificationIfAbsent(notificationKey, notification);
+      }
+      _lastPayrollReminderPeriod = period;
+    } catch (_) {
+      // A later stream update or app launch will retry the reminder.
+    } finally {
+      _payrollReminderCheckInProgress = false;
+    }
+  }
+
   void _handlePeriodChanged(String period) {
     setState(() {
       _selectedPeriod = period;
@@ -627,6 +712,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _recalculateSumsForPeriod(String period) {
+    final activePayrollRecords = PayrollService.payrollRecordsForActiveWorkers(
+      _workersDocs,
+      _rawPayrollDocs,
+    );
     final expenseSeries = DashboardChartService.buildSeries(
       records: _rawExpensesDocs,
       valueOf: (record) => _parseNumToDouble(record['amount']),
@@ -634,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
       dateOf: DashboardChartService.expenseRecordDate,
     );
     final salarySeries = DashboardChartService.buildSeries(
-      records: _rawPayrollDocs,
+      records: activePayrollRecords,
       valueOf: (record) => _parseNumToDouble(record['netSalary']),
       period: period,
     );
@@ -653,7 +742,11 @@ class _HomeScreenState extends State<HomeScreen> {
       dateOf: DashboardChartService.expenseRecordDate,
       placeUndatedInCurrentPeriod: true,
     );
-    final payrollRecords = DummyData.payroll.map((item) {
+    final activePayrollRecords = PayrollService.payrollRecordsForActiveWorkers(
+      DummyData.workers,
+      DummyData.payroll,
+    );
+    final payrollRecords = activePayrollRecords.map((item) {
       final savedNet = item['netSalaryAmount'];
       final formattedNet = (item['netSalary'] ?? '').toString();
       final netSalary = savedNet is num
@@ -665,7 +758,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
     final totalDummySalary = payrollRecords.fold<double>(
       0,
-      (sum, record) => sum + _parseNumToDouble(record['netSalary']),
+      (runningTotal, record) =>
+          runningTotal + _parseNumToDouble(record['netSalary']),
     );
     final salarySeries = DashboardChartService.buildGuestSalarySeries(
       salaryRecords: payrollRecords,
@@ -1060,6 +1154,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                     ).size.width;
                     final bool isNarrow = screenWidth < 1150;
+                    final leaveDocs = DashboardChartService.leaveDaysForPeriod(
+                      records: _allTimeoffDocs,
+                      period: _selectedPeriod,
+                    );
                     if (isNarrow) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1080,11 +1178,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           LeaveTypesPieChart(
                             period: _selectedPeriod,
                             isEmpty:
-                                _totalTimeoffCount == 0 ||
-                                _totalWorkersCount == 0,
-                            attendanceDocs: _getFilteredAttendanceDocs(
-                              _selectedPeriod,
-                            ),
+                                leaveDocs.isEmpty || _totalWorkersCount == 0,
+                            leaveDocs: leaveDocs,
                           ),
                         ],
                       );
@@ -1112,11 +1207,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: LeaveTypesPieChart(
                                 period: _selectedPeriod,
                                 isEmpty:
-                                    _totalTimeoffCount == 0 ||
+                                    leaveDocs.isEmpty ||
                                     _totalWorkersCount == 0,
-                                attendanceDocs: _getFilteredAttendanceDocs(
-                                  _selectedPeriod,
-                                ),
+                                leaveDocs: leaveDocs,
                               ),
                             ),
                           ],

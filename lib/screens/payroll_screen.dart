@@ -13,6 +13,7 @@ import '../services/error_reporter.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
+import '../utils/date_utils.dart';
 import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
@@ -48,6 +49,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isLoading = true;
   bool _isSalaryDaySaving = false;
   int? _salaryPaymentDay;
+  DateTime _payrollMonth = PayrollService.currentPayrollMonth();
+  bool _payrollPeriodLoaded = false;
+  bool _workersLoaded = false;
+  bool _payrollLoaded = false;
+  bool _isAdvancingPayrollPeriod = false;
 
   StreamSubscription? _payrollSub;
   StreamSubscription? _workersSub;
@@ -56,6 +62,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Map<String, dynamic>? _workerForPayroll;
   bool _isRunningPayroll = false;
   bool _initialized = false;
+  bool _isLoadingAttendance = false;
+  bool _attendanceFetchPending = false;
+  Timer? _attendanceDebounce;
 
   bool get _isPayDate {
     return PayrollService.isPayrollDue(DateTime.now(), _salaryPaymentDay);
@@ -63,6 +72,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   @override
   void dispose() {
+    _attendanceDebounce?.cancel();
     _payrollSub?.cancel();
     _workersSub?.cancel();
     _searchController.dispose();
@@ -74,7 +84,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _payrollDocs = PayrollService.combinePayroll(
       _workersList,
       _rawPayrollDocs,
-      month: PayrollService.completedPayrollMonth(),
+      month: _payrollMonth,
       allowUndatedRecords: isGuest,
     );
 
@@ -85,6 +95,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
         doc['totalWorkDays'] = '0';
         doc['absents'] = '0';
         doc['leaves'] = '0';
+        doc['paidLeaves'] = '0';
+        doc['unpaidLeaves'] = '0';
         doc['overtimeAmount'] = '0';
         doc['salary'] = doc['salary'] ?? '\$ 0';
         doc['netSalary'] = '\$ 0';
@@ -93,14 +105,137 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _isLoading = false;
   }
 
-  Future<void> _loadCompanySalaryDay() async {
+  void _scheduleAttendanceFetch() {
+    _attendanceDebounce?.cancel();
+    _attendanceDebounce = Timer(const Duration(seconds: 2), () {
+      if (_isLoadingAttendance) {
+        _attendanceFetchPending = true;
+        return;
+      }
+      _fetchAttendanceForPayroll();
+    });
+  }
+
+  Future<void> _fetchAttendanceForPayroll() async {
+    if (_payrollDocs.isEmpty || _isLoadingAttendance) return;
+
+    _isLoadingAttendance = true;
+    final month = _payrollMonth;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+
+    int workingDays;
+    if (isGuest) {
+      workingDays = 22;
+    } else {
+      try {
+        workingDays = await _firestore.getMonthlyWorkingDays(month: month);
+      } catch (_) {
+        workingDays = 22;
+      }
+    }
+
+    if (!mounted) {
+      _isLoadingAttendance = false;
+      return;
+    }
+
+    final futures = <Future<void>>[];
+    for (final doc in _payrollDocs) {
+      final status = (doc['status'] ?? '').toString().toLowerCase();
+      if (status == 'paid') continue;
+
+      final email = (doc['email'] ?? '').toString();
+      final workerId = (doc['workerId'] ?? doc['id'] ?? '').toString();
+      if (email.isEmpty && workerId.isEmpty) continue;
+
+      futures.add(
+        _fetchAndApplyAttendance(
+          doc,
+          email,
+          workerId,
+          month,
+          workingDays,
+          isGuest,
+        ),
+      );
+    }
+
+    await Future.wait(futures);
+    _isLoadingAttendance = false;
+
+    if (mounted) setState(() {});
+    if (_attendanceFetchPending || month != _payrollMonth) {
+      _attendanceFetchPending = false;
+      _scheduleAttendanceFetch();
+    }
+  }
+
+  Future<void> _fetchAndApplyAttendance(
+    Map<String, dynamic> doc,
+    String email,
+    String workerId,
+    DateTime month,
+    int workingDays,
+    bool isGuest,
+  ) async {
+    try {
+      Map<String, int> attendance;
+      if (isGuest) {
+        final monthAttendance = DummyData.attendance.where((att) {
+          final attDate = AppDateUtils.attendanceRecordDate(att);
+          return attDate != null &&
+              attDate.year == month.year &&
+              attDate.month == month.month;
+        }).toList();
+        final matched = monthAttendance.where((att) {
+          final attWorkerId = (att['workerId'] ?? '').toString().trim();
+          final attEmail = (att['email'] ?? '').toString().trim().toLowerCase();
+          if (workerId.isNotEmpty && attWorkerId.isNotEmpty) {
+            return workerId == attWorkerId;
+          }
+          return email.isNotEmpty && attEmail == email.toLowerCase();
+        }).toList();
+        final absentCount = matched
+            .where((a) => (a['status'] ?? '') == 'Absent')
+            .length;
+        final leaveCount = matched
+            .where((a) => (a['status'] ?? '') == 'Leave')
+            .length;
+        attendance = {
+          'absents': absentCount,
+          'paidLeaves': leaveCount,
+          'unpaidLeaves': 0,
+          'leaves': leaveCount,
+        };
+      } else {
+        attendance = await _firestore.getWorkerMonthlyAttendance(
+          email,
+          workerId: workerId,
+          month: month,
+        );
+      }
+
+      doc['absents'] = (attendance['absents'] ?? 0).toString();
+      doc['paidLeaves'] = (attendance['paidLeaves'] ?? 0).toString();
+      doc['unpaidLeaves'] = (attendance['unpaidLeaves'] ?? 0).toString();
+      doc['leaves'] = (attendance['leaves'] ?? 0).toString();
+      doc['totalWorkDays'] = workingDays.toString();
+    } catch (_) {
+      // Keep defaults (0) if attendance fetch fails
+    }
+  }
+
+  Future<void> _loadCompanySettings() async {
     int? salaryDay;
+    String? savedPayrollPeriod;
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       salaryDay = await PreferencesService.getCompanySalaryDay();
+      savedPayrollPeriod = await PreferencesService.getActivePayrollPeriod();
     } else {
       final profile = await _firestore.getUserProfile();
       final rawDay = profile?['salaryPaymentDay'];
+      savedPayrollPeriod = profile?['activePayrollPeriod']?.toString();
       salaryDay = rawDay is num
           ? rawDay.toInt()
           : int.tryParse(rawDay?.toString() ?? '');
@@ -108,7 +243,83 @@ class _PayrollScreenState extends State<PayrollScreen> {
         salaryDay = null;
       }
     }
-    if (mounted) setState(() => _salaryPaymentDay = salaryDay);
+    final savedMonth = PayrollService.parsePayrollPeriodLabel(
+      savedPayrollPeriod,
+    );
+    final calendarMonth = PayrollService.currentPayrollMonth();
+    final savedMonthIsFuture =
+        savedMonth != null &&
+        PayrollService.isMonthBefore(calendarMonth, savedMonth);
+    final activeMonth = savedMonth == null || savedMonthIsFuture
+        ? calendarMonth
+        : savedMonth;
+    if (savedMonth == null || savedMonthIsFuture) {
+      try {
+        await _saveActivePayrollPeriod(activeMonth);
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'InitializePayrollPeriod',
+        );
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _salaryPaymentDay = salaryDay;
+      _payrollMonth = activeMonth;
+      _payrollPeriodLoaded = true;
+      _combinePayroll();
+    });
+    _scheduleAttendanceFetch();
+    _maybeAdvancePayrollPeriod();
+  }
+
+  Future<void> _saveActivePayrollPeriod(DateTime month) async {
+    final label = PayrollService.payrollPeriodLabel(month);
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      await PreferencesService.setActivePayrollPeriod(label);
+    } else {
+      await _firestore.updateUserProfile({'activePayrollPeriod': label});
+    }
+  }
+
+  Future<void> _maybeAdvancePayrollPeriod() async {
+    if (!_payrollPeriodLoaded ||
+        !_workersLoaded ||
+        !_payrollLoaded ||
+        _isAdvancingPayrollPeriod) {
+      return;
+    }
+    final calendarMonth = PayrollService.currentPayrollMonth();
+    if (!PayrollService.isMonthBefore(_payrollMonth, calendarMonth)) return;
+    if (!PayrollService.allWorkersPaidForMonth(
+      _workersList,
+      _rawPayrollDocs,
+      _payrollMonth,
+    )) {
+      return;
+    }
+
+    _isAdvancingPayrollPeriod = true;
+    final nextMonth = PayrollService.nextPayrollMonth(_payrollMonth);
+    var advanced = false;
+    try {
+      await _saveActivePayrollPeriod(nextMonth);
+      if (!mounted) return;
+      setState(() {
+        _payrollMonth = nextMonth;
+        _combinePayroll();
+      });
+      advanced = true;
+      _scheduleAttendanceFetch();
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'AdvancePayrollPeriod');
+    } finally {
+      _isAdvancingPayrollPeriod = false;
+    }
+    if (mounted && advanced) _maybeAdvancePayrollPeriod();
   }
 
   Future<void> _saveCompanySalaryDay(int? day) async {
@@ -296,7 +507,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
-    _loadCompanySalaryDay();
+    _loadCompanySettings();
 
     // A cached Firestore snapshot can be delivered while the first frame is
     // still building. Starting the listeners after that frame prevents their
@@ -304,6 +515,32 @@ class _PayrollScreenState extends State<PayrollScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startPayrollListeners();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant PayrollScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_initialized || !(_authService.currentUser?.isAnonymous ?? false)) {
+      return;
+    }
+
+    final latestWorkers = List<Map<String, dynamic>>.from(DummyData.workers);
+    final currentIds = _workersList
+        .map((worker) => worker['id']?.toString() ?? '')
+        .toSet();
+    final latestIds = latestWorkers
+        .map((worker) => worker['id']?.toString() ?? '')
+        .toSet();
+    if (currentIds.length == latestIds.length &&
+        currentIds.containsAll(latestIds)) {
+      return;
+    }
+
+    // Guest screens stay alive inside HomeScreen's IndexedStack, so refresh
+    // the cached roster when the user navigates back to Payroll.
+    _workersList = latestWorkers;
+    _combinePayroll();
+    _scheduleAttendanceFetch();
   }
 
   void _startPayrollListeners() {
@@ -315,8 +552,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
             _workersList = snapshot.docs
                 .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
                 .toList();
+            _workersLoaded = true;
             _combinePayroll();
           });
+          _scheduleAttendanceFetch();
+          _maybeAdvancePayrollPeriod();
         }
       }, onError: _handlePayrollStreamError);
       _payrollSub = _firestore.payrollStream.listen((snapshot) {
@@ -325,16 +565,23 @@ class _PayrollScreenState extends State<PayrollScreen> {
             _rawPayrollDocs = snapshot.docs
                 .map((d) => {...?d.data() as Map<String, dynamic>?, 'id': d.id})
                 .toList();
+            _payrollLoaded = true;
             _combinePayroll();
           });
+          _scheduleAttendanceFetch();
+          _maybeAdvancePayrollPeriod();
         }
       }, onError: _handlePayrollStreamError);
     } else {
       setState(() {
         _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
         _rawPayrollDocs = List<Map<String, dynamic>>.from(DummyData.payroll);
+        _workersLoaded = true;
+        _payrollLoaded = true;
         _combinePayroll();
+        _scheduleAttendanceFetch();
       });
+      _maybeAdvancePayrollPeriod();
     }
   }
 
@@ -351,7 +598,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_isRunningPayroll) return;
     setState(() => _isRunningPayroll = true);
     try {
-      final summary = await SalaryDayScheduler().payAll(context);
+      final summary = await SalaryDayScheduler().payAll(
+        context,
+        payrollMonth: _payrollMonth,
+      );
       if (summary != null && mounted) {
         FlashySnackBar.show(
           context,
@@ -378,6 +628,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_isAddingPayroll && _workerForPayroll != null) {
       return AddPayrollScreen(
         workerData: _workerForPayroll!,
+        payrollMonth: _payrollMonth,
         onNotificationTap: widget.onNotificationTap,
         onProfileTap: widget.onProfileTap,
         onBack: () {

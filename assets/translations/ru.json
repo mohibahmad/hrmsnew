@@ -813,6 +813,7 @@
   "notif_title_bulk_workers": "Сотрудники добавлены массово",
   "notif_title_attendance": "Посещаемость отмечена для {name}",
   "notif_title_payroll": "Зарплата рассчитана для {name}",
+  "notif_title_payroll_due": "Расчёт зарплаты ещё не завершён",
   "notif_title_time_off": "Отпуск назначен сотруднику {name}",
   "notif_title_holiday": "Праздник \"{name}\" был добавлен",
   "notif_title_expense_category": "Новый расход: {category}",
@@ -825,6 +826,7 @@
   "notif_msg_attendance": "Посещаемость для {name} зафиксирована.",
   "notif_msg_payroll_amount": "Зарплата в размере {amount} начислена сотруднику {name}.",
   "notif_msg_payroll": "Зарплата для {name} зафиксирована.",
+  "notif_msg_payroll_due": "Зарплаты {count} сотрудников за {period} ещё не выплачены. Месяц заканчивается — выполните расчёт зарплаты.",
   "notif_msg_time_off": "{type} назначен(о) сотруднику {name}.",
   "notif_msg_holiday": "{name} добавлен в календарь праздников.",
   "notif_msg_expense_amount": "Расход в размере {amount} зафиксирован.",
@@ -1007,5 +1009,16 @@
   "resend_email": "Отправить снова",
   "check_email_reset_link": "Проверьте {email} для ссылки сброса.",
   "invoice_generation_failed_after_save": "Расчёт сохранён, но счёт не удалось сформировать.",
-  "worker_id_required": "Требуется ID сотрудника."
+  "worker_id_required": "Требуется ID сотрудника.",
+  "media_field_profile_image": "Фото профиля",
+  "media_field_front_id": "Лицевая сторона УД",
+  "media_field_back_id": "Обратная сторона УД",
+  "media_field_cv": "Резюме",
+  "bulk_media_image_format_error": "Изображение должно быть JPG, JPEG или PNG. Получено: {received}.",
+  "bulk_media_cv_format_error": "Резюме должно быть в формате PDF, DOC, DOCX, JPG, JPEG или PNG.",
+  "bulk_media_invalid_url": "Введите действительную HTTP/HTTPS-ссылку или загрузите файл.",
+  "bulk_media_upload_failed": "Ошибка загрузки.",
+  "bulk_media_download_timeout": "Время загрузки истекло.",
+  "bulk_media_unknown_error": "Неизвестная ошибка.",
+  "worker_updated_successfully": "{name} успешно обновлён!"
 }

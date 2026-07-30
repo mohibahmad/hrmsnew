@@ -119,6 +119,19 @@ void main() {
     expect(dates.last, DateTime(2026, 7, 4));
   });
 
+  test('parses legacy day-first time-off dates', () {
+    final dates = TimeOffService.selectedDatesForRecord({
+      'startDate': '28/07/2026',
+      'endDate': '30/07/2026',
+    });
+
+    expect(dates, [
+      DateTime(2026, 7, 28),
+      DateTime(2026, 7, 29),
+      DateTime(2026, 7, 30),
+    ]);
+  });
+
   test('builds an inclusive forward range for swipe selection', () {
     final dates = TimeOffService.inclusiveDateRange(
       DateTime(2026, 7, 10),

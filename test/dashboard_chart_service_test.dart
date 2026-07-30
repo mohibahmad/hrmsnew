@@ -139,4 +139,52 @@ void main() {
     expect(monthly.points[14].value, 1000);
     expect(monthly.points.last.value, 1000);
   });
+
+  test(
+    'leave chart expands leave days and filters them by dropdown period',
+    () {
+      final records = [
+        {
+          'workerId': 'worker-1',
+          'type': 'Sick Leave',
+          'startDate': '28/07/2026',
+          'endDate': '30/07/2026',
+          'status': 'Assigned',
+        },
+        {
+          'workerId': 'worker-2',
+          'type': 'Casual Leave',
+          'selectedDates': ['2026-06-15'],
+          'status': 'Assigned',
+        },
+        {
+          'workerId': 'worker-3',
+          'type': 'Medical Leave',
+          'selectedDates': ['2026-07-30'],
+          'status': 'Cancelled',
+        },
+      ];
+
+      final today = DashboardChartService.leaveDaysForPeriod(
+        records: records,
+        period: 'Today',
+        now: DateTime(2026, 7, 30),
+      );
+      final week = DashboardChartService.leaveDaysForPeriod(
+        records: records,
+        period: 'Week',
+        now: DateTime(2026, 7, 30),
+      );
+      final yearly = DashboardChartService.leaveDaysForPeriod(
+        records: records,
+        period: 'Yearly',
+        now: DateTime(2026, 7, 30),
+      );
+
+      expect(today, hasLength(1));
+      expect(week, hasLength(3));
+      expect(yearly, hasLength(4));
+      expect(yearly.where((day) => day['type'] == 'Medical Leave'), isEmpty);
+    },
+  );
 }

@@ -125,6 +125,75 @@ void main() {
     expect(combined.single['status'], 'Paid');
   });
 
+  test('deleted workers are not recreated from historical payroll records', () {
+    final combined = PayrollService.combinePayroll(const [], [
+      {
+        'id': 'payroll-july',
+        'workerId': 'deleted-worker',
+        'name': 'Deleted Worker',
+        'status': 'Paid',
+        'payPeriod': '2026-07-01',
+      },
+    ], month: DateTime(2026, 7, 1));
+
+    expect(combined, isEmpty);
+  });
+
+  test('dashboard payroll records only include active workers', () {
+    final records = PayrollService.payrollRecordsForActiveWorkers(
+      const [
+        {
+          'id': 'active-worker',
+          'name': 'Active Worker',
+          'email': 'active@example.com',
+        },
+      ],
+      const [
+        {
+          'workerId': 'active-worker',
+          'name': 'Active Worker',
+          'netSalary': 5000,
+        },
+        {
+          'workerId': 'deleted-worker',
+          'name': 'Deleted Worker',
+          'netSalary': 7000,
+        },
+      ],
+    );
+
+    expect(records, hasLength(1));
+    expect(records.single['workerId'], 'active-worker');
+  });
+
+  test('dashboard payroll is empty when every worker is deleted', () {
+    final records = PayrollService.payrollRecordsForActiveWorkers(
+      const [],
+      const [
+        {'workerId': 'deleted-worker', 'netSalary': 7000},
+      ],
+    );
+
+    expect(records, isEmpty);
+  });
+
+  test('dashboard payroll supports legacy active workers without IDs', () {
+    final records = PayrollService.payrollRecordsForActiveWorkers(
+      const [
+        {'name': 'Legacy Worker', 'email': 'legacy@example.com'},
+      ],
+      const [
+        {
+          'workerId': 'legacy-generated-id',
+          'workerName': 'Legacy Worker',
+          'netSalary': 4000,
+        },
+      ],
+    );
+
+    expect(records, hasLength(1));
+  });
+
   test('Firestore timestamp is filtered by payroll month', () {
     final record = {'createdAt': Timestamp.fromDate(DateTime(2026, 6, 15))};
 
@@ -290,11 +359,74 @@ void main() {
     expect(PayrollService.payrollPeriodLabel(month), '2025-12');
   });
 
+  test('current payroll month uses the active calendar month', () {
+    final month = PayrollService.currentPayrollMonth(
+      referenceDate: DateTime(2026, 7, 30),
+    );
+
+    expect(month, DateTime(2026, 7, 1));
+    expect(PayrollService.payrollPeriodLabel(month), '2026-07');
+  });
+
+  test('month-end reminder starts during the final three calendar days', () {
+    expect(PayrollService.isMonthEnding(DateTime(2026, 7, 28)), isFalse);
+    expect(PayrollService.isMonthEnding(DateTime(2026, 7, 29)), isTrue);
+    expect(PayrollService.isMonthEnding(DateTime(2026, 7, 31)), isTrue);
+    expect(PayrollService.isMonthEnding(DateTime(2026, 2, 26)), isTrue);
+  });
+
+  test('payroll period labels parse and advance across a year boundary', () {
+    final december = PayrollService.parsePayrollPeriodLabel('2026-12');
+
+    expect(december, DateTime(2026, 12, 1));
+    expect(PayrollService.nextPayrollMonth(december!), DateTime(2027, 1, 1));
+    expect(PayrollService.parsePayrollPeriodLabel('invalid'), isNull);
+  });
+
+  test('period completes only when every worker has a paid payroll record', () {
+    const workers = [
+      {'id': 'worker-1', 'name': 'Ali', 'email': 'ali@example.com'},
+      {'id': 'worker-2', 'name': 'Sara', 'email': 'sara@example.com'},
+    ];
+    final onePaid = [
+      {'workerId': 'worker-1', 'status': 'Paid', 'payPeriod': '2026-07-01'},
+    ];
+    final allPaid = [
+      ...onePaid,
+      {'workerId': 'worker-2', 'status': 'Paid', 'payPeriod': '2026-07-01'},
+    ];
+
+    expect(
+      PayrollService.unpaidWorkerCountForMonth(
+        workers,
+        onePaid,
+        DateTime(2026, 7),
+      ),
+      1,
+    );
+    expect(
+      PayrollService.allWorkersPaidForMonth(
+        workers,
+        onePaid,
+        DateTime(2026, 7),
+      ),
+      isFalse,
+    );
+    expect(
+      PayrollService.allWorkersPaidForMonth(
+        workers,
+        allPaid,
+        DateTime(2026, 7),
+      ),
+      isTrue,
+    );
+  });
+
   test(
-    'salary day catches up after configured day and clamps short months',
+    'isPayrollDue returns true only on exact salary day and clamps short months',
     () {
       expect(PayrollService.isPayrollDue(DateTime(2026, 7, 9), 10), isFalse);
-      expect(PayrollService.isPayrollDue(DateTime(2026, 7, 12), 10), isTrue);
+      expect(PayrollService.isPayrollDue(DateTime(2026, 7, 10), 10), isTrue);
       expect(PayrollService.effectiveSalaryDay(DateTime(2026, 2), 31), 28);
       expect(PayrollService.isPayrollDue(DateTime(2026, 2, 28), 31), isTrue);
     },

@@ -13,6 +13,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/upload_service.dart';
+import '../services/error_reporter.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
@@ -366,50 +367,167 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
       final worker = prepared[workerIndex];
       for (final field in mediaFields) {
-        final value = (worker[field] ?? '').toString();
-        if (!value.startsWith('data:') || !value.contains(';base64,')) {
+        final value = (worker[field] ?? '').toString().trim();
+        final isEmbeddedFile =
+            value.startsWith('data:') && value.contains(';base64,');
+        final uri = Uri.tryParse(value);
+        final isRemoteFile =
+            uri != null &&
+            uri.hasAuthority &&
+            (uri.scheme == 'http' || uri.scheme == 'https');
+        if (!isEmbeddedFile && !isRemoteFile) {
+          if (value.isNotEmpty) {
+            final workerName = (worker['name'] ?? 'Worker').toString();
+            throw StateError(
+              '$workerName — ${_mediaFieldName(field)}: '
+              '${'bulk_media_invalid_url'.tr()}',
+            );
+          }
           continue;
         }
-        final separator = value.indexOf(';base64,');
-        final mimeType = value.substring(5, separator);
-        final bytes = base64Decode(value.substring(separator + 8));
+
         final storedName = (worker['${field}_name'] ?? '').toString().trim();
-        final fallbackExtension = switch (mimeType) {
-          'application/pdf' => 'pdf',
-          'application/msword' => 'doc',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document' =>
-            'docx',
-          'image/png' => 'png',
-          'image/webp' => 'webp',
-          _ => 'jpg',
-        };
-        files.add(
-          UploadFile(
-            folder: field == 'profileImage'
-                ? 'profile_images'
-                : field == 'cv'
-                ? 'worker_cvs'
-                : 'identity_documents',
-            fileName: storedName.isNotEmpty
-                ? storedName
-                : '${field}_$workerIndex.$fallbackExtension',
-            bytes: bytes,
-            mimeType: mimeType,
-          ),
-        );
+        final folder = field == 'profileImage'
+            ? 'profile_images'
+            : field == 'cv'
+            ? 'worker_cvs'
+            : 'identity_documents';
+
+        if (isEmbeddedFile) {
+          final separator = value.indexOf(';base64,');
+          final mimeType = value.substring(5, separator);
+          final bytes = base64Decode(value.substring(separator + 8));
+          if (!_isSupportedMediaType(field, mimeType)) {
+            final workerName = (worker['name'] ?? 'Worker').toString();
+            throw StateError(
+              '$workerName — ${_mediaFieldName(field)}: '
+              '${_supportedMediaMessage(field, mimeType)}',
+            );
+          }
+          final fallbackExtension = switch (mimeType) {
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' =>
+              'docx',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            _ => 'jpg',
+          };
+          files.add(
+            UploadFile(
+              folder: folder,
+              fileName: storedName.isNotEmpty
+                  ? storedName
+                  : '${field}_$workerIndex.$fallbackExtension',
+              bytes: bytes,
+              mimeType: mimeType,
+            ),
+          );
+        } else {
+          late final UploadFile remoteFile;
+          try {
+            remoteFile = await UploadService.downloadRemoteFile(
+              url: value,
+              folder: folder,
+              fallbackFileName: storedName.isNotEmpty
+                  ? storedName
+                  : '${field}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
+              fallbackMimeType: field == 'cv'
+                  ? 'application/pdf'
+                  : 'image/jpeg',
+            );
+          } catch (error) {
+            final workerName = (worker['name'] ?? 'Worker').toString();
+            throw StateError(
+              '$workerName — ${_mediaFieldName(field)} link: '
+              '${_readableSaveError(error)}',
+            );
+          }
+          final isImage = remoteFile.mimeType.startsWith('image/');
+          if (!_isSupportedMediaType(field, remoteFile.mimeType)) {
+            final workerName = (worker['name'] ?? 'Worker').toString();
+            throw StateError(
+              '$workerName — ${_mediaFieldName(field)} link: '
+              '${_supportedMediaMessage(field, remoteFile.mimeType)}',
+            );
+          }
+          files.add(remoteFile);
+        }
         targets.add((workerIndex: workerIndex, field: field));
       }
     }
 
     final results = await UploadService.uploadFiles(files: files);
-    if (results.any((result) => !result.isSuccess || result.url == null)) {
-      throw StateError('One or more worker files could not be uploaded.');
+    final failedIndex = results.indexWhere(
+      (result) => !result.isSuccess || result.url == null,
+    );
+    if (failedIndex != -1) {
+      final target = targets[failedIndex];
+      final workerName = (prepared[target.workerIndex]['name'] ?? 'Worker')
+          .toString();
+      throw StateError(
+        '$workerName — ${_mediaFieldName(target.field)} upload: '
+        '${_readableSaveError(results[failedIndex].error ?? 'bulk_media_upload_failed'.tr())}',
+      );
     }
     for (var i = 0; i < results.length; i++) {
       final target = targets[i];
       prepared[target.workerIndex][target.field] = results[i].url;
     }
     return prepared;
+  }
+
+  String _mediaFieldName(String field) {
+    return switch (field) {
+      'profileImage' => 'media_field_profile_image'.tr(),
+      'frontId' => 'media_field_front_id'.tr(),
+      'backId' => 'media_field_back_id'.tr(),
+      'cv' => 'media_field_cv'.tr(),
+      _ => field,
+    };
+  }
+
+  bool _isSupportedMediaType(String field, String mimeType) {
+    final normalized = mimeType.toLowerCase().split(';').first.trim();
+    const supportedImages = {'image/jpeg', 'image/jpg', 'image/png'};
+    if (field != 'cv') return supportedImages.contains(normalized);
+    return supportedImages.contains(normalized) ||
+        normalized == 'application/pdf' ||
+        normalized == 'application/msword' ||
+        normalized ==
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+
+  String _supportedMediaMessage(String field, [String? received]) {
+    if (field == 'cv') {
+      return 'bulk_media_cv_format_error'.tr();
+    }
+    return 'bulk_media_image_format_error'.tr(
+      namedArgs: {'received': received ?? ''},
+    );
+  }
+
+  String _readableSaveError(Object error) {
+    if (error is TimeoutException) {
+      return error.message ?? 'bulk_media_download_timeout'.tr();
+    }
+    if (error is io.HttpException) return error.message;
+    if (error is io.SocketException) return error.message;
+    if (error is io.FileSystemException) return error.message;
+    if (error is FormatException) return error.message;
+
+    var message = error.toString().trim();
+    for (final prefix in [
+      'Bad state: ',
+      'Exception: ',
+      'FirebaseException: ',
+    ]) {
+      if (message.startsWith(prefix)) {
+        message = message.substring(prefix.length).trim();
+      }
+    }
+    if (message.isEmpty) return 'bulk_media_unknown_error'.tr();
+    return message.length > 220 ? '${message.substring(0, 220)}…' : message;
   }
 
   String _computeFileHash(Uint8List bytes) {
@@ -1169,13 +1287,23 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
 
       widget.onBack?.call();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Add bulk worker save failed: ${_readableSaveError(error)}');
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'AddBulkWorkerScreen.save',
+      );
       if (mounted) Navigator.of(context).pop();
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'could_not_save_worker'.tr(),
+          message:
+              '${'could_not_save_worker'.tr()}\n'
+              '${_readableSaveError(error)}',
           isError: true,
+          maxLines: null,
+          displayDuration: const Duration(seconds: 10),
         );
       }
     } finally {
@@ -1354,17 +1482,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                         type: FileType.custom,
                         allowMultiple: false,
                         withData: true,
-                        allowedExtensions: [
-                          'pdf',
-                          'doc',
-                          'docx',
-                          'jpg',
-                          'jpeg',
-                          'png',
-                          'gif',
-                          'bmp',
-                          'webp',
-                        ],
+                        allowedExtensions: fieldKey == 'cv'
+                            ? ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
+                            : ['jpg', 'jpeg', 'png'],
                       );
                       if (result != null && result.files.isNotEmpty) {
                         final file = result.files.first;
@@ -1388,6 +1508,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                             'doc': 'application/msword',
                             'docx':
                                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            'png': 'image/png',
+                            'jpg': 'image/jpeg',
+                            'jpeg': 'image/jpeg',
                           };
                           final mime = mimeMap[ext] ?? 'image/jpeg';
                           final dataUrl =
@@ -1915,7 +2038,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                   uri.scheme != 'https')) {
                                             setDialogState(() {
                                               dialogError =
-                                                  'Please enter a valid HTTP or HTTPS URL';
+                                                  'bulk_media_invalid_url'.tr();
                                             });
                                             return;
                                           }
@@ -1941,23 +2064,24 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                             'jpg',
                                             'jpeg',
                                             'png',
-                                            'gif',
-                                            'bmp',
-                                            'webp',
                                           };
                                           if (fieldKey == 'cv' &&
                                               ext.isNotEmpty &&
                                               !cvExts.contains(ext)) {
                                             setDialogState(() {
                                               dialogError =
-                                                  'Only PDF, DOC, DOCX and image formats (JPG, JPEG, PNG, etc.) are accepted for CV';
+                                                  'bulk_media_cv_format_error'.tr();
                                             });
                                           } else if (fieldKey != 'cv' &&
                                               ext.isNotEmpty &&
                                               !imageExts.contains(ext)) {
                                             setDialogState(() {
                                               dialogError =
-                                                  'Only PNG, JPEG, JPG formats are accepted for images';
+                                                  'bulk_media_image_format_error'.tr(
+                                                    namedArgs: {
+                                                      'received': ext,
+                                                    },
+                                                  );
                                             });
                                           } else {
                                             worker['${fieldKey}_name'] = val

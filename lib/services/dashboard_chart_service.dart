@@ -1,4 +1,5 @@
 import 'payroll_service.dart';
+import 'time_off_service.dart';
 
 class DashboardChartPoint {
   final DateTime date;
@@ -109,6 +110,53 @@ class DashboardChartService {
       );
     });
     return DashboardChartSeries(points: points, total: _sum(points));
+  }
+
+  static bool isDateWithinPeriod(
+    DateTime date,
+    String period, {
+    DateTime? now,
+  }) {
+    final currentValue = now ?? DateTime.now();
+    final current = DateTime(
+      currentValue.year,
+      currentValue.month,
+      currentValue.day,
+    );
+    final target = DateTime(date.year, date.month, date.day);
+    if (target.isAfter(current)) return false;
+
+    final start = switch (period) {
+      'Today' => current,
+      'Week' => current.subtract(const Duration(days: 6)),
+      'Month' => DateTime(current.year, current.month, 1),
+      '6 Month' => DateTime(current.year, current.month - 5, 1),
+      'Yearly' => DateTime(current.year, 1, 1),
+      _ => DateTime(current.year, 1, 1),
+    };
+    return !target.isBefore(start);
+  }
+
+  static List<Map<String, dynamic>> leaveDaysForPeriod({
+    required List<Map<String, dynamic>> records,
+    required String period,
+    DateTime? now,
+  }) {
+    final leaveDays = <Map<String, dynamic>>[];
+    for (final record in records) {
+      if (!TimeOffService.isActiveRecord(record)) continue;
+      final type = TimeOffService.leaveType(record);
+      for (final date in TimeOffService.selectedDatesForRecord(record)) {
+        if (!isDateWithinPeriod(date, period, now: now)) continue;
+        leaveDays.add({
+          'status': 'leave',
+          'type': type,
+          'date': date,
+          'workerId': record['workerId'],
+        });
+      }
+    }
+    return leaveDays;
   }
 
   static bool _sameDay(DateTime first, DateTime second) =>

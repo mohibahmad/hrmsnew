@@ -310,7 +310,7 @@ class WorkerProfileService {
     );
   }
 
-  static Future<void> shareWorkerProfile(Uint8List bytes, String fileName) async {
+  static Future<bool> shareWorkerProfile(Uint8List bytes, String fileName) async {
     final result = await FilePicker.saveFile(
       dialogTitle: 'Save Worker Profile',
       fileName: fileName,
@@ -321,7 +321,9 @@ class WorkerProfileService {
     if (result != null) {
       final file = File(result);
       await file.writeAsBytes(bytes);
+      return true;
     }
+    return false;
   }
 
   static Future<bool> downloadWorkerProfile(Uint8List bytes, String fileName) async {

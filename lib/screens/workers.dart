@@ -1487,13 +1487,19 @@ class _WorkerProfilePreviewDialogState
       final fileName = '${safeName}_profile.pdf';
 
       if (isShare) {
-        await WorkerProfileService.shareWorkerProfile(bytes, fileName);
+        final saved = await WorkerProfileService.shareWorkerProfile(bytes, fileName);
+        if (saved && mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'profile_shared_successfully'.tr(),
+          );
+        }
       } else {
         final saved = await WorkerProfileService.downloadWorkerProfile(bytes, fileName);
         if (saved && mounted) {
           FlashySnackBar.show(
             context,
-            message: 'Profile PDF downloaded successfully',
+            message: 'profile_shared_successfully'.tr(),
           );
         }
       }

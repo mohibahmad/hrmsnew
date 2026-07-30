@@ -1200,7 +1200,9 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       FlashySnackBar.show(
         context,
         message: widget.workerToEdit != null
-            ? '$workerName updated successfully!'
+            ? 'worker_updated_successfully'.tr(
+                namedArgs: {'name': workerName},
+              )
             : 'worker_added_successfully'.tr(),
       );
       await tryShowFirstMilestoneRateUs('worker');

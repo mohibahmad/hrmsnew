@@ -813,6 +813,7 @@
   "notif_title_bulk_workers": "Funcionários adicionados em massa",
   "notif_title_attendance": "Presença marcada para {name}",
   "notif_title_payroll": "Folha de pagamento processada para {name}",
+  "notif_title_payroll_due": "A folha de pagamento ainda está pendente",
   "notif_title_time_off": "Solicitação de afastamento atribuída a {name}",
   "notif_title_holiday": "O feriado \"{name}\" foi adicionado",
   "notif_title_expense_category": "Nova despesa: {category}",
@@ -825,6 +826,7 @@
   "notif_msg_attendance": "A presença de {name} foi registrada.",
   "notif_msg_payroll_amount": "O salário de {amount} foi processado para {name}.",
   "notif_msg_payroll": "A folha de pagamento de {name} foi registrada.",
+  "notif_msg_payroll_due": "Os salários de {count} trabalhadores referentes a {period} ainda não foram pagos. O mês está terminando; processe a folha.",
   "notif_msg_time_off": "{type} foi atribuído a {name}.",
   "notif_msg_holiday": "{name} foi adicionado ao calendário de feriados.",
   "notif_msg_expense_amount": "Uma despesa de {amount} foi registrada.",
@@ -1009,5 +1011,16 @@
   "resend_email": "Reenviar e-mail",
   "check_email_reset_link": "Verifique {email} para o link de redefinição.",
   "invoice_generation_failed_after_save": "A folha de pagamento foi salva, mas não foi possível gerar a fatura.",
-  "worker_id_required": "O ID do trabalhador é obrigatório."
+  "worker_id_required": "O ID do trabalhador é obrigatório.",
+  "media_field_profile_image": "Imagem de perfil",
+  "media_field_front_id": "Imagem frontal do ID",
+  "media_field_back_id": "Imagem traseira do ID",
+  "media_field_cv": "CV",
+  "bulk_media_image_format_error": "A imagem deve ser JPG, JPEG ou PNG. Recebido: {received}.",
+  "bulk_media_cv_format_error": "O CV deve ser PDF, DOC, DOCX, JPG, JPEG ou PNG.",
+  "bulk_media_invalid_url": "Insira um link HTTP/HTTPS válido ou faça upload de um arquivo.",
+  "bulk_media_upload_failed": "Falha no upload.",
+  "bulk_media_download_timeout": "O download expirou.",
+  "bulk_media_unknown_error": "Erro desconhecido.",
+  "worker_updated_successfully": "{name} atualizado com sucesso!"
 }

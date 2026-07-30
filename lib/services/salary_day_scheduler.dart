@@ -133,14 +133,19 @@ class SalaryDayScheduler {
     final today = DateTime.now();
 
     if (!PayrollService.isPayrollDue(today, salaryDay)) return false;
+    if (!context.mounted) return false;
 
-    final period = PayrollService.payrollPeriodLabel(
-      PayrollService.completedPayrollMonth(referenceDate: today),
-    );
+    final payrollMonth = await _loadActivePayrollMonth(context, today);
+    final period = PayrollService.payrollPeriodLabel(payrollMonth);
     if (await _alreadyRanForPeriod(period)) return false;
 
     // Offer the run (semi‑auto by default).
-    final summary = await runPayroll(context, autoMode: false);
+    if (!context.mounted) return false;
+    final summary = await runPayroll(
+      context,
+      autoMode: false,
+      payrollMonth: payrollMonth,
+    );
     return summary != null;
   }
 
@@ -151,6 +156,7 @@ class SalaryDayScheduler {
   Future<PayrollRunSummary?> runPayroll(
     BuildContext context, {
     bool autoMode = false,
+    DateTime? payrollMonth,
   }) async {
     final isGuest =
         Provider.of<AuthService>(
@@ -206,10 +212,11 @@ class SalaryDayScheduler {
     }
 
     final now = DateTime.now();
-    final payrollMonth = PayrollService.completedPayrollMonth(
-      referenceDate: now,
+    final effectivePayrollMonth =
+        payrollMonth ?? PayrollService.currentPayrollMonth(referenceDate: now);
+    final periodLabel = PayrollService.payrollPeriodLabel(
+      effectivePayrollMonth,
     );
-    final periodLabel = PayrollService.payrollPeriodLabel(payrollMonth);
 
     final firestoreService = Provider.of<FirestoreService>(
       context,
@@ -225,7 +232,7 @@ class SalaryDayScheduler {
               .getWorkerMonthlyAttendance(
                 email,
                 workerId: workerId,
-                month: payrollMonth,
+                month: effectivePayrollMonth,
               )
               .catchError((_) {
                 final att = PayrollService.attendanceCounts(worker);
@@ -252,7 +259,7 @@ class SalaryDayScheduler {
     final attendanceResults = await Future.wait(attendanceFutures);
 
     final autoWorkDays = await firestoreService.getMonthlyWorkingDays(
-      month: payrollMonth,
+      month: effectivePayrollMonth,
     );
 
     final results = <AutoPayrollResult>[];
@@ -410,8 +417,15 @@ class SalaryDayScheduler {
     return committedSummary;
   }
 
-  Future<PayrollRunSummary?> payAll(BuildContext context) async {
-    final result = await runPayroll(context, autoMode: false);
+  Future<PayrollRunSummary?> payAll(
+    BuildContext context, {
+    DateTime? payrollMonth,
+  }) async {
+    final result = await runPayroll(
+      context,
+      autoMode: false,
+      payrollMonth: payrollMonth,
+    );
     return result;
   }
 
@@ -433,6 +447,28 @@ class SalaryDayScheduler {
     final day = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
     if (day != null && (day < 1 || day > 31)) return null;
     return day;
+  }
+
+  Future<DateTime> _loadActivePayrollMonth(
+    BuildContext context,
+    DateTime referenceDate,
+  ) async {
+    final fallback = PayrollService.currentPayrollMonth(
+      referenceDate: referenceDate,
+    );
+    final isGuest =
+        Provider.of<AuthService>(
+          context,
+          listen: false,
+        ).currentUser?.isAnonymous ??
+        false;
+    final firestoreService = isGuest
+        ? null
+        : Provider.of<FirestoreService>(context, listen: false);
+    final rawPeriod = isGuest
+        ? await PreferencesService.getActivePayrollPeriod()
+        : (await firestoreService!.getUserProfile())?['activePayrollPeriod'];
+    return PayrollService.parsePayrollPeriodLabel(rawPeriod) ?? fallback;
   }
 
   Future<bool> _alreadyRanForPeriod(String periodLabel) async {

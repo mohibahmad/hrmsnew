@@ -15,22 +15,20 @@ class PreferencesService {
   static const String _rateUsFirstAssetKey = 'rate_us_first_asset';
   static const String _companyWorkingDaysKey = 'company_working_days';
   static const String _companySalaryDayKey = 'company_salary_day';
+  static const String _activePayrollPeriodKey = 'active_payroll_period';
   static const String _guestProfileKey = 'guest_profile_data';
   static const String _guestWorkersKey = 'guest_workers_data';
   static const String _guestPayrollKey = 'guest_payroll_data';
 
-  
   static String? _cachedProfilePicUrl;
   static bool _cachedIsGuest = false;
 
-  
   static Future<void> initFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _cachedProfilePicUrl = prefs.getString(_profilePicUrlKey);
     _cachedIsGuest = prefs.getBool(_guestKey) ?? false;
   }
 
-  
   static String? get cachedProfilePicUrl => _cachedProfilePicUrl;
   static bool get cachedIsGuest => _cachedIsGuest;
 
@@ -112,6 +110,16 @@ class PreferencesService {
     }
   }
 
+  static Future<String?> getActivePayrollPeriod() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_activePayrollPeriodKey);
+  }
+
+  static Future<void> setActivePayrollPeriod(String periodLabel) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activePayrollPeriodKey, periodLabel);
+  }
+
   static Future<void> setGuestProfileData(Map<String, String> data) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_guestProfileKey, jsonEncode(data));
@@ -174,7 +182,7 @@ class PreferencesService {
     } else {
       await prefs.remove(_profilePicUrlKey);
     }
-    
+
     _cachedProfilePicUrl = url;
   }
 
@@ -206,12 +214,11 @@ class PreferencesService {
 
   static Future<void> setRateUsRemindLater() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     final remindDate = DateTime.now().add(const Duration(days: 1));
     await prefs.setString(_rateUsRemindLaterKey, remindDate.toIso8601String());
   }
 
-  
   static Future<bool> _getBool(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(key) ?? false;
@@ -262,6 +269,7 @@ class PreferencesService {
     await prefs.remove(_rateUsFirstAssetKey);
     await prefs.remove(_companyWorkingDaysKey);
     await prefs.remove(_companySalaryDayKey);
+    await prefs.remove(_activePayrollPeriodKey);
     await prefs.remove(_guestPayrollKey);
     _cachedProfilePicUrl = null;
     _cachedIsGuest = false;
