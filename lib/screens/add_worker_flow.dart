@@ -2992,13 +2992,16 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                               ),
                             ),
                             const SizedBox(width: 20),
-                            Text(
-                              '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()}${_calendarMonth.year}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                letterSpacing: 1.0,
-                                fontFamily: 'SF Pro Display',
+                            Flexible(
+                              child: Text(
+                                '${DateFormat('MMMM', context.locale.toString()).format(_calendarMonth).toUpperCase()} ${_calendarMonth.year}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  letterSpacing: 1.0,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 20),
@@ -3095,6 +3098,22 @@ class _ExperienceFormSectionState extends State<ExperienceFormSection> {
                                         _calendarMonth.month,
                                         day,
                                       );
+                                      final now = DateTime.now();
+                                      final today = DateTime(
+                                        now.year,
+                                        now.month,
+                                        now.day,
+                                      );
+                                      if (selected.isAfter(today)) {
+                                        FlashySnackBar.show(
+                                          context,
+                                          message:
+                                              'joining_date_cannot_be_future'
+                                                  .tr(),
+                                          isError: true,
+                                        );
+                                        return;
+                                      }
                                       final monthName = _localizedMonth(
                                         selected.month,
                                       );

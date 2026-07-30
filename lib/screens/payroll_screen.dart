@@ -652,7 +652,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+
+                  const SizedBox(height: 10),
                   _buildFilterTabs(),
                   const SizedBox(height: 20),
                   Row(
@@ -937,16 +939,25 @@ class _PayrollScreenState extends State<PayrollScreen> {
       'Management',
     ];
     final actualPositions = <String>{};
+    final positionNormalizer = <String, String>{};
     for (final w in _workersList) {
       final pos = (w['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty) actualPositions.add(pos);
+      if (pos.isNotEmpty) {
+        final key = pos.toLowerCase();
+        if (!positionNormalizer.containsKey(key)) {
+          positionNormalizer[key] = pos;
+          actualPositions.add(pos);
+        }
+      }
     }
     final sortedPositions = actualPositions.toList()..sort();
 
     final positionsToShow = <String>[...sortedPositions];
     for (final position in defaultPositions) {
       final alreadyIncluded = positionsToShow.any(
-        (item) => item.toLowerCase() == position.toLowerCase(),
+        (item) =>
+            item.toLowerCase().contains(position.toLowerCase()) ||
+            position.toLowerCase().contains(item.toLowerCase()),
       );
       if (!alreadyIncluded) {
         positionsToShow.add(position);
@@ -958,7 +969,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ...positionsToShow.map((p) => {'key': p, 'label': p}),
     ];
     return Container(
-      width: 550,
+      width: 620,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -986,10 +997,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
         _selectedFilter = filterKey;
       }),
       child: Container(
-        height: 38,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 16,
+          vertical: 8,
+        ),
         margin: const EdgeInsets.only(right: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0D4CC6) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),

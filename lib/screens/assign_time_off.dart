@@ -649,17 +649,26 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
                   ),
                 ),
                 onPressed: _isLoading ? null : _handleCancelTimeOff,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'cancel_time_off'.tr(),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFE53935),
+                        ),
+                      )
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'cancel_time_off'.tr(),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
               ),
             ),
           ),

@@ -60,11 +60,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   final Color sidebarBlue = const Color(0xFF0B50C3);
   final Color activeTabBlue = const Color(0xFF4C84E0);
 
-  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey = GlobalKey<AddBulkWorkerScreenState>();
+  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey =
+      GlobalKey<AddBulkWorkerScreenState>();
 
   Future<void> _navigateTo(int index) async {
     if (index == _currentMenuIndex) return;
-    if (_currentMenuIndex == 2 && _bulkWorkerKey.currentState?.hasUnsavedChanges == true) {
+    if (_currentMenuIndex == 2 &&
+        _bulkWorkerKey.currentState?.hasUnsavedChanges == true) {
       final shouldPop = await _bulkWorkerKey.currentState!.confirmDiscard();
       if (!shouldPop) return;
     }
@@ -419,13 +421,13 @@ class WorkersScreenState extends State<WorkersScreen> {
   bool _isAddingWorker = false;
   bool _isAddingBulkWorker = false;
   Map<String, dynamic>? _workerToEdit;
-  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey = GlobalKey<AddBulkWorkerScreenState>();
+  final GlobalKey<AddBulkWorkerScreenState> _bulkWorkerKey =
+      GlobalKey<AddBulkWorkerScreenState>();
 
-  
   bool get hasUnsavedBulkChanges =>
-      _isAddingBulkWorker && _bulkWorkerKey.currentState?.hasUnsavedChanges == true;
+      _isAddingBulkWorker &&
+      _bulkWorkerKey.currentState?.hasUnsavedChanges == true;
 
-  
   Future<bool> confirmDiscardBulkChanges() async {
     if (!hasUnsavedBulkChanges) return true;
     return _bulkWorkerKey.currentState?.confirmDiscard() ?? true;
@@ -535,16 +537,15 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       setState(() {
-        
         _allWorkers = DummyData.workers
             .map((w) => Map<String, dynamic>.from(w))
             .toList();
-        
+
         for (int i = 0; i < _allWorkers.length; i++) {
-          _allWorkers[i]['profileImage'] =
-              i.isEven ? 'assets/boy.png' : 'assets/imageplaceholder.png';
-          
-          
+          _allWorkers[i]['profileImage'] = i.isEven
+              ? 'assets/boy.png'
+              : 'assets/imageplaceholder.png';
+
           _allWorkers[i]['type1'] = _allWorkers[i]['workType'] ?? '';
           _allWorkers[i]['type2'] = _allWorkers[i]['attendanceType'] ?? '';
         }
@@ -911,9 +912,16 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                       'Management',
                     ];
                     final actualPositions = <String>{};
+                    final positionNormalizer = <String, String>{};
                     for (final w in _allWorkers) {
                       final pos = (w['position'] ?? '').toString().trim();
-                      if (pos.isNotEmpty) actualPositions.add(pos);
+                      if (pos.isNotEmpty) {
+                        final key = pos.toLowerCase();
+                        if (!positionNormalizer.containsKey(key)) {
+                          positionNormalizer[key] = pos;
+                          actualPositions.add(pos);
+                        }
+                      }
                     }
                     final sortedPositions = actualPositions.toList()..sort();
 
@@ -921,7 +929,10 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     for (final position in defaultPositions) {
                       final alreadyIncluded = positionsToShow.any(
                         (item) =>
-                            item.toLowerCase() == position.toLowerCase(),
+                            item.toLowerCase().contains(
+                              position.toLowerCase(),
+                            ) ||
+                            position.toLowerCase().contains(item.toLowerCase()),
                       );
                       if (!alreadyIncluded) {
                         positionsToShow.add(position);
@@ -931,7 +942,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                     final allFilters = ['All', ...positionsToShow];
 
                     return Container(
-                      width: 550,
+                      width: 620,
                       height: 46,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
@@ -1480,14 +1491,18 @@ class _WorkerProfilePreviewDialogState
         relationshipStatus: _na(_v(worker, 'relationshipStatus')),
         address: _na(_v(worker, 'address')),
         profileImageUrl: profileImage,
-        generatedOnText: '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
+        generatedOnText:
+            '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
       );
 
       final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
       final fileName = '${safeName}_profile.pdf';
 
       if (isShare) {
-        final saved = await WorkerProfileService.shareWorkerProfile(bytes, fileName);
+        final saved = await WorkerProfileService.shareWorkerProfile(
+          bytes,
+          fileName,
+        );
         if (saved && mounted) {
           FlashySnackBar.show(
             context,
@@ -1495,7 +1510,10 @@ class _WorkerProfilePreviewDialogState
           );
         }
       } else {
-        final saved = await WorkerProfileService.downloadWorkerProfile(bytes, fileName);
+        final saved = await WorkerProfileService.downloadWorkerProfile(
+          bytes,
+          fileName,
+        );
         if (saved && mounted) {
           FlashySnackBar.show(
             context,

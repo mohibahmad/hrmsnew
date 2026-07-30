@@ -797,11 +797,17 @@ class SalaryDayScheduler {
       }
     }
 
-    final allPositions = <String>{
-      for (final r in summary.results)
-        if (r.position.trim().isNotEmpty) r.position.trim(),
-    }.toList();
-    allPositions.sort();
+    final positionNormalizer = <String, String>{};
+    for (final r in summary.results) {
+      final pos = r.position.trim();
+      if (pos.isNotEmpty) {
+        final key = pos.toLowerCase();
+        if (!positionNormalizer.containsKey(key)) {
+          positionNormalizer[key] = pos;
+        }
+      }
+    }
+    final allPositions = positionNormalizer.values.toList()..sort();
 
     return showGeneralDialog<List<AutoPayrollResult>>(
       context: context,

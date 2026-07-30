@@ -408,7 +408,37 @@ class FirestoreService {
 
   Future<void> deleteWorker(String id) async {
     final coll = _workers;
-    if (coll == null) return;
+    if (coll == null || id.isEmpty) return;
+
+    // Cascade delete related records from all collections
+    final collections = <CollectionReference?>[
+      _attendance,
+      _timeoff,
+      _payroll,
+      _expenses,
+      _assets,
+    ];
+
+    for (final collection in collections) {
+      if (collection == null) continue;
+      final snapshot = await collection.where('workerId', isEqualTo: id).get();
+      if (snapshot.docs.isEmpty) continue;
+
+      var batch = _db.batch();
+      int count = 0;
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+        count++;
+        if (count % 500 == 0) {
+          await batch.commit();
+          batch = _db.batch();
+        }
+      }
+      if (count % 500 != 0 && count > 0) {
+        await batch.commit();
+      }
+    }
+
     await coll.doc(id).delete();
   }
 
@@ -497,15 +527,15 @@ class FirestoreService {
     if (coll == null) throw StateError('No authenticated user');
     final workerId = (record['workerId'] ?? '').toString().trim();
     final now = DateTime.now();
-    final attendanceDate =
+    final dateKey =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-'
         '${now.day.toString().padLeft(2, '0')}';
     final docRef = workerId.isNotEmpty
-        ? coll.doc('${workerId}_$attendanceDate')
+        ? coll.doc('${workerId}_$dateKey')
         : coll.doc();
     await docRef.set({
       ...record,
-      'attendanceDate': attendanceDate,
+      'attendanceDate': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
@@ -527,8 +557,10 @@ class FirestoreService {
     Validators.validateAttendance(data);
     final coll = _attendance;
     if (coll == null) return;
+    final now = DateTime.now();
     await coll.doc(id).update({
       ...data,
+      'attendanceDate': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -564,18 +596,10 @@ class FirestoreService {
         targetMonth.month + 1,
         1,
       );
-      String dateKey(DateTime date) =>
-          '${date.year.toString().padLeft(4, '0')}-'
-          '${date.month.toString().padLeft(2, '0')}-'
-          '${date.day.toString().padLeft(2, '0')}';
-
       final snapshots = await Future.wait([
         coll
-            .where(
-              'attendanceDate',
-              isGreaterThanOrEqualTo: dateKey(startOfMonth),
-            )
-            .where('attendanceDate', isLessThan: dateKey(startOfNextMonth))
+            .where('attendanceDate', isGreaterThanOrEqualTo: startOfMonth)
+            .where('attendanceDate', isLessThan: startOfNextMonth)
             .get(),
         coll
             .where('createdAt', isGreaterThanOrEqualTo: startOfMonth)

@@ -1380,8 +1380,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }) {
     final parsed = _parseDate(currentValue);
     final displayText =
-        currentValue.isNotEmpty ? currentValue : 'Select date';
-    final hasError = fieldKey == 'dob' && parsed != null && !_isAtLeast18(parsed);
+        currentValue.isNotEmpty ? currentValue : 'Tap to select date';
+    final hasError =
+        (fieldKey == 'dob' && parsed != null && !_isAtLeast18(parsed)) ||
+        (fieldKey == 'joiningDate' &&
+            parsed != null &&
+            parsed.isAfter(DateTime.now()));
 
     return GestureDetector(
       onTap: () => _showCupertinoDatePicker(
@@ -1395,6 +1399,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       child: Container(
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: hasError ? const Color(0xFFDC2626) : const Color(0xFFD1D5DB),
@@ -1404,6 +1409,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: [
+            const Icon(
+              CupertinoIcons.calendar,
+              size: 18,
+              color: Color(0xFF9CA3AF),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1412,19 +1423,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontFamily: 'SF Pro Display',
+                    fontWeight: FontWeight.w500,
                     color: currentValue.isEmpty
                         ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF111827),
+                        : const Color(0xFF374151),
                   ),
                 ),
               ),
             ),
-            const Icon(
-              CupertinoIcons.calendar,
-              size: 20,
-              color: Color(0xFF0247C4),
-            ),
-            const SizedBox(width: 4),
           ],
         ),
       ),
@@ -1587,6 +1593,17 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         FlashySnackBar.show(
                                           context,
                                           message: 'worker_must_be_18'.tr(),
+                                          isError: true,
+                                        );
+                                        return;
+                                      }
+                                      if (fieldKey == 'joiningDate' &&
+                                          selected.isAfter(DateTime.now())) {
+                                        FlashySnackBar.show(
+                                          context,
+                                          message:
+                                              'joining_date_cannot_be_future'
+                                                  .tr(),
                                           isError: true,
                                         );
                                         return;
@@ -1852,7 +1869,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                   _buildDateField(
                                     context: ctx,
                                     fieldKey: fieldKey,
-                                    currentValue: currentValue,
+                                    currentValue: controller.text,
                                     label: label,
                                     setDialogState: setDialogState,
                                     onDateSelected: (dateStr) {

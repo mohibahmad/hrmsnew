@@ -168,6 +168,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             _workers = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
+            // Re-filter period records to exclude records for deleted workers
+            _periodAttendanceRecords = _periodAttendanceRecords
+                .where((att) => _attendanceBelongsToCurrentWorker(att))
+                .toList();
             _todayAttendance = _latestAttendancePerWorker(
               _periodAttendanceRecords,
             );
@@ -205,6 +209,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
               return 0;
             });
             final filtered = sortedList.where((att) {
+              // Skip attendance records for workers that have been deleted
+              if (!_attendanceBelongsToCurrentWorker(att)) return false;
               return app_date_utils.AppDateUtils.isAttendanceRecordWithinPeriod(
                 att,
                 _selectedTimeframe,
@@ -568,14 +574,14 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         final knownEmail = WorkerIdentity.normalizeEmail(worker?['email']);
         return email.isNotEmpty && knownEmail.isNotEmpty && email == knownEmail;
       }, orElse: () => null);
-      if (matchingWorker != null &&
-          !AttendanceService.recordIsOnOrAfterWorkerCreation(
-            worker: matchingWorker,
-            attendanceRecord: att,
-          )) {
+      if (matchingWorker == null) continue;
+      if (!AttendanceService.recordIsOnOrAfterWorkerCreation(
+        worker: matchingWorker,
+        attendanceRecord: att,
+      )) {
         continue;
       }
-      final canonicalWorkerId = (matchingWorker?['id'] ?? '').toString().trim();
+      final canonicalWorkerId = (matchingWorker['id'] ?? '').toString().trim();
       final identityKey = canonicalWorkerId.isNotEmpty
           ? 'id:$canonicalWorkerId'
           : workerId.isNotEmpty
@@ -635,7 +641,13 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
+    final ids = _currentWorkerIds;
     return _workers.where((worker) {
+      // Only show workers that exist (defense in depth)
+      if (ids.isNotEmpty) {
+        final wid = (worker['id'] ?? '').toString().trim();
+        if (wid.isNotEmpty && !ids.contains(wid)) return false;
+      }
       if (!AttendanceService.workerExistedOnDate(worker, DateTime.now())) {
         return false;
       }
@@ -654,8 +666,26 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
     }).toList();
   }
 
+  /// Set of current worker IDs (non-empty) for filtering attendance.
+  Set<String> get _currentWorkerIds {
+    return _workers
+        .map((w) => (w['id'] ?? '').toString().trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
+  /// Returns true if the attendance record belongs to a worker that still exists.
+  bool _attendanceBelongsToCurrentWorker(Map<String, dynamic> record) {
+    final ids = _currentWorkerIds;
+    if (ids.isEmpty) return true; // workers not loaded yet
+    final workerId = (record['workerId'] ?? '').toString().trim();
+    if (workerId.isEmpty) return true; // no workerId in record
+    return ids.contains(workerId);
+  }
+
   List<Map<String, dynamic>> get _visibleTodayAttendance {
     return _todayAttendance
+        .where((record) => _attendanceBelongsToCurrentWorker(record))
         .where((record) => !_isWorkerOnPlannedTimeOff(record))
         .toList();
   }
@@ -881,7 +911,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       height: 94,
-      padding: const EdgeInsets.only(left: 40, right: 40, top: 24, bottom: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
@@ -912,7 +942,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
             'workforce'.tr(),
             style: TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: textDark,
               fontFamily: 'SF Pro Display',
             ),
@@ -920,12 +950,11 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           const Spacer(),
           NotificationBell(onTap: widget.onNotificationTap),
           const SizedBox(width: 20),
-          GestureDetector(
-            onTap: widget.onProfileTap,
-            behavior: HitTestBehavior.opaque,
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child: UserAvatar(),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: widget.onProfileTap,
+              child: const UserAvatar(),
             ),
           ),
         ],
@@ -1080,8 +1109,8 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return WillPopScope(
-              onWillPop: () async => false,
+            return PopScope(
+              canPop: true,
               child: Dialog(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(0),
@@ -1164,7 +1193,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                                             },
                                       child: _buildToggleChip(
                                         'present'.tr(),
-                                        'assets/present_worker.svg',
+                                        'assets/present icon for mark attendence.png',
                                         isSelected: selectedStatus == 'Present',
                                       ),
                                     ),
@@ -1829,7 +1858,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                       isError: true,
                     );
                   } else {
-                    _openAttendanceDialog(context, entry.value);
+                    final workerStatus = _getWorkerStatus(entry.value);
+                    if (workerStatus.isEmpty) {
+                      _openAttendanceDialog(context, entry.value);
+                    }
                   }
                 },
               ),
@@ -1978,15 +2010,13 @@ class WorkerListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F8FC),
-          borderRadius: BorderRadius.circular(6),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FC),
+        borderRadius: BorderRadius.circular(6),
+      ),
         child: Row(
           children: [
             WorkerAvatar(
@@ -2075,32 +2105,28 @@ class WorkerListItem extends StatelessWidget {
               ),
             ] else ...[
               const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E5EA),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Attendance Marked',
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'SF Pro Display',
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E5EA),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Attendance Marked',
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
             ],
           ],
         ),
-      ),
     );
   }
 }

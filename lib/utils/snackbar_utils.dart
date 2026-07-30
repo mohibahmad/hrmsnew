@@ -180,58 +180,50 @@ class _FlashySnackBarBodyState extends State<_FlashySnackBarBody>
                               color: Color(0xFFFFFFFF),
                               size: 22,
                             )
-                          : Image.asset(
-                              'assets/sucess.png',
-                              width: 22,
-                              height: 22,
-                              color: const Color(0xFFFFFFFF),
+                          : const Icon(
+                              Icons.check_circle_outline,
+                              color: Color(0xFFFFFFFF),
+                              size: 22,
                             ),
                     ),
                     const SizedBox(width: 14),
-                    Flexible(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.sizeOf(context).height * 0.55,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.title ??
-                                    (widget.isError
-                                        ? 'error_title'.tr()
-                                        : 'success'.tr()),
-                                softWrap: true,
-                                maxLines: 2,
-                                overflow: TextOverflow.visible,
-                                style: const TextStyle(
-                                  color: Color(0xFFFFFFFF),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                widget.message,
-                                softWrap: true,
-                                maxLines: widget.maxLines,
-                                overflow: TextOverflow.visible,
-                                style: const TextStyle(
-                                  color: Color(0xFFFFFFFF),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  fontFamily: 'SF Pro Display',
-                                ),
-                              ),
-                            ],
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title ??
+                                (widget.isError
+                                    ? 'error_title'.tr()
+                                    : 'success'.tr()),
+                            softWrap: true,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'SF Pro Display',
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.message,
+                            softWrap: true,
+                            maxLines: widget.maxLines,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: _dismiss,
                       child: const Icon(

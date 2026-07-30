@@ -536,6 +536,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
             _attendanceDocs = _allAttendanceDocs.where((att) {
+              // Skip attendance records for workers that have been deleted
+              if (!_attendanceBelongsToExistingWorker(att)) return false;
+
               final createdAt = att['createdAt'];
               if (createdAt == null) return false;
               DateTime? dt;
@@ -774,9 +777,29 @@ class _HomeScreenState extends State<HomeScreen> {
     _totalSalarySum = salarySeries.total;
   }
 
+  /// Returns the set of current worker IDs (non-empty) for filtering attendance.
+  Set<String> get _existingWorkerIds {
+    return _workersDocs
+        .map((w) => (w['id'] ?? '').toString().trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
+  /// Returns true if the attendance record belongs to a worker that still exists.
+  bool _attendanceBelongsToExistingWorker(Map<String, dynamic> att) {
+    final existingIds = _existingWorkerIds;
+    if (existingIds.isEmpty) return true; // workers not loaded yet, include all
+    final workerId = (att['workerId'] ?? '').toString().trim();
+    if (workerId.isEmpty) return true; // no workerId in record, include
+    return existingIds.contains(workerId);
+  }
+
   List<Map<String, dynamic>> _getFilteredAttendanceDocs(String period) {
     final now = DateTime.now();
     return _allAttendanceDocs.where((att) {
+      // Skip attendance records for workers that have been deleted
+      if (!_attendanceBelongsToExistingWorker(att)) return false;
+
       final createdAt = att['createdAt'];
       DateTime? dt;
       if (createdAt != null) {

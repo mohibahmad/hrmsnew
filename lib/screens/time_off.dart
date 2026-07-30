@@ -433,16 +433,25 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       'Management',
     ];
     final actualPositions = <String>{};
+    final positionNormalizer = <String, String>{};
     for (final w in _workersList) {
       final pos = (w['position'] ?? '').toString().trim();
-      if (pos.isNotEmpty) actualPositions.add(pos);
+      if (pos.isNotEmpty) {
+        final key = pos.toLowerCase();
+        if (!positionNormalizer.containsKey(key)) {
+          positionNormalizer[key] = pos;
+          actualPositions.add(pos);
+        }
+      }
     }
     final sortedPositions = actualPositions.toList()..sort();
 
     final positionsToShow = <String>[...sortedPositions];
     for (final position in defaultPositions) {
       final alreadyIncluded = positionsToShow.any(
-        (item) => item.toLowerCase() == position.toLowerCase(),
+        (item) =>
+            item.toLowerCase().contains(position.toLowerCase()) ||
+            position.toLowerCase().contains(item.toLowerCase()),
       );
       if (!alreadyIncluded) {
         positionsToShow.add(position);
@@ -452,7 +461,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final allFilters = ['All', ...positionsToShow];
 
     return Container(
-      width: 550,
+      width: 620,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -612,7 +621,27 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
                       showGuestRestrictionDialog(context);
                       return;
                     }
-                    _showTimeOffDataDialog(context, doc, index);
+                    if (hasTimeOff) {
+                      _showTimeOffDataDialog(context, doc, index);
+                    } else {
+                      if (widget.onAssignTimeOff != null) {
+                        widget.onAssignTimeOff!(doc);
+                      } else {
+                        Navigator.of(context)
+                            .push(
+                              MaterialPageRoute(
+                                builder: (context) => AssignTimeOffScreen(
+                                  onBack: () => Navigator.of(context).pop(),
+                                  initialWorker: doc,
+                                ),
+                              ),
+                            )
+                            .then((_) {
+                              if (!isGuest) return;
+                              _refreshGuestData();
+                            });
+                      }
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(

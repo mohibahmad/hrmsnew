@@ -47,10 +47,14 @@ class AttendanceReportService {
     };
 
     final start = switch (normalizedPeriod) {
-      'Week' => end.subtract(const Duration(days: 7)),
-      'Month' => end.subtract(const Duration(days: 30)),
-      '6 Month' => end.subtract(const Duration(days: 180)),
-      'Yearly' => end.subtract(const Duration(days: 365)),
+      'Week' => end.subtract(const Duration(days: 6)),
+      'Month' => DateTime(now.year, now.month, 1),
+      '6 Month' => DateTime(
+          now.month > 6 ? now.year : now.year - 1,
+          now.month > 6 ? now.month - 6 : now.month + 6,
+          1,
+        ),
+      'Yearly' => DateTime(now.year, 1, 1),
       _ => end,
     };
 
