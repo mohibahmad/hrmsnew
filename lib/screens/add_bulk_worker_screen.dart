@@ -1919,6 +1919,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           if (fieldKey == 'address') {
             return [LengthLimitingTextInputFormatter(200)];
           }
+          if (fieldKey == 'annualLeaves') {
+            return [
+              LengthLimitingTextInputFormatter(3),
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                if (newValue.text.isEmpty) return newValue;
+                final value = int.tryParse(newValue.text);
+                if (value == null || value > 366) {
+                  return oldValue;
+                }
+                return newValue;
+              }),
+            ];
+          }
           if (fieldKey == 'profileImage' ||
               fieldKey == 'frontId' ||
               fieldKey == 'backId' ||

@@ -160,7 +160,6 @@ class InvoiceService {
                     lines: [
                       companyName,
                       companyAddress,
-                      if (companyEmail.trim().isNotEmpty) companyEmail,
                       if (companyPhone.trim().isNotEmpty) companyPhone,
                     ],
                     textColor: textColor,
