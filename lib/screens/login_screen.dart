@@ -35,41 +35,58 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
+  bool _initialized = false;
 
   bool get _anyLoading => _isLoading || _isGoogleLoading || _isGuestLoading;
 
   late AuthService _authService;
   late FirestoreService _firestoreService;
+  late final TapGestureRecognizer _signUpRecognizer;
 
   StreamSubscription? _googleSub;
 
   @override
   void initState() {
     super.initState();
+    _signUpRecognizer = TapGestureRecognizer();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestoreService = Provider.of<FirestoreService>(context, listen: false);
 
-    _googleSub?.cancel();
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')
         .doc('google')
         .snapshots()
-        .listen((doc) {
-          if (!mounted) return;
-          setState(() {
-            _googleEnabled = doc.data()?['googleEnable'] ?? true;
-          });
-        });
+        .listen(
+          (doc) {
+            if (!mounted) return;
+            final rawEnabled = doc.data()?['googleEnable'];
+            final enabled = rawEnabled is bool ? rawEnabled : true;
+            if (_googleEnabled != enabled) {
+              setState(() => _googleEnabled = enabled);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'loginGoogleConfig',
+            );
+          },
+        );
   }
 
   @override
   void dispose() {
     _googleSub?.cancel();
+    _signUpRecognizer.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -91,16 +108,23 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         final profile = await _firestoreService.getUserProfile();
-        if (profile != null) {
-          final pic = profile['profilePic'];
-          if (pic != null && pic.isNotEmpty) {
-            AuthService.profilePicNotifier.value = pic;
-            await PreferencesService.setProfilePicUrl(pic);
-          }
-          final isPremium = profile['isPremium'] == true;
-          await PreferencesService.setPremium(isPremium);
+        if (profile == null) {
+          await _authService.signOut();
+          if (mounted) _showErrorSnackBar('user_not_found'.tr());
+          return;
         }
 
+        final pic = (profile['profilePic'] ?? '').toString().trim();
+        if (pic.isNotEmpty) {
+          AuthService.profilePicNotifier.value = pic;
+          await PreferencesService.setProfilePicUrl(pic);
+        } else {
+          AuthService.profilePicNotifier.value = null;
+          await PreferencesService.setProfilePicUrl(null);
+        }
+        await PreferencesService.setPremium(profile['isPremium'] == true);
+
+        if (!mounted) return;
         FlashySnackBar.show(
           context,
           title: 'success'.tr(),
@@ -329,6 +353,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   List<Widget> _buildFormContent(BuildContext context) {
+    _signUpRecognizer.onTap = _anyLoading
+        ? null
+        : () {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const SignupScreen()),
+            );
+          };
+
     return [
       Center(
         child: SvgPicture.asset(
@@ -569,16 +601,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontWeight: FontWeight.bold,
                   fontFamily: 'SF Pro Display',
                 ),
-                recognizer: TapGestureRecognizer()
-                  ..onTap = _anyLoading
-                      ? null
-                      : () {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => const SignupScreen(),
-                            ),
-                          );
-                        },
+                recognizer: _signUpRecognizer,
               ),
             ],
           ),

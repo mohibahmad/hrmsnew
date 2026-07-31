@@ -38,38 +38,72 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _sendResetEmail() async {
-    _submitted = true;
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_isLoading) return;
+
+    final wasEmailSent = _emailSent;
+
+    if (!wasEmailSent) {
+      setState(() => _submitted = true);
+      if (!(_formKey.currentState?.validate() ?? false)) return;
+    }
+
+    final email = _emailController.text.trim().toLowerCase();
+
     setState(() => _isLoading = true);
+
     try {
-      await _authService.sendPasswordResetEmail(_emailController.text);
+      await _authService.sendPasswordResetEmail(email);
       if (!mounted) return;
+
       setState(() {
         _emailSent = true;
         _submitted = false;
       });
+
+      if (wasEmailSent) {
+        _showMessage('password_reset_link'.tr(), isError: false);
+      }
     } on FirebaseAuthException catch (e) {
-      bool isError = true;
-      String message;
+      if (!mounted) return;
+
       switch (e.code) {
         case 'user-not-found':
-          message = 'password_reset_link'.tr();
-          isError = false;
+          setState(() {
+            _emailSent = true;
+            _submitted = false;
+          });
+          if (wasEmailSent) {
+            _showMessage('password_reset_link'.tr(), isError: false);
+          }
           break;
         case 'invalid-email':
-          message = 'invalid_email_address_short'.tr();
+          _showMessage('invalid_email_address_short'.tr(), isError: true);
           break;
         case 'too-many-requests':
-          message = 'too_many_requests'.tr();
+          _showMessage('too_many_requests'.tr(), isError: true);
+          break;
+        case 'network-request-failed':
+        case 'network-error':
+        case 'unavailable':
+          _showMessage('network_error'.tr(), isError: true);
+          break;
+        case 'user-disabled':
+          _showMessage('user_disabled'.tr(), isError: true);
+          break;
+        case 'operation-not-allowed':
+          _showMessage('operation_not_allowed'.tr(), isError: true);
           break;
         default:
-          message = 'password_reset_failed'.tr();
+          _showMessage('password_reset_failed'.tr(), isError: true);
       }
-      if (mounted) _showMessage(message, isError: isError);
     } catch (_) {
-      if (mounted) _showMessage('unexpected_error'.tr(), isError: true);
+      if (mounted) {
+        _showMessage('unexpected_error'.tr(), isError: true);
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -349,6 +383,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 enabled: !_isLoading,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.none,
+                autocorrect: false,
+                enableSuggestions: false,
                 onFieldSubmitted: (_) => _sendResetEmail(),
                 style: const TextStyle(
                   fontSize: 15,

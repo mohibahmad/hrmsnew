@@ -163,6 +163,7 @@ class DummyData {
 
   static final List<Map<String, dynamic>> workers = [
     {
+      'workerId': '0',
       'name': 'Michael Johnson',
       'position': 'DevOps Engineer',
       'workType': 'employee',
@@ -192,6 +193,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '1',
       'name': 'Sophia Martinez',
       'position': 'HR Manager',
       'workType': 'employee',
@@ -221,6 +223,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '2',
       'name': 'Daniel Anderson',
       'position': 'Frontend Developer',
       'workType': 'employee',
@@ -250,6 +253,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '3',
       'name': 'Olivia Thomas',
       'position': 'UI Designer',
       'workType': 'employee',
@@ -279,6 +283,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '4',
       'name': 'James Miller',
       'position': 'Backend Engineer',
       'workType': 'employee',
@@ -308,6 +313,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '5',
       'name': 'Emily Davis',
       'position': 'Data Analyst',
       'workType': 'employee',
@@ -337,6 +343,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '6',
       'name': 'William Brown',
       'position': 'Product Manager',
       'workType': 'employee',
@@ -366,6 +373,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '7',
       'name': 'Amelia White',
       'position': 'Graphic Designer',
       'workType': 'employee',
@@ -395,6 +403,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '8',
       'name': 'Charlotte Martin',
       'position': 'Cyber Security Analyst',
       'workType': 'employee',
@@ -424,6 +433,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '9',
       'name': 'Harper Garcia',
       'position': 'Technical Writer',
       'workType': 'employee',
@@ -453,6 +463,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '10',
       'name': 'Benjamin Harris',
       'position': 'Mobile Developer',
       'workType': 'employee',
@@ -482,6 +493,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '11',
       'name': 'Lucas Taylor',
       'position': 'Solutions Architect',
       'workType': 'employee',
@@ -511,6 +523,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '12',
       'name': 'Ethan Clark',
       'position': 'QA Engineer',
       'workType': 'employee',
@@ -540,6 +553,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '13',
       'name': 'Mia Robinson',
       'position': 'Content Strategist',
       'workType': 'employee',
@@ -569,6 +583,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '14',
       'name': 'Alexander Lee',
       'position': 'Cloud Architect',
       'workType': 'employee',
@@ -598,6 +613,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '15',
       'name': 'Isabella Walker',
       'position': 'UX Researcher',
       'workType': 'employee',
@@ -627,6 +643,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '16',
       'name': 'John Smith',
       'position': 'Senior Web Developer',
       'workType': 'employee',
@@ -656,6 +673,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '17',
       'name': 'Noah Wilson',
       'position': 'DevOps Lead',
       'workType': 'employee',
@@ -685,6 +703,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '18',
       'name': 'Ava Turner',
       'position': 'Marketing Lead',
       'workType': 'employee',
@@ -714,6 +733,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '19',
       'name': 'Emma Wilson',
       'position': 'Junior Developer',
       'workType': 'employee',
@@ -744,6 +764,7 @@ class DummyData {
     },
     
     {
+      'workerId': '20',
       'name': 'Jordan Casey',
       'position': 'IT Support Specialist',
       'workType': 'employee',
@@ -773,6 +794,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '21',
       'name': 'Riley Morgan',
       'position': 'Business Analyst',
       'workType': 'employee',
@@ -802,6 +824,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '22',
       'name': 'Avery Quinn',
       'position': 'Event Coordinator',
       'workType': 'employee',
@@ -831,6 +854,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '23',
       'name': 'Logan Reed',
       'position': 'System Administrator',
       'workType': 'employee',
@@ -860,6 +884,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '24',
       'name': 'Taylor Blake',
       'position': 'Social Media Manager',
       'workType': 'employee',
@@ -889,6 +914,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '25',
       'name': 'Skyler Park',
       'position': 'Graphic Designer',
       'workType': 'employee',
@@ -918,6 +944,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '26',
       'name': 'Dakota Lee',
       'position': 'Data Engineer',
       'workType': 'employee',
@@ -947,6 +974,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '27',
       'name': 'Casey Jones',
       'position': 'Office Manager',
       'workType': 'employee',
@@ -976,6 +1004,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '28',
       'name': 'Finley Hart',
       'position': 'Junior QA Tester',
       'workType': 'employee',
@@ -1005,6 +1034,7 @@ class DummyData {
       'cvUrl': null,
     },
     {
+      'workerId': '29',
       'name': 'Sage Winters',
       'position': 'Content Writer',
       'workType': 'employee',
@@ -1936,28 +1966,11 @@ class DummyData {
       'notes': 'Doctor appointment',
       'status': 'assigned',
     },
-    {
-      'workerId': '2',
-      'name': 'Daniel Anderson',
-      'type': 'Annual Leave',
-      'startDate': '20/01/2026',
-      'endDate': '24/01/2026',
-      'notes': 'Family vacation',
-      'status': 'assigned',
-    },
-    {
-      'workerId': '5',
-      'name': 'Emily Davis',
-      'type': 'Annual Leave',
-      'startDate': '10/02/2026',
-      'endDate': '14/02/2026',
-      'notes': 'Personal trip',
-      'status': 'assigned',
-    },
+
     {
       'workerId': '7',
       'name': 'Amelia White',
-      'type': 'Sick Leave',
+      'type': 'Medical Leave',
       'startDate': '05/02/2026',
       'endDate': '06/02/2026',
       'notes': 'Feeling unwell',
@@ -1981,22 +1994,23 @@ class DummyData {
       'notes': 'Personal errand',
       'status': 'assigned',
     },
-    {
-      'workerId': '1',
-      'name': 'Sophia Martinez',
-      'type': 'Annual Leave',
-      'startDate': '12/02/2026',
-      'endDate': '16/02/2026',
-      'notes': 'Family event',
-      'status': 'assigned',
-    },
+
     {
       'workerId': '3',
       'name': 'Olivia Thomas',
-      'type': 'Sick Leave',
+      'type': 'Casual Leave',
       'startDate': '28/01/2026',
       'endDate': '29/01/2026',
       'notes': 'Migraine',
+      'status': 'assigned',
+    },
+    {
+      'workerId': '4',
+      'name': 'James Miller',
+      'type': 'Sick Leave',
+      'startDate': '10/03/2026',
+      'endDate': '11/03/2026',
+      'notes': 'Fever',
       'status': 'assigned',
     },
   ];

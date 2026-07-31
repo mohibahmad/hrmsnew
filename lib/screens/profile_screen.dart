@@ -10,6 +10,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
+import '../services/error_reporter.dart';
 import '../utils/currency_utils.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
@@ -29,6 +30,18 @@ Uint8List? _compressImageBytes(Uint8List rawBytes) {
     final resized = img.copyResize(decoded, width: 500);
 
     return Uint8List.fromList(img.encodeJpg(resized, quality: 80));
+  } catch (_) {
+    return null;
+  }
+}
+
+const int _maxProfileImageBytes = 10 * 1024 * 1024;
+
+Uint8List? _decodeProfileDataImage(String value) {
+  try {
+    final commaIndex = value.indexOf(',');
+    if (commaIndex < 0 || commaIndex == value.length - 1) return null;
+    return base64Decode(value.substring(commaIndex + 1));
   } catch (_) {
     return null;
   }
@@ -105,6 +118,8 @@ class _ProfileBodyState extends State<ProfileBody> {
   late FirestoreService _firestore;
   bool _isLoading = true;
   bool _isEditing = false;
+  bool _initialized = false;
+  int _profileLoadToken = 0;
   String? _profilePicUrl;
 
   @override
@@ -124,6 +139,9 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.didChangeDependencies();
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (_initialized && !isGuest) return;
+    _initialized = true;
     _loadProfile();
   }
 
@@ -131,7 +149,6 @@ class _ProfileBodyState extends State<ProfileBody> {
   void didUpdateWidget(ProfileBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.isActive && oldWidget.isActive) {
-
       setState(() {
         _isEditing = false;
         _newProfileImageBytes = null;
@@ -153,8 +170,18 @@ class _ProfileBodyState extends State<ProfileBody> {
     super.dispose();
   }
 
+  String _profileText(dynamic value, {String fallback = ''}) {
+    if (value == null) return fallback;
+    return value.toString();
+  }
+
+  String? _profileImageText(dynamic value) {
+    final text = _profileText(value).trim();
+    return text.isEmpty ? null : text;
+  }
 
   Future<void> _loadProfile() async {
+    final loadToken = ++_profileLoadToken;
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       final guestData = await PreferencesService.getGuestProfileData();
@@ -163,8 +190,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _businessNameController.text =
               guestData?['businessName'] ?? 'Guest Company Ltd.';
           _companyIdController.text = guestData?['companyId'] ?? '';
-          _emailController.text =
-              guestData?['email'] ?? 'guest@example.com';
+          _emailController.text = guestData?['email'] ?? 'guest@example.com';
           _currencyController.text = CurrencyUtils.normalize(
             guestData?['currency'],
           );
@@ -181,38 +207,60 @@ class _ProfileBodyState extends State<ProfileBody> {
       return;
     }
 
-    final profile = await _firestore.getUserProfile();
-    if (profile != null && mounted) {
-      final storedCurrency = profile['currency'];
-      final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
-      setState(() {
-        _businessNameController.text = profile['businessName'] ?? '';
-        _companyIdController.text = profile['companyId'] ?? '';
-        _emailController.text =
-            profile['email'] ?? _authService.currentUser?.email ?? '';
-        _currencyController.text = normalizedCurrency;
-        _contact1Controller.text = profile['contact1'] ?? '';
-        _contact2Controller.text = profile['contact2'] ?? '';
-        _addressController.text = profile['address'] ?? '';
-        _profilePicUrl = profile['profilePic'];
-        AuthService.profilePicNotifier.value = _profilePicUrl;
-        _isLoading = false;
-      });
-      if (!CurrencyUtils.isSupported(storedCurrency) ||
-          storedCurrency.toString().trim() != normalizedCurrency) {
-        try {
-          await _firestore.updateUserProfile({
-            'currency': normalizedCurrency,
-          });
-        } catch (_) {
-          debugPrint('Unable to persist the normalized profile currency.');
+    try {
+      final profile = await _firestore.getUserProfile();
+      if (!mounted || loadToken != _profileLoadToken) return;
+
+      if (profile != null) {
+        final storedCurrency = profile['currency'];
+        final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
+        final profileImage = _profileImageText(profile['profilePic']);
+        setState(() {
+          _businessNameController.text = _profileText(profile['businessName']);
+          _companyIdController.text = _profileText(profile['companyId']);
+          _emailController.text = _profileText(
+            profile['email'],
+            fallback: _authService.currentUser?.email ?? '',
+          );
+          _currencyController.text = normalizedCurrency;
+          _contact1Controller.text = _profileText(profile['contact1']);
+          _contact2Controller.text = _profileText(profile['contact2']);
+          _addressController.text = _profileText(profile['address']);
+          _profilePicUrl = profileImage;
+          AuthService.profilePicNotifier.value = profileImage;
+          _isLoading = false;
+        });
+        if (!CurrencyUtils.isSupported(storedCurrency) ||
+            storedCurrency.toString().trim() != normalizedCurrency) {
+          try {
+            await _firestore.updateUserProfile({
+              'currency': normalizedCurrency,
+            });
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'NormalizeProfileCurrency',
+            );
+          }
         }
+      } else {
+        setState(() {
+          _profilePicUrl = AuthService.profilePicNotifier.value;
+          _isLoading = false;
+        });
       }
-    } else if (mounted) {
-      setState(() {
-        _profilePicUrl = AuthService.profilePicNotifier.value;
-        _isLoading = false;
-      });
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'LoadProfile');
+      if (!mounted || loadToken != _profileLoadToken) return;
+      setState(() => _isLoading = false);
+      if (widget.isActive) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -238,7 +286,13 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (result == null || !mounted) return;
 
       final file = result.files.single;
-      if (file.bytes != null && file.bytes!.length > 10 * 1024 * 1024) {
+      var fileSize = file.bytes?.length;
+      final filePath = file.path?.trim();
+      if (fileSize == null && filePath != null && filePath.isNotEmpty) {
+        fileSize = await File(filePath).length();
+      }
+      if (fileSize != null && fileSize > _maxProfileImageBytes) {
+        if (!mounted) return;
         FlashySnackBar.show(
           context,
           message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
@@ -246,17 +300,30 @@ class _ProfileBodyState extends State<ProfileBody> {
         );
         return;
       }
+      if (file.bytes == null && (filePath == null || filePath.isEmpty)) {
+        if (!mounted) return;
+        FlashySnackBar.show(
+          context,
+          message: 'error_selecting_image'.tr(
+            namedArgs: {'error': 'unexpected_error'.tr()},
+          ),
+          isError: true,
+        );
+        return;
+      }
 
+      if (!mounted) return;
       setState(() {
         _newProfileImageBytes = file.bytes;
-        _newProfileImagePath = file.path;
+        _newProfileImagePath = filePath;
       });
-    } catch (e) {
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'SelectProfileImage');
       if (mounted) {
         FlashySnackBar.show(
           context,
           message: 'error_selecting_image'.tr(
-            namedArgs: {'error': e.toString()},
+            namedArgs: {'error': error.toString()},
           ),
           isError: true,
         );
@@ -264,8 +331,24 @@ class _ProfileBodyState extends State<ProfileBody> {
     }
   }
 
+  String? _profileEmailError(String value) {
+    final email = value.trim();
+    if (email.isEmpty) return 'email_is_required'.tr();
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      return 'enter_valid_email'.tr();
+    }
+    return null;
+  }
+
   Future<bool> _saveProfile() async {
-    if (_businessNameController.text.trim().isEmpty) {
+    final businessName = _businessNameController.text.trim();
+    final companyId = _companyIdController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
+    final contact1 = _contact1Controller.text.trim();
+    final contact2 = _contact2Controller.text.trim();
+    final address = _addressController.text.trim();
+
+    if (businessName.isEmpty) {
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -276,7 +359,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       return false;
     }
 
-    if (_companyIdController.text.trim().isEmpty) {
+    if (companyId.isEmpty) {
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -289,7 +372,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       return false;
     }
 
-    final companyIdError = Validators.companyId(_companyIdController.text);
+    final companyIdError = Validators.companyId(companyId);
     if (companyIdError != null) {
       if (mounted) {
         FlashySnackBar.show(context, message: companyIdError, isError: true);
@@ -297,7 +380,15 @@ class _ProfileBodyState extends State<ProfileBody> {
       return false;
     }
 
-    if (_contact1Controller.text.trim().isEmpty) {
+    final emailError = _profileEmailError(email);
+    if (emailError != null) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: emailError, isError: true);
+      }
+      return false;
+    }
+
+    if (contact1.isEmpty) {
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -308,7 +399,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       return false;
     }
 
-    if (_addressController.text.trim().isEmpty) {
+    if (address.isEmpty) {
       if (mounted) {
         FlashySnackBar.show(
           context,
@@ -319,13 +410,33 @@ class _ProfileBodyState extends State<ProfileBody> {
       return false;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
     final normalizedCurrency = CurrencyUtils.normalize(
       _currencyController.text,
     );
+    if (!CurrencyUtils.isSupported(normalizedCurrency)) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'invalid_currency_value'.tr(),
+          isError: true,
+        );
+      }
+      return false;
+    }
+
+    _businessNameController.text = businessName;
+    _companyIdController.text = companyId;
+    _emailController.text = email;
     _currencyController.text = normalizedCurrency;
+    _contact1Controller.text = contact1;
+    _contact2Controller.text = contact2;
+    _addressController.text = address;
+
+    if (!mounted) return false;
+    setState(() => _isLoading = true);
+
+    Reference? uploadedRef;
+    var profileSaved = false;
 
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
@@ -335,71 +446,107 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (_newProfileImageBytes != null || _newProfileImagePath != null) {
           final fileName =
               'profile_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          final ref = FirebaseStorage.instance
+          uploadedRef = FirebaseStorage.instance
               .ref()
               .child('profile_pics')
               .child(fileName);
 
           try {
-            Uint8List? rawBytes;
-            if (_newProfileImageBytes != null) {
-              rawBytes = _newProfileImageBytes;
-            } else if (_newProfileImagePath != null) {
-              rawBytes = await File(_newProfileImagePath!).readAsBytes();
-            }
-
-            if (rawBytes != null) {
-              final compressedBytes = await compute(
-                _compressImageBytes,
-                rawBytes,
-              );
-              if (compressedBytes != null) {
-                await ref.putData(
-                  compressedBytes,
-                  SettableMetadata(contentType: 'image/jpeg'),
-                );
-              } else {
-                await ref.putData(
-                  rawBytes,
-                  SettableMetadata(contentType: 'image/jpeg'),
+            Uint8List? rawBytes = _newProfileImageBytes;
+            if (rawBytes == null && _newProfileImagePath != null) {
+              final imageFile = File(_newProfileImagePath!);
+              final imageLength = await imageFile.length();
+              if (imageLength > _maxProfileImageBytes) {
+                throw const FileSystemException(
+                  'Profile image is larger than 10 MB.',
                 );
               }
-            } else {
-              throw Exception('Unable to read image bytes');
+              rawBytes = await imageFile.readAsBytes();
             }
-            downloadUrl = await ref.getDownloadURL();
-          } catch (e) {
+
+            if (rawBytes == null || rawBytes.isEmpty) {
+              throw const FileSystemException('Unable to read image bytes.');
+            }
+            if (rawBytes.length > _maxProfileImageBytes) {
+              throw const FileSystemException(
+                'Profile image is larger than 10 MB.',
+              );
+            }
+
+            final compressedBytes = await compute(
+              _compressImageBytes,
+              rawBytes,
+            );
+            if (compressedBytes == null || compressedBytes.isEmpty) {
+              throw const FormatException('Unsupported profile image format.');
+            }
+
+            await uploadedRef.putData(
+              compressedBytes,
+              SettableMetadata(contentType: 'image/jpeg'),
+            );
+            downloadUrl = await uploadedRef.getDownloadURL();
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'UploadProfileImage',
+            );
+            final failedRef = uploadedRef;
+            if (failedRef != null) {
+              try {
+                await failedRef.delete();
+              } catch (_) {}
+            }
             if (mounted) {
+              setState(() => _isLoading = false);
               FlashySnackBar.show(
                 context,
                 message: 'file_upload_failed'.tr(namedArgs: {'file': fileName}),
                 isError: true,
               );
             }
-            setState(() => _isLoading = false);
             return false;
           }
         }
 
-        if (downloadUrl != null) {
-          await _authService.currentUser?.updatePhotoURL(downloadUrl);
-          _profilePicUrl = downloadUrl;
-          AuthService.profilePicNotifier.value = downloadUrl;
-          await PreferencesService.setProfilePicUrl(downloadUrl);
-          _newProfileImageBytes = null;
-          _newProfileImagePath = null;
-        }
-
         await _firestore.updateUserProfile({
-          'businessName': _businessNameController.text,
-          'companyId': _companyIdController.text,
-          'email': _emailController.text,
+          'businessName': businessName,
+          'companyId': companyId,
+          'email': email,
           'currency': normalizedCurrency,
-          'contact1': _contact1Controller.text,
-          'contact2': _contact2Controller.text,
-          'address': _addressController.text,
+          'contact1': contact1,
+          'contact2': contact2,
+          'address': address,
           if (downloadUrl != null) 'profilePic': downloadUrl,
         });
+        profileSaved = true;
+
+        if (downloadUrl != null) {
+          _profilePicUrl = downloadUrl;
+          AuthService.profilePicNotifier.value = downloadUrl;
+          _newProfileImageBytes = null;
+          _newProfileImagePath = null;
+
+          try {
+            await _authService.currentUser?.updatePhotoURL(downloadUrl);
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'UpdateAuthProfileImage',
+            );
+          }
+          try {
+            await PreferencesService.setProfilePicUrl(downloadUrl);
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'CacheProfileImage',
+            );
+          }
+        }
       } else {
         if (_newProfileImageBytes != null) {
           final base64String = base64Encode(_newProfileImageBytes!);
@@ -427,21 +574,26 @@ class _ProfileBodyState extends State<ProfileBody> {
       }
 
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         FlashySnackBar.show(context, message: 'profile_saved'.tr());
       }
       return true;
-    } catch (e) {
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'SaveProfile');
+      if (!profileSaved) {
+        final failedRef = uploadedRef;
+        if (failedRef != null) {
+          try {
+            await failedRef.delete();
+          } catch (_) {}
+        }
+      }
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         FlashySnackBar.show(
           context,
           message: 'error_saving_profile'.tr(
-            namedArgs: {'error': e.toString()},
+            namedArgs: {'error': error.toString()},
           ),
           isError: true,
         );
@@ -530,7 +682,8 @@ class _ProfileBodyState extends State<ProfileBody> {
             else
               InkWell(
                 onTap: () {
-                  final isGuest = _authService.currentUser?.isAnonymous ?? false;
+                  final isGuest =
+                      _authService.currentUser?.isAnonymous ?? false;
                   if (isGuest) {
                     showGuestRestrictionDialog(context);
                     return;
@@ -571,11 +724,13 @@ class _ProfileBodyState extends State<ProfileBody> {
                   'company_name'.tr(),
                   _businessNameController,
                   readOnly: !_isEditing,
+                  isBusinessName: true,
                 ),
                 _buildInputField(
                   'company_id_no'.tr(),
                   _companyIdController,
                   readOnly: !_isEditing,
+                  isCompanyId: true,
                 ),
               ),
               const SizedBox(height: 24),
@@ -584,6 +739,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   'company_email'.tr(),
                   _emailController,
                   readOnly: !_isEditing,
+                  isEmailField: true,
                 ),
                 _buildCurrencyField(_isEditing),
               ),
@@ -593,11 +749,13 @@ class _ProfileBodyState extends State<ProfileBody> {
                   'contact_number'.tr(),
                   _contact1Controller,
                   readOnly: !_isEditing,
+                  isContact: true,
                 ),
                 _buildInputField(
                   'address'.tr(),
                   _addressController,
                   readOnly: !_isEditing,
+                  isAddress: true,
                 ),
               ),
             ],
@@ -658,16 +816,16 @@ class _ProfileBodyState extends State<ProfileBody> {
           errorWidget: (_, __, ___) => _buildFallbackIcon(),
         );
       } else if (_profilePicUrl!.startsWith('data:image')) {
-        final String base64Content = _profilePicUrl!.substring(
-          _profilePicUrl!.indexOf(',') + 1,
-        );
-        childWidget = Image.memory(
-          base64Decode(base64Content),
-          width: 90,
-          height: 90,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildFallbackIcon(),
-        );
+        final decodedBytes = _decodeProfileDataImage(_profilePicUrl!);
+        childWidget = decodedBytes == null
+            ? _buildFallbackIcon()
+            : Image.memory(
+                decodedBytes,
+                width: 90,
+                height: 90,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+              );
       } else {
         childWidget = Image.file(
           File(_profilePicUrl!),
@@ -746,21 +904,42 @@ class _ProfileBodyState extends State<ProfileBody> {
     bool isDropdown = false,
     int maxLines = 1,
     bool readOnly = false,
+    bool isEmailField = false,
+    bool isCompanyId = false,
+    bool isBusinessName = false,
+    bool isContact = false,
+    bool isAddress = false,
   }) {
-    final bool isEmailField = label == 'company_email'.tr();
-    final bool isCompanyId = label == 'company_id_no'.tr();
-    final bool isBusinessName = label == 'company_name'.tr();
-    final bool isContact =
-        label.toLowerCase().contains('contact') ||
-        label.toLowerCase().contains('phone') ||
-        label.toLowerCase().contains('company no');
-    final bool isAddress = label.toLowerCase().contains('address');
     final Color bgColor = readOnly
         ? const Color(0xFFEEEFF2)
         : const Color(0xFFFFFFFF);
     final Color textColor = readOnly
         ? const Color(0xFF9CA3AF)
         : const Color(0xFF000000);
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final hintText = isGuest
+        ? isEmailField
+              ? 'example@company.com'
+              : isCompanyId
+              ? 'e.g. ABC123'
+              : isBusinessName
+              ? 'e.g. ABC Corporation'
+              : isContact
+              ? '+1 415-555-0198'
+              : isAddress
+              ? 'e.g. 123 Main St, City'
+              : ''
+        : isEmailField
+        ? 'hint_enter_email'.tr()
+        : isCompanyId
+        ? 'company_id_no'.tr()
+        : isBusinessName
+        ? 'company_name'.tr()
+        : isContact
+        ? 'hint_enter_phone'.tr()
+        : isAddress
+        ? 'hint_enter_address'.tr()
+        : '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -797,6 +976,16 @@ class _ProfileBodyState extends State<ProfileBody> {
                   controller: controller,
                   maxLines: maxLines,
                   readOnly: readOnly,
+                  keyboardType: isEmailField
+                      ? TextInputType.emailAddress
+                      : isContact
+                      ? TextInputType.phone
+                      : TextInputType.text,
+                  textCapitalization: isCompanyId
+                      ? TextCapitalization.characters
+                      : TextCapitalization.none,
+                  autocorrect: !isEmailField && !isCompanyId,
+                  enableSuggestions: !isEmailField && !isCompanyId,
                   inputFormatters:
                       isCompanyId || isContact || isBusinessName || isAddress
                       ? [
@@ -821,17 +1010,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    hintText: isEmailField
-                        ? 'example@company.com'
-                        : isCompanyId
-                        ? 'e.g. ABC123'
-                        : isBusinessName
-                        ? 'e.g. ABC Corporation'
-                        : isContact
-                        ? '+1 415-555-0198'
-                        : isAddress
-                        ? 'e.g. 123 Main St, City'
-                        : '',
+                    hintText: hintText,
                     hintStyle: const TextStyle(
                       color: Color(0xFF9CA3AF),
                       fontSize: 15,
@@ -1066,7 +1245,6 @@ class ProfilePreviewDialog extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-
                     Row(
                       children: [
                         Expanded(

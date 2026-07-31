@@ -38,6 +38,37 @@ class FirestoreService {
     return normalized;
   }
 
+  String _safeDocumentKey(String value) => value.trim().replaceAll('/', '_');
+
+  String _payrollDocumentId(String payrollKey) => _safeDocumentKey(payrollKey);
+
+  String _payrollExpenseDocumentId(String payrollKey) =>
+      'salary_${_safeDocumentKey(payrollKey)}';
+
+  String _payrollNotificationDocumentId(String payrollKey) =>
+      _safeDocumentKey('payroll_${payrollKey.trim()}');
+
+  Future<void> _deleteDocumentsInChunks(
+    Iterable<DocumentReference> references,
+  ) async {
+    var batch = _db.batch();
+    var pending = 0;
+
+    for (final reference in references) {
+      batch.delete(reference);
+      pending++;
+      if (pending == 450) {
+        await batch.commit();
+        batch = _db.batch();
+        pending = 0;
+      }
+    }
+
+    if (pending > 0) {
+      await batch.commit();
+    }
+  }
+
   String get _userKey {
     final user = AuthService.instance.currentUser;
     if (user == null) return '';
@@ -246,7 +277,11 @@ class FirestoreService {
         validWorkers.add(worker);
       } catch (e) {
         skipped++;
-        skipReasons.add('Validation error: ${e.toString().substring(0, 100)}');
+        final errorText = e.toString();
+        final safeError = errorText.length <= 100
+            ? errorText
+            : errorText.substring(0, 100);
+        skipReasons.add('Validation error: $safeError');
         continue;
       }
     }
@@ -407,39 +442,72 @@ class FirestoreService {
   }
 
   Future<void> deleteWorker(String id) async {
-    final coll = _workers;
-    if (coll == null || id.isEmpty) return;
+    final workersColl = _workers;
+    if (workersColl == null || id.trim().isEmpty) return;
 
-    // Cascade delete related records from all collections
-    final collections = <CollectionReference?>[
+    final workerId = id.trim();
+    final payrollColl = _payroll;
+    final expensesColl = _expenses;
+    final notificationsColl = _notifications;
+
+    // Collect payroll keys before deleting payroll records. Salary expenses and
+    // payroll notifications may not contain workerId, so they must be removed
+    // through payrollKey as well.
+    final payrollKeys = <String>{};
+    if (payrollColl != null) {
+      final payrollSnapshot = await payrollColl
+          .where('workerId', isEqualTo: workerId)
+          .get();
+
+      for (final document in payrollSnapshot.docs) {
+        final data = document.data() as Map<String, dynamic>;
+        final payrollKey = (data['payrollKey'] ?? '').toString().trim();
+        if (payrollKey.isNotEmpty) payrollKeys.add(payrollKey);
+      }
+    }
+
+    final referencesToDelete = <DocumentReference>[];
+
+    for (final collection in <CollectionReference?>[
       _attendance,
       _timeoff,
       _payroll,
       _expenses,
       _assets,
-    ];
-
-    for (final collection in collections) {
+    ]) {
       if (collection == null) continue;
-      final snapshot = await collection.where('workerId', isEqualTo: id).get();
-      if (snapshot.docs.isEmpty) continue;
+      final snapshot = await collection
+          .where('workerId', isEqualTo: workerId)
+          .get();
+      referencesToDelete.addAll(snapshot.docs.map((doc) => doc.reference));
+    }
 
-      var batch = _db.batch();
-      int count = 0;
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-        count++;
-        if (count % 500 == 0) {
-          await batch.commit();
-          batch = _db.batch();
-        }
+    for (final payrollKey in payrollKeys) {
+      if (expensesColl != null) {
+        final salaryExpenses = await expensesColl
+            .where('payrollKey', isEqualTo: payrollKey)
+            .get();
+        referencesToDelete.addAll(
+          salaryExpenses.docs.map((doc) => doc.reference),
+        );
       }
-      if (count % 500 != 0 && count > 0) {
-        await batch.commit();
+
+      if (notificationsColl != null) {
+        referencesToDelete.add(
+          notificationsColl.doc(_payrollNotificationDocumentId(payrollKey)),
+        );
       }
     }
 
-    await coll.doc(id).delete();
+    // Avoid deleting the same document twice if it matched both workerId and
+    // payrollKey cleanup.
+    final uniqueReferences = <String, DocumentReference>{};
+    for (final reference in referencesToDelete) {
+      uniqueReferences[reference.path] = reference;
+    }
+
+    await _deleteDocumentsInChunks(uniqueReferences.values);
+    await workersColl.doc(workerId).delete();
   }
 
   Stream<QuerySnapshot> get workersStream {
@@ -494,19 +562,34 @@ class FirestoreService {
     Validators.validateExpense(expense);
     final coll = _expenses;
     if (coll == null) throw StateError('No authenticated user');
-    final existing = await coll
-        .where('payrollKey', isEqualTo: payrollKey)
-        .limit(1)
-        .get();
-    if (existing.docs.isEmpty) {
-      await addExpense({...expense, 'payrollKey': payrollKey});
-      return;
+
+    final normalizedPayrollKey = payrollKey.trim();
+    if (normalizedPayrollKey.isEmpty) {
+      throw ArgumentError('payrollKey is required for a payroll expense');
     }
-    await existing.docs.first.reference.update({
+
+    final targetRef = coll.doc(_payrollExpenseDocumentId(normalizedPayrollKey));
+    final existing = await coll
+        .where('payrollKey', isEqualTo: normalizedPayrollKey)
+        .get();
+    final targetSnapshot = await targetRef.get();
+
+    final batch = _db.batch();
+    batch.set(targetRef, {
       ...expense,
-      'payrollKey': payrollKey,
+      'payrollKey': normalizedPayrollKey,
+      if (!targetSnapshot.exists) 'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
+
+    // Clean legacy/random-ID duplicates and retain one deterministic expense.
+    for (final document in existing.docs) {
+      if (document.reference.path != targetRef.path) {
+        batch.delete(document.reference);
+      }
+    }
+
+    await batch.commit();
   }
 
   Future<void> deleteExpense(String id) async {
@@ -535,7 +618,9 @@ class FirestoreService {
         : coll.doc();
     await docRef.set({
       ...record,
-      'attendanceDate': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
+      'attendanceDate': Timestamp.fromDate(
+        DateTime(now.year, now.month, now.day),
+      ),
       'createdAt': FieldValue.serverTimestamp(),
     });
     final name = (record['name'] ?? record['workerName'] ?? '').toString();
@@ -560,7 +645,9 @@ class FirestoreService {
     final now = DateTime.now();
     await coll.doc(id).update({
       ...data,
-      'attendanceDate': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
+      'attendanceDate': Timestamp.fromDate(
+        DateTime(now.year, now.month, now.day),
+      ),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -853,15 +940,20 @@ class FirestoreService {
     Validators.validatePayroll(record);
     final coll = _payroll;
     if (coll == null) throw StateError('No authenticated user');
+
     final payrollKey = (record['payrollKey'] ?? '').toString().trim();
     final docRef = payrollKey.isEmpty
         ? coll.doc()
-        : coll.doc(payrollKey.replaceAll('/', '_'));
+        : coll.doc(_payrollDocumentId(payrollKey));
+    final existing = await docRef.get();
+
     await docRef.set({
       ...record,
-      'createdAt': FieldValue.serverTimestamp(),
+      if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    final name = (record['name'] ?? '').toString();
+
+    final name = (record['name'] ?? record['workerName'] ?? '').toString();
     final amount = (record['netSalary'] ?? record['salary'] ?? '').toString();
     if (name.isNotEmpty) {
       await addNotification({
@@ -870,69 +962,87 @@ class FirestoreService {
         'title': 'notif_title_payroll'.tr(namedArgs: {'name': name}),
         'message': amount.isNotEmpty
             ? 'notif_msg_payroll_amount'.tr(
-                namedArgs: {'amount': '\$$amount', 'name': name},
+                namedArgs: {'amount': amount, 'name': name},
               )
             : 'notif_msg_payroll'.tr(namedArgs: {'name': name}),
-        'data': {'name': name, 'amount': amount.isNotEmpty ? '\$$amount' : ''},
+        'data': {'name': name, 'amount': amount},
       });
     }
+
     return docRef.id;
   }
 
   Future<int> addBulkPayrollRecords(List<Map<String, dynamic>> records) async {
     final coll = _payroll;
     if (coll == null) return 0;
-    var batch = _db.batch();
-    int count = 0;
-    for (final record in records) {
-      try {
-        Validators.validatePayroll(record);
-        final payrollKey = (record['payrollKey'] ?? '').toString().trim();
-        final docRef = payrollKey.isEmpty
-            ? coll.doc()
-            : coll.doc(payrollKey.replaceAll('/', '_'));
-        batch.set(docRef, {
-          ...record,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        if (count % 500 == 0) {
-          await batch.commit();
-          batch = _db.batch();
-        }
-      } catch (_) {}
+
+    var saved = 0;
+
+    // Smaller chunks avoid opening hundreds of concurrent reads/writes while
+    // still preserving createdAt on existing payroll records.
+    const chunkSize = 50;
+    for (var start = 0; start < records.length; start += chunkSize) {
+      final end = (start + chunkSize).clamp(0, records.length).toInt();
+      final chunk = records.sublist(start, end);
+
+      final results = await Future.wait(
+        chunk.map((record) async {
+          try {
+            Validators.validatePayroll(record);
+            final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+            final docRef = payrollKey.isEmpty
+                ? coll.doc()
+                : coll.doc(_payrollDocumentId(payrollKey));
+            final existing = await docRef.get();
+
+            await docRef.set({
+              ...record,
+              if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            return true;
+          } catch (_) {
+            return false;
+          }
+        }),
+      );
+
+      saved += results.where((result) => result).length;
     }
-    if (count % 500 != 0 && count > 0) {
-      await batch.commit();
-    }
-    return count;
+
+    return saved;
   }
 
   Future<void> addBulkExpenses(List<Map<String, dynamic>> expenses) async {
     final coll = _expenses;
     if (coll == null) return;
-    var batch = _db.batch();
-    int count = 0;
-    for (final expense in expenses) {
-      try {
-        Validators.validateExpense(expense);
-        final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
-        final docRef = payrollKey.isEmpty
-            ? coll.doc()
-            : coll.doc('salary_${payrollKey.replaceAll('/', '_')}');
-        batch.set(docRef, {
-          ...expense,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        if (count % 500 == 0) {
-          await batch.commit();
-          batch = _db.batch();
-        }
-      } catch (_) {}
-    }
-    if (count % 500 != 0 && count > 0) {
-      await batch.commit();
+
+    const chunkSize = 50;
+    for (var start = 0; start < expenses.length; start += chunkSize) {
+      final end = (start + chunkSize).clamp(0, expenses.length).toInt();
+      final chunk = expenses.sublist(start, end);
+
+      await Future.wait(
+        chunk.map((expense) async {
+          try {
+            Validators.validateExpense(expense);
+            final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
+            final docRef = payrollKey.isEmpty
+                ? coll.doc()
+                : coll.doc(_payrollExpenseDocumentId(payrollKey));
+            final existing = await docRef.get();
+
+            await docRef.set({
+              ...expense,
+              if (payrollKey.isNotEmpty) 'payrollKey': payrollKey,
+              if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          } catch (_) {
+            // Invalid expense rows are skipped without blocking valid rows.
+          }
+        }),
+      );
     }
   }
 
@@ -968,14 +1078,58 @@ class FirestoreService {
 
   Future<void> updatePayrollRecord(String id, Map<String, dynamic> data) async {
     final coll = _payroll;
-    if (coll == null) return;
-    await coll.doc(id).update(data);
+    if (coll == null || id.trim().isEmpty) return;
+
+    final docRef = coll.doc(id.trim());
+    final existingSnapshot = await docRef.get();
+    if (!existingSnapshot.exists) {
+      throw StateError('Payroll record does not exist');
+    }
+
+    final existing =
+        existingSnapshot.data() as Map<String, dynamic>? ?? <String, dynamic>{};
+    final merged = <String, dynamic>{...existing, ...data};
+    Validators.validatePayroll(merged);
+
+    // A paid payroll remains editable. No paid/status-based lock is applied.
+    await docRef.update({
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'lastModified': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> deletePayrollRecord(String id) async {
     final coll = _payroll;
-    if (coll == null) return;
-    await coll.doc(id).delete();
+    if (coll == null || id.trim().isEmpty) return;
+
+    final payrollRef = coll.doc(id.trim());
+    final payrollSnapshot = await payrollRef.get();
+    if (!payrollSnapshot.exists) return;
+
+    final payrollData =
+        payrollSnapshot.data() as Map<String, dynamic>? ?? <String, dynamic>{};
+    final payrollKey = (payrollData['payrollKey'] ?? '').toString().trim();
+
+    final expenseDocs = payrollKey.isEmpty || _expenses == null
+        ? <QueryDocumentSnapshot>[]
+        : (await _expenses!.where('payrollKey', isEqualTo: payrollKey).get())
+              .docs;
+
+    final batch = _db.batch();
+    batch.delete(payrollRef);
+
+    for (final expense in expenseDocs) {
+      batch.delete(expense.reference);
+    }
+
+    if (_notifications != null && payrollKey.isNotEmpty) {
+      batch.delete(
+        _notifications!.doc(_payrollNotificationDocumentId(payrollKey)),
+      );
+    }
+
+    await batch.commit();
   }
 
   Future<void> cancelPayrollRecord({

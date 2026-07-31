@@ -36,7 +36,6 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
     {'value': 'Sick Leave', 'labelKey': 'sick_leave_type'},
     {'value': 'Casual Leave', 'labelKey': 'casual_leave_type'},
     {'value': 'Medical Leave', 'labelKey': 'medical_leave_type'},
-    {'value': 'Unpaid Leave', 'labelKey': 'unpaid_leave_type'},
   ];
 
   static const List<String> _paidLeaveTypes = [
@@ -563,68 +562,29 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: [
-                SizedBox(
-                  height: 48,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF0247C4)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _timeOffType = 'Unpaid Leave';
-                        _selectedDates.clear();
-                      });
-                    },
-                    icon: const Icon(
-                      Icons.money_off,
-                      color: Color(0xFF0247C4),
-                      size: 20,
-                    ),
-                    label: Text(
-                      'assign_unpaid_leave'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFF0247C4),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0247C4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  elevation: 0,
+                ),
+                onPressed: () => _showAddAnnualLeavesDialog(),
+                icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                label: Text(
+                  'add_more_annual_leaves'.tr(),
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0247C4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      elevation: 0,
-                    ),
-                    onPressed: () => _showAddAnnualLeavesDialog(),
-                    icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                    label: Text(
-                      'add_more_annual_leaves'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),

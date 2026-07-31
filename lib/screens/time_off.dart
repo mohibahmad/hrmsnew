@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/error_reporter.dart';
 import '../services/dummy_data.dart';
 import '../services/time_off_service.dart';
 import '../utils/image_utils.dart';
@@ -60,6 +61,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   List<Map<String, dynamic>> _timeoffDocs = [];
   List<Map<String, dynamic>> _workersList = [];
   bool _isLoading = true;
+  bool _workersLoaded = false;
+  bool _timeoffLoaded = false;
+  bool _workersLoadFailed = false;
+  bool _timeoffLoadFailed = false;
 
   StreamSubscription? _timeoffSub;
   StreamSubscription? _workersSub;
@@ -68,6 +73,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   Map<String, dynamic>? _workerForTimeOff;
   late AuthService _authService;
   late FirestoreService _firestore;
+  late bool _isGuestMode;
 
   @override
   void dispose() {
@@ -77,7 +83,69 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     super.dispose();
   }
 
-  void _combineTimeOff() {
+  String _normalizedValue(dynamic value) =>
+      (value ?? '').toString().trim().toLowerCase();
+
+  String _firstNonEmptyValue(Iterable<dynamic> values) {
+    for (final value in values) {
+      final normalized = (value ?? '').toString().trim();
+      if (normalized.isNotEmpty && normalized.toLowerCase() != 'null') {
+        return normalized;
+      }
+    }
+    return '';
+  }
+
+  bool _hasUniqueWorkerName(String normalizedName) {
+    if (normalizedName.isEmpty) return false;
+    var matches = 0;
+    for (final worker in _workersList) {
+      if (_normalizedValue(worker['name']) == normalizedName) {
+        matches++;
+        if (matches > 1) return false;
+      }
+    }
+    return matches == 1;
+  }
+
+  int _remainingPaidLeaveForWorker(Map<String, dynamic> worker) {
+    final total = TimeOffService.configuredPaidLeaveAllowance(worker);
+    final used = TimeOffService.paidDaysUsedForWorker(worker, _rawTimeoffDocs);
+    return (total - used).clamp(0, total).toInt();
+  }
+
+  int _compareTimeOffRows(
+    Map<String, dynamic> first,
+    Map<String, dynamic> second,
+  ) {
+    final firstHasRecord = (first['action'] ?? '').toString().isNotEmpty;
+    final secondHasRecord = (second['action'] ?? '').toString().isNotEmpty;
+    if (firstHasRecord != secondHasRecord) {
+      return firstHasRecord ? -1 : 1;
+    }
+
+    final firstStart = TimeOffService.parseDate(first['startDate']);
+    final secondStart = TimeOffService.parseDate(second['startDate']);
+    if (firstStart != null && secondStart != null) {
+      final byStartDate = secondStart.compareTo(firstStart);
+      if (byStartDate != 0) return byStartDate;
+    } else if (firstStart != null) {
+      return -1;
+    } else if (secondStart != null) {
+      return 1;
+    }
+
+    final byName = _normalizedValue(
+      first['name'],
+    ).compareTo(_normalizedValue(second['name']));
+    if (byName != 0) return byName;
+
+    return (first['id'] ?? '').toString().compareTo(
+      (second['id'] ?? '').toString(),
+    );
+  }
+
+  void _combineGuestTimeOff() {
     if (_workersList.isEmpty) {
       _timeoffDocs = [];
       _isLoading = false;
@@ -156,6 +224,117 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     _isLoading = false;
   }
 
+  void _combineTimeOff() {
+    if (_isGuestMode) {
+      _combineGuestTimeOff();
+      return;
+    }
+
+    if (!_workersLoaded || !_timeoffLoaded) {
+      _isLoading = true;
+      return;
+    }
+
+    if (_workersLoadFailed || _timeoffLoadFailed) {
+      _timeoffDocs = [];
+      _isLoading = false;
+      return;
+    }
+
+    if (_workersList.isEmpty) {
+      _timeoffDocs = [];
+      _isLoading = false;
+      return;
+    }
+
+    final combined = <Map<String, dynamic>>[];
+    for (final worker in _workersList) {
+      final workerId = (worker['id'] ?? '').toString().trim();
+      final email = _normalizedValue(worker['email']);
+      final name = _normalizedValue(worker['name']);
+      final canUseNameFallback = email.isEmpty && _hasUniqueWorkerName(name);
+
+      final matchingRecords = _rawTimeoffDocs.where((record) {
+        if (!TimeOffService.isActiveRecord(record)) return false;
+
+        final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+        if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
+          return workerId == recordWorkerId;
+        }
+        if (recordWorkerId.isNotEmpty) return false;
+
+        final recordEmail = _normalizedValue(record['email']);
+        if (email.isNotEmpty && recordEmail.isNotEmpty) {
+          return email == recordEmail;
+        }
+        if (recordEmail.isNotEmpty) return false;
+
+        final recordName = _normalizedValue(
+          record['name'] ?? record['workerName'],
+        );
+        return canUseNameFallback && name.isNotEmpty && recordName == name;
+      }).toList();
+
+      final remaining = _remainingPaidLeaveForWorker(worker);
+
+      if (matchingRecords.isEmpty) {
+        combined.add({
+          ...worker,
+          'workerId': workerId,
+          'action': '',
+          'startDate': '',
+          'endDate': '',
+          'requestedDays': 0,
+          'annualLeaves': worker['annualLeaves'],
+          'availableAnnualLeaves': worker['availableAnnualLeaves'],
+          'remainingLeaves': remaining.toString(),
+        });
+        continue;
+      }
+
+      for (final timeoffRecord in matchingRecords) {
+        final phone = _firstNonEmptyValue([
+          worker['phone'],
+          worker['contact'],
+          timeoffRecord['phone'],
+          timeoffRecord['contact'],
+        ]);
+        combined.add({
+          ...worker,
+          ...timeoffRecord,
+          'workerId': workerId.isNotEmpty
+              ? workerId
+              : (timeoffRecord['workerId'] ?? '').toString(),
+          'action': TimeOffService.leaveType(timeoffRecord),
+          'type': TimeOffService.leaveType(timeoffRecord),
+          'name': _firstNonEmptyValue([
+            worker['name'],
+            timeoffRecord['name'],
+            timeoffRecord['workerName'],
+          ]),
+          'email': _firstNonEmptyValue([
+            worker['email'],
+            timeoffRecord['email'],
+          ]),
+          'profileImage': _firstNonEmptyValue([
+            worker['profileImage'],
+            timeoffRecord['profileImage'],
+            timeoffRecord['workerAvatar'],
+          ]),
+          'phone': phone,
+          'contact': phone,
+          'annualLeaves': worker['annualLeaves'],
+          'availableAnnualLeaves': worker['availableAnnualLeaves'],
+          'remainingLeaves': remaining.toString(),
+        });
+      }
+    }
+
+    combined.sort(_compareTimeOffRows);
+    _timeoffDocs = combined;
+    _isLoading = false;
+  }
+
   void _refreshGuestData() {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
@@ -179,52 +358,81 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     _timeoffDocs = [];
     _workersList = [];
     _isLoading = true;
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (!isGuest) {
-      _workersSub = _firestore.workersStream.listen((snapshot) {
-        if (mounted) {
+    _isGuestMode = _authService.currentUser?.isAnonymous ?? false;
+
+    if (!_isGuestMode) {
+      _workersSub = _firestore.workersStream.listen(
+        (snapshot) {
+          if (!mounted) return;
           setState(() {
             _workersList = snapshot.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
+            _workersLoaded = true;
+            _workersLoadFailed = false;
             _combineTimeOff();
           });
-        }
-      });
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'timeOffWorkersStream',
+          );
+          if (!mounted) return;
+          setState(() {
+            _workersList = [];
+            _workersLoaded = true;
+            _workersLoadFailed = true;
+            _combineTimeOff();
+          });
+        },
+      );
+
       _timeoffSub = _firestore.timeoffStream.listen(
         (snapshot) {
-          if (mounted) {
-            setState(() {
-              final sortedList = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              sortedList.sort((a, b) {
-                final aTime = a['createdAt'];
-                final bTime = b['createdAt'];
-                if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return -1;
-                if (bTime == null) return 1;
-                if (aTime is Timestamp && bTime is Timestamp) {
-                  return bTime.compareTo(aTime);
-                }
-                return 0;
-              });
-              _rawTimeoffDocs = sortedList;
-              _combineTimeOff();
+          if (!mounted) return;
+          setState(() {
+            final sortedList = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            sortedList.sort((a, b) {
+              final aTime = a['createdAt'];
+              final bTime = b['createdAt'];
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
+              if (aTime is Timestamp && bTime is Timestamp) {
+                return bTime.compareTo(aTime);
+              }
+              return 0;
             });
-          }
+            _rawTimeoffDocs = sortedList;
+            _timeoffLoaded = true;
+            _timeoffLoadFailed = false;
+            _combineTimeOff();
+          });
         },
-        onError: (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
+        onError: (Object error, StackTrace stackTrace) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'timeOffRecordsStream',
+          );
+          if (!mounted) return;
+          setState(() {
+            _rawTimeoffDocs = [];
+            _timeoffLoaded = true;
+            _timeoffLoadFailed = true;
+            _combineTimeOff();
+          });
         },
       );
     } else {
       _workersList = List<Map<String, dynamic>>.from(DummyData.workers);
       _rawTimeoffDocs = List<Map<String, dynamic>>.from(DummyData.timeoff);
+      _workersLoaded = true;
+      _timeoffLoaded = true;
       _combineTimeOff();
     }
   }
@@ -250,13 +458,17 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
       return _matchesFilter(position, _selectedTab);
     }).toList();
 
-    filtered.sort((a, b) {
-      final actionA = (a['action'] ?? '').toString();
-      final actionB = (b['action'] ?? '').toString();
-      if (actionA.isNotEmpty && actionB.isEmpty) return -1;
-      if (actionA.isEmpty && actionB.isNotEmpty) return 1;
-      return 0;
-    });
+    if (_isGuestMode) {
+      filtered.sort((a, b) {
+        final actionA = (a['action'] ?? '').toString();
+        final actionB = (b['action'] ?? '').toString();
+        if (actionA.isNotEmpty && actionB.isEmpty) return -1;
+        if (actionA.isEmpty && actionB.isNotEmpty) return 1;
+        return 0;
+      });
+    } else {
+      filtered.sort(_compareTimeOffRows);
+    }
 
     return filtered;
   }
@@ -461,7 +673,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
     final allFilters = ['All', ...positionsToShow];
 
     return Container(
-      width: 620,
+      width: 550,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -475,7 +687,7 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (final f in allFilters)
-              _buildTabItem(f, f == 'All' ? 'all_filter'.tr() : f),
+              _buildTabItem(f, f == 'All' ? 'all_filter'.tr() : f.toLowerCase().tr()),
           ],
         ),
       ),

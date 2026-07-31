@@ -992,7 +992,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       ...positionsToShow.map((p) => {'key': p, 'label': p}),
     ];
     return Container(
-      width: 620,
+      width: 550,
       height: 46,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

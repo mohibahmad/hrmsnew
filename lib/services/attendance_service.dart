@@ -28,91 +28,218 @@ class AttendanceService {
     required Map<String, dynamic> attendanceRecord,
   }) {
     final attendanceDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
-    return attendanceDate == null ||
-        workerExistedOnDate(worker, attendanceDate);
+    if (attendanceDate == null) return false;
+    return workerExistedOnDate(worker, attendanceDate);
   }
 
   static bool _recordMatchesWorkerIdentity(
     Map<String, dynamic> worker,
-    Map<String, dynamic> record,
-  ) {
+    Map<String, dynamic> record, {
+    bool allowNameFallback = true,
+  }) {
     final workerId = (worker['workerId'] ?? worker['id'] ?? '')
         .toString()
         .trim();
     final recordWorkerId = (record['workerId'] ?? '').toString().trim();
-    if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
-      return recordWorkerId == workerId;
+
+    if (recordWorkerId.isNotEmpty) {
+      return workerId.isNotEmpty && recordWorkerId == workerId;
     }
 
     final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
     final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
-    if (workerEmail.isNotEmpty && recordEmail.isNotEmpty) {
-      return recordEmail == workerEmail;
+
+    if (recordEmail.isNotEmpty) {
+      return workerEmail.isNotEmpty && recordEmail == workerEmail;
     }
 
+    if (!allowNameFallback) return false;
+
     final workerName = WorkerIdentity.normalizeName(worker['name']);
-    final recordName = WorkerIdentity.normalizeName(record['name']);
+    final recordName = WorkerIdentity.normalizeName(
+      record['name'] ?? record['workerName'],
+    );
     return workerName.isNotEmpty && recordName == workerName;
+  }
+
+  static DateTime? _recordRevisionDate(Map<String, dynamic> record) {
+    for (final key in ['updatedAt', 'createdAt']) {
+      final date = AppDateUtils.dateFromValue(record[key]);
+      if (date != null) return date;
+    }
+    return null;
+  }
+
+  static bool _candidateIsNewer(
+    Map<String, dynamic> existing,
+    Map<String, dynamic> candidate,
+  ) {
+    final existingRevision = _recordRevisionDate(existing);
+    final candidateRevision = _recordRevisionDate(candidate);
+
+    if (candidateRevision != null && existingRevision == null) return true;
+    if (candidateRevision == null && existingRevision != null) return false;
+
+    if (candidateRevision != null && existingRevision != null) {
+      final comparison = candidateRevision.compareTo(existingRevision);
+      if (comparison != 0) return comparison > 0;
+    }
+
+    return (candidate['id'] ?? '').toString().compareTo(
+          (existing['id'] ?? '').toString(),
+        ) >
+        0;
+  }
+
+  static String _dateKey(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   static List<Map<String, dynamic>> recordsForWorker({
     required Map<String, dynamic> worker,
     required List<Map<String, dynamic>> attendanceRecords,
+    bool allowNameFallback = true,
   }) {
-    return attendanceRecords.where((record) {
-      return _recordMatchesWorkerIdentity(worker, record) &&
-          recordIsOnOrAfterWorkerCreation(
-            worker: worker,
-            attendanceRecord: record,
-          );
-    }).toList();
+    final recordsByDay = <String, Map<String, dynamic>>{};
+
+    for (final record in attendanceRecords) {
+      if (!_recordMatchesWorkerIdentity(
+        worker,
+        record,
+        allowNameFallback: allowNameFallback,
+      )) {
+        continue;
+      }
+
+      if (!recordIsOnOrAfterWorkerCreation(
+        worker: worker,
+        attendanceRecord: record,
+      )) {
+        continue;
+      }
+
+      final date = AppDateUtils.attendanceRecordDate(record);
+      if (date == null) continue;
+
+      final key = _dateKey(date);
+      final existing = recordsByDay[key];
+      if (existing == null || _candidateIsNewer(existing, record)) {
+        recordsByDay[key] = Map<String, dynamic>.from(record);
+      }
+    }
+
+    final records = recordsByDay.values.toList();
+    records.sort((a, b) {
+      final aDate = AppDateUtils.attendanceRecordDate(a);
+      final bDate = AppDateUtils.attendanceRecordDate(b);
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      final dateComparison = bDate.compareTo(aDate);
+      if (dateComparison != 0) return dateComparison;
+
+      if (_candidateIsNewer(a, b)) return 1;
+      if (_candidateIsNewer(b, a)) return -1;
+      return 0;
+    });
+
+    return records;
+  }
+
+  static bool _workerNameIsUnique(
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> workersList,
+  ) {
+    final targetName = WorkerIdentity.normalizeName(worker['name']);
+    if (targetName.isEmpty) return false;
+
+    var matches = 0;
+    for (final item in workersList) {
+      if (WorkerIdentity.normalizeName(item['name']) == targetName) {
+        matches++;
+        if (matches > 1) return false;
+      }
+    }
+    return matches == 1;
+  }
+
+  static String _stringValue(dynamic value) {
+    return (value ?? '').toString().trim();
+  }
+
+  static dynamic _preferValue(dynamic primary, dynamic fallback) {
+    if (primary == null) return fallback;
+    if (primary is String && primary.trim().isEmpty) return fallback;
+    return primary;
   }
 
   static List<Map<String, dynamic>> combineAttendance({
     required List<Map<String, dynamic>> workersList,
     required List<Map<String, dynamic>> rawAttendanceDocs,
   }) {
-    if (workersList.isEmpty && rawAttendanceDocs.isEmpty) {
-      return [];
-    }
+    if (workersList.isEmpty) return [];
 
     final combined = <Map<String, dynamic>>[];
 
-    for (var worker in workersList) {
-      final wEmail = WorkerIdentity.normalizeEmail(worker['email']);
-      final matched = rawAttendanceDocs
-          .cast<Map<String, dynamic>?>()
-          .firstWhere(
-            (record) =>
-                record != null &&
-                _recordMatchesWorkerIdentity(worker, record) &&
-                recordIsOnOrAfterWorkerCreation(
-                  worker: worker,
-                  attendanceRecord: record,
-                ),
-            orElse: () => null,
-          );
+    for (var index = 0; index < workersList.length; index++) {
+      final worker = workersList[index];
+      final workerId = _stringValue(worker['id'] ?? worker['workerId']);
+      final workerEmail = WorkerIdentity.normalizeEmail(worker['email']);
+      final workerName = WorkerIdentity.normalizeName(worker['name']);
+      final allowNameFallback = _workerNameIsUnique(worker, workersList);
+
+      final matchedRecords = recordsForWorker(
+        worker: worker,
+        attendanceRecords: rawAttendanceDocs,
+        allowNameFallback: allowNameFallback,
+      );
+      final matched = matchedRecords.isEmpty ? null : matchedRecords.first;
 
       if (matched != null) {
         combined.add({
           ...matched,
-          'workerId': worker['id'] ?? matched['workerId'],
-          'name': worker['name'] ?? matched['name'],
-          'role': worker['position'] ?? matched['role'] ?? '',
-          'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
+          'workerId': workerId.isNotEmpty
+              ? workerId
+              : _stringValue(matched['workerId']),
+          'name': _preferValue(worker['name'], matched['name']),
+          'email': _preferValue(worker['email'], matched['email']),
+          'role': _preferValue(
+            worker['position'] ?? worker['role'],
+            matched['role'],
+          ),
+          'profileImage': _preferValue(
+            worker['profileImage'],
+            matched['profileImage'],
+          ),
+          'phone': _preferValue(
+            worker['phone'] ?? worker['contact'],
+            matched['phone'] ?? matched['contact'],
+          ),
         });
       } else {
+        final placeholderIdentity = workerId.isNotEmpty
+            ? workerId
+            : workerEmail.isNotEmpty
+            ? workerEmail
+            : workerName.isNotEmpty
+            ? workerName
+            : index.toString();
+
         combined.add({
-          'id': 'norecord_${worker['id'] ?? wEmail}',
-          'workerId': worker['id'],
-          'name': worker['name'] ?? 'Worker',
+          'id': 'norecord_$placeholderIdentity',
+          'workerId': workerId,
+          'name': _preferValue(worker['name'], 'Worker'),
           'email': worker['email'] ?? '',
-          'role': worker['position'] ?? '',
-          'attendanceType': worker['type2'] ?? 'On-Site',
-          'workType': worker['type1'] ?? 'Full Time',
+          'role': worker['position'] ?? worker['role'] ?? '',
+          'attendanceType':
+              worker['type2'] ?? worker['attendanceType'] ?? 'On-Site',
+          'workType': worker['type1'] ?? worker['workType'] ?? 'Full Time',
           'profileImage': worker['profileImage'],
-          'phone': worker['phone'] ?? '',
+          'phone': worker['phone'] ?? worker['contact'] ?? '',
           'createdAt': null,
           'status': '',
         });
@@ -120,14 +247,23 @@ class AttendanceService {
     }
 
     combined.sort((a, b) {
-      final aTime = a['createdAt'];
-      final bTime = b['createdAt'];
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      final aStr = aTime.toString();
-      final bStr = bTime.toString();
-      return bStr.compareTo(aStr);
+      final aDate = AppDateUtils.attendanceRecordDate(a);
+      final bDate = AppDateUtils.attendanceRecordDate(b);
+
+      if (aDate == null && bDate == null) {
+        return _stringValue(
+          a['name'],
+        ).toLowerCase().compareTo(_stringValue(b['name']).toLowerCase());
+      }
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      final dateComparison = bDate.compareTo(aDate);
+      if (dateComparison != 0) return dateComparison;
+
+      return _stringValue(
+        a['name'],
+      ).toLowerCase().compareTo(_stringValue(b['name']).toLowerCase());
     });
 
     return combined;

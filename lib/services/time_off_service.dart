@@ -13,10 +13,22 @@ class TimeOffService {
 
   static String normalizeLeaveType(String type) {
     final normalized = type.trim();
-    if (normalized == 'Custom Leave' || normalized == 'Maternity Leave') {
-      return 'Unpaid Leave';
+    switch (normalized.toLowerCase()) {
+      case 'annual leave':
+        return 'Annual Leave';
+      case 'sick leave':
+        return 'Sick Leave';
+      case 'casual leave':
+        return 'Casual Leave';
+      case 'medical leave':
+        return 'Medical Leave';
+      case 'unpaid leave':
+      case 'custom leave':
+      case 'maternity leave':
+        return 'Unpaid Leave';
+      default:
+        return normalized;
     }
-    return normalized;
   }
 
   static String leaveType(Map<String, dynamic> record) {
@@ -26,9 +38,11 @@ class TimeOffService {
     );
   }
 
-  static bool isPaidLeaveType(String type) => paidLeaveTypes.contains(type);
+  static bool isPaidLeaveType(String type) =>
+      paidLeaveTypes.contains(normalizeLeaveType(type));
 
-  static bool isUnpaidLeaveType(String type) => unpaidLeaveTypes.contains(type);
+  static bool isUnpaidLeaveType(String type) =>
+      unpaidLeaveTypes.contains(normalizeLeaveType(type));
 
   static bool isCancelledRecord(Map<String, dynamic> record) {
     final status = (record['status'] ?? '').toString().trim().toLowerCase();
@@ -202,7 +216,7 @@ class TimeOffService {
         .trim();
     final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
     final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
-    var used = 0;
+    final usedDates = <DateTime>{};
 
     for (final record in timeOffRecords) {
       if (!isActiveRecord(record)) continue;
@@ -219,13 +233,11 @@ class TimeOffService {
       )) {
         continue;
       }
-      used += selectedDatesForRecord(record).length;
+      usedDates.addAll(selectedDatesForRecord(record));
     }
-    return used;
+    return usedDates.length;
   }
 
-  /// Counts every time-off day against the worker's configured annual
-  /// allowance, while keeping paid/unpaid classification separate for payroll.
   static int leaveDaysUsedForWorker(
     Map<String, dynamic> worker,
     List<Map<String, dynamic>> timeOffRecords, {
@@ -280,7 +292,7 @@ class TimeOffService {
       timeOffRecords,
       excludingRecordId: excludingRecordId,
     );
-    return (total - used).clamp(0, total);
+    return (total - used).clamp(0, total).toInt();
   }
 
   static bool hasOverlappingApprovedLeave(

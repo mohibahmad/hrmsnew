@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../firebase_options.dart';
@@ -53,23 +54,105 @@ class AuthService {
     }
   }
 
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  String _resolvedName(
+    User user, {
+    String? preferredName,
+    required String fallback,
+  }) {
+    final preferred = preferredName?.trim() ?? '';
+    if (preferred.isNotEmpty) return preferred;
+
+    final current = user.displayName?.trim() ?? '';
+    if (current.isNotEmpty) return current;
+
+    final email = user.email?.trim() ?? '';
+    final separator = email.indexOf('@');
+    if (separator > 0) {
+      final localPart = email.substring(0, separator).trim();
+      if (localPart.isNotEmpty) return localPart;
+    }
+
+    return fallback;
+  }
+
+  Future<void> _safeUpdateDisplayName(User user, String name) async {
+    if (name.trim().isEmpty || user.displayName?.trim() == name.trim()) return;
+    try {
+      await user.updateDisplayName(name.trim());
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'updateAuthDisplayName');
+    }
+  }
+
+  Future<Map<String, dynamic>> _ensureSocialProfile({
+    required User user,
+    required String name,
+  }) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('hrms_user')
+        .doc(user.uid)
+        .get(const GetOptions(source: Source.server));
+
+    final existing = snapshot.data();
+    if (snapshot.exists && existing != null) {
+      return Map<String, dynamic>.from(existing);
+    }
+
+    final email = _normalizeEmail(user.email ?? '');
+    await FirestoreService.instance.createUserProfile(
+      username: name,
+      email: email,
+      phone: '',
+    );
+
+    return {
+      'username': name,
+      'email': email,
+      'phone': '',
+      'uid': user.uid,
+      'isPremium': false,
+      'hasDummyData': false,
+    };
+  }
+
+  Future<void> _rollbackAuthenticatedSession(String contextName) async {
+    try {
+      await _auth.signOut();
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: '${contextName}AuthSignOut');
+    }
+
+    try {
+      await PreferencesService.clear();
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: '${contextName}PreferencesClear');
+    }
+
+    profilePicNotifier.value = null;
+  }
+
+  Future<void> _setPremiumFromProfile(Map<String, dynamic>? profile) async {
+    await PreferencesService.setPremium(profile?['isPremium'] == true);
+  }
+
   Future<UserCredential> signUp({
     required String email,
     required String password,
   }) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
+        email: _normalizeEmail(email),
         password: password,
       );
       await PreferencesService.setGuest(false);
       await PreferencesService.setLoggedIn(true);
       return credential;
     } on FirebaseAuthException {
-      
       rethrow;
-    } catch (_) {
-      
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'emailSignUp');
       rethrow;
     }
   }
@@ -78,9 +161,10 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    UserCredential? credential;
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
+      credential = await _auth.signInWithEmailAndPassword(
+        email: _normalizeEmail(email),
         password: password,
       );
       await PreferencesService.setGuest(false);
@@ -89,14 +173,16 @@ class AuthService {
       await _clearSeededDummyDataIfNeeded();
       return credential;
     } on FirebaseAuthException {
-      
       rethrow;
-    } catch (_) {
+    } catch (e, st) {
+      if (credential != null) {
+        await _rollbackAuthenticatedSession('emailSignInRollback');
+      }
+      ErrorReporter.report(e, st, context: 'emailSignIn');
       rethrow;
     }
   }
 
-  
   Future<UserCredential> signInAnonymously({
     String displayName = 'Guest User',
   }) async {
@@ -107,41 +193,41 @@ class AuthService {
     return GuestUserCredential(_guestUser);
   }
 
-  
   Future<UserCredential?> signInWithGoogle() async {
+    UserCredential? authenticatedCredential;
     try {
       String? clientId;
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
         clientId = DefaultFirebaseOptions.currentPlatform.iosClientId;
       }
+
       await GoogleSignIn.instance.initialize(clientId: clientId);
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
-          .authenticate();
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final googleAuth = googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );
-      final userCredential = await _auth.signInWithCredential(credential);
-      await PreferencesService.setGuest(false);
-      if (userCredential.user != null) {
-        final name =
-            googleUser.displayName ?? userCredential.user!.email ?? 'User';
-        await userCredential.user!.updateDisplayName(name);
 
-        
-        final firestore = FirestoreService.instance;
-        final profile = await firestore.getUserProfile();
-        if (profile == null) {
-          await firestore.createUserProfile(
-            username: name,
-            email: userCredential.user!.email ?? '',
-            phone: '',
-          );
-        }
+      final userCredential = await _auth.signInWithCredential(credential);
+      authenticatedCredential = userCredential;
+      final user = userCredential.user;
+      if (user == null) {
+        throw StateError('Google authentication returned no user');
       }
+
+      await PreferencesService.setGuest(false);
+
+      final name = _resolvedName(
+        user,
+        preferredName: googleUser.displayName,
+        fallback: 'User',
+      );
+      await _safeUpdateDisplayName(user, name);
+
+      final profile = await _ensureSocialProfile(user: user, name: name);
       await PreferencesService.setLoggedIn(true);
-      await _syncPremiumStatusFromFirestore();
+      await _setPremiumFromProfile(profile);
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
     } on GoogleSignInException catch (e) {
@@ -150,11 +236,17 @@ class AuthService {
         return null;
       }
       rethrow;
+    } catch (e, st) {
+      if (authenticatedCredential != null) {
+        await _rollbackAuthenticatedSession('googleSignInRollback');
+      }
+      ErrorReporter.report(e, st, context: 'googleSignIn');
+      rethrow;
     }
   }
 
-  
   Future<UserCredential?> signInWithApple() async {
+    UserCredential? authenticatedCredential;
     try {
       final appleProvider = OAuthProvider('apple.com');
       appleProvider.setCustomParameters({'locale': 'en'});
@@ -162,34 +254,39 @@ class AuthService {
       appleProvider.addScope('name');
 
       final userCredential = await _auth.signInWithProvider(appleProvider);
-      await PreferencesService.setGuest(false);
-      if (userCredential.user != null) {
-        final name = userCredential.user!.displayName ?? 'Apple User';
-
-        
-        final firestore = FirestoreService.instance;
-        final profile = await firestore.getUserProfile();
-        if (profile == null) {
-          await firestore.createUserProfile(
-            username: name,
-            email: userCredential.user!.email ?? '',
-            phone: '',
-          );
-        }
+      authenticatedCredential = userCredential;
+      final user = userCredential.user;
+      if (user == null) {
+        throw StateError('Apple authentication returned no user');
       }
+
+      await PreferencesService.setGuest(false);
+
+      final name = _resolvedName(user, fallback: 'Apple User');
+      await _safeUpdateDisplayName(user, name);
+
+      final profile = await _ensureSocialProfile(user: user, name: name);
       await PreferencesService.setLoggedIn(true);
-      await _syncPremiumStatusFromFirestore();
+      await _setPremiumFromProfile(profile);
       await _clearSeededDummyDataIfNeeded();
       return userCredential;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'canceled' || e.code == 'popup-closed-by-user') {
         return null;
       }
+      if (authenticatedCredential != null) {
+        await _rollbackAuthenticatedSession('appleSignInRollback');
+      }
+      rethrow;
+    } catch (e, st) {
+      if (authenticatedCredential != null) {
+        await _rollbackAuthenticatedSession('appleSignInRollback');
+      }
+      ErrorReporter.report(e, st, context: 'appleSignIn');
       rethrow;
     }
   }
 
-  
   Future<void> signOut() async {
     final isGuest = await PreferencesService.isGuest();
     await PreferencesService.setGuest(false);
@@ -200,18 +297,37 @@ class AuthService {
     profilePicNotifier.value = null;
   }
 
-  
   Future<void> _syncPremiumStatusFromFirestore() async {
     try {
-      final profile = await FirestoreService.instance.getUserProfile();
-      if (profile != null && profile['isPremium'] == true) {
-        await PreferencesService.setPremium(true);
+      final user = _auth.currentUser;
+      if (user == null) {
+        await PreferencesService.setPremium(false);
+        return;
       }
-    } catch (_) {}
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('hrms_user')
+          .doc(user.uid)
+          .get(const GetOptions(source: Source.server));
+      await PreferencesService.setPremium(
+        snapshot.data()?['isPremium'] == true,
+      );
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'syncPremiumStatus');
+      try {
+        await PreferencesService.setPremium(false);
+      } catch (fallbackError, fallbackStack) {
+        ErrorReporter.report(
+          fallbackError,
+          fallbackStack,
+          context: 'syncPremiumStatusFallback',
+        );
+      }
+    }
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email.trim());
+    await _auth.sendPasswordResetEmail(email: _normalizeEmail(email));
   }
 }
 
@@ -225,7 +341,7 @@ class UserAvatar extends StatelessWidget {
       valueListenable: AuthService.profilePicNotifier,
       builder: (context, photoUrl, _) {
         final double size = radius * 2;
-        final url = photoUrl;
+        final url = photoUrl?.trim();
 
         Widget imageWidget;
         if (url != null && url.isNotEmpty) {
@@ -240,7 +356,11 @@ class UserAvatar extends StatelessWidget {
             );
           } else if (url.startsWith('data:image')) {
             try {
-              final String base64Content = url.substring(url.indexOf(',') + 1);
+              final commaIndex = url.indexOf(',');
+              if (commaIndex < 0 || commaIndex == url.length - 1) {
+                throw const FormatException('Invalid image data');
+              }
+              final base64Content = url.substring(commaIndex + 1);
               imageWidget = Image.memory(
                 base64Decode(base64Content),
                 width: size,

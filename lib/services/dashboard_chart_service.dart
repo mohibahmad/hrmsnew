@@ -18,6 +18,20 @@ class DashboardChartSeries {
 class DashboardChartService {
   DashboardChartService._();
 
+  static String _normalizePeriod(String period) {
+    final normalized = period.trim();
+    return switch (normalized) {
+      'Weekly' => 'Week',
+      'Monthly' => 'Month',
+      '6 Monthly' => '6 Month',
+      _ => normalized,
+    };
+  }
+
+  static DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
   static DashboardChartSeries buildSeries({
     required List<Map<String, dynamic>> records,
     required double Function(Map<String, dynamic> record) valueOf,
@@ -27,15 +41,20 @@ class DashboardChartService {
     bool placeUndatedInCurrentPeriod = false,
   }) {
     final current = now ?? DateTime.now();
+    final currentDay = _dateOnly(current);
+    final normalizedPeriod = _normalizePeriod(period);
     final datedValues = <({DateTime date, double value})>[];
+
     for (final record in records) {
       if ((record['status'] ?? '').toString().trim().toLowerCase() ==
           'cancelled') {
         continue;
       }
+
       final value = valueOf(record);
       if (!value.isFinite || value == 0) continue;
-      final date = (dateOf ?? PayrollService.payrollRecordDate)(record);
+
+      final date = (dateOf ?? salaryRecordDate)(record);
       if (date != null) {
         datedValues.add((date: date, value: value));
       } else if (placeUndatedInCurrentPeriod) {
@@ -43,29 +62,27 @@ class DashboardChartService {
       }
     }
 
-    if (period == 'Today') {
-      final day = DateTime(current.year, current.month, current.day);
+    if (normalizedPeriod == 'Today') {
       final points = List.generate(6, (index) {
         final startHour = index * 4;
         final value = datedValues
             .where(
               (item) =>
-                  _sameDay(item.date, day) &&
+                  _sameDay(item.date, currentDay) &&
                   item.date.hour >= startHour &&
                   item.date.hour < startHour + 4,
             )
             .fold<double>(0, (sum, item) => sum + item.value);
         return DashboardChartPoint(
-          date: day.add(Duration(hours: startHour)),
+          date: currentDay.add(Duration(hours: startHour)),
           value: value,
         );
       });
       return DashboardChartSeries(points: points, total: _sum(points));
     }
 
-    if (period == 'Week') {
-      final today = DateTime(current.year, current.month, current.day);
-      final start = today.subtract(const Duration(days: 6));
+    if (normalizedPeriod == 'Week') {
+      final start = currentDay.subtract(const Duration(days: 6));
       final points = List.generate(7, (index) {
         final day = start.add(Duration(days: index));
         return DashboardChartPoint(
@@ -78,7 +95,7 @@ class DashboardChartService {
       return DashboardChartSeries(points: points, total: _sum(points));
     }
 
-    if (period == 'Month') {
+    if (normalizedPeriod == 'Month') {
       final start = DateTime(current.year, current.month, 1);
       final dayCount = current.day;
       double runningTotal = 0;
@@ -92,8 +109,8 @@ class DashboardChartService {
       return DashboardChartSeries(points: points, total: runningTotal);
     }
 
-    final monthCount = period == '6 Month' ? 6 : 12;
-    final firstMonth = period == '6 Month'
+    final monthCount = normalizedPeriod == '6 Month' ? 6 : 12;
+    final firstMonth = normalizedPeriod == '6 Month'
         ? DateTime(current.year, current.month - 5, 1)
         : DateTime(current.year, 1, 1);
     final points = List.generate(monthCount, (index) {
@@ -118,15 +135,12 @@ class DashboardChartService {
     DateTime? now,
   }) {
     final currentValue = now ?? DateTime.now();
-    final current = DateTime(
-      currentValue.year,
-      currentValue.month,
-      currentValue.day,
-    );
-    final target = DateTime(date.year, date.month, date.day);
+    final current = _dateOnly(currentValue);
+    final target = _dateOnly(date);
     if (target.isAfter(current)) return false;
 
-    final start = switch (period) {
+    final normalizedPeriod = _normalizePeriod(period);
+    final start = switch (normalizedPeriod) {
       'Today' => current,
       'Week' => current.subtract(const Duration(days: 6)),
       'Month' => DateTime(current.year, current.month, 1),
@@ -163,6 +177,14 @@ class DashboardChartService {
       first.year == second.year &&
       first.month == second.month &&
       first.day == second.day;
+
+  static DateTime? salaryRecordDate(Map<String, dynamic> record) {
+    for (final key in ['payrollDate', 'paymentDate', 'paidAt', 'createdAt']) {
+      final parsed = PayrollService.payrollRecordDate({'date': record[key]});
+      if (parsed != null) return parsed;
+    }
+    return PayrollService.payrollRecordDate(record);
+  }
 
   static DateTime? expenseRecordDate(Map<String, dynamic> record) {
     final enteredDate = PayrollService.payrollRecordDate({
@@ -224,6 +246,7 @@ class DashboardChartService {
       records: salaryRecords,
       valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
       period: period,
+      dateOf: PayrollService.payrollRecordDate,
       now: now,
       placeUndatedInCurrentPeriod: true,
     );

@@ -2010,7 +2010,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     return Text(
-      '$present Present · $absent Absent · $leave Leave',
+      '$present ${'present'.tr()} · '
+      '$absent ${'absent'.tr()} · '
+      '$leave ${'leave'.tr()}',
       style: const TextStyle(
         color: textDark,
         fontSize: 14,

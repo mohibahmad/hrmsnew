@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
@@ -15,11 +16,11 @@ import 'payroll_service.dart';
 import 'preferences_service.dart';
 import 'dummy_data.dart';
 import 'invoice_service.dart';
+import 'error_reporter.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/amount_text.dart';
 
-/// Result of a single automated payroll run for one worker.
 class AutoPayrollResult {
   final String workerId;
   final String workerName;
@@ -28,6 +29,7 @@ class AutoPayrollResult {
   final bool success;
   final String? error;
   final int absents;
+  final int halfDays;
   final int leaves;
   final int paidLeaves;
   final int unpaidLeaves;
@@ -51,6 +53,7 @@ class AutoPayrollResult {
     required this.success,
     this.error,
     this.absents = 0,
+    this.halfDays = 0,
     this.leaves = 0,
     this.paidLeaves = 0,
     this.unpaidLeaves = 0,
@@ -75,6 +78,7 @@ class AutoPayrollResult {
     success: success,
     error: error,
     absents: absents,
+    halfDays: halfDays,
     leaves: leaves,
     paidLeaves: paidLeaves,
     unpaidLeaves: unpaidLeaves,
@@ -113,22 +117,17 @@ class PayrollRunSummary {
 class SalaryDayScheduler {
   static const String _lastRunKey = 'salary_day_last_run';
 
-  // ---------------------------------------------------------------------------
-  // Singleton
-  // ---------------------------------------------------------------------------
   static final SalaryDayScheduler _instance = SalaryDayScheduler._();
   factory SalaryDayScheduler() => _instance;
   SalaryDayScheduler._();
 
-  // ---------------------------------------------------------------------------
-  // Check & trigger
-  // ---------------------------------------------------------------------------
+  bool _runInProgress = false;
 
-  /// Call this at app startup. Returns `true` if a payroll run was performed
-  /// (or offered to the user).
   Future<bool> checkAndRunIfDue(BuildContext context) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isGuest = authService.currentUser?.isAnonymous ?? false;
     final salaryDay = await _loadSalaryDay(context);
-    if (salaryDay == null) return false; // No salary day configured.
+    if (salaryDay == null) return false;
 
     final today = DateTime.now();
 
@@ -137,9 +136,14 @@ class SalaryDayScheduler {
 
     final payrollMonth = await _loadActivePayrollMonth(context, today);
     final period = PayrollService.payrollPeriodLabel(payrollMonth);
-    if (await _alreadyRanForPeriod(period)) return false;
+    if (await _alreadyRanForPeriod(
+      period,
+      isGuest: isGuest,
+      userId: authService.currentUser?.uid,
+    )) {
+      return false;
+    }
 
-    // Offer the run (semi‑auto by default).
     if (!context.mounted) return false;
     final summary = await runPayroll(
       context,
@@ -149,10 +153,6 @@ class SalaryDayScheduler {
     return summary != null;
   }
 
-  /// Execute a full payroll run for all active workers.
-  ///
-  /// When [autoMode] is `false` (semi‑auto), a review dialog is shown before
-  /// committing.  When `true`, the run completes silently in the background.
   Future<PayrollRunSummary?> runPayroll(
     BuildContext context, {
     bool autoMode = false,
@@ -164,8 +164,34 @@ class SalaryDayScheduler {
           listen: false,
         ).currentUser?.isAnonymous ??
         false;
+    if (isGuest) {
+      return _runPayrollInternal(
+        context,
+        autoMode: autoMode,
+        payrollMonth: payrollMonth,
+      );
+    }
+    if (_runInProgress) return null;
+    _runInProgress = true;
+    try {
+      return await _runPayrollInternal(
+        context,
+        autoMode: autoMode,
+        payrollMonth: payrollMonth,
+      );
+    } finally {
+      _runInProgress = false;
+    }
+  }
 
-    // 1. Gather workers.
+  Future<PayrollRunSummary?> _runPayrollInternal(
+    BuildContext context, {
+    required bool autoMode,
+    DateTime? payrollMonth,
+  }) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isGuest = authService.currentUser?.isAnonymous ?? false;
+
     List<Map<String, dynamic>> workers;
 
     if (isGuest) {
@@ -222,32 +248,60 @@ class SalaryDayScheduler {
       context,
       listen: false,
     );
-    final attendanceFutures = <Future<Map<String, int>>>[];
-    for (final worker in workers) {
-      final email = (worker['email'] ?? '').toString();
-      final workerId = (worker['id'] ?? '').toString();
-      if (!isGuest && (email.trim().isNotEmpty || workerId.isNotEmpty)) {
-        attendanceFutures.add(
-          firestoreService
-              .getWorkerMonthlyAttendance(
-                email,
-                workerId: workerId,
-                month: effectivePayrollMonth,
-              )
-              .catchError((_) {
-                final att = PayrollService.attendanceCounts(worker);
-                return <String, int>{
-                  'absents': att['absents'] ?? 0,
-                  'paidLeaves': att['paidLeaves'] ?? 0,
-                  'unpaidLeaves': att['unpaidLeaves'] ?? 0,
-                  'leaves': att['leaves'] ?? 0,
-                };
-              }),
+
+    if (!isGuest) {
+      try {
+        final payrollSnapshot = await firestoreService.payrollStream.first
+            .timeout(const Duration(seconds: 20));
+        final existingPayroll = payrollSnapshot.docs
+            .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+            .toList();
+        workers = workers.where((worker) {
+          return !existingPayroll.any(
+            (record) => _isPaidPayrollForWorker(
+              record: record,
+              worker: worker,
+              month: effectivePayrollMonth,
+            ),
+          );
+        }).toList();
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'SalaryDayExistingPayrollCheck',
         );
-      } else {
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'error_occurred'.tr(
+              namedArgs: {'error': error.toString()},
+            ),
+            isError: true,
+          );
+        }
+        return null;
+      }
+
+      if (workers.isEmpty) {
+        await _markRunComplete(
+          periodLabel,
+          isGuest: false,
+          userId: authService.currentUser?.uid,
+        );
+        return null;
+      }
+    }
+
+    final eligibleWorkerCount = workers.length;
+    late final List<Map<String, dynamic>> attendanceResults;
+
+    if (isGuest) {
+      final attendanceFutures = <Future<Map<String, dynamic>>>[];
+      for (final worker in workers) {
         final att = PayrollService.attendanceCounts(worker);
         attendanceFutures.add(
-          Future.value(<String, int>{
+          Future.value(<String, dynamic>{
             'absents': att['absents'] ?? 0,
             'paidLeaves': att['paidLeaves'] ?? 0,
             'unpaidLeaves': att['unpaidLeaves'] ?? 0,
@@ -255,64 +309,59 @@ class SalaryDayScheduler {
           }),
         );
       }
+      attendanceResults = await Future.wait(attendanceFutures);
+    } else {
+      final attendanceFutures = <Future<Map<String, dynamic>>>[];
+      for (final worker in workers) {
+        final email = (worker['email'] ?? '').toString();
+        final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+            .toString()
+            .trim();
+        attendanceFutures.add(() async {
+          try {
+            final attendance = await firestoreService
+                .getWorkerMonthlyAttendance(
+                  email,
+                  workerId: workerId,
+                  month: effectivePayrollMonth,
+                );
+            return <String, dynamic>{...attendance};
+          } catch (error, stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'SalaryDayAttendanceFetch:$workerId',
+            );
+            return <String, dynamic>{'_error': error.toString()};
+          }
+        }());
+      }
+      attendanceResults = await Future.wait(attendanceFutures);
     }
-    final attendanceResults = await Future.wait(attendanceFutures);
 
-    final autoWorkDays = await firestoreService.getMonthlyWorkingDays(
-      month: effectivePayrollMonth,
-    );
+    final autoWorkDays = isGuest
+        ? await firestoreService.getMonthlyWorkingDays(
+            month: effectivePayrollMonth,
+          )
+        : 30;
 
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
       final worker = workers[i];
-      final workerId = (worker['id'] ?? '').toString();
+      final workerId = isGuest
+          ? (worker['id'] ?? '').toString()
+          : (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
       final name = (worker['name'] ?? '').toString();
       final email = (worker['email'] ?? '').toString();
       final salaryStr = PayrollService.currentSalaryDisplay(worker);
       final totalWorkDays = (worker['totalWorkDays'] ?? '').toString();
-      final workDays = int.tryParse(totalWorkDays) ?? autoWorkDays;
+      final workDays = isGuest
+          ? int.tryParse(totalWorkDays) ?? autoWorkDays
+          : 30;
+      final attendance = attendanceResults[i];
+      final attendanceError = (attendance['_error'] ?? '').toString();
 
-      int absents = attendanceResults[i]['absents'] ?? 0;
-      int paidLeaves = attendanceResults[i]['paidLeaves'] ?? 0;
-      int unpaidLeaves = attendanceResults[i]['unpaidLeaves'] ?? 0;
-      int leaves = attendanceResults[i]['leaves'] ?? 0;
-
-      final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
-          .toString()
-          .trim();
-      final leaveDeductionPerDay = (worker['leaveDeduction'] ?? '')
-          .toString()
-          .trim();
-      final effectiveAbsentDeduction = absentDeductionPerDay.isNotEmpty
-          ? absentDeductionPerDay
-          : '0';
-      final effectiveLeaveDeduction = leaveDeductionPerDay.isNotEmpty
-          ? leaveDeductionPerDay
-          : '0';
-      final absentDeductionTotal =
-          PayrollService.extractSalary(effectiveAbsentDeduction) * absents;
-      final leaveDeductionTotal =
-          PayrollService.extractSalary(effectiveLeaveDeduction) * unpaidLeaves;
-
-      final effectiveDays = workDays - absents - unpaidLeaves;
-
-      String netSalary;
-      double rawNetVal = 0;
-      try {
-        final calc = PayrollService.calculatePayroll(
-          salary: salaryStr,
-          totalWorkDays: workDays.toString(),
-          daysWorked: effectiveDays > 0 ? effectiveDays.toString() : '0',
-          absents: absents.toString(),
-          leaves: unpaidLeaves.toString(),
-          overtimeAmount: (worker['overtimeAmount'] ?? '').toString(),
-          absentDeductionPerDay: effectiveAbsentDeduction,
-          leaveDeductionPerDay: effectiveLeaveDeduction,
-          salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
-        );
-        netSalary = calc['formattedNet'] as String? ?? '0';
-        rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
-      } catch (e) {
+      if (!isGuest && attendanceError.isNotEmpty) {
         results.add(
           AutoPayrollResult(
             workerId: workerId,
@@ -320,7 +369,112 @@ class SalaryDayScheduler {
             email: email,
             netSalary: '0',
             success: false,
-            error: e.toString(),
+            error: attendanceError,
+            salary: salaryStr,
+            totalWorkDays: workDays.toString(),
+            position: (worker['position'] ?? '').toString(),
+            salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
+            imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
+                ? (worker['profileImage'] ?? '').toString()
+                : null,
+          ),
+        );
+        continue;
+      }
+
+      final absents = _intValue(attendance['absents']);
+      final halfDays = _intValue(attendance['halfDays']);
+      final paidLeaves = _intValue(attendance['paidLeaves']);
+      final unpaidLeaves = _intValue(attendance['unpaidLeaves']);
+      final leaves = _intValue(attendance['leaves']);
+      final overtimeAmount = (worker['overtimeAmount'] ?? '').toString();
+      final salaryType = (worker['salaryType'] ?? 'Monthly').toString();
+
+      late double absentDeductionTotal;
+      late double leaveDeductionTotal;
+      String netSalary;
+      double rawNetVal = 0;
+
+      try {
+        if (isGuest) {
+          final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
+              .toString()
+              .trim();
+          final leaveDeductionPerDay = (worker['leaveDeduction'] ?? '')
+              .toString()
+              .trim();
+          final effectiveAbsentDeduction = absentDeductionPerDay.isNotEmpty
+              ? absentDeductionPerDay
+              : '0';
+          final effectiveLeaveDeduction = leaveDeductionPerDay.isNotEmpty
+              ? leaveDeductionPerDay
+              : '0';
+          absentDeductionTotal =
+              PayrollService.extractSalary(effectiveAbsentDeduction) * absents;
+          leaveDeductionTotal =
+              PayrollService.extractSalary(effectiveLeaveDeduction) *
+              unpaidLeaves;
+          final effectiveDays = workDays - absents - unpaidLeaves;
+          final calc = PayrollService.calculatePayroll(
+            salary: salaryStr,
+            totalWorkDays: workDays.toString(),
+            daysWorked: effectiveDays > 0 ? effectiveDays.toString() : '0',
+            absents: absents.toString(),
+            leaves: unpaidLeaves.toString(),
+            overtimeAmount: overtimeAmount,
+            absentDeductionPerDay: effectiveAbsentDeduction,
+            leaveDeductionPerDay: effectiveLeaveDeduction,
+            salaryType: salaryType,
+          );
+          netSalary = calc['formattedNet'] as String? ?? '0';
+          rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
+        } else {
+          final enteredSalary = PayrollService.extractSalary(salaryStr);
+          final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+              ? enteredSalary / 12
+              : enteredSalary;
+          final dailyRate = periodSalary / 30;
+          absentDeductionTotal = dailyRate * (absents + (halfDays * 0.5));
+          leaveDeductionTotal = dailyRate * unpaidLeaves;
+          rawNetVal = PayrollService.calculateNetFromTotals(
+            salary: salaryStr,
+            overtimeAmount: overtimeAmount,
+            absentDeduction: absentDeductionTotal.toString(),
+            leaveDeduction: leaveDeductionTotal.toString(),
+            salaryType: salaryType,
+          );
+          final currency = PayrollService.getCurrencyPrefix(salaryStr);
+          final prefix = currency.isNotEmpty ? '$currency ' : '';
+          netSalary = '$prefix${PayrollService.formatNumber(rawNetVal)}';
+        }
+      } catch (error, stackTrace) {
+        if (!isGuest) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'SalaryDayPayrollCalculation:$workerId',
+          );
+        }
+        results.add(
+          AutoPayrollResult(
+            workerId: workerId,
+            workerName: name,
+            email: email,
+            netSalary: '0',
+            success: false,
+            error: error.toString(),
+            absents: absents,
+            halfDays: halfDays,
+            leaves: leaves,
+            paidLeaves: paidLeaves,
+            unpaidLeaves: unpaidLeaves,
+            salary: salaryStr,
+            totalWorkDays: workDays.toString(),
+            position: (worker['position'] ?? '').toString(),
+            salaryType: salaryType,
+            imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
+                ? (worker['profileImage'] ?? '').toString()
+                : null,
           ),
         );
         continue;
@@ -335,17 +489,18 @@ class SalaryDayScheduler {
           rawNetSalaryValue: rawNetVal,
           success: true,
           absents: absents,
+          halfDays: halfDays,
           leaves: leaves,
           paidLeaves: paidLeaves,
           unpaidLeaves: unpaidLeaves,
           absentDeduction: _editableAmount(absentDeductionTotal),
           leaveDeduction: _editableAmount(leaveDeductionTotal),
           deductionsAreTotals: true,
-          overtimeAmount: (worker['overtimeAmount'] ?? '').toString(),
+          overtimeAmount: overtimeAmount,
           salary: salaryStr,
           totalWorkDays: workDays.toString(),
           position: (worker['position'] ?? '').toString(),
-          salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
+          salaryType: salaryType,
           imageUrl: (worker['profileImage'] ?? '').toString().isNotEmpty
               ? (worker['profileImage'] ?? '').toString()
               : null,
@@ -365,8 +520,10 @@ class SalaryDayScheduler {
       periodLabel: periodLabel,
     );
     var committedSummary = summary;
+    var committedCount = 0;
 
-    if (!autoMode && context.mounted) {
+    if (!autoMode) {
+      if (!context.mounted) return null;
       final selectedResults = await _showReviewDialog(context, summary);
       if (selectedResults == null) return null;
 
@@ -379,10 +536,31 @@ class SalaryDayScheduler {
         periodLabel: summary.periodLabel,
       );
       committedSummary = filteredSummary;
+      if (!context.mounted) return null;
+      try {
+        committedCount = await _commitPayrollRun(
+          filteredSummary,
+          isGuest,
+          context,
+        );
+      } catch (error, stackTrace) {
+        if (!isGuest) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'SalaryDayPayrollCommit',
+          );
+        }
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'failed_to_save_record'.tr(),
+            isError: true,
+          );
+        }
+        return null;
+      }
 
-      await _commitPayrollRun(filteredSummary, isGuest, context);
-
-      // Auto-download ZIP if more than 1 worker was paid.
       if (filteredSummary.successCount > 1 && context.mounted) {
         final paidResults = filteredSummary.results
             .where((r) => r.success)
@@ -394,16 +572,44 @@ class SalaryDayScheduler {
         );
       }
     } else {
-      await _commitPayrollRun(summary, isGuest, context);
+      if (!context.mounted) return null;
+      try {
+        committedCount = await _commitPayrollRun(summary, isGuest, context);
+      } catch (error, stackTrace) {
+        if (!isGuest) {
+          ErrorReporter.report(
+            error,
+            stackTrace,
+            context: 'SalaryDayPayrollCommit',
+          );
+        }
+        if (context.mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'failed_to_save_record'.tr(),
+            isError: true,
+          );
+        }
+        return null;
+      }
 
-      // Auto-download ZIP if more than 1 worker was paid.
       if (summary.successCount > 1 && context.mounted) {
         final paidResults = summary.results.where((r) => r.success).toList();
         await _generateAndSaveZip(context, paidResults, summary.periodLabel);
       }
     }
 
-    await _markRunComplete(periodLabel);
+    final completedAllEligible =
+        committedCount == committedSummary.successCount &&
+        committedSummary.successCount == eligibleWorkerCount &&
+        summary.failCount == 0;
+    if (isGuest || completedAllEligible) {
+      await _markRunComplete(
+        periodLabel,
+        isGuest: isGuest,
+        userId: authService.currentUser?.uid,
+      );
+    }
 
     if (context.mounted && autoMode) {
       FlashySnackBar.show(
@@ -471,18 +677,63 @@ class SalaryDayScheduler {
     return PayrollService.parsePayrollPeriodLabel(rawPeriod) ?? fallback;
   }
 
-  Future<bool> _alreadyRanForPeriod(String periodLabel) async {
+  String _lastRunPreferenceKey({required bool isGuest, String? userId}) {
+    if (isGuest) return _lastRunKey;
+    final normalizedUserId = (userId ?? '').trim();
+    return normalizedUserId.isEmpty
+        ? '${_lastRunKey}_authenticated'
+        : '${_lastRunKey}_$normalizedUserId';
+  }
+
+  Future<bool> _alreadyRanForPeriod(
+    String periodLabel, {
+    required bool isGuest,
+    String? userId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final lastRun = prefs.getString(_lastRunKey);
+    final key = _lastRunPreferenceKey(isGuest: isGuest, userId: userId);
+    final lastRun = prefs.getString(key);
     return lastRun == periodLabel;
   }
 
-  Future<void> _markRunComplete(String periodLabel) async {
+  Future<void> _markRunComplete(
+    String periodLabel, {
+    required bool isGuest,
+    String? userId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastRunKey, periodLabel);
+    final key = _lastRunPreferenceKey(isGuest: isGuest, userId: userId);
+    await prefs.setString(key, periodLabel);
   }
 
-  Future<void> _commitPayrollRun(
+  bool _isPaidPayrollForWorker({
+    required Map<String, dynamic> record,
+    required Map<String, dynamic> worker,
+    required DateTime month,
+  }) {
+    final status = (record['status'] ?? '').toString().trim().toLowerCase();
+    if (status != 'paid') return false;
+    if (!PayrollService.isRecordInMonth(record, month)) return false;
+
+    final workerId = (worker['id'] ?? worker['workerId'] ?? '')
+        .toString()
+        .trim();
+    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+    if (recordWorkerId.isNotEmpty) {
+      return workerId.isNotEmpty && recordWorkerId == workerId;
+    }
+
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final recordEmail = (record['email'] ?? record['workerEmail'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return workerEmail.isNotEmpty &&
+        recordEmail.isNotEmpty &&
+        workerEmail == recordEmail;
+  }
+
+  Future<int> _commitPayrollRun(
     PayrollRunSummary summary,
     bool isGuest,
     BuildContext context,
@@ -559,7 +810,7 @@ class SalaryDayScheduler {
         }
       }
       await DummyData.saveToPrefs();
-      return;
+      return summary.results.where((result) => result.success).length;
     }
 
     final firestoreService = Provider.of<FirestoreService>(
@@ -567,14 +818,34 @@ class SalaryDayScheduler {
       listen: false,
     );
     final successfulResults = summary.results.where((r) => r.success).toList();
+    final payPeriodDate = DateTime.parse('${summary.periodLabel}-01');
+    final latestPayrollSnapshot = await firestoreService.payrollStream.first
+        .timeout(const Duration(seconds: 20));
+    final latestPayrollRecords = latestPayrollSnapshot.docs
+        .map((doc) => {...doc.data() as Map<String, dynamic>, 'id': doc.id})
+        .toList();
+    final paidSelectionExists = successfulResults.any(
+      (result) => latestPayrollRecords.any(
+        (record) => _isPaidPayrollForWorker(
+          record: record,
+          worker: {'id': result.workerId, 'email': result.email},
+          month: payPeriodDate,
+        ),
+      ),
+    );
+    if (paidSelectionExists) {
+      throw StateError('A selected payroll record is already paid');
+    }
 
-    // Prepare payroll records
     final payrollRecords = <Map<String, dynamic>>[];
     final expenseRecords = <Map<String, dynamic>>[];
     final notifications = <Map<String, dynamic>>[];
 
     for (final r in successfulResults) {
-      final payrollIdentity = r.workerId.isNotEmpty ? r.workerId : r.email;
+      final payrollIdentity = r.workerId.isNotEmpty
+          ? r.workerId
+          : r.email.trim().toLowerCase();
+      if (payrollIdentity.isEmpty) continue;
       final payrollKey = '${payrollIdentity}_${summary.periodLabel}';
       final record = {
         'workerId': r.workerId,
@@ -583,6 +854,7 @@ class SalaryDayScheduler {
         'status': 'Paid',
         'totalWorkDays': r.totalWorkDays,
         'absents': r.absents.toString(),
+        'halfDays': r.halfDays,
         'paidLeaves': r.paidLeaves,
         'unpaidLeaves': r.unpaidLeaves,
         'leaves': r.leaves.toString(),
@@ -596,19 +868,23 @@ class SalaryDayScheduler {
         'netSalaryAmount': r.rawNetSalaryValue,
         'netSalaryFormatted': r.netSalary,
         'payrollKey': payrollKey,
-        'payPeriod': '${summary.periodLabel}-01',
+        'payPeriod': payPeriodDate,
         'cancelledAt': null,
-        'lastModified': DateTime.now(),
+        'lastModified': summary.runDate,
         'payrollDate': summary.runDate,
+        'paidAt': summary.runDate,
       };
       payrollRecords.add(record);
 
-      // Prepare expense record
       final netAmount = r.rawNetSalaryValue;
       if (netAmount > 0) {
         expenseRecords.add({
+          'workerId': r.workerId,
+          'workerEmail': r.email.trim().toLowerCase(),
           'name': r.workerName,
-          'date': summary.runDate,
+          'date': payPeriodDate,
+          'paidAt': summary.runDate,
+          'payPeriod': payPeriodDate,
           'category': 'Salary',
           'amount': netAmount,
           'description':
@@ -617,7 +893,6 @@ class SalaryDayScheduler {
         });
       }
 
-      // Prepare notification
       final amount = r.netSalary;
       if (r.workerName.isNotEmpty) {
         notifications.add({
@@ -626,26 +901,73 @@ class SalaryDayScheduler {
           'title': 'notif_title_payroll'.tr(namedArgs: {'name': r.workerName}),
           'message': amount.isNotEmpty
               ? 'notif_msg_payroll_amount'.tr(
-                  namedArgs: {'amount': '\$$amount', 'name': r.workerName},
+                  namedArgs: {'amount': amount, 'name': r.workerName},
                 )
               : 'notif_msg_payroll'.tr(namedArgs: {'name': r.workerName}),
-          'data': {
-            'name': r.workerName,
-            'amount': amount.isNotEmpty ? '\$$amount' : '',
-          },
+          'data': {'name': r.workerName, 'amount': amount},
         });
       }
     }
 
-    // Execute batch writes in parallel
-    await Future.wait([
-      firestoreService.addBulkPayrollRecords(payrollRecords),
-      firestoreService.addBulkExpenses(expenseRecords),
-      firestoreService.addBulkNotifications(notifications),
-    ]);
+    if (payrollRecords.isEmpty) return 0;
+
+    final payrollCount = await firestoreService.addBulkPayrollRecords(
+      payrollRecords,
+    );
+    if (payrollCount != payrollRecords.length) {
+      await _rollbackPayrollRecords(firestoreService, payrollRecords);
+      throw StateError('Not all payroll records could be saved');
+    }
+
+    try {
+      await Future.wait(
+        expenseRecords.map(
+          (expense) => firestoreService.upsertPayrollExpense(
+            expense,
+            payrollKey: (expense['payrollKey'] ?? '').toString(),
+          ),
+        ),
+      );
+    } catch (error) {
+      await _rollbackPayrollRecords(firestoreService, payrollRecords);
+      rethrow;
+    }
+
+    try {
+      await firestoreService.addBulkNotifications(notifications);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'SalaryDayPayrollNotifications',
+      );
+    }
+
+    return payrollCount;
   }
 
-  /// Generates individual PDF invoices for selected results and saves as a ZIP.
+  Future<void> _rollbackPayrollRecords(
+    FirestoreService firestoreService,
+    List<Map<String, dynamic>> payrollRecords,
+  ) async {
+    for (final record in payrollRecords) {
+      final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+      if (payrollKey.isEmpty) continue;
+      try {
+        await firestoreService.cancelPayrollRecord(
+          payrollId: payrollKey.replaceAll('/', '_'),
+          payrollKey: payrollKey,
+        );
+      } catch (error, stackTrace) {
+        ErrorReporter.report(
+          error,
+          stackTrace,
+          context: 'SalaryDayPayrollRollback:$payrollKey',
+        );
+      }
+    }
+  }
+
   Future<void> _generateAndSaveZip(
     BuildContext context,
     List<AutoPayrollResult> selected,
@@ -653,7 +975,6 @@ class SalaryDayScheduler {
   ) async {
     if (selected.isEmpty) return;
 
-    // Show loading snackbar
     if (context.mounted) {
       FlashySnackBar.show(context, message: 'generating_invoices'.tr());
     }
@@ -665,19 +986,19 @@ class SalaryDayScheduler {
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
-      for (final r in selected) {
+      for (var index = 0; index < selected.length; index++) {
+        final r = selected[index];
         if (!r.success) continue;
         final enteredSalary = PayrollService.extractSalary(r.salary);
         final rawSalary = r.salaryType.trim().toLowerCase() == 'annual'
             ? enteredSalary / 12
             : enteredSalary;
-        final workDays = int.tryParse(r.totalWorkDays) ?? 22;
-        final dailyRate = workDays > 0
-            ? (rawSalary / workDays).toStringAsFixed(2)
-            : '0';
+        final workDays = int.tryParse(r.totalWorkDays) ?? 30;
+        final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
         final absentsInt = r.absents;
         final leavesInt = r.leaves;
         final deductibleLeaves = r.unpaidLeaves;
+        final absentEquivalent = absentsInt + (r.halfDays * 0.5);
         final absentDeductionAmt = PayrollService.extractSalary(
           r.absentDeduction,
         );
@@ -687,16 +1008,19 @@ class SalaryDayScheduler {
         final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
         final absentTotal = r.deductionsAreTotals
             ? absentDeductionAmt
-            : absentDeductionAmt * absentsInt;
+            : absentDeductionAmt * absentEquivalent;
         final leaveTotal = r.deductionsAreTotals
             ? leaveDeductionAmt
             : leaveDeductionAmt * deductibleLeaves;
         final totalDeductions = absentTotal + leaveTotal;
-        final effectiveDays = (workDays - absentsInt - leavesInt).clamp(
-          0,
-          workDays,
-        );
-        final grossPay = rawSalary.toStringAsFixed(2);
+        final effectiveDays =
+            (workDays - absentsInt - leavesInt - (r.halfDays * 0.5))
+                .clamp(0, workDays)
+                .toDouble();
+        var currency = PayrollService.getCurrencyPrefix(r.salary);
+        if (currency.isEmpty) {
+          currency = PayrollService.getCurrencyPrefix(r.netSalary);
+        }
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
           employeeName: r.workerName,
@@ -704,35 +1028,27 @@ class SalaryDayScheduler {
           position: r.position,
           payPeriod: payPeriod,
           totalWorkDays: r.totalWorkDays,
-          daysWorked: effectiveDays.toString(),
-          absents: absentsInt.toString(),
-          leaves: leavesInt.toString(),
-          overtimeAmount: overtimeAmt > 0
-              ? 'Rs ${overtimeAmt.toStringAsFixed(0)}'
-              : '0',
+          daysWorked: _formatDayCount(effectiveDays),
+          absents: _formatDayCount(absentEquivalent),
+          leaves: deductibleLeaves.toString(),
+          overtimeAmount: _invoiceMoney(overtimeAmt, currency),
           salary: r.salary,
-          dailyRate:
-              'Rs ${double.tryParse(dailyRate)?.toStringAsFixed(0) ?? dailyRate}',
-          grossPay:
-              'Rs ${double.tryParse(grossPay)?.toStringAsFixed(0) ?? grossPay}',
-          overtimePay: overtimeAmt > 0
-              ? 'Rs ${overtimeAmt.toStringAsFixed(0)}'
-              : '0',
-          absentDeduction: absentTotal > 0
-              ? 'Rs ${absentTotal.toStringAsFixed(0)}'
-              : '0',
-          leaveDeduction: leaveTotal > 0
-              ? 'Rs ${leaveTotal.toStringAsFixed(0)}'
-              : '0',
-          totalDeductions: totalDeductions > 0
-              ? 'Rs ${totalDeductions.toStringAsFixed(0)}'
-              : '0',
+          dailyRate: _invoiceMoney(dailyRate, currency),
+          grossPay: _invoiceMoney(rawSalary, currency),
+          overtimePay: _invoiceMoney(overtimeAmt, currency),
+          absentDeduction: _invoiceMoney(absentTotal, currency),
+          leaveDeduction: _invoiceMoney(leaveTotal, currency),
+          totalDeductions: _invoiceMoney(totalDeductions, currency),
           netSalary: r.netSalary,
         );
 
-        final safeName = r.workerName
+        final sanitizedName = r.workerName
             .replaceAll(RegExp(r'[^\w\s]'), '')
-            .replaceAll(' ', '_');
+            .trim()
+            .replaceAll(RegExp(r'\s+'), '_');
+        final safeName = sanitizedName.isNotEmpty
+            ? sanitizedName
+            : 'worker_${index + 1}';
         archive.addFile(
           ArchiveFile(
             '${safeName}_invoice_$payPeriod.pdf',
@@ -777,11 +1093,16 @@ class SalaryDayScheduler {
     }
   }
 
-  /// Returns the list of selected results, or null if cancelled.
   Future<List<AutoPayrollResult>?> _showReviewDialog(
     BuildContext context,
     PayrollRunSummary summary,
   ) async {
+    final isGuest =
+        Provider.of<AuthService>(
+          context,
+          listen: false,
+        ).currentUser?.isAnonymous ??
+        false;
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 720.0;
     final dialogHeight = screenWidth < 600 ? 620.0 : 700.0;
@@ -873,7 +1194,6 @@ class SalaryDayScheduler {
                             )
                             .toList();
 
-                  // Count only filtered workers that are also selected.
                   final filteredSelectedCount = filteredResults
                       .where(
                         (r) => selectedIndices.contains(
@@ -921,7 +1241,6 @@ class SalaryDayScheduler {
                         ),
                         child: Column(
                           children: [
-                            // ── Header ────────────────────────────────────────────
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0,
@@ -942,7 +1261,7 @@ class SalaryDayScheduler {
                                       ),
                                     ),
                                   ),
-                                  // Close button
+
                                   GestureDetector(
                                     onTap: () => Navigator.of(context).pop(),
                                     child: Container(
@@ -958,7 +1277,6 @@ class SalaryDayScheduler {
                               ),
                             ),
 
-                            // ── Search Bar (Full Width, just outline) ─────────
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
@@ -1019,7 +1337,6 @@ class SalaryDayScheduler {
                               ),
                             ),
 
-                            // ── Filter Chips ─────────────────────────────────
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Padding(
@@ -1123,7 +1440,6 @@ class SalaryDayScheduler {
                               ),
                             ),
 
-                            // ── Selection Status ─────────────────────────────────
                             Padding(
                               padding: const EdgeInsets.fromLTRB(
                                 24,
@@ -1283,7 +1599,6 @@ class SalaryDayScheduler {
                               color: const Color(0xFFE5E7EB),
                             ),
 
-                            // ── Worker List ──────────────────────────────────────
                             Expanded(
                               child: filteredResults.isEmpty
                                   ? Center(
@@ -1320,7 +1635,7 @@ class SalaryDayScheduler {
                                             .indexOf(r);
                                         final isSelected = selectedIndices
                                             .contains(originalIndex);
-                                        // Avatar color based on name
+
                                         final avatarColors = [
                                           const Color(0xFFE4F0FF),
                                           const Color(0xFFEFE4FF),
@@ -1338,7 +1653,6 @@ class SalaryDayScheduler {
                                         final colorIdx =
                                             r.workerName.hashCode.abs() % 5;
 
-                                        // Determine worker type for badge
                                         final posLower = r.position
                                             .toLowerCase()
                                             .trim();
@@ -1427,7 +1741,6 @@ class SalaryDayScheduler {
                                                     ),
                                                 child: Row(
                                                   children: [
-                                                    // Custom Checkbox (tiny, fits inside container)
                                                     GestureDetector(
                                                       onTap: () {
                                                         setDialogState(() {
@@ -1479,70 +1792,25 @@ class SalaryDayScheduler {
                                                       ),
                                                     ),
                                                     const SizedBox(width: 14),
-                                                    // Avatar with image or initials (circular, no dot)
-                                                    Container(
-                                                      width: 44,
-                                                      height: 44,
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            avatarColors[colorIdx
-                                                                    .abs() %
-                                                                5],
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child:
-                                                          r.imageUrl != null &&
-                                                              r
-                                                                  .imageUrl!
-                                                                  .isNotEmpty
-                                                          ? ClipRRect(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    22,
-                                                                  ),
-                                                              child: Image.network(
-                                                                r.imageUrl!,
-                                                                width: 44,
-                                                                height: 44,
-                                                                fit: BoxFit
-                                                                    .cover,
-                                                                errorBuilder:
-                                                                    (
-                                                                      _,
-                                                                      __,
-                                                                      ___,
-                                                                    ) => avatarInitials(
-                                                                      r.workerName,
-                                                                      avatarTextColors[colorIdx
-                                                                              .abs() %
-                                                                          5],
-                                                                    ),
-                                                                loadingBuilder:
-                                                                    (
-                                                                      _,
-                                                                      child,
-                                                                      progress,
-                                                                    ) {
-                                                                      if (progress ==
-                                                                          null)
-                                                                        return child;
-                                                                      return avatarInitials(
-                                                                        r.workerName,
-                                                                        avatarTextColors[colorIdx.abs() %
-                                                                            5],
-                                                                      );
-                                                                    },
-                                                              ),
-                                                            )
-                                                          : avatarInitials(
-                                                              r.workerName,
-                                                              avatarTextColors[colorIdx
-                                                                      .abs() %
-                                                                  5],
-                                                            ),
+
+                                                    _workerAvatar(
+                                                      imageUrl: r.imageUrl,
+                                                      name: r.workerName,
+                                                      size: 44,
+                                                      backgroundColor:
+                                                          avatarColors[colorIdx
+                                                                  .abs() %
+                                                              5],
+                                                      textColor:
+                                                          avatarTextColors[colorIdx
+                                                                  .abs() %
+                                                              5],
+                                                      fontSize: 18,
+                                                      allowExtendedSources:
+                                                          !isGuest,
                                                     ),
                                                     const SizedBox(width: 14),
-                                                    // Name + type badge + email
+
                                                     Expanded(
                                                       child: Column(
                                                         crossAxisAlignment:
@@ -1655,7 +1923,7 @@ class SalaryDayScheduler {
                                                       ),
                                                     ),
                                                     const SizedBox(width: 10),
-                                                    // Salary block
+
                                                     Column(
                                                       crossAxisAlignment:
                                                           CrossAxisAlignment
@@ -1720,7 +1988,7 @@ class SalaryDayScheduler {
                                                       ],
                                                     ),
                                                     const SizedBox(width: 6),
-                                                    // Chevron right
+
                                                     const Icon(
                                                       Icons
                                                           .chevron_right_rounded,
@@ -1737,7 +2005,6 @@ class SalaryDayScheduler {
                                     ),
                             ),
 
-                            // ── Bottom Footer ───────────────────────────────────
                             Container(
                               decoration: const BoxDecoration(
                                 color: Colors.white,
@@ -1758,7 +2025,6 @@ class SalaryDayScheduler {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Total Disbursement
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -1792,13 +2058,16 @@ class SalaryDayScheduler {
                                                     PayrollService.getCurrencyPrefix(
                                                       r.netSalary,
                                                     );
-                                                if (prefix.isEmpty) {
-                                                  prefix = '\$';
-                                                }
                                               }
                                             }
                                           }
-                                          return '$prefix ${PayrollService.formatNumber(total)}';
+                                          final value =
+                                              PayrollService.formatNumber(
+                                                total,
+                                              );
+                                          return prefix.isEmpty
+                                              ? value
+                                              : '$prefix $value';
                                         }(),
                                         style: const TextStyle(
                                           fontSize: 16,
@@ -1811,7 +2080,6 @@ class SalaryDayScheduler {
                                   ),
                                   Row(
                                     children: [
-                                      // Save Draft button
                                       GestureDetector(
                                         onTap: () =>
                                             Navigator.of(context).pop(),
@@ -1839,7 +2107,7 @@ class SalaryDayScheduler {
                                         ),
                                       ),
                                       const SizedBox(width: 14),
-                                      // Pay All button
+
                                       GestureDetector(
                                         onTap: selectedCount == 0
                                             ? null
@@ -1938,8 +2206,6 @@ class SalaryDayScheduler {
     );
   }
 
-  /// Opens a separate dialog with the Payroll Details for a specific worker.
-  /// Uses the same dialog dimensions as the parent review dialog for consistency.
   Future<AutoPayrollResult?> _showWorkerPayrollDetails({
     required BuildContext context,
     required AutoPayrollResult result,
@@ -1949,8 +2215,20 @@ class SalaryDayScheduler {
     required double dialogWidth,
     required double dialogHeight,
   }) {
-    final totalWorkDays = int.tryParse(result.totalWorkDays) ?? 22;
-    final presents = totalWorkDays - result.absents - result.leaves;
+    final isGuest =
+        Provider.of<AuthService>(
+          context,
+          listen: false,
+        ).currentUser?.isAnonymous ??
+        false;
+    final totalWorkDays = int.tryParse(result.totalWorkDays) ?? 30;
+    final presents =
+        (totalWorkDays -
+                result.absents -
+                result.leaves -
+                (result.halfDays * 0.5))
+            .clamp(0, totalWorkDays)
+            .toDouble();
 
     return showDialog<AutoPayrollResult>(
       context: context,
@@ -1989,7 +2267,6 @@ class SalaryDayScheduler {
                 ),
                 child: Column(
                   children: [
-                    // ── Scrollable Content ─────────────────────────────
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(24),
@@ -1997,7 +2274,6 @@ class SalaryDayScheduler {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // ── Top Bar: Back Button + Title ────────────
                             Row(
                               children: [
                                 GestureDetector(
@@ -2032,89 +2308,19 @@ class SalaryDayScheduler {
 
                             const SizedBox(height: 28),
 
-                            // ── 1. Header: Avatar + Name/Email + Total Net Payment ────
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
                                   children: [
-                                    // Large Avatar with image or initials (circular)
-                                    Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF0F70FF),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child:
-                                          result.imageUrl != null &&
-                                              result.imageUrl!.isNotEmpty
-                                          ? ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(30),
-                                              child: Image.network(
-                                                result.imageUrl!,
-                                                width: 60,
-                                                height: 60,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) =>
-                                                    Center(
-                                                      child: Text(
-                                                        result
-                                                                .workerName
-                                                                .isNotEmpty
-                                                            ? result
-                                                                  .workerName[0]
-                                                                  .toUpperCase()
-                                                            : '?',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 28,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontFamily:
-                                                              'SF Pro Display',
-                                                        ),
-                                                      ),
-                                                    ),
-                                                loadingBuilder: (_, child, progress) {
-                                                  if (progress == null)
-                                                    return child;
-                                                  return Center(
-                                                    child: Text(
-                                                      result
-                                                              .workerName
-                                                              .isNotEmpty
-                                                          ? result.workerName[0]
-                                                                .toUpperCase()
-                                                          : '?',
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 28,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontFamily:
-                                                            'SF Pro Display',
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            )
-                                          : Center(
-                                              child: Text(
-                                                result.workerName.isNotEmpty
-                                                    ? result.workerName[0]
-                                                          .toUpperCase()
-                                                    : '?',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 28,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontFamily: 'SF Pro Display',
-                                                ),
-                                              ),
-                                            ),
+                                    _workerAvatar(
+                                      imageUrl: result.imageUrl,
+                                      name: result.workerName,
+                                      size: 60,
+                                      backgroundColor: const Color(0xFF0F70FF),
+                                      textColor: Colors.white,
+                                      fontSize: 28,
+                                      allowExtendedSources: !isGuest,
                                     ),
                                     const SizedBox(width: 16),
                                     Column(
@@ -2179,7 +2385,6 @@ class SalaryDayScheduler {
 
                             const SizedBox(height: 32),
 
-                            // ── 2. 3-Column Metrics Grid ───────────────────────────
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -2191,7 +2396,7 @@ class SalaryDayScheduler {
                                     rows: [
                                       _metricRow(
                                         'presents'.tr(),
-                                        '$presents ${'days_suffix'.tr()}',
+                                        '${_formatDayCount(presents)} ${'days_suffix'.tr()}',
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),
@@ -2226,7 +2431,7 @@ class SalaryDayScheduler {
                                             ? AmountText.formatCompact(
                                                 result.salary,
                                               )
-                                            : '\$0',
+                                            : _zeroAmount(result.salary),
                                         const Color(0xFFF9FAFB),
                                         const Color(0xFF6B7280),
                                         const Color(0xFF111827),
@@ -2244,7 +2449,7 @@ class SalaryDayScheduler {
                                             ? AmountText.formatCompact(
                                                 result.overtimeAmount,
                                               )
-                                            : '\$0.00',
+                                            : _zeroAmount(result.salary),
                                         const Color(0xFFECFDF5),
                                         const Color(0xFF10B981),
                                         const Color(0xFF10B981),
@@ -2295,7 +2500,6 @@ class SalaryDayScheduler {
 
                             const SizedBox(height: 32),
 
-                            // ── 3. Adjust Overtime Section ─────────────────────────
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
@@ -2371,7 +2575,6 @@ class SalaryDayScheduler {
                       ),
                     ),
 
-                    // ── 4. Fixed Footer ─────────────────────────────────────
                     Container(
                       decoration: const BoxDecoration(
                         color: Colors.white,
@@ -2518,8 +2721,6 @@ class SalaryDayScheduler {
     );
   }
 
-  /// Editable custom deduction row shown above Absent/Leave deduction.
-  /// Editable deduction row for absent/leave deduction per day.
   Widget _editableDeductionRow({
     required String label,
     required String value,
@@ -2618,7 +2819,6 @@ class SalaryDayScheduler {
     );
   }
 
-  /// Inline overtime input field used inside the Adjust Overtime section.
   Widget _buildOvertimeInlineField(
     AutoPayrollResult r,
     int index,
@@ -2752,8 +2952,125 @@ class SalaryDayScheduler {
     VoidCallback onUpdated,
   ) {
     r.overtimeAmount = overtimeVal;
-    // Always re-apply custom deduction so the two don't conflict
+
     _recalcWithDeductions(r, r.customDeduction, onUpdated);
+  }
+
+  int _intValue(dynamic value) {
+    if (value is num) return value.toInt();
+    return int.tryParse((value ?? '0').toString()) ?? 0;
+  }
+
+  String _formatDayCount(num value) {
+    final numeric = value.toDouble();
+    return numeric == numeric.roundToDouble()
+        ? numeric.toStringAsFixed(0)
+        : numeric.toStringAsFixed(1);
+  }
+
+  String _invoiceMoney(double amount, String currency) {
+    if (!amount.isFinite || amount <= 0) return '0';
+    final value = PayrollService.formatNumber(amount);
+    return currency.trim().isEmpty ? value : '${currency.trim()} $value';
+  }
+
+  String _zeroAmount(String salary) {
+    final currency = PayrollService.getCurrencyPrefix(salary);
+    return currency.isEmpty ? '0' : '$currency 0';
+  }
+
+  Widget _workerAvatar({
+    required String? imageUrl,
+    required String name,
+    required double size,
+    required Color backgroundColor,
+    required Color textColor,
+    required double fontSize,
+    required bool allowExtendedSources,
+  }) {
+    Widget fallback() {
+      return Container(
+        width: size,
+        height: size,
+        color: backgroundColor,
+        alignment: Alignment.center,
+        child: Text(
+          name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?',
+          style: TextStyle(
+            color: textColor,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      );
+    }
+
+    final value = (imageUrl ?? '').trim();
+    if (value.isEmpty) {
+      return ClipOval(child: fallback());
+    }
+
+    Widget image;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      image = Image.network(
+        value,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : fallback(),
+      );
+    } else if (!allowExtendedSources) {
+      return ClipOval(child: fallback());
+    } else if (value.startsWith('data:image')) {
+      try {
+        final commaIndex = value.indexOf(',');
+        if (commaIndex < 0 || commaIndex == value.length - 1) {
+          return ClipOval(child: fallback());
+        }
+        image = Image.memory(
+          base64Decode(value.substring(commaIndex + 1)),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback(),
+        );
+      } catch (_) {
+        return ClipOval(child: fallback());
+      }
+    } else if (value.startsWith('assets/')) {
+      image = Image.asset(
+        value,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    } else {
+      try {
+        final uri = Uri.tryParse(value);
+        final path = uri != null && uri.scheme == 'file'
+            ? uri.toFilePath()
+            : value;
+        image = Image.file(
+          File(path),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => fallback(),
+        );
+      } catch (_) {
+        return ClipOval(child: fallback());
+      }
+    }
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipOval(child: image),
+    );
   }
 
   String _editableAmount(num amount) {

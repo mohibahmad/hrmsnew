@@ -23,6 +23,20 @@ import '../widgets/amount_text.dart';
 import '../services/worker_profile_service.dart';
 import 'package:provider/provider.dart';
 
+String? _safeOptionalString(dynamic value) {
+  if (value is! String) return null;
+  final normalized = value.trim();
+  if (normalized.isEmpty || normalized.toLowerCase() == 'null') return null;
+  return normalized;
+}
+
+DateTime? _workerDateTime(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
 void main() {
   runApp(const WorkerManagementApp());
 }
@@ -33,7 +47,7 @@ class WorkerManagementApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Worker Management'.tr(),
+      title: 'worker_management'.tr(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
@@ -55,6 +69,7 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _currentMenuIndex = 1;
   bool _isPremium = false;
+  bool _isOpeningSubscription = false;
   late AuthService _authService;
 
   final Color sidebarBlue = const Color(0xFF0B50C3);
@@ -68,8 +83,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     if (_currentMenuIndex == 2 &&
         _bulkWorkerKey.currentState?.hasUnsavedChanges == true) {
       final shouldPop = await _bulkWorkerKey.currentState!.confirmDiscard();
-      if (!shouldPop) return;
+      if (!mounted || !shouldPop) return;
     }
+    if (!mounted) return;
     setState(() => _currentMenuIndex = index);
   }
 
@@ -81,11 +97,38 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   }
 
   Future<void> _loadPremiumStatus() async {
-    final isPremium = await PreferencesService.isPremium();
-    if (!mounted) return;
-    setState(() {
-      _isPremium = isPremium;
-    });
+    try {
+      final isPremium = await PreferencesService.isPremium();
+      if (!mounted) return;
+      setState(() {
+        _isPremium = isPremium;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isPremium = false;
+      });
+    }
+  }
+
+  Future<void> _openSubscriptionDialog() async {
+    if (_isOpeningSubscription) return;
+    _isOpeningSubscription = true;
+    try {
+      await showDialog<bool>(
+        context: context,
+        barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+        builder: (context) => const SubscriptionDialog(),
+      );
+      if (!mounted) return;
+      final isPremium = await PreferencesService.isPremium();
+      if (!mounted) return;
+      setState(() {
+        _isPremium = isPremium;
+      });
+    } finally {
+      _isOpeningSubscription = false;
+    }
   }
 
   @override
@@ -101,22 +144,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 if (!(_authService.currentUser?.isAnonymous ?? false) &&
                     !_isPremium)
                   GestureDetector(
-                    onTap: () async {
-                      final result = await showDialog<bool>(
-                        context: context,
-                        barrierColor: const Color(
-                          0xFF0247C4,
-                        ).withValues(alpha: 0.5),
-                        builder: (context) => const SubscriptionDialog(),
-                      );
-                      if (result == true && mounted) {
-                        final isPremium = await PreferencesService.isPremium();
-                        if (!mounted) return;
-                        setState(() {
-                          _isPremium = isPremium;
-                        });
-                      }
-                    },
+                    onTap: _openSubscriptionDialog,
                     child: Container(
                       width: 238,
                       margin: const EdgeInsets.only(
@@ -310,15 +338,17 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             color: Color(0xFFFFFFFF),
           ),
           const SizedBox(width: 8),
-          Text(
-            text,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            style: const TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'SF Pro Display',
+          Expanded(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
             ),
           ),
         ],
@@ -512,6 +542,9 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _allWorkers = [];
   bool _isLoading = true;
+  String? _loadErrorMessage;
+  bool _isOpeningAddFlow = false;
+  final Set<String> _deletingWorkerIds = <String>{};
   StreamSubscription? _workersSub;
   late AuthService _authService;
   late FirestoreService _firestore;
@@ -554,33 +587,40 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     } else {
       _workersSub = _firestore.workersStream.listen(
         (snapshot) {
-          if (mounted) {
-            setState(() {
-              final sortedList = snapshot.docs
-                  .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
-                  .toList();
-              sortedList.sort((a, b) {
-                final aTime = a['createdAt'];
-                final bTime = b['createdAt'];
-                if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return -1;
-                if (bTime == null) return 1;
-                if (aTime is Timestamp && bTime is Timestamp) {
-                  return bTime.compareTo(aTime);
-                }
-                return 0;
-              });
-              _allWorkers = sortedList;
-              _isLoading = false;
+          if (!mounted) return;
+          setState(() {
+            final sortedList = snapshot.docs
+                .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
+                .toList();
+            sortedList.sort((a, b) {
+              final aDate = _workerDateTime(a['createdAt']);
+              final bDate = _workerDateTime(b['createdAt']);
+              if (aDate == null && bDate == null) {
+                return (a['name'] ?? '').toString().toLowerCase().compareTo(
+                  (b['name'] ?? '').toString().toLowerCase(),
+                );
+              }
+              if (aDate == null) return 1;
+              if (bDate == null) return -1;
+              final dateOrder = bDate.compareTo(aDate);
+              if (dateOrder != 0) return dateOrder;
+              return (a['name'] ?? '').toString().toLowerCase().compareTo(
+                (b['name'] ?? '').toString().toLowerCase(),
+              );
             });
-          }
+            _allWorkers = sortedList;
+            _loadErrorMessage = null;
+            _isLoading = false;
+          });
         },
         onError: (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
+          if (!mounted) return;
+          setState(() {
+            _loadErrorMessage = 'failed_to_load_worker_data'.tr(
+              namedArgs: {'error': e.toString()},
+            );
+            _isLoading = false;
+          });
         },
       );
     }
@@ -588,76 +628,14 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
 
   bool _matchesFilter(String position, String filter) {
     if (filter == 'All') return true;
-    final pos = position.toLowerCase();
-    final f = filter.toLowerCase();
-    if (f == 'designer') {
-      return pos.contains('designer') ||
-          pos.contains('design lead') ||
-          pos.contains('creative director') ||
-          pos.contains('ui') ||
-          pos.contains('ux') ||
-          pos.contains('graphic') ||
-          pos.contains('visual');
-    } else if (f == 'developer') {
-      return pos.contains('developer') ||
-          pos.contains('programmer') ||
-          pos.contains('coder') ||
-          pos.contains('software') ||
-          pos.contains('frontend') ||
-          pos.contains('backend') ||
-          pos.contains('full stack') ||
-          pos.contains('fullstack');
-    } else if (f == 'engineering') {
-      return pos.contains('engineer') ||
-          pos.contains('architect') ||
-          pos.contains('devops') ||
-          pos.contains('cloud') ||
-          pos.contains('data') ||
-          pos.contains('scientist') ||
-          pos.contains('machine learning') ||
-          pos.contains('ml') ||
-          pos.contains('qa') ||
-          pos.contains('tester') ||
-          pos.contains('it support') ||
-          pos.contains('network') ||
-          pos.contains('database') ||
-          pos.contains('dba') ||
-          pos.contains('cyber') ||
-          pos.contains('security') ||
-          pos.contains('cto') ||
-          pos.contains('chief technology');
-    } else if (f == 'sales') {
-      return pos.contains('sales') ||
-          pos.contains('marketing') ||
-          pos.contains('seo') ||
-          pos.contains('content') ||
-          pos.contains('social media') ||
-          pos.contains('brand') ||
-          pos.contains('business development') ||
-          pos.contains('account executive') ||
-          pos.contains('customer success');
-    } else if (f == 'management') {
-      return pos.contains('manager') ||
-          pos.contains('director') ||
-          pos.contains('head') ||
-          pos.contains('lead') ||
-          pos.contains('chief') ||
-          pos.contains('cpo') ||
-          pos.contains('product') ||
-          pos.contains('project') ||
-          pos.contains('program') ||
-          pos.contains('scrum') ||
-          pos.contains('agile') ||
-          pos.contains('business analyst');
-    }
-    return pos.contains(f) || f.contains(pos);
+    return position.toLowerCase().contains(filter.toLowerCase());
   }
 
   List<Map<String, dynamic>> get _filteredWorkers {
     return _allWorkers.where((doc) {
       final name = (doc['name'] ?? '').toString().toLowerCase();
       final position = (doc['position'] ?? '').toString().toLowerCase();
-      final query = _searchQuery.toLowerCase();
+      final query = _searchQuery.trim().toLowerCase();
 
       final matchesSearch = name.contains(query) || position.contains(query);
       final matchesFilter = _matchesFilter(position, _selectedFilter);
@@ -667,23 +645,39 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 
   Future<void> _deleteWorker(String docId) async {
+    final normalizedId = docId.trim();
+    if (normalizedId.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'unexpected_error'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    if (_deletingWorkerIds.contains(normalizedId)) return;
+
     final confirmed = await DeleteDialog.show(
       context: context,
       title: 'delete_worker'.tr(),
       content: 'delete_worker_desc'.tr(),
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
 
+    _deletingWorkerIds.add(normalizedId);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     try {
       if (isGuest) {
-        DummyData.workers.removeWhere((w) => w['id']?.toString() == docId);
+        DummyData.workers.removeWhere(
+          (w) => w['id']?.toString() == normalizedId,
+        );
         await DummyData.saveToPrefs();
-        setState(() {
-          _allWorkers = DummyData.workers;
-        });
+        if (mounted) {
+          setState(() {
+            _allWorkers = DummyData.workers;
+          });
+        }
       } else {
-        await _firestore.deleteWorker(docId);
+        await _firestore.deleteWorker(normalizedId);
       }
       if (mounted) {
         FlashySnackBar.show(
@@ -695,13 +689,101 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'failed_to_delete_record'.tr(
-            namedArgs: {'error': e.toString()},
-          ),
+          message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}),
           isError: true,
         );
       }
+    } finally {
+      _deletingWorkerIds.remove(normalizedId);
     }
+  }
+
+  Future<void> _openAuthenticatedAddFlow({required bool bulk}) async {
+    if (_isOpeningAddFlow) return;
+    _isOpeningAddFlow = true;
+    try {
+      var isPremium = await PreferencesService.isPremium();
+      if (!mounted) return;
+
+      if (!PremiumGate.canAddEntry(
+        currentEntryCount: _allWorkers.length,
+        isPremium: isPremium,
+        isGuest: false,
+      )) {
+        await PremiumGate.shouldShowUpgradeDialog(context);
+        if (!mounted) return;
+        isPremium = await PreferencesService.isPremium();
+        if (!mounted || !isPremium) return;
+      }
+
+      if (bulk) {
+        widget.onAddBulkWorker?.call();
+      } else {
+        widget.onAddWorker();
+      }
+    } finally {
+      _isOpeningAddFlow = false;
+    }
+  }
+
+  Widget _buildFilterTabs() {
+    const defaultPositions = [
+      'Designer',
+      'Developer',
+      'Engineering',
+      'Sales',
+      'Management',
+    ];
+    final actualPositions = <String>{};
+    final positionNormalizer = <String, String>{};
+    for (final w in _allWorkers) {
+      final pos = (w['position'] ?? '').toString().trim();
+      if (pos.isNotEmpty) {
+        final key = pos.toLowerCase();
+        if (!positionNormalizer.containsKey(key)) {
+          positionNormalizer[key] = pos;
+          actualPositions.add(pos);
+        }
+      }
+    }
+    final sortedPositions = actualPositions.toList()..sort();
+
+    final positionsToShow = <String>[...sortedPositions];
+    for (final position in defaultPositions) {
+      final alreadyIncluded = positionsToShow.any(
+        (item) =>
+            item.toLowerCase().contains(position.toLowerCase()) ||
+            position.toLowerCase().contains(item.toLowerCase()),
+      );
+      if (!alreadyIncluded) {
+        positionsToShow.add(position);
+      }
+    }
+
+    final filters = <Map<String, String>>[
+      {'key': 'All', 'label': 'all_filter'.tr()},
+      ...positionsToShow.map((p) => {'key': p, 'label': p}),
+    ];
+    return Container(
+      width: 550,
+      height: 46,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            for (int i = 0; i < filters.length; i++)
+              _buildFilterTab(filters[i]['key']!, filters[i]['label']!),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -846,24 +928,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           showGuestRestrictionDialog(context);
                           return;
                         }
-                        final isPremium = await PreferencesService.isPremium();
-                        if (!mounted) return;
-                        if (!PremiumGate.canAddEntry(
-                          currentEntryCount: _allWorkers.length,
-                          isPremium: isPremium,
-                          isGuest: isGuest,
-                        )) {
-                          if (!mounted) return;
-                          final upgraded =
-                              await PremiumGate.shouldShowUpgradeDialog(
-                                context,
-                              );
-                          if (upgraded == true && mounted) {
-                            widget.onAddWorker();
-                          }
-                          return;
-                        }
-                        widget.onAddWorker();
+                        await _openAuthenticatedAddFlow(bulk: false);
                       },
                     ),
                     const SizedBox(width: 10),
@@ -878,100 +943,43 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                           showGuestRestrictionDialog(context);
                           return;
                         }
-                        final isPremium = await PreferencesService.isPremium();
-                        if (!mounted) return;
-                        if (!PremiumGate.canAddEntry(
-                          currentEntryCount: _allWorkers.length,
-                          isPremium: isPremium,
-                          isGuest: isGuest,
-                        )) {
-                          if (!mounted) return;
-                          final upgraded =
-                              await PremiumGate.shouldShowUpgradeDialog(
-                                context,
-                              );
-                          if (upgraded == true && mounted) {
-                            (widget.onAddBulkWorker ?? () {})();
-                          }
-                          return;
-                        }
-                        (widget.onAddBulkWorker ?? () {})();
+                        await _openAuthenticatedAddFlow(bulk: true);
                       },
                     ),
                   ],
                 ),
                 const SizedBox(height: 22),
 
-                Builder(
-                  builder: (context) {
-                    const defaultPositions = [
-                      'Designer',
-                      'Developer',
-                      'Engineering',
-                      'Sales',
-                      'Management',
-                    ];
-                    final actualPositions = <String>{};
-                    final positionNormalizer = <String, String>{};
-                    for (final w in _allWorkers) {
-                      final pos = (w['position'] ?? '').toString().trim();
-                      if (pos.isNotEmpty) {
-                        final key = pos.toLowerCase();
-                        if (!positionNormalizer.containsKey(key)) {
-                          positionNormalizer[key] = pos;
-                          actualPositions.add(pos);
-                        }
-                      }
-                    }
-                    final sortedPositions = actualPositions.toList()..sort();
-
-                    final positionsToShow = <String>[...sortedPositions];
-                    for (final position in defaultPositions) {
-                      final alreadyIncluded = positionsToShow.any(
-                        (item) =>
-                            item.toLowerCase().contains(
-                              position.toLowerCase(),
-                            ) ||
-                            position.toLowerCase().contains(item.toLowerCase()),
-                      );
-                      if (!alreadyIncluded) {
-                        positionsToShow.add(position);
-                      }
-                    }
-
-                    final allFilters = ['All', ...positionsToShow];
-
-                    return Container(
-                      width: 620,
-                      height: 46,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            for (final f in allFilters)
-                              _buildFilterTab(
-                                f,
-                                f == 'All' ? 'all_filter'.tr() : f,
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                _buildFilterTabs(),
                 const SizedBox(height: 22),
 
                 if (_isLoading)
                   const Padding(
                     padding: EdgeInsets.all(40.0),
                     child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_loadErrorMessage != null)
+                  SizedBox(
+                    width: double.infinity,
+                    height: (MediaQuery.of(context).size.height - 320).clamp(
+                      300.0,
+                      900.0,
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          _loadErrorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                    ),
                   )
                 else if (_filteredWorkers.isEmpty)
                   Builder(
@@ -1124,7 +1132,7 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
     final type1 = (worker['type1'] ?? '').toString();
     final position = (worker['position'] ?? '').toString();
     final type2 = (worker['type2'] ?? '').toString();
-    final profileImage = worker['profileImage'] as String?;
+    final profileImage = _safeOptionalString(worker['profileImage']);
     final docId = (worker['id'] ?? '').toString();
 
     final localizedType1 = LocalizationHelper.localizeType1(type1);
@@ -1401,20 +1409,19 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
   }
 
   Widget _buildFilterTab(String filterKey, String displayLabel) {
-    final bool isActive = _selectedFilter == filterKey;
+    final bool isSelected = _selectedFilter == filterKey;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = filterKey;
-        });
-      },
+      onTap: () => setState(() {
+        _selectedFilter = filterKey;
+      }),
       child: Container(
-        height: 38,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 16,
+          vertical: 8,
+        ),
         margin: const EdgeInsets.only(right: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isActive ? buttonColor : Colors.transparent,
+          color: isSelected ? const Color(0xFF0D4CB6) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -1422,8 +1429,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
           style: TextStyle(
-            color: isActive ? Color(0xFFFFFFFF) : Colors.black,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : Colors.black,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             fontSize: 14,
             fontFamily: 'SF Pro Display',
           ),
@@ -1453,6 +1460,31 @@ class _WorkerProfilePreviewDialogState
   String _v(Map<String, dynamic> w, String key) => (w[key] ?? '').toString();
   String _na(String value) => value.trim().isNotEmpty ? value : 'na'.tr();
 
+  String _localizedGender(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'male':
+        return 'male'.tr();
+      case 'female':
+        return 'female'.tr();
+      case 'other':
+      case 'others':
+        return 'other'.tr();
+      default:
+        return value;
+    }
+  }
+
+  String _localizedRelationshipStatus(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'single':
+        return 'single'.tr();
+      case 'married':
+        return 'married'.tr();
+      default:
+        return value;
+    }
+  }
+
   Future<void> _handlePdfExport({required bool isShare}) async {
     if (_isSharing) return;
     setState(() => _isSharing = true);
@@ -1461,7 +1493,7 @@ class _WorkerProfilePreviewDialogState
       final name = _v(worker, 'name');
       final email = _v(worker, 'email');
       final phone = _v(worker, 'phone');
-      final profileImage = worker['profileImage'] as String?;
+      final profileImage = _safeOptionalString(worker['profileImage']);
       final currency = CurrencyUtils.normalize(_v(worker, 'currency'));
       final salaryAmount = _v(worker, 'salaryAmount');
       final rawSalary = salaryAmount.isNotEmpty
@@ -1480,23 +1512,37 @@ class _WorkerProfilePreviewDialogState
         nationalId: _na(_v(worker, 'nationalId')),
         attendanceType: LocalizationHelper.localizeType2(_v(worker, 'type2')),
         workType: LocalizationHelper.localizeType1(_v(worker, 'type1')),
-        experienceLevel: _na(_v(worker, 'experienceLevel')),
-        gender: _na(LocalizationHelper.localizeGender(_v(worker, 'gender'))),
+        experienceLevel: _na(
+          LocalizationHelper.localizeExperience(_v(worker, 'experienceLevel')),
+        ),
+        gender: _na(_localizedGender(_v(worker, 'gender'))),
         joiningDate: _na(_v(worker, 'joiningDate')),
         salary: salary,
-        education: _na(_v(worker, 'education')),
-        salaryType: _na(_v(worker, 'salaryType')),
+        education: _na(
+          LocalizationHelper.localizeEducation(_v(worker, 'education')),
+        ),
+        salaryType: _na(
+          LocalizationHelper.localizeSalaryType(_v(worker, 'salaryType')),
+        ),
         religion: _na(_v(worker, 'religion')),
         dateOfBirth: _na(_v(worker, 'dob')),
-        relationshipStatus: _na(_v(worker, 'relationshipStatus')),
+        relationshipStatus: _na(
+          _localizedRelationshipStatus(_v(worker, 'relationshipStatus')),
+        ),
         address: _na(_v(worker, 'address')),
         profileImageUrl: profileImage,
         generatedOnText:
             '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
-      );
+      ).timeout(const Duration(seconds: 30));
 
-      final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-      final fileName = '${safeName}_profile.pdf';
+      final safeName = name
+          .trim()
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')
+          .replaceAll(RegExp(r'_+'), '_')
+          .replaceAll(RegExp(r'^_+|_+$'), '');
+      final fileName = safeName.isEmpty
+          ? 'worker_profile.pdf'
+          : '${safeName}_profile.pdf';
 
       if (isShare) {
         final saved = await WorkerProfileService.shareWorkerProfile(
@@ -1542,7 +1588,7 @@ class _WorkerProfilePreviewDialogState
     final name = _v(worker, 'name');
     final email = _v(worker, 'email');
     final phone = _v(worker, 'phone');
-    final profileImage = worker['profileImage'] as String?;
+    final profileImage = _safeOptionalString(worker['profileImage']);
     final currency = CurrencyUtils.normalize(_v(worker, 'currency'));
     final salaryAmount = _v(worker, 'salaryAmount');
     final rawSalary = salaryAmount.isNotEmpty
@@ -1749,7 +1795,7 @@ class _WorkerProfilePreviewDialogState
                         ),
                         _buildInfoCard(
                           Icons.business_center,
-                          'postion'.tr(),
+                          'position'.tr(),
                           _v(worker, 'position'),
                         ),
                       ),
@@ -1774,18 +1820,18 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.show_chart,
                           'experience_level'.tr(),
-                          _na(_v(worker, 'experienceLevel')),
+                          _na(
+                            LocalizationHelper.localizeExperience(
+                              _v(worker, 'experienceLevel'),
+                            ),
+                          ),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.transgender,
                           'gender'.tr(),
-                          _na(
-                            LocalizationHelper.localizeGender(
-                              _v(worker, 'gender'),
-                            ),
-                          ),
+                          _na(_localizedGender(_v(worker, 'gender'))),
                         ),
                         _buildInfoCard(
                           Icons.calendar_month,
@@ -1803,14 +1849,22 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.school,
                           'education_title'.tr(),
-                          _na(_v(worker, 'education')),
+                          _na(
+                            LocalizationHelper.localizeEducation(
+                              _v(worker, 'education'),
+                            ),
+                          ),
                         ),
                       ),
                       _buildRow(
                         _buildInfoCard(
                           Icons.money,
                           'salary_type'.tr(),
-                          _na(_v(worker, 'salaryType')),
+                          _na(
+                            LocalizationHelper.localizeSalaryType(
+                              _v(worker, 'salaryType'),
+                            ),
+                          ),
                         ),
                         _buildInfoCard(
                           Icons.art_track_outlined,
@@ -1828,7 +1882,11 @@ class _WorkerProfilePreviewDialogState
                         _buildInfoCard(
                           Icons.favorite,
                           'relationship_status'.tr(),
-                          _na(_v(worker, 'relationshipStatus')),
+                          _na(
+                            _localizedRelationshipStatus(
+                              _v(worker, 'relationshipStatus'),
+                            ),
+                          ),
                         ),
                       ),
                       _buildRow(

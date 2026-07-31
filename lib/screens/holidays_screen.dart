@@ -47,6 +47,67 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
   bool _initialized = false;
+  final Set<String> _updatingHolidayIds = <String>{};
+
+  static const List<String> _calendarMonths = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  int? _intValue(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse((value ?? '').toString().trim());
+  }
+
+  String? _canonicalMonth(dynamic value) {
+    final raw = (value ?? '').toString().trim();
+    if (raw.isEmpty) return null;
+    for (final month in _calendarMonths) {
+      if (month.toLowerCase() == raw.toLowerCase()) return month;
+    }
+    return null;
+  }
+
+  String _remainingDays(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selected = DateTime(date.year, date.month, date.day);
+    final days = selected.difference(today).inDays;
+    return days > 0 ? days.toString().padLeft(2, '0') : '00';
+  }
+
+  bool _isDuplicateHoliday({
+    required String name,
+    required String month,
+    required int day,
+    required int year,
+    required bool isRecurring,
+    String? excludingId,
+    HolidayItem? excludingItem,
+  }) {
+    final normalizedName = name.trim().toLowerCase();
+    final holidays = _holidaysByMonth[month] ?? const <HolidayItem>[];
+    for (final holiday in holidays) {
+      if (excludingId != null && holiday.id == excludingId) continue;
+      if (excludingItem != null && identical(holiday, excludingItem)) continue;
+      if (holiday.day != day) continue;
+      if (holiday.name.trim().toLowerCase() != normalizedName) continue;
+      final existingRecurring = holiday.isRecurring || holiday.year == null;
+      if (isRecurring || existingRecurring || holiday.year == year) return true;
+    }
+    return false;
+  }
 
   @override
   void dispose() {
@@ -117,28 +178,36 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             for (final doc in sortedDocs) {
               final data = doc.data() as Map<String, dynamic>;
               if (data['type'] == 'company_work_days') {
-                final savedDays = (data['workingDays'] as List<dynamic>? ?? [])
-                    .whereType<num>()
-                    .map((day) => day.toInt())
-                    .where(
-                      (day) => day >= DateTime.monday && day <= DateTime.sunday,
-                    )
-                    .toSet();
+                final savedDays = <int>{};
+                final rawDays = data['workingDays'];
+                if (rawDays is Iterable) {
+                  for (final value in rawDays) {
+                    final day = _intValue(value);
+                    if (day != null &&
+                        day >= DateTime.monday &&
+                        day <= DateTime.sunday) {
+                      savedDays.add(day);
+                    }
+                  }
+                }
                 if (savedDays.isNotEmpty) workingDays = savedDays;
                 continue;
               }
-              final month = (data['month'] ?? 'May').toString();
-              final day = (data['day'] as num?)?.toInt() ?? 1;
-              final name = (data['name'] ?? '').toString();
-              final year = (data['year'] as num?)?.toInt();
+              final month = _canonicalMonth(data['month']);
+              final day = _intValue(data['day']);
+              final name = (data['name'] ?? '').toString().trim();
+              final year = _intValue(data['year']);
               final isRecurring = data['isRecurring'] == true;
-              bool isEnabled =
-                  data['isEnabled'] == true || data['isEnabled'] == null;
+              final isEnabled = data['isEnabled'] != false;
               final id = doc.id;
 
-              if (!tempMap.containsKey(month)) {
-                tempMap[month] = [];
-              }
+              if (month == null || day == null || name.isEmpty) continue;
+              final monthNumber = _calendarMonths.indexOf(month) + 1;
+              final validationYear = year ?? 2024;
+              final maxDay = DateTime(validationYear, monthNumber + 1, 0).day;
+              if (day < 1 || day > maxDay) continue;
+
+              tempMap.putIfAbsent(month, () => <HolidayItem>[]);
               tempMap[month]!.add(
                 HolidayItem(
                   day,
@@ -304,7 +373,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
+                onPressed: isSaving
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
                 child: Text('cancel'.tr()),
               ),
               ElevatedButton(
@@ -346,12 +417,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             this.context,
                             message: 'company_work_days_saved'.tr(),
                           );
-                        } catch (error) {
-                          setModalState(() => isSaving = false);
+                        } catch (_) {
                           if (!context.mounted) return;
+                          setModalState(() => isSaving = false);
                           FlashySnackBar.show(
                             context,
-                            message: error.toString(),
+                            message: 'failed_to_save_record'.tr(),
                             isError: true,
                           );
                         }
@@ -422,7 +493,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             color: Colors.black,
                             size: 20,
                           ),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -457,7 +530,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     if (!context.mounted) return;
                                     FlashySnackBar.show(
                                       context,
-                                      message: 'Please select a day',
+                                      message: 'select_date'.tr(),
                                       isError: true,
                                     );
                                     return;
@@ -473,26 +546,30 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     final dayOfWeekName = _weekdayLabel(
                                       dateObj.weekday,
                                     );
-                                    final remainingDaysVal = dateObj
-                                        .difference(DateTime.now())
-                                        .inDays;
-                                    final remainingDaysStr =
-                                        remainingDaysVal > 0
-                                        ? remainingDaysVal.toString().padLeft(
-                                            2,
-                                            '0',
-                                          )
-                                        : '00';
-
+                                    final remainingDaysStr = _remainingDays(
+                                      dateObj,
+                                    );
+                                    final isGuest =
+                                        _authService.currentUser?.isAnonymous ??
+                                        false;
                                     final existingInMonth =
                                         _holidaysByMonth[selectedMonthName] ??
                                         [];
-                                    final alreadyExists = existingInMonth.any(
-                                      (h) =>
-                                          h.day == selectedDay &&
-                                          h.name ==
-                                              holidayNameController.text.trim(),
-                                    );
+                                    final alreadyExists = isGuest
+                                        ? existingInMonth.any(
+                                            (h) =>
+                                                h.day == selectedDay &&
+                                                h.name ==
+                                                    holidayNameController.text
+                                                        .trim(),
+                                          )
+                                        : _isDuplicateHoliday(
+                                            name: holidayName,
+                                            month: selectedMonthName,
+                                            day: selectedDay!,
+                                            year: calendarDate.year,
+                                            isRecurring: false,
+                                          );
                                     if (alreadyExists) {
                                       setModalState(() => isSaving = false);
                                       if (!context.mounted) return;
@@ -515,9 +592,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                       'year': calendarDate.year,
                                       'isRecurring': false,
                                     };
-                                    final isGuest =
-                                        _authService.currentUser?.isAnonymous ??
-                                        false;
                                     try {
                                       if (isGuest) {
                                         setState(() {
@@ -561,8 +635,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                         await _firestore.addHoliday(holidayMap);
                                       }
                                     } catch (e) {
-                                      setModalState(() => isSaving = false);
                                       if (!context.mounted) return;
+                                      setModalState(() => isSaving = false);
                                       FlashySnackBar.show(
                                         context,
                                         message: 'failed_to_add_holiday'.tr(
@@ -574,15 +648,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     }
                                     if (!context.mounted) return;
                                     Navigator.of(context).pop();
-                                    FlashySnackBar.show(
-                                      parentContext,
-                                      message: 'successfully_added_holiday'.tr(
-                                        namedArgs: {
-                                          'name': holidayNameController.text,
-                                        },
-                                      ),
-                                    );
                                     if (parentContext.mounted) {
+                                      FlashySnackBar.show(
+                                        parentContext,
+                                        message: 'successfully_added_holiday'
+                                            .tr(
+                                              namedArgs: {'name': holidayName},
+                                            ),
+                                      );
                                       tryShowFirstMilestoneRateUs('holiday');
                                     }
                                   } else {
@@ -640,7 +713,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                         controller: holidayNameController,
                         inputFormatters: [LengthLimitingTextInputFormatter(50)],
                         decoration: InputDecoration.collapsed(
-                          hintText: 'Enter holiday name',
+                          hintText: 'enter_holiday_name'.tr(),
                           hintStyle: TextStyle(
                             color: Colors.grey.shade400,
                             fontSize: 14,
@@ -686,7 +759,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           },
         );
       },
-    );
+    ).whenComplete(holidayNameController.dispose);
   }
 
   Widget _buildModalCalendar(
@@ -1179,9 +1252,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildFilledState() {
-    final months = _holidaysByMonth.keys
-        .where((m) => _holidaysByMonth[m]!.isNotEmpty)
-        .toList();
+    final months =
+        _holidaysByMonth.keys
+            .where((m) => _holidaysByMonth[m]!.isNotEmpty)
+            .toList()
+          ..sort((a, b) {
+            final aIndex = _calendarMonths.indexOf(a);
+            final bIndex = _calendarMonths.indexOf(b);
+            if (aIndex == -1 && bIndex == -1) return a.compareTo(b);
+            if (aIndex == -1) return 1;
+            if (bIndex == -1) return -1;
+            return aIndex.compareTo(bIndex);
+          });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1240,13 +1322,37 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         if (dummyMonthList.isEmpty) DummyData.holidays.remove(item.month);
       }
       await DummyData.saveToPrefs();
-    } else {
-      if (item.id != null) {
-        await _firestore.deleteHoliday(item.id!);
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
       }
+      return;
     }
-    if (mounted) {
-      FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+
+    final holidayId = item.id?.trim() ?? '';
+    if (holidayId.isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
+      return;
+    }
+
+    try {
+      await _firestore.deleteHoliday(holidayId);
+      if (mounted) {
+        FlashySnackBar.show(context, message: 'holiday_deleted'.tr());
+      }
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
     }
   }
 
@@ -1266,14 +1372,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       'November',
       'December',
     ];
-    int selectedDay = item.day;
     int monthIndex = months.indexOf(item.month);
     if (monthIndex < 0) monthIndex = DateTime.now().month - 1;
-    DateTime calendarDate = DateTime(
-      DateTime.now().year,
-      monthIndex + 1,
-      selectedDay,
-    );
+    final selectedYear = item.year ?? DateTime.now().year;
+    final maxDay = DateTime(selectedYear, monthIndex + 2, 0).day;
+    int selectedDay = item.day.clamp(1, maxDay).toInt();
+    DateTime calendarDate = DateTime(selectedYear, monthIndex + 1, selectedDay);
 
     var isSaving = false;
     showDialog(
@@ -1305,7 +1409,9 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             color: Colors.black,
                             size: 20,
                           ),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -1335,12 +1441,55 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               ? null
                               : () async {
                                   setModalState(() => isSaving = true);
-                                  if (holidayNameController.text
-                                      .trim()
-                                      .isNotEmpty) {
+                                  final holidayName = holidayNameController.text
+                                      .trim();
+                                  if (holidayName.isNotEmpty) {
                                     final isGuest =
                                         _authService.currentUser?.isAnonymous ??
                                         false;
+                                    final duplicate =
+                                        !isGuest &&
+                                        _isDuplicateHoliday(
+                                          name: holidayName,
+                                          month: selectedMonthName,
+                                          day: selectedDay,
+                                          year: calendarDate.year,
+                                          isRecurring: item.isRecurring,
+                                          excludingId: item.id,
+                                          excludingItem: item,
+                                        );
+                                    if (duplicate) {
+                                      setModalState(() => isSaving = false);
+                                      if (!context.mounted) return;
+                                      FlashySnackBar.show(
+                                        context,
+                                        message: 'holiday_already_exists'.tr(),
+                                        isError: true,
+                                      );
+                                      return;
+                                    }
+                                    final holidayId = item.id?.trim() ?? '';
+                                    if (!isGuest && holidayId.isEmpty) {
+                                      setModalState(() => isSaving = false);
+                                      if (!context.mounted) return;
+                                      FlashySnackBar.show(
+                                        context,
+                                        message: 'unexpected_error'.tr(),
+                                        isError: true,
+                                      );
+                                      return;
+                                    }
+                                    final dateObj = DateTime(
+                                      calendarDate.year,
+                                      calendarDate.month,
+                                      selectedDay,
+                                    );
+                                    final dayOfWeekName = _weekdayLabel(
+                                      dateObj.weekday,
+                                    );
+                                    final remainingDaysStr = _remainingDays(
+                                      dateObj,
+                                    );
                                     try {
                                       if (isGuest) {
                                         setState(() {
@@ -1417,22 +1566,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                               });
                                         });
                                       } else {
-                                        if (item.id != null) {
-                                          await _firestore
-                                              .updateHoliday(item.id!, {
-                                                'name': holidayNameController
-                                                    .text
-                                                    .trim(),
-                                                'day': selectedDay,
-                                                'month': selectedMonthName,
-                                                'year': calendarDate.year,
-                                                'isRecurring': item.isRecurring,
-                                              });
-                                        }
+                                        await _firestore
+                                            .updateHoliday(holidayId, {
+                                              'name': holidayName,
+                                              'day': selectedDay,
+                                              'month': selectedMonthName,
+                                              'year': calendarDate.year,
+                                              'remainingDays': remainingDaysStr,
+                                              'dayOfWeek': dayOfWeekName,
+                                              'isRecurring': item.isRecurring,
+                                            });
                                       }
                                     } catch (e) {
-                                      setModalState(() => isSaving = false);
                                       if (!context.mounted) return;
+                                      setModalState(() => isSaving = false);
                                       FlashySnackBar.show(
                                         context,
                                         message: 'failed_to_update_holiday'.tr(
@@ -1444,10 +1591,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                                     }
                                     if (!context.mounted) return;
                                     Navigator.of(context).pop();
-                                    FlashySnackBar.show(
-                                      context,
-                                      message: 'holiday_updated'.tr(),
-                                    );
+                                    if (mounted) {
+                                      FlashySnackBar.show(
+                                        this.context,
+                                        message: 'holiday_updated'.tr(),
+                                      );
+                                    }
                                   } else {
                                     setModalState(() => isSaving = false);
                                     if (!context.mounted) return;
@@ -1549,7 +1698,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           },
         );
       },
-    );
+    ).whenComplete(holidayNameController.dispose);
   }
 
   Widget _buildListItem(HolidayItem item) {
@@ -1598,30 +1747,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
           GestureDetector(
             onTap: () async {
-              final value = !item.isEnabled;
-              setState(() {
-                item.isEnabled = value;
-              });
               final isGuest = _authService.currentUser?.isAnonymous ?? false;
-              if (!isGuest && item.id != null) {
-                try {
-                  await _firestore.updateHoliday(item.id!, {
-                    'isEnabled': value,
-                  });
-                } catch (e) {
-                  setState(() {
-                    item.isEnabled = !value;
-                  });
-                  if (mounted) {
-                    FlashySnackBar.show(
-                      context,
-                      message: 'error_updating_holiday'.tr(
-                        namedArgs: {'error': e.toString()},
-                      ),
-                    );
-                  }
-                }
-              } else if (isGuest) {
+              final value = !item.isEnabled;
+              if (isGuest) {
+                setState(() {
+                  item.isEnabled = value;
+                });
                 final monthList = DummyData.holidays[item.month];
                 if (monthList != null) {
                   for (var h in monthList) {
@@ -1632,6 +1763,49 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   }
                 }
                 DummyData.saveToPrefs();
+                return;
+              }
+
+              final holidayId = item.id?.trim() ?? '';
+              if (holidayId.isEmpty ||
+                  _updatingHolidayIds.contains(holidayId)) {
+                if (holidayId.isEmpty && mounted) {
+                  FlashySnackBar.show(
+                    context,
+                    message: 'unexpected_error'.tr(),
+                    isError: true,
+                  );
+                }
+                return;
+              }
+
+              setState(() {
+                _updatingHolidayIds.add(holidayId);
+                item.isEnabled = value;
+              });
+              try {
+                await _firestore.updateHoliday(holidayId, {'isEnabled': value});
+              } catch (e) {
+                if (mounted) {
+                  setState(() {
+                    item.isEnabled = !value;
+                  });
+                  FlashySnackBar.show(
+                    context,
+                    message: 'error_updating_holiday'.tr(
+                      namedArgs: {'error': e.toString()},
+                    ),
+                    isError: true,
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _updatingHolidayIds.remove(holidayId);
+                  });
+                } else {
+                  _updatingHolidayIds.remove(holidayId);
+                }
               }
             },
             child: AnimatedContainer(

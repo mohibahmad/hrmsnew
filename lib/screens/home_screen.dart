@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
@@ -27,6 +27,7 @@ import '../services/payroll_service.dart';
 import '../services/dashboard_chart_service.dart';
 import '../services/dummy_data.dart';
 import '../utils/date_utils.dart';
+import '../utils/currency_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/sidebar_widget.dart';
 import '../widgets/dashboard/top_header.dart';
@@ -63,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
       GlobalKey<WorkersScreenState>();
   late AuthService _authService;
   late FirestoreService _firestore;
+  String _currencyCode = CurrencyUtils.defaultCode;
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -83,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onWorkersAttendanceTap: () {
             setState(() {
               _showWorkersAttendance = true;
+              _activatedScreens[11] = true;
             });
           },
         );
@@ -94,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               _selectedTimeOffWorker = null;
               _showAssignTimeOff = true;
+              _activatedScreens[9] = true;
             });
           },
           onNotificationTap: _toggleNotifications,
@@ -106,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               _selectedTimeOffWorker = worker;
               _showAssignTimeOff = true;
+              _activatedScreens[9] = true;
             });
           },
           onNotificationTap: _toggleNotifications,
@@ -137,6 +142,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       case 9:
         return AssignTimeOffScreen(
+          key: ValueKey(
+            'assign_time_off_${_selectedTimeOffWorker?['id'] ?? _selectedTimeOffWorker?['workerId'] ?? _selectedTimeOffWorker?['email'] ?? 'new'}',
+          ),
           onBack: () => setState(() {
             _showAssignTimeOff = false;
             _selectedTimeOffWorker = null;
@@ -195,10 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _timeoffSub;
   StreamSubscription? _notifSub;
   StreamSubscription<Map<String, dynamic>?>? _profileSub;
-  int _totalAttendanceCount = 0;
   int _unreadNotifCount = 0;
   List<Map<String, dynamic>> _allAttendanceDocs = [];
-  List<Map<String, dynamic>> _attendanceDocs = [];
   List<Map<String, dynamic>> _allTimeoffDocs = [];
 
   Map<String, dynamic>? _selectedTimeOffWorker;
@@ -238,19 +244,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadPremiumStatus() async {
     bool isPremium = false;
+    String currencyCode = _currencyCode;
     final user = _authService.currentUser;
 
     if (user != null && !user.isAnonymous) {
       try {
         final profile = await _firestore.getUserProfile();
         isPremium = profile?['isPremium'] == true;
-
+        currencyCode = CurrencyUtils.normalize(profile?['currency']);
         await PreferencesService.setPremium(isPremium);
       } catch (_) {
         isPremium = await PreferencesService.isPremium();
       }
     }
-    if (mounted) setState(() => _isPremium = isPremium);
+    if (mounted) {
+      setState(() {
+        _isPremium = isPremium;
+        _currencyCode = currencyCode;
+      });
+    }
   }
 
   Future<void> _checkProfileExistsOrLogout() async {
@@ -352,9 +364,14 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
       final isPremium = profile['isPremium'] == true;
+      final currencyCode = CurrencyUtils.normalize(profile['currency']);
       await PreferencesService.setPremium(isPremium);
-      if (mounted && _isPremium != isPremium) {
-        setState(() => _isPremium = isPremium);
+      if (mounted &&
+          (_isPremium != isPremium || _currencyCode != currencyCode)) {
+        setState(() {
+          _isPremium = isPremium;
+          _currencyCode = currencyCode;
+        });
       }
     });
   }
@@ -464,8 +481,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         _allAttendanceDocs = enrichedAttendance;
-        _attendanceDocs = enrichedAttendance;
-        _totalAttendanceCount = _attendanceDocs.length;
 
         _unreadNotifCount = DummyData.notifications
             .where((n) => n['isRead'] != true)
@@ -531,30 +546,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _attendanceSub = _firestore.attendanceStream.listen((snap) {
         if (mounted) {
           setState(() {
-            final today = DateTime.now();
             _allAttendanceDocs = snap.docs
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
-            _attendanceDocs = _allAttendanceDocs.where((att) {
-              // Skip attendance records for workers that have been deleted
-              if (!_attendanceBelongsToExistingWorker(att)) return false;
-
-              final createdAt = att['createdAt'];
-              if (createdAt == null) return false;
-              DateTime? dt;
-              if (createdAt is DateTime) {
-                dt = createdAt;
-              } else if (createdAt is String) {
-                dt = DateTime.tryParse(createdAt);
-              } else if (createdAt is Timestamp) {
-                dt = createdAt.toDate();
-              }
-              return dt != null &&
-                  dt.year == today.year &&
-                  dt.month == today.month &&
-                  dt.day == today.day;
-            }).toList();
-            _totalAttendanceCount = _attendanceDocs.length;
           });
         }
       });
@@ -696,7 +690,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       _lastPayrollReminderPeriod = period;
     } catch (_) {
-      // A later stream update or app launch will retry the reminder.
     } finally {
       _payrollReminderCheckInProgress = false;
     }
@@ -719,8 +712,21 @@ class _HomeScreenState extends State<HomeScreen> {
       _workersDocs,
       _rawPayrollDocs,
     );
+    final activePayrollKeys = activePayrollRecords
+        .map((record) => (record['payrollKey'] ?? '').toString().trim())
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    final activeExpenseRecords = _rawExpensesDocs.where((record) {
+      final category = (record['category'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final payrollKey = (record['payrollKey'] ?? '').toString().trim();
+      if (category != 'salary' || payrollKey.isEmpty) return true;
+      return activePayrollKeys.contains(payrollKey);
+    }).toList();
     final expenseSeries = DashboardChartService.buildSeries(
-      records: _rawExpensesDocs,
+      records: activeExpenseRecords,
       valueOf: (record) => _parseNumToDouble(record['amount']),
       period: period,
       dateOf: DashboardChartService.expenseRecordDate,
@@ -752,11 +758,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final payrollRecords = activePayrollRecords.map((item) {
       final savedNet = item['netSalaryAmount'];
       final formattedNet = (item['netSalary'] ?? '').toString();
+      final amount = item['amount'];
       final netSalary = savedNet is num
           ? savedNet.toDouble()
           : formattedNet.trim().isNotEmpty
           ? PayrollService.extractSalary(formattedNet)
-          : 0.0;
+          : amount is num
+              ? amount.toDouble()
+              : 0.0;
       return {...item, 'netSalary': netSalary};
     }).toList();
     final totalDummySalary = payrollRecords.fold<double>(
@@ -777,62 +786,74 @@ class _HomeScreenState extends State<HomeScreen> {
     _totalSalarySum = salarySeries.total;
   }
 
-  /// Returns the set of current worker IDs (non-empty) for filtering attendance.
   Set<String> get _existingWorkerIds {
     return _workersDocs
-        .map((w) => (w['id'] ?? '').toString().trim())
+        .map(
+          (worker) =>
+              (worker['id'] ?? worker['workerId'] ?? '').toString().trim(),
+        )
         .where((id) => id.isNotEmpty)
         .toSet();
   }
 
-  /// Returns true if the attendance record belongs to a worker that still exists.
-  bool _attendanceBelongsToExistingWorker(Map<String, dynamic> att) {
-    final existingIds = _existingWorkerIds;
-    if (existingIds.isEmpty) return true; // workers not loaded yet, include all
-    final workerId = (att['workerId'] ?? '').toString().trim();
-    if (workerId.isEmpty) return true; // no workerId in record, include
-    return existingIds.contains(workerId);
+  bool _attendanceBelongsToExistingWorker(Map<String, dynamic> attendance) {
+    if (_authService.currentUser?.isAnonymous ?? false) return true;
+    if (!_workersLoaded) return true;
+    if (_workersDocs.isEmpty) return false;
+
+    final workerId = (attendance['workerId'] ?? '').toString().trim();
+    if (workerId.isNotEmpty) return _existingWorkerIds.contains(workerId);
+
+    final email = (attendance['email'] ?? '').toString().trim().toLowerCase();
+    if (email.isNotEmpty) {
+      return _workersDocs.any(
+        (worker) =>
+            (worker['email'] ?? '').toString().trim().toLowerCase() == email,
+      );
+    }
+
+    final name = (attendance['name'] ?? attendance['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (name.isEmpty) return false;
+    return _workersDocs.any(
+      (worker) =>
+          (worker['name'] ?? '').toString().trim().toLowerCase() == name,
+    );
   }
 
   List<Map<String, dynamic>> _getFilteredAttendanceDocs(String period) {
-    final now = DateTime.now();
-    return _allAttendanceDocs.where((att) {
-      // Skip attendance records for workers that have been deleted
-      if (!_attendanceBelongsToExistingWorker(att)) return false;
-
-      final createdAt = att['createdAt'];
-      DateTime? dt;
-      if (createdAt != null) {
-        if (createdAt is DateTime) {
-          dt = createdAt;
-        } else if (createdAt is String) {
-          dt = DateTime.tryParse(createdAt);
-        } else if (createdAt is Timestamp) {
-          dt = createdAt.toDate();
-        }
-      } else {
-        final id = att['id']?.toString() ?? '';
-        final numericPart = id.replaceAll(RegExp(r'[^0-9]'), '');
-        final num = numericPart.isNotEmpty ? int.tryParse(numericPart) ?? 0 : 0;
-        dt = now.subtract(Duration(days: num % 90));
-      }
-
-      if (dt == null) return true;
-      final diff = now.difference(dt);
-      switch (period) {
-        case 'Today':
-          return diff.inDays == 0;
-        case 'Week':
-          return diff.inDays <= 7;
-        case 'Month':
-          return diff.inDays <= 30;
-        case '6 Month':
-          return diff.inDays <= 180;
-        case 'Yearly':
-        default:
-          return true;
-      }
+    return _allAttendanceDocs.where((attendance) {
+      if (!_attendanceBelongsToExistingWorker(attendance)) return false;
+      final date = AppDateUtils.attendanceRecordDate(attendance);
+      if (date == null) return false;
+      return DashboardChartService.isDateWithinPeriod(date, period);
     }).toList();
+  }
+
+  String _formatCompactCurrency(double amount, {bool clampToZero = false}) {
+    final value = clampToZero ? amount.clamp(0, double.infinity) : amount;
+    final symbol = CurrencyUtils.symbolFor(_currencyCode);
+    final separator = symbol.length > 1 ? ' ' : '';
+    return '$symbol$separator${NumberFormat.compact(locale: 'en_US').format(value)}';
+  }
+
+  bool _holidayFallsWithinSelectedPeriod(int daysUntilHoliday) {
+    switch (_selectedPeriod) {
+      case 'Today':
+        return daysUntilHoliday == 0;
+      case 'Week':
+        return daysUntilHoliday <= 7;
+      case 'Month':
+        return daysUntilHoliday <= 30;
+      case '6 Month':
+        return daysUntilHoliday <= 180;
+      case 'Yearly':
+        return daysUntilHoliday <= 365;
+      default:
+        return true;
+    }
   }
 
   void _handleLogout() {
@@ -856,17 +877,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _showAssignTimeOff = false;
       _showNotifications = false;
       _selectedTimeOffWorker = null;
+      _activatedScreens[10] = true;
     });
   }
 
   void _toggleNotifications() {
-    final willShow = !_showNotifications;
     setState(() {
-      _showNotifications = willShow;
+      _showNotifications = !_showNotifications;
     });
-    if (willShow) {
-      _firestore.markAllNotificationsRead();
-    }
   }
 
   void _handleNotificationNavigation(String type) {
@@ -881,6 +899,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedSubIndex = 0;
           break;
         case 'payroll_added':
+        case 'payroll_due':
           _selectedIndex = 2;
           _selectedSubIndex = 1;
           break;
@@ -902,6 +921,11 @@ class _HomeScreenState extends State<HomeScreen> {
         default:
           break;
       }
+      _showProfile = false;
+      _showWorkersAttendance = false;
+      _showAssignTimeOff = false;
+      _selectedTimeOffWorker = null;
+      _activatedScreens[_getStackIndex()] = true;
     });
   }
 
@@ -938,7 +962,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                       setState(() {
                         _selectedIndex = index;
-                        _activatedScreens[index] = true;
                         if (subIndex != null) {
                           _selectedSubIndex = subIndex;
                         }
@@ -947,6 +970,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _showAssignTimeOff = false;
                         _showNotifications = false;
                         _selectedTimeOffWorker = null;
+                        _activatedScreens[_getStackIndex()] = true;
                       });
                     },
                     onBackToLogin: _handleBackToLogin,
@@ -1005,38 +1029,62 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ))
                                     : const SizedBox.shrink(),
 
-                                _getScreen(1),
+                                _activatedScreens[1]
+                                    ? _getScreen(1)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(2),
+                                _activatedScreens[2]
+                                    ? _getScreen(2)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(3),
+                                _activatedScreens[3]
+                                    ? _getScreen(3)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(4),
+                                _activatedScreens[4]
+                                    ? _getScreen(4)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(5),
+                                _activatedScreens[5]
+                                    ? _getScreen(5)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(6),
+                                _activatedScreens[6]
+                                    ? _getScreen(6)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(7),
+                                _activatedScreens[7]
+                                    ? _getScreen(7)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(8),
+                                _activatedScreens[8]
+                                    ? _getScreen(8)
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(9),
+                                _activatedScreens[9]
+                                    ? _getScreen(9)
+                                    : const SizedBox.shrink(),
 
-                                _buildProfileView(stackIndex == 10),
+                                _activatedScreens[10]
+                                    ? _buildProfileView(stackIndex == 10)
+                                    : const SizedBox.shrink(),
 
-                                WorkersAttendanceScreen(
-                                  hideSidebar: true,
-                                  onProfileTap: _openProfile,
-                                  onBack: () {
-                                    setState(() {
-                                      _showWorkersAttendance = false;
-                                    });
-                                  },
-                                  onNotificationTap: _toggleNotifications,
-                                ),
+                                _activatedScreens[11]
+                                    ? WorkersAttendanceScreen(
+                                        hideSidebar: true,
+                                        onProfileTap: _openProfile,
+                                        onBack: () {
+                                          setState(() {
+                                            _showWorkersAttendance = false;
+                                          });
+                                        },
+                                        onNotificationTap: _toggleNotifications,
+                                      )
+                                    : const SizedBox.shrink(),
 
-                                _getScreen(10),
+                                _activatedScreens[12]
+                                    ? _getScreen(10)
+                                    : const SizedBox.shrink(),
                               ],
                             );
                           },
@@ -1112,8 +1160,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: SparklineCard(
                           title: 'total_salary'.tr(),
-                          amount:
-                              '\$${NumberFormat.compact(locale: 'en_US').format(_totalSalarySum.clamp(0, double.infinity))}',
+                          amount: _formatCompactCurrency(
+                            _totalSalarySum,
+                            clampToZero: true,
+                          ),
                           rawValue: _totalSalarySum,
                           points: _salaryChartPoints,
                           period: _selectedPeriod,
@@ -1124,8 +1174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: SparklineCard(
                           title: 'expenses'.tr(),
-                          amount:
-                              '\$${NumberFormat.compact(locale: 'en_US').format(_totalExpensesSum)}',
+                          amount: _formatCompactCurrency(_totalExpensesSum),
                           rawValue: _totalExpensesSum,
                           points: _expenseChartPoints,
                           period: _selectedPeriod,
@@ -1181,6 +1230,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       records: _allTimeoffDocs,
                       period: _selectedPeriod,
                     );
+                    final filteredAttendanceDocs = _getFilteredAttendanceDocs(
+                      _selectedPeriod,
+                    );
                     if (isNarrow) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1190,11 +1242,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: AttendanceLineChart(
                               period: _selectedPeriod,
                               isEmpty:
-                                  _totalAttendanceCount == 0 ||
+                                  filteredAttendanceDocs.isEmpty ||
                                   _totalWorkersCount == 0,
-                              attendanceDocs: _getFilteredAttendanceDocs(
-                                _selectedPeriod,
-                              ),
+                              attendanceDocs: filteredAttendanceDocs,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -1217,11 +1267,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: AttendanceLineChart(
                                   period: _selectedPeriod,
                                   isEmpty:
-                                      _totalAttendanceCount == 0 ||
+                                      filteredAttendanceDocs.isEmpty ||
                                       _totalWorkersCount == 0,
-                                  attendanceDocs: _getFilteredAttendanceDocs(
-                                    _selectedPeriod,
-                                  ),
+                                  attendanceDocs: filteredAttendanceDocs,
                                 ),
                               ),
                             ),
@@ -1276,60 +1324,40 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       child: () {
-                        final now = DateTime.now();
-                        final activeHolidays = _holidays.where((h) {
-                          if (h['isEnabled'] != true) return false;
-
-                          final monthStr = (h['month'] ?? '').toString();
-                          final dayStr = (h['day'] ?? '').toString();
-                          if (monthStr.isEmpty || dayStr.isEmpty) return false;
-
-                          final monthNum = AppDateUtils.parseMonth(monthStr);
-                          if (monthNum == null) return false;
-                          final dayNum = int.tryParse(dayStr);
-                          if (dayNum == null) return false;
-
-                          var holidayDate = DateTime(
-                            now.year,
-                            monthNum,
-                            dayNum,
-                          );
-                          if (holidayDate.isBefore(
-                            now.subtract(const Duration(days: 1)),
-                          )) {
-                            holidayDate = DateTime(
-                              now.year + 1,
-                              monthNum,
-                              dayNum,
-                            );
-                          }
-
+                        final current = DateTime.now();
+                        final today = DateTime(
+                          current.year,
+                          current.month,
+                          current.day,
+                        );
+                        final isGuest =
+                            _authService.currentUser?.isAnonymous ?? false;
+                        final activeHolidays = <Map<String, dynamic>>[];
+                        for (final source in _holidays) {
+                          if (source['isEnabled'] == false) continue;
+                          final holidayDate = isGuest
+                              ? _guestHolidayDateForDisplay(source, current)
+                              : _holidayDateForDisplay(source, today);
+                          if (holidayDate == null) continue;
                           final daysUntilHoliday = holidayDate
-                              .difference(now)
+                              .difference(isGuest ? current : today)
                               .inDays;
-                          if (daysUntilHoliday < 0) return false;
-
-                          switch (_selectedPeriod) {
-                            case 'Today':
-                              return daysUntilHoliday == 0;
-                            case 'Week':
-                              return daysUntilHoliday <= 7;
-                            case 'Month':
-                              return daysUntilHoliday <= 30;
-                            case '6 Month':
-                              return daysUntilHoliday <= 180;
-                            case 'Yearly':
-                              return daysUntilHoliday <= 365;
-                            default:
-                              return true;
+                          if (daysUntilHoliday < 0 ||
+                              !_holidayFallsWithinSelectedPeriod(
+                                daysUntilHoliday,
+                              )) {
+                            continue;
                           }
-                        }).toList();
-
-                        for (final h in activeHolidays) {
-                          final daysUntil = _daysUntilHoliday(h, now);
-                          h['remainingDays'] = daysUntil != null
-                              ? daysUntil.toString()
-                              : (h['remainingDays']?.toString() ?? '0');
+                          final holiday = Map<String, dynamic>.from(source);
+                          holiday['remainingDays'] = daysUntilHoliday
+                              .toString();
+                          if (!isGuest) {
+                            holiday['dayOfWeek'] = DateFormat(
+                              'EEEE',
+                              context.locale.toString(),
+                            ).format(holidayDate);
+                          }
+                          activeHolidays.add(holiday);
                         }
                         activeHolidays.sort((a, b) {
                           final aDays =
@@ -1399,7 +1427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   runSpacing: spacing,
                                   children: activeHolidays.map((h) {
                                     final remainingDaysStr =
-                                        h['remainingDays'] ?? '';
+                                        (h['remainingDays'] ?? '').toString();
                                     final remainingDaysInt =
                                         int.tryParse(remainingDaysStr) ?? -1;
                                     final isUrgent =
@@ -1455,17 +1483,58 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-int? _daysUntilHoliday(Map<String, dynamic> h, DateTime now) {
-  final monthStr = (h['month'] ?? '').toString();
-  final dayStr = (h['day'] ?? '').toString();
-  if (monthStr.isEmpty || dayStr.isEmpty) return null;
-  final monthNum = AppDateUtils.parseMonth(monthStr);
-  final dayNum = int.tryParse(dayStr);
-  if (monthNum == null || dayNum == null) return null;
-  var holidayDate = DateTime(now.year, monthNum, dayNum);
-  if (holidayDate.isBefore(now.subtract(const Duration(days: 1)))) {
-    holidayDate = DateTime(now.year + 1, monthNum, dayNum);
+int? _intValue(dynamic value) {
+  if (value is num) return value.toInt();
+  return int.tryParse((value ?? '').toString().trim());
+}
+
+DateTime? _validHolidayDate(int year, int month, int day) {
+  final date = DateTime(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) return null;
+  return date;
+}
+
+DateTime? _guestHolidayDateForDisplay(
+  Map<String, dynamic> holiday,
+  DateTime referenceDate,
+) {
+  final month = AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
+  final day = _intValue(holiday['day']);
+  if (month == null || day == null) return null;
+  var occurrence = _validHolidayDate(referenceDate.year, month, day);
+  if (occurrence == null) return null;
+  if (occurrence.isBefore(referenceDate.subtract(const Duration(days: 1)))) {
+    occurrence = _validHolidayDate(referenceDate.year + 1, month, day);
   }
-  final daysUntil = holidayDate.difference(now).inDays;
-  return daysUntil >= 0 ? daysUntil : null;
+  return occurrence;
+}
+
+DateTime? _holidayDateForDisplay(
+  Map<String, dynamic> holiday,
+  DateTime referenceDate,
+) {
+  final month = AppDateUtils.parseMonth((holiday['month'] ?? '').toString());
+  final day = _intValue(holiday['day']);
+  if (month == null || day == null) return null;
+
+  final today = DateTime(
+    referenceDate.year,
+    referenceDate.month,
+    referenceDate.day,
+  );
+  final recurring = holiday['isRecurring'] == true;
+  final storedYear = _intValue(holiday['year']);
+
+  if (!recurring && storedYear != null && storedYear > 0) {
+    final exactDate = _validHolidayDate(storedYear, month, day);
+    if (exactDate == null || exactDate.isBefore(today)) return null;
+    return exactDate;
+  }
+
+  var occurrence = _validHolidayDate(today.year, month, day);
+  if (occurrence == null) return null;
+  if (occurrence.isBefore(today)) {
+    occurrence = _validHolidayDate(today.year + 1, month, day);
+  }
+  return occurrence;
 }

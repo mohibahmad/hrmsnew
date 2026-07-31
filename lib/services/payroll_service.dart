@@ -49,15 +49,26 @@ class PayrollService {
     return date.day > lastDay - reminderDays;
   }
 
+  /// Reporting helper only. Do not use this value to disable, lock, or make
+  /// the payroll screen read-only. Paid payroll records remain editable.
   static bool allWorkersPaidForMonth(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
     DateTime month,
   ) {
-    if (workersList.isEmpty) return true;
-    final combined = combinePayroll(workersList, rawPayrollDocs, month: month);
-    return combined.length == workersList.length &&
-        combined.every((worker) => worker['hasPayrollRecord'] == true);
+    final activeWorkers = workersList
+        .where(isWorkerEligibleForPayroll)
+        .toList();
+    if (activeWorkers.isEmpty) return true;
+
+    final combined = combinePayroll(
+      activeWorkers,
+      rawPayrollDocs,
+      month: month,
+    );
+
+    return combined.length == activeWorkers.length &&
+        combined.every((worker) => worker['isPaid'] == true);
   }
 
   static int unpaidWorkerCountForMonth(
@@ -65,11 +76,18 @@ class PayrollService {
     List<Map<String, dynamic>> rawPayrollDocs,
     DateTime month,
   ) {
-    if (workersList.isEmpty) return 0;
-    final combined = combinePayroll(workersList, rawPayrollDocs, month: month);
-    return combined
-        .where((worker) => worker['hasPayrollRecord'] != true)
-        .length;
+    final activeWorkers = workersList
+        .where(isWorkerEligibleForPayroll)
+        .toList();
+    if (activeWorkers.isEmpty) return 0;
+
+    final combined = combinePayroll(
+      activeWorkers,
+      rawPayrollDocs,
+      month: month,
+    );
+
+    return combined.where((worker) => worker['isPaid'] != true).length;
   }
 
   static int effectiveSalaryDay(DateTime month, int configuredDay) {
@@ -84,6 +102,154 @@ class PayrollService {
     return date.day == effectiveSalaryDay(date, configuredDay);
   }
 
+  static bool isWorkerEligibleForPayroll(Map<String, dynamic> worker) {
+    if (_isTruthy(worker['isDeleted']) ||
+        _isTruthy(worker['deleted']) ||
+        _isTruthy(worker['isArchived'])) {
+      return false;
+    }
+
+    final status = (worker['employmentStatus'] ?? worker['status'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    return !const {
+      'deleted',
+      'inactive',
+      'terminated',
+      'archived',
+    }.contains(status);
+  }
+
+  static bool isPayrollRecordPaid(Map<String, dynamic> record) {
+    if (_isTruthy(record['isPaid']) || _isTruthy(record['paid'])) {
+      return true;
+    }
+
+    final paymentStatus = (record['paymentStatus'] ?? record['status'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    if (const {
+      'paid',
+      'completed',
+      'processed',
+      'successful',
+      'success',
+    }.contains(paymentStatus)) {
+      return true;
+    }
+
+    return _parseDate(record['paidAt']) != null ||
+        _parseDate(record['paidOn']) != null ||
+        _parseDate(record['paymentDate']) != null;
+  }
+
+  /// Payroll is intentionally never locked after payment.
+  /// `isPaid` is only a status used for display, filtering and reporting.
+  static bool canEditPayrollRecord(Map<String, dynamic>? record) => true;
+
+  /// Backward-compatible helper for screens/controllers that previously
+  /// expected a lock decision from the service. Always returns false.
+  static bool shouldLockPayrollScreen({
+    Map<String, dynamic>? payrollRecord,
+    DateTime? month,
+  }) => false;
+
+  static bool _isTruthy(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+
+    final normalized = (value ?? '').toString().trim().toLowerCase();
+    return const {'true', '1', 'yes', 'y'}.contains(normalized);
+  }
+
+  static bool _hasValue(dynamic value) {
+    return value != null && value.toString().trim().isNotEmpty;
+  }
+
+  static dynamic _preferNonEmpty(dynamic primary, dynamic fallback) {
+    return _hasValue(primary) ? primary : fallback;
+  }
+
+  static String _salaryDisplayOrEmpty(Map<String, dynamic> data) {
+    final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
+    if (salaryAmount.isNotEmpty) {
+      final currency = (data['currency'] ?? 'USD').toString();
+      final symbol = getCurrencySymbol(currency);
+      return symbol.isEmpty ? salaryAmount : '$symbol $salaryAmount';
+    }
+
+    return (data['salary'] ?? '').toString().trim();
+  }
+
+  static DateTime _recordSortDate(Map<String, dynamic> record) {
+    for (final key in [
+      'lastModified',
+      'updatedAt',
+      'paidAt',
+      'paidOn',
+      'paymentDate',
+      'createdAt',
+      'timestamp',
+      'payrollDate',
+      'date',
+    ]) {
+      final parsed = _parseDate(record[key]);
+      if (parsed != null) return parsed;
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static bool _recordMatchesWorker(
+    Map<String, dynamic> record,
+    Map<String, dynamic> worker,
+    List<Map<String, dynamic>> activeWorkers,
+  ) {
+    final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+        .toString()
+        .trim();
+    final recordWorkerId = (record['workerId'] ?? '').toString().trim();
+
+    if (workerId.isNotEmpty && recordWorkerId.isNotEmpty) {
+      return workerId == recordWorkerId;
+    }
+
+    final workerEmail = (worker['email'] ?? '').toString().trim().toLowerCase();
+    final recordEmail = (record['email'] ?? '').toString().trim().toLowerCase();
+
+    if (workerEmail.isNotEmpty && recordEmail.isNotEmpty) {
+      return workerEmail == recordEmail;
+    }
+
+    // Name matching is only allowed for legacy records that contain neither
+    // workerId nor email, and only when that name is unique in the active
+    // roster. This prevents two same-name workers sharing one payroll record.
+    if (recordWorkerId.isNotEmpty || recordEmail.isNotEmpty) {
+      return false;
+    }
+
+    final workerName = (worker['name'] ?? '').toString().trim().toLowerCase();
+    final recordName = (record['name'] ?? record['workerName'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    if (workerName.isEmpty || recordName.isEmpty || workerName != recordName) {
+      return false;
+    }
+
+    final sameNameWorkers = activeWorkers.where((candidate) {
+      return (candidate['name'] ?? '').toString().trim().toLowerCase() ==
+          workerName;
+    }).length;
+
+    return sameNameWorkers == 1;
+  }
+
   static List<Map<String, dynamic>> combinePayroll(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs, {
@@ -91,12 +257,25 @@ class PayrollService {
     bool allowUndatedRecords = false,
   }) {
     final targetMonth = month ?? DateTime.now();
+    final activeWorkers = workersList
+        .where(isWorkerEligibleForPayroll)
+        .map(Map<String, dynamic>.from)
+        .toList();
+
+    if (activeWorkers.isEmpty) {
+      return const <Map<String, dynamic>>[];
+    }
+
     final monthlyPayrollDocs = rawPayrollDocs
         .where((record) {
-          if ((record['status'] ?? '').toString().trim().toLowerCase() ==
-              'cancelled') {
+          final status = (record['status'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          if (status == 'cancelled' || status == 'canceled') {
             return false;
           }
+
           return isRecordInMonth(
             record,
             targetMonth,
@@ -105,97 +284,101 @@ class PayrollService {
         })
         .map(Map<String, dynamic>.from)
         .toList();
-    // The workers collection is the source of truth for the active payroll
-    // roster. Historical payroll documents must not recreate workers that
-    // have since been deleted.
-    if (workersList.isEmpty) return const <Map<String, dynamic>>[];
 
     final combined = <Map<String, dynamic>>[];
-    for (var worker in workersList) {
+
+    for (final worker in activeWorkers) {
       final workerId = (worker['workerId'] ?? worker['id'] ?? '')
           .toString()
           .trim();
       final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-      final name = (worker['name'] ?? '').toString().trim().toLowerCase();
       final identity = workerId.isNotEmpty ? workerId : email;
-      final canonicalPayrollKey =
-          '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
-      final canonicalRecord = identity.isEmpty
-          ? null
-          : rawPayrollDocs.cast<Map<String, dynamic>?>().firstWhere(
-              (record) =>
-                  (record?['payrollKey'] ?? '')
-                      .toString()
-                      .trim()
-                      .toLowerCase() ==
-                  canonicalPayrollKey,
-              orElse: () => null,
-            );
-      final workerPayrollDocs = canonicalRecord == null
-          ? monthlyPayrollDocs
-          : ((canonicalRecord['status'] ?? '')
-                            .toString()
-                            .trim()
-                            .toLowerCase() !=
-                        'cancelled' &&
-                    isRecordInMonth(
-                      canonicalRecord,
-                      targetMonth,
-                      allowUndated: allowUndatedRecords,
-                    )
-                ? <Map<String, dynamic>>[canonicalRecord]
-                : const <Map<String, dynamic>>[]);
+      final canonicalPayrollKey = identity.isEmpty
+          ? ''
+          : '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
 
-      final payrollRecord = workerPayrollDocs.firstWhere((p) {
-        final payrollWorkerId = (p['workerId'] ?? '').toString().trim();
-        final pEmail = (p['email'] ?? '').toString().trim().toLowerCase();
-        final pName = (p['name'] ?? p['workerName'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        return (workerId.isNotEmpty &&
-                payrollWorkerId.isNotEmpty &&
-                workerId == payrollWorkerId) ||
-            (payrollWorkerId.isEmpty && email.isNotEmpty && pEmail == email) ||
-            (payrollWorkerId.isEmpty &&
-                pEmail.isEmpty &&
-                name.isNotEmpty &&
-                pName == name);
-      }, orElse: () => {});
+      final matchingRecords = monthlyPayrollDocs.where((record) {
+        return _recordMatchesWorker(record, worker, activeWorkers);
+      }).toList();
+
+      matchingRecords.sort((a, b) {
+        final aKey = (a['payrollKey'] ?? '').toString().trim().toLowerCase();
+        final bKey = (b['payrollKey'] ?? '').toString().trim().toLowerCase();
+        final aIsCanonical =
+            canonicalPayrollKey.isNotEmpty && aKey == canonicalPayrollKey;
+        final bIsCanonical =
+            canonicalPayrollKey.isNotEmpty && bKey == canonicalPayrollKey;
+
+        if (aIsCanonical != bIsCanonical) {
+          return bIsCanonical ? 1 : -1;
+        }
+
+        return _recordSortDate(b).compareTo(_recordSortDate(a));
+      });
+
+      final payrollRecord = matchingRecords.isEmpty
+          ? <String, dynamic>{}
+          : matchingRecords.first;
 
       if (payrollRecord.isNotEmpty) {
-        final currentSalary = currentSalaryDisplay(worker);
+        final salaryAmount = _preferNonEmpty(
+          worker['salaryAmount'],
+          payrollRecord['salaryAmount'],
+        );
+        final currency = _preferNonEmpty(
+          worker['currency'],
+          payrollRecord['currency'],
+        );
+        final salaryType = _preferNonEmpty(
+          worker['salaryType'],
+          payrollRecord['salaryType'],
+        );
+        final profileImage = _preferNonEmpty(
+          worker['profileImage'],
+          payrollRecord['profileImage'],
+        );
+        final phone = _preferNonEmpty(worker['phone'], payrollRecord['phone']);
+
+        final currentSalary = _salaryDisplayOrEmpty(worker);
+        final historicalSalary = (payrollRecord['salary'] ?? '')
+            .toString()
+            .trim();
+        final mergedSalary = currentSalary.isNotEmpty
+            ? currentSalary
+            : historicalSalary;
+        // Status only: a paid record is still fully editable and saveable.
+        final paid = isPayrollRecordPaid(payrollRecord);
+
         combined.add({
           ...worker,
           ...payrollRecord,
           'workerId': workerId,
+          'workerStatus': worker['employmentStatus'] ?? worker['status'],
           'hasPayrollRecord': true,
-
-          'salaryAmount':
-              worker['salaryAmount'] ?? payrollRecord['salaryAmount'],
-          'currency': worker['currency'] ?? payrollRecord['currency'],
-          'salaryType': worker['salaryType'] ?? payrollRecord['salaryType'],
-          if (currentSalary.isNotEmpty) 'salary': currentSalary,
-          'profileImage':
-              worker['profileImage'] ?? payrollRecord['profileImage'],
-          'phone': worker['phone'] ?? payrollRecord['phone'] ?? '',
+          'isPaid': paid,
+          'hasPaidPayrollRecord': paid,
+          'salaryAmount': salaryAmount,
+          'currency': currency,
+          'salaryType': salaryType,
+          if (mergedSalary.isNotEmpty) 'salary': mergedSalary,
+          'profileImage': profileImage,
+          'phone': phone ?? '',
         });
       } else {
-        final currency = worker['currency']?.toString() ?? 'USD';
-        final currencySymbol = PayrollService.getCurrencySymbol(currency);
-        final salaryAmount = worker['salaryAmount']?.toString() ?? '';
+        final salary = _salaryDisplayOrEmpty(worker);
+
         combined.add({
           ...worker,
           'workerId': workerId,
+          'workerStatus': worker['employmentStatus'] ?? worker['status'],
           'hasPayrollRecord': false,
-          'status': 'Active',
+          'isPaid': false,
+          'hasPaidPayrollRecord': false,
           'totalWorkDays': '',
           'absents': '',
           'leaves': '',
           'overtimeAmount': '',
-          'salary': salaryAmount.isNotEmpty
-              ? '$currencySymbol $salaryAmount'
-              : '',
+          'salary': salary,
           'netSalary': '',
         });
       }
@@ -208,39 +391,18 @@ class PayrollService {
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> payrollRecords,
   ) {
-    if (workersList.isEmpty || payrollRecords.isEmpty) {
+    final activeWorkers = workersList
+        .where(isWorkerEligibleForPayroll)
+        .map(Map<String, dynamic>.from)
+        .toList();
+
+    if (activeWorkers.isEmpty || payrollRecords.isEmpty) {
       return const <Map<String, dynamic>>[];
     }
 
     return payrollRecords.where((record) {
-      final payrollWorkerId = (record['workerId'] ?? '').toString().trim();
-      final payrollEmail = (record['email'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-      final payrollName = (record['name'] ?? record['workerName'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-
-      return workersList.any((worker) {
-        final workerId = (worker['workerId'] ?? worker['id'] ?? '')
-            .toString()
-            .trim();
-        if (payrollWorkerId.isNotEmpty && workerId.isNotEmpty) {
-          return payrollWorkerId == workerId;
-        }
-
-        final email = (worker['email'] ?? '').toString().trim().toLowerCase();
-        if (payrollEmail.isNotEmpty && email.isNotEmpty) {
-          return payrollEmail == email;
-        }
-
-        final name = (worker['name'] ?? '').toString().trim().toLowerCase();
-        return payrollEmail.isEmpty &&
-            payrollName.isNotEmpty &&
-            name.isNotEmpty &&
-            payrollName == name;
+      return activeWorkers.any((worker) {
+        return _recordMatchesWorker(record, worker, activeWorkers);
       });
     }).toList();
   }
@@ -500,9 +662,12 @@ class PayrollService {
         ? periodSalary / totalWorkDaysVal
         : 0.0;
 
-    final workedDaysVal = daysWorked.isEmpty
+    final calculatedWorkedDays = daysWorked.isEmpty
         ? totalWorkDaysVal - absentDays - leaveDays
         : parseIntSafe(daysWorked);
+    final workedDaysVal = calculatedWorkedDays
+        .clamp(0, totalWorkDaysVal)
+        .toInt();
 
     final grossSalary = periodSalary;
 

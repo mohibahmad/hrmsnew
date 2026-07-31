@@ -36,6 +36,8 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscureConfirmPassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
+  bool _initialized = false;
+  late final TapGestureRecognizer _signInRecognizer;
 
   bool get _anyLoading =>
       _isLoading || _isGoogleLoading || _isAppleLoading || _isGuestLoading;
@@ -48,30 +50,60 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
+    _signInRecognizer = TapGestureRecognizer()..onTap = _openLogin;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestoreService = Provider.of<FirestoreService>(context, listen: false);
 
-    _googleSub?.cancel();
     _googleSub = FirebaseFirestore.instance
         .collection('social_hrms')
         .doc('google')
         .snapshots()
-        .listen((doc) {
-          if (!mounted) return;
-          setState(() {
-            _googleEnabled = doc.data()?['googleEnable'] ?? true;
-          });
-        });
+        .listen(
+          (doc) {
+            if (!mounted) return;
+            final enabled = _parseGoogleEnabled(doc.data()?['googleEnable']);
+            if (_googleEnabled != enabled) {
+              setState(() => _googleEnabled = enabled);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            ErrorReporter.report(
+              error,
+              stackTrace,
+              context: 'signupGoogleConfig',
+            );
+          },
+        );
+  }
+
+  bool _parseGoogleEnabled(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final normalized = value?.toString().trim().toLowerCase();
+    if (normalized == 'false' || normalized == '0') return false;
+    if (normalized == 'true' || normalized == '1') return true;
+    return true;
+  }
+
+  void _openLogin() {
+    if (!mounted || _anyLoading) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
   void dispose() {
     _googleSub?.cancel();
+    _signInRecognizer.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -79,34 +111,49 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _handleGoogleLogin() async {
+    if (_anyLoading || !_googleEnabled) return;
     setState(() {
       _isGoogleLoading = true;
     });
 
     try {
       final userCredential = await _authService.signInWithGoogle();
-      if (userCredential != null && mounted) {
-        if (await _firestoreService.isCurrentUserDeleted()) {
-          await _authService.signOut();
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'account_deleted_contact'.tr(),
-              isError: true,
-            );
-          }
-          return;
+      if (userCredential == null || !mounted) return;
+
+      if (await _firestoreService.isCurrentUserDeleted()) {
+        await _authService.signOut();
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'account_deleted_contact'.tr(),
+            isError: true,
+          );
         }
-        if (!mounted) return;
-        FlashySnackBar.show(
-          context,
-          title: 'success'.tr(),
-          message: 'welcome_back'.tr(),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        return;
       }
+
+      final profile = await _firestoreService.getUserProfile();
+      if (profile == null) {
+        await _authService.signOut();
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'user_not_found'.tr(),
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+      FlashySnackBar.show(
+        context,
+        title: 'success'.tr(),
+        message: 'welcome_back'.tr(),
+      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled ||
           e.code == GoogleSignInExceptionCode.interrupted) {
@@ -173,20 +220,52 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  Future<void> _cleanupIncompleteSignup(User? user) async {
+    if (user == null) return;
+    try {
+      await user.delete();
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'signupAuthCleanup');
+      try {
+        await _authService.signOut();
+      } catch (signOutError, signOutStack) {
+        ErrorReporter.report(
+          signOutError,
+          signOutStack,
+          context: 'signupAuthCleanupSignOut',
+        );
+      }
+    }
+  }
+
   Future<void> _handleSignUp() async {
-    _submitted = true;
-    if (!_formKey.currentState!.validate()) return;
+    if (_anyLoading) return;
+
+    if (!_submitted) {
+      setState(() => _submitted = true);
+    }
+
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailController.text.trim();
+      final email = _emailController.text.trim().toLowerCase();
 
-      bool isDeleted = false;
+      bool isDeleted;
       try {
         isDeleted = await _firestoreService.isEmailDeleted(email);
-      } catch (_) {
-        isDeleted = false;
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'signupDeletedEmailCheck');
+        if (mounted) {
+          FlashySnackBar.show(
+            context,
+            message: 'network_error'.tr(),
+            isError: true,
+          );
+        }
+        return;
       }
 
       if (isDeleted) {
@@ -201,27 +280,41 @@ class _SignupScreenState extends State<SignupScreen> {
       }
 
       final credential = await _authService.signUp(
-        email: _emailController.text,
+        email: email,
         password: _passwordController.text,
       );
 
-      final emailLocalPart = _emailController.text.trim().split('@')[0];
+      final emailLocalPart = email.split('@').first;
       try {
         await credential.user?.updateDisplayName(emailLocalPart);
-      } catch (_) {}
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'signupDisplayName');
+      }
 
-      await _firestoreService.createUserProfile(
-        username: emailLocalPart,
-        email: _emailController.text.trim(),
-        phone: '',
-      );
+      try {
+        await _firestoreService.createUserProfile(
+          username: emailLocalPart,
+          email: email,
+          phone: '',
+        );
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'signupCreateProfile');
+        await _cleanupIncompleteSignup(credential.user);
+        rethrow;
+      }
 
-      await _firestoreService.addNotification({
-        'type': 'welcome',
-        'title': 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}),
-        'message': 'notif_msg_welcome'.tr(),
-        'data': {'name': emailLocalPart},
-      });
+      try {
+        await _firestoreService.addNotification({
+          'type': 'welcome',
+          'title': 'notif_title_welcome'.tr(
+            namedArgs: {'name': emailLocalPart},
+          ),
+          'message': 'notif_msg_welcome'.tr(),
+          'data': {'name': emailLocalPart},
+        });
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'signupWelcomeNotification');
+      }
 
       if (mounted) {
         FlashySnackBar.show(
@@ -248,6 +341,9 @@ class _SignupScreenState extends State<SignupScreen> {
           case 'operation-not-allowed':
             message = 'email_accounts_not_enabled'.tr();
             break;
+          case 'too-many-requests':
+            message = 'too_many_requests'.tr();
+            break;
           case 'network-request-failed':
           case 'network-error':
           case 'unavailable':
@@ -267,11 +363,12 @@ class _SignupScreenState extends State<SignupScreen> {
       if (mounted) {
         FlashySnackBar.show(context, message: message, isError: true);
       }
-    } catch (e) {
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'signupEmail');
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'error_occurred'.tr(namedArgs: {'error': e.toString()}),
+          message: 'unexpected_error'.tr(),
           isError: true,
         );
       }
@@ -384,6 +481,9 @@ class _SignupScreenState extends State<SignupScreen> {
               enabled: !_anyLoading,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.none,
+              autocorrect: false,
+              enableSuggestions: false,
               style: const TextStyle(
                 fontSize: 15,
                 fontFamily: 'SF Pro Display',
@@ -408,6 +508,8 @@ class _SignupScreenState extends State<SignupScreen> {
               enabled: !_anyLoading,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.next,
+              autocorrect: false,
+              enableSuggestions: false,
               style: const TextStyle(
                 fontSize: 15,
                 fontFamily: 'SF Pro Display',
@@ -435,7 +537,13 @@ class _SignupScreenState extends State<SignupScreen> {
               enabled: !_anyLoading,
               obscureText: _obscureConfirmPassword,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) {},
+              autocorrect: false,
+              enableSuggestions: false,
+              onFieldSubmitted: (_) {
+                if (!_anyLoading) {
+                  _handleSignUp();
+                }
+              },
               style: const TextStyle(
                 fontSize: 15,
                 fontFamily: 'SF Pro Display',
@@ -579,14 +687,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   fontWeight: FontWeight.bold,
                   fontFamily: 'SF Pro Display',
                 ),
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
-                    );
-                  },
+                recognizer: _signInRecognizer,
               ),
             ],
           ),

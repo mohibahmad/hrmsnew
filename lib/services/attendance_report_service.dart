@@ -12,7 +12,9 @@ class AttendanceDateRange {
 
   bool contains(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
-    return !day.isBefore(start) && !day.isAfter(end);
+    final startDay = DateTime(start.year, start.month, start.day);
+    final endDay = DateTime(end.year, end.month, end.day);
+    return !day.isBefore(startDay) && !day.isAfter(endDay);
   }
 }
 
@@ -38,22 +40,18 @@ class AttendanceReportService {
   }) {
     final now = referenceDate ?? DateTime.now();
     final end = DateTime(now.year, now.month, now.day);
-
-    final normalizedPeriod = switch (period) {
+    final normalizedPeriod = switch (period.trim()) {
       'Weekly' => 'Week',
       'Monthly' => 'Month',
       '6 Monthly' => '6 Month',
-      _ => period,
+      '6 Months' => '6 Month',
+      _ => period.trim(),
     };
 
     final start = switch (normalizedPeriod) {
-      'Week' => end.subtract(const Duration(days: 6)),
+      'Week' => end.subtract(Duration(days: end.weekday - DateTime.monday)),
       'Month' => DateTime(now.year, now.month, 1),
-      '6 Month' => DateTime(
-          now.month > 6 ? now.year : now.year - 1,
-          now.month > 6 ? now.month - 6 : now.month + 6,
-          1,
-        ),
+      '6 Month' => DateTime(now.year, now.month - 5, 1),
       'Yearly' => DateTime(now.year, 1, 1),
       _ => end,
     };
@@ -71,6 +69,28 @@ class AttendanceReportService {
     return AppDateUtils.attendanceRecordDate(record);
   }
 
+  static DateTime? _recordRevisionDate(Map<String, dynamic> record) {
+    for (final key in ['updatedAt', 'createdAt']) {
+      final date = recordDate(record[key]);
+      if (date != null) return date;
+    }
+    return null;
+  }
+
+  static bool _shouldReplaceRecord(
+    Map<String, dynamic> existing,
+    Map<String, dynamic> candidate,
+  ) {
+    final existingRevision = _recordRevisionDate(existing);
+    final candidateRevision = _recordRevisionDate(candidate);
+
+    if (candidateRevision != null && existingRevision == null) return true;
+    if (candidateRevision == null && existingRevision != null) return false;
+    if (candidateRevision == null || existingRevision == null) return false;
+
+    return candidateRevision.isAfter(existingRevision);
+  }
+
   static List<Map<String, dynamic>> recordsForWorker({
     required Map<String, dynamic> worker,
     required List<Map<String, dynamic>> attendanceRecords,
@@ -83,16 +103,14 @@ class AttendanceReportService {
       worker: worker,
       attendanceRecords: attendanceRecords,
     );
+
     for (final record in rawRecords) {
       final date = recordDateForRecord(record);
       if (date == null || !range.contains(date)) continue;
 
       final key = _dateKey(date);
       final existing = recordsByDay[key];
-      final existingDate = existing == null
-          ? null
-          : recordDateForRecord(existing);
-      if (existingDate == null || !date.isBefore(existingDate)) {
+      if (existing == null || _shouldReplaceRecord(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);
       }
     }
@@ -101,16 +119,24 @@ class AttendanceReportService {
       worker,
       timeOffRecords,
     );
+
     for (final leaveDate in leaveDates) {
       if (!range.contains(leaveDate)) continue;
 
-      final key = _dateKey(leaveDate);
+      final normalizedLeaveDate = DateTime(
+        leaveDate.year,
+        leaveDate.month,
+        leaveDate.day,
+      );
+      final key = _dateKey(normalizedLeaveDate);
       final existing = recordsByDay[key] ?? const <String, dynamic>{};
       final leave = TimeOffService.activeLeaveForWorker(
         worker,
         timeOffRecords,
-        onDate: leaveDate,
+        onDate: normalizedLeaveDate,
       );
+      final leaveReason = leave == null ? '' : TimeOffService.leaveType(leave);
+
       recordsByDay[key] = {
         ...existing,
         'workerId': worker['id'] ?? worker['workerId'] ?? existing['workerId'],
@@ -127,13 +153,11 @@ class AttendanceReportService {
             worker['attendanceType'] ??
             existing['attendanceType'] ??
             'On-Site',
-        'createdAt': leaveDate,
+        'attendanceDate': normalizedLeaveDate,
+        'createdAt': normalizedLeaveDate,
         'status': 'Leave',
-        'reason':
-            TimeOffService.leaveType(
-              leave ?? const <String, dynamic>{},
-            ).trim().isNotEmpty
-            ? TimeOffService.leaveType(leave!)
+        'reason': leaveReason.trim().isNotEmpty
+            ? leaveReason
             : (existing['reason'] ?? existing['desc'] ?? '-'),
       };
     }

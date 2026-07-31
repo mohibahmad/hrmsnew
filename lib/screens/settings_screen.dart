@@ -15,6 +15,7 @@ import 'forgot_password_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -37,20 +38,18 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late AuthService _authService;
   late FirestoreService _firestore;
-
-  @override
-  void initState() {
-    super.initState();
-    
-  }
+  bool _initialized = false;
+  bool _isDeletingAccount = false;
+  bool _isOpeningExternalLink = false;
+  bool _isSharingApp = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (mounted) { 
-      _authService = Provider.of<AuthService>(context, listen: false);
-      _firestore = Provider.of<FirestoreService>(context, listen: false);
-    }
+    if (_initialized) return;
+    _initialized = true;
+    _authService = Provider.of<AuthService>(context, listen: false);
+    _firestore = Provider.of<FirestoreService>(context, listen: false);
   }
 
   String _getCurrentLanguageName() {
@@ -86,6 +85,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _deleteAccount(BuildContext context) async {
+    if (_isDeletingAccount) return;
+
     final confirm = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -254,52 +255,157 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
-    if (confirm != true) return;
+    if (confirm != true || !context.mounted) return;
+
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      await _authService.signOut();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+      return;
+    }
+
+    final user = _authService.currentUser;
+    if (user == null) {
+      FlashySnackBar.show(
+        context,
+        message: 'failed_to_delete_account'.tr(
+          namedArgs: {'error': 'user-not-found'},
+        ),
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isDeletingAccount = true);
+    var profileMarkedDeleted = false;
 
     try {
-      final isGuest = _authService.currentUser?.isAnonymous ?? false;
-      if (!isGuest) {
-        await _firestore.deleteUserData();
-      }
-      await _authService.signOut();
+      await _firestore.deleteUserData();
+      profileMarkedDeleted = true;
+      await user.delete();
 
-      if (context.mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'account_deleted_successfully'.tr(),
-          title: 'account_deleted'.tr(),
-        );
-        
-        if (isGuest) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-          );
-        }
+      try {
+        await _authService.signOut();
+      } catch (_) {}
+
+      if (!context.mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: 'account_deleted_successfully'.tr(),
+        title: 'account_deleted'.tr(),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (error) {
+      if (profileMarkedDeleted && _authService.currentUser != null) {
+        try {
+          await _firestore.updateUserProfile({
+            'isDeleted': false,
+            'deletedAt': null,
+          });
+        } catch (_) {}
       }
-    } catch (e) {
       if (context.mounted) {
         FlashySnackBar.show(
           context,
           message: 'failed_to_delete_account'.tr(
-            namedArgs: {'error': e.toString()},
+            namedArgs: {'error': error.code},
           ),
           isError: true,
         );
       }
+    } catch (error) {
+      if (profileMarkedDeleted && _authService.currentUser != null) {
+        try {
+          await _firestore.updateUserProfile({
+            'isDeleted': false,
+            'deletedAt': null,
+          });
+        } catch (_) {}
+      }
+      if (context.mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'failed_to_delete_account'.tr(
+            namedArgs: {'error': error.runtimeType.toString()},
+          ),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeletingAccount = false);
     }
   }
 
-  void _shareApp() {
-    final String appLink =
-        'https://apps.apple.com/app/hrms-workforce-manager/id6743024022';
-    final String text = 'share_app_text'.tr(namedArgs: {'link': appLink});
-    SharePlus.instance.share(ShareParams(text: text));
+  Future<void> _openExternalUrl(String rawUrl) async {
+    if (!mounted || _isOpeningExternalLink) return;
+    setState(() => _isOpeningExternalLink = true);
+    try {
+      final uri = Uri.tryParse(rawUrl);
+      if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+        throw const FormatException();
+      }
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) throw StateError('launch-failed');
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isOpeningExternalLink = false);
+    }
+  }
+
+  Future<void> _rateApp() async {
+    try {
+      final inAppReview = InAppReview.instance;
+      if (await inAppReview.isAvailable()) {
+        await inAppReview.requestReview();
+      } else {
+        await _openExternalUrl(
+          'https://apps.apple.com/app/hrms-workforce-manager/id6743024022',
+        );
+      }
+    } catch (_) {
+      await _openExternalUrl(
+        'https://apps.apple.com/app/hrms-workforce-manager/id6743024022',
+      );
+    }
+  }
+
+  Future<void> _shareApp() async {
+    if (!mounted || _isSharingApp) return;
+    setState(() => _isSharingApp = true);
+    try {
+      const appLink =
+          'https://apps.apple.com/app/hrms-workforce-manager/id6743024022';
+      final text = 'share_app_text'.tr(namedArgs: {'link': appLink});
+      await SharePlus.instance.share(ShareParams(text: text));
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSharingApp = false);
+    }
   }
 
   void _showLanguageModal(BuildContext context) {
@@ -439,28 +545,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'assets/permenantly_delete.svg',
                     'delete_profile_desc'.tr(),
                     'delete_profile'.tr(),
-                    onTap: widget.isGuest
+                    onTap: widget.isGuest || _isDeletingAccount
                         ? null
                         : () => _deleteAccount(context),
-                    disabled: widget.isGuest,
+                    disabled: widget.isGuest || _isDeletingAccount,
                     buttonColor: const Color(0xFFFF0004),
                   ),
                   _buildLanguageItem(),
                   _buildSimpleSettingItem(
                     'assets/rating.png',
                     'rate_us'.tr(),
-                    onTap: () async {
-                      final inAppReview = InAppReview.instance;
-                      if (await inAppReview.isAvailable()) {
-                        await inAppReview.requestReview();
-                      } else {
-                        await launchUrl(
-                          Uri.parse(
-                            'https://apps.apple.com/app/hrms-workforce-manager/id6743024022',
-                          ),
-                        );
-                      }
-                    },
+                    onTap: _rateApp,
                   ),
                   _buildSimpleSettingItem(
                     'assets/share.svg',
@@ -470,19 +565,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
                     'terms_condition'.tr(),
-                    onTap: () => launchUrl(
-                      Uri.parse(
-                        'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-                      ),
+                    onTap: () => _openExternalUrl(
+                      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
                     ),
                   ),
                   _buildSimpleSettingItem(
                     'assets/privacy_policy.svg',
                     'privacy_policy'.tr(),
-                    onTap: () => launchUrl(
-                      Uri.parse(
-                        'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
-                      ),
+                    onTap: () => _openExternalUrl(
+                      'https://docs.google.com/document/d/1ul6JAXXkdGKgfe9en6yF77u0EChQp32R/edit?rtpof=true&sd=true&tab=t.0',
                     ),
                   ),
                   if (!widget.isGuest)
@@ -499,7 +590,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -716,15 +806,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               else
                 Image.asset(iconPath, width: 24, height: 24),
               const SizedBox(width: 16),
-              Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF000000),
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'SF Pro Display',
-                  height: 1.0,
-                  letterSpacing: 0,
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF000000),
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                    height: 1.0,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
             ],

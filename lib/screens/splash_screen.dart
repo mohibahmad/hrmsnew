@@ -5,6 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/error_reporter.dart';
+import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
@@ -20,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
   late AuthService _authService;
+  late FirestoreService _firestoreService;
   bool _navigationScheduled = false;
 
   @override
@@ -37,11 +40,13 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    precacheImage(const AssetImage('assets/splashscreenbg.png'), context);
     if (_navigationScheduled) return;
     _navigationScheduled = true;
 
+    precacheImage(const AssetImage('assets/splashscreenbg.png'), context);
     _authService = context.read<AuthService>();
+    _firestoreService = context.read<FirestoreService>();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navigateWhenReady();
     });
@@ -50,31 +55,53 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateWhenReady() async {
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
-    
-    bool isGuest = false;
+    bool isGuest;
     try {
       isGuest = await PreferencesService.isGuest().timeout(
         const Duration(seconds: 3),
-        onTimeout: () => false,
       );
-    } catch (_) {
-      
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashGuestStatus');
       isGuest = false;
     }
 
     User? user;
-
     try {
       user = await _authService.authStateChanges.first.timeout(
         const Duration(seconds: 10),
         onTimeout: () => _authService.currentUser,
       );
-    } on TimeoutException {
-      
+    } on TimeoutException catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashAuthTimeout');
       user = _authService.currentUser;
-    } catch (_) {
-      
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashAuthState');
       user = null;
+    }
+
+    if (!isGuest && user != null && !user.isAnonymous) {
+      try {
+        final profile = await _firestoreService.getUserProfile().timeout(
+          const Duration(seconds: 8),
+        );
+        final isDeleted = profile?['isDeleted'] == true;
+        if (profile == null || isDeleted) {
+          await _authService.signOut();
+          user = null;
+        }
+      } catch (e, st) {
+        ErrorReporter.report(e, st, context: 'splashProfileValidation');
+        try {
+          await _authService.signOut();
+        } catch (signOutError, signOutStack) {
+          ErrorReporter.report(
+            signOutError,
+            signOutStack,
+            context: 'splashProfileValidationSignOut',
+          );
+        }
+        user = null;
+      }
     }
 
     await minimumSplash;
@@ -126,7 +153,6 @@ class _SplashScreenState extends State<SplashScreen>
         fit: StackFit.expand,
         children: [
           Image.asset('assets/splashscreenbg.png', fit: BoxFit.cover),
-
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -138,15 +164,13 @@ class _SplashScreenState extends State<SplashScreen>
                     height: 140,
                     fit: BoxFit.contain,
                   ),
-
                   const SizedBox(height: 35),
-
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       'human_resource_management_system'.tr(),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Color(0xFFFFFFFF),
                         fontSize: 38,
                         fontWeight: FontWeight.w700,

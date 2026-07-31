@@ -13,6 +13,7 @@ import '../services/payroll_service.dart';
 import '../widgets/amount_text.dart';
 
 import '../utils/date_utils.dart';
+import '../utils/currency_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
 import '../widgets/notification_bell.dart';
 import '../utils/snackbar_utils.dart';
@@ -24,14 +25,9 @@ import '../utils/guest_restriction.dart';
 
 String _eds(dynamic value) {
   if (value == null) return '';
-  if (value is Timestamp) {
-    final d = value.toDate();
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-  }
-  if (value is DateTime) {
-    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
-  }
-  return value.toString();
+  final date = AppDateUtils.dateFromValue(value);
+  if (date == null) return value.toString();
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }
 
 class ExpensesScreen extends StatefulWidget {
@@ -57,17 +53,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _isLoading = true;
   String _selectedPeriod = 'Yearly';
   StreamSubscription? _expensesSub;
-  StreamSubscription? _workersSub;
+  StreamSubscription? _profileSub;
   StreamSubscription? _payrollSub;
   final Map<String, double> _payrollAmountsByKey = {};
   late AuthService _authService;
   late FirestoreService _firestore;
+  String _currencyCode = CurrencyUtils.defaultCode;
   bool _initialized = false;
 
   @override
   void dispose() {
     _expensesSub?.cancel();
-    _workersSub?.cancel();
+    _profileSub?.cancel();
     _payrollSub?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -90,34 +87,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (!isGuest) {
-      _workersSub = _firestore.workersStream.listen((snapshot) {
-        if (mounted) {
-          setState(() {});
-        }
+      _profileSub = _firestore.userProfileStream.listen((profile) {
+        if (!mounted) return;
+        final currency = CurrencyUtils.normalize(profile?['currency']);
+        if (currency == _currencyCode) return;
+        setState(() => _currencyCode = currency);
       });
       _payrollSub = _firestore.payrollStream.listen((snapshot) {
         if (!mounted) return;
+        final amounts = <String, double>{};
+        for (final document in snapshot.docs) {
+          final data = document.data() as Map<String, dynamic>;
+          final status = (data['status'] ?? '').toString().trim().toLowerCase();
+          if (status == 'cancelled') continue;
+          final payrollKey = (data['payrollKey'] ?? '').toString().trim();
+          if (payrollKey.isEmpty) continue;
+          final numericAmount = data['netSalaryAmount'];
+          final amount = numericAmount is num
+              ? numericAmount.toDouble()
+              : PayrollService.extractSalary(
+                  (data['netSalaryFormatted'] ?? data['netSalary'] ?? '')
+                      .toString(),
+                );
+          if (amount.isFinite && amount > 0) {
+            amounts[payrollKey] = amount;
+          }
+        }
         setState(() {
           _payrollAmountsByKey
             ..clear()
-            ..addEntries(
-              snapshot.docs
-                  .map((document) {
-                    final data = document.data() as Map<String, dynamic>;
-                    final payrollKey = (data['payrollKey'] ?? '').toString();
-                    final numericAmount = data['netSalaryAmount'];
-                    final amount = numericAmount is num
-                        ? numericAmount.toDouble()
-                        : PayrollService.extractSalary(
-                            (data['netSalaryFormatted'] ??
-                                    data['netSalary'] ??
-                                    '')
-                                .toString(),
-                          );
-                    return MapEntry(payrollKey, amount);
-                  })
-                  .where((entry) => entry.key.isNotEmpty && entry.value > 0),
-            );
+            ..addAll(amounts);
         });
       });
       _expensesSub = _firestore.expensesStream.listen(
@@ -128,15 +127,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                   .toList();
               sortedList.sort((a, b) {
-                final aTime = a['createdAt'];
-                final bTime = b['createdAt'];
+                final aTime =
+                    AppDateUtils.dateFromValue(a['createdAt']) ??
+                    AppDateUtils.dateFromValue(a['date']);
+                final bTime =
+                    AppDateUtils.dateFromValue(b['createdAt']) ??
+                    AppDateUtils.dateFromValue(b['date']);
                 if (aTime == null && bTime == null) return 0;
-                if (aTime == null) return -1;
-                if (bTime == null) return 1;
-                if (aTime is Timestamp && bTime is Timestamp) {
-                  return bTime.compareTo(aTime);
-                }
-                return 0;
+                if (aTime == null) return 1;
+                if (bTime == null) return -1;
+                return bTime.compareTo(aTime);
               });
               _expensesDocs = sortedList;
               _isLoading = false;
@@ -181,13 +181,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   double get _monthExpenseSum {
     final now = DateTime.now();
     return _expensesDocs.fold(0.0, (sum, doc) {
-      final dateStr = _eds(doc['date']);
-      if (dateStr.isEmpty) return sum;
-      final parts = dateStr.split('/');
-      if (parts.length != 3) return sum;
-      final month = int.tryParse(parts[1]) ?? 0;
-      final year = int.tryParse(parts[2]) ?? 0;
-      if (month == now.month && year == now.year) {
+      final date = AppDateUtils.dateFromValue(doc['date']);
+      if (date != null && date.month == now.month && date.year == now.year) {
         return sum + _expenseAmount(doc);
       }
       return sum;
@@ -205,11 +200,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     final rawAmount = expense['amount'];
     if (rawAmount is num) return rawAmount.toDouble();
-    return double.tryParse((rawAmount ?? '').toString()) ?? 0;
+    return PayrollService.extractSalary((rawAmount ?? '').toString());
+  }
+
+  bool _isPayrollExpense(Map<String, dynamic> expense) {
+    final category = (expense['category'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final payrollKey = (expense['payrollKey'] ?? '').toString().trim();
+    return category == 'salary' && payrollKey.isNotEmpty;
   }
 
   String _formatCurrency(double amount) {
-    final String symbol = '\$ ';
+    final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     if (amount.abs() >= 1e12) {
       return '$symbol${(amount / 1e12).toStringAsFixed(1)}T';
     } else if (amount.abs() >= 1e9) {
@@ -219,12 +223,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     } else if (amount.abs() >= 1e3) {
       return '$symbol${(amount / 1e3).toStringAsFixed(1)}K';
     }
-    final format = NumberFormat.currency(
-      locale: 'en_US',
-      symbol: '\$ ',
-      decimalDigits: 2,
-    );
-    return format.format(amount);
+    try {
+      return NumberFormat.currency(
+        locale: context.locale.toString(),
+        symbol: symbol,
+        decimalDigits: 2,
+      ).format(amount);
+    } catch (_) {
+      return NumberFormat.currency(
+        locale: 'en_US',
+        symbol: symbol,
+        decimalDigits: 2,
+      ).format(amount);
+    }
   }
 
   bool _isDateWithinPeriod(String dateStr, String period) {
@@ -270,7 +281,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }).toList();
   }
 
-  Future<void> _deleteExpense(String docId) async {
+  Future<void> _deleteExpense(Map<String, dynamic> doc) async {
+    final docId = (doc['id'] ?? '').toString().trim();
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (!isGuest && (_isPayrollExpense(doc) || docId.isEmpty)) return;
+
     final confirmed = await DeleteDialog.show(
       context: context,
       title: 'delete_expense'.tr(),
@@ -278,19 +293,31 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     if (!confirmed) return;
 
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (isGuest) {
-      setState(() {
-        _expensesDocs.removeWhere((e) => e['id'] == docId);
-      });
-      DummyData.expenses.removeWhere((e) => e['id'] == docId);
-      await DummyData.saveToPrefs();
-    } else {
-      await _firestore.deleteExpense(docId);
+    try {
+      if (isGuest) {
+        setState(() {
+          _expensesDocs.removeWhere((e) => e['id'] == docId);
+        });
+        DummyData.expenses.removeWhere((e) => e['id'] == docId);
+        await DummyData.saveToPrefs();
+      } else {
+        await _firestore.deleteExpense(docId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      FlashySnackBar.show(
+        context,
+        message: 'failed_to_delete_record'.tr(
+          namedArgs: {'error': e.toString()},
+        ),
+        isError: true,
+      );
     }
   }
 
-  void _editExpense(Map<String, dynamic> doc) {
+  Future<void> _editExpense(Map<String, dynamic> doc) async {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (!isGuest && _isPayrollExpense(doc)) return;
     final categoryController = TextEditingController(
       text: doc['category']?.toString() ?? '',
     );
@@ -300,24 +327,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final descriptionController = TextEditingController(
       text: doc['name']?.toString() ?? doc['description']?.toString() ?? '',
     );
-    final docId = doc['id']?.toString() ?? '';
-
-    final dateParts = _eds(doc['date']).split('/');
-    int selectedDay = dateParts.isNotEmpty
-        ? int.tryParse(dateParts[0]) ?? DateTime.now().day
-        : DateTime.now().day;
-    final currentDate = doc['date'];
-    DateTime calendarDate;
-    if (currentDate is Timestamp) {
-      calendarDate = currentDate.toDate();
-    } else if (currentDate is DateTime) {
-      calendarDate = currentDate;
-    } else {
-      calendarDate = DateTime.now();
-    }
+    final docId = (doc['id'] ?? '').toString().trim();
+    final parsedDate =
+        AppDateUtils.dateFromValue(doc['date']) ?? DateTime.now();
+    int selectedDay = parsedDate.day;
+    DateTime calendarDate = DateTime(parsedDate.year, parsedDate.month, 1);
 
     var isSaving = false;
-    showDialog(
+    await showDialog(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext context) {
@@ -387,7 +404,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   final double? amt = double.tryParse(
                                     amountController.text.trim(),
                                   );
-                                  if (amt == null) {
+                                  if (amt == null ||
+                                      !amt.isFinite ||
+                                      amt <= 0) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
@@ -415,14 +434,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   );
                                   final updatedMap = {
                                     'date': date,
-                                    'category': categoryController.text,
+                                    'category': categoryController.text.trim(),
                                     'amount': amt,
-                                    'name': descriptionController.text,
-                                    'description': descriptionController.text,
+                                    'name': descriptionController.text.trim(),
+                                    'description': descriptionController.text
+                                        .trim(),
                                   };
-                                  final isGuest =
-                                      _authService.currentUser?.isAnonymous ??
-                                      false;
                                   try {
                                     if (isGuest) {
                                       setState(() {
@@ -463,8 +480,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   }
                                   if (!context.mounted) return;
                                   Navigator.of(context).pop();
+                                  if (!mounted) return;
                                   FlashySnackBar.show(
-                                    context,
+                                    this.context,
                                     message: 'expense_updated'.tr(),
                                   );
                                 },
@@ -496,19 +514,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'expense_category'.tr(),
                             categoryController,
-                            hintText: 'Enter Expense category',
+                            hintText: 'please_enter_category'.tr(),
                             maxLength: 50,
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildModalTextField(
-                            'amount_dollar'.tr(),
+                            'amount_header'.tr(),
                             amountController,
                             hintText: 'hint_amount'.tr(),
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            isAmount: true,
                           ),
                         ),
                       ],
@@ -547,7 +566,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   maxLines: null,
                                   maxLength: 150,
                                   decoration: InputDecoration(
-                                    hintText: 'Enter Expense Title',
+                                    hintText: 'please_enter_expense_title'.tr(),
                                     counterText: '',
                                     contentPadding: const EdgeInsets.only(
                                       top: 1,
@@ -602,9 +621,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       },
     );
+    categoryController.dispose();
+    amountController.dispose();
+    descriptionController.dispose();
   }
 
-  void _showAddExpenseModal(BuildContext parentContext) {
+  Future<void> _showAddExpenseModal(BuildContext parentContext) async {
     final categoryController = TextEditingController();
     final amountController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -612,7 +634,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     DateTime calendarDate = DateTime.now();
 
     var isSaving = false;
-    showDialog(
+    await showDialog(
       context: parentContext,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
       builder: (BuildContext context) {
@@ -682,7 +704,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   final double? amt = double.tryParse(
                                     amountController.text.trim(),
                                   );
-                                  if (amt == null) {
+                                  if (amt == null ||
+                                      !amt.isFinite ||
+                                      amt <= 0) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
@@ -713,10 +737,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       false;
                                   final expenseMap = {
                                     'date': date,
-                                    'category': categoryController.text,
+                                    'category': categoryController.text.trim(),
                                     'amount': amt,
-                                    'name': descriptionController.text,
-                                    'description': descriptionController.text,
+                                    'name': descriptionController.text.trim(),
+                                    'description': descriptionController.text
+                                        .trim(),
                                   };
                                   try {
                                     if (isGuest) {
@@ -790,19 +815,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: _buildModalTextField(
                             'expense_category'.tr(),
                             categoryController,
-                            hintText: 'Enter Expense category',
+                            hintText: 'please_enter_category'.tr(),
                             maxLength: 50,
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildModalTextField(
-                            'amount_dollar'.tr(),
+                            'amount_header'.tr(),
                             amountController,
                             hintText: 'hint_amount'.tr(),
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            isAmount: true,
                           ),
                         ),
                       ],
@@ -841,7 +867,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                   maxLines: null,
                                   maxLength: 150,
                                   decoration: InputDecoration(
-                                    hintText: 'Enter Expense Title',
+                                    hintText: 'please_enter_expense_title'.tr(),
                                     counterText: '',
                                     contentPadding: const EdgeInsets.only(
                                       top: 1,
@@ -896,6 +922,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       },
     );
+    categoryController.dispose();
+    amountController.dispose();
+    descriptionController.dispose();
   }
 
   Widget _buildModalTextField(
@@ -904,6 +933,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     TextInputType keyboardType = TextInputType.text,
     String hintText = '',
     int? maxLength,
+    bool isAmount = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -930,23 +960,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             controller: controller,
             keyboardType: keyboardType,
             maxLength: maxLength,
-            inputFormatters: () {
-              final isAmount =
-                  keyboardType ==
-                      const TextInputType.numberWithOptions(decimal: true) ||
-                  keyboardType == TextInputType.number ||
-                  label.toLowerCase().contains('amount');
-              if (isAmount) {
-                return [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                  LengthLimitingTextInputFormatter(21),
-                ];
-              }
-              if (maxLength != null) {
-                return [LengthLimitingTextInputFormatter(maxLength)];
-              }
-              return null;
-            }(),
+            inputFormatters: isAmount
+                ? [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d{0,18}(?:\.\d{0,2})?$'),
+                    ),
+                    LengthLimitingTextInputFormatter(21),
+                  ]
+                : maxLength != null
+                ? [LengthLimitingTextInputFormatter(maxLength)]
+                : const <TextInputFormatter>[],
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: const TextStyle(color: Colors.grey),
@@ -1619,15 +1642,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final category = (doc['category'] ?? '').toString();
     final amount = _expenseAmount(doc);
 
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final isLockedPayrollExpense = !isGuest && _isPayrollExpense(doc);
+
     return GestureDetector(
-      onTap: () {
-        final isGuest = _authService.currentUser?.isAnonymous ?? false;
-        if (isGuest) {
-          showGuestRestrictionDialog(context);
-          return;
-        }
-        _editExpense(doc);
-      },
+      onTap: isLockedPayrollExpense
+          ? null
+          : () {
+              if (isGuest) {
+                showGuestRestrictionDialog(context);
+                return;
+              }
+              _editExpense(doc);
+            },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -1707,7 +1734,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
-    final docId = doc['id']?.toString() ?? '';
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (!isGuest && _isPayrollExpense(doc)) {
+      return const SizedBox(width: 48);
+    }
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(
@@ -1734,7 +1764,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               showGuestRestrictionDialog(context);
               return;
             }
-            _deleteExpense(docId);
+            _deleteExpense(doc);
           }
         },
         itemBuilder: (context) => [
