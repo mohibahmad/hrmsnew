@@ -229,7 +229,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                         color: Color(0xFFFFFFFF),
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro',
+                                        fontFamily: 'SF Pro Display',
                                         height: 1.1,
                                       ),
                                     ),
@@ -240,7 +240,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                                         color: Color(0xFFFFFFFF),
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
-                                        fontFamily: 'SF Pro',
+                                        fontFamily: 'SF Pro Display',
                                         height: 1.1,
                                       ),
                                     ),
@@ -392,7 +392,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                         fontWeight: isActive
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        fontFamily: 'SF Pro',
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ),

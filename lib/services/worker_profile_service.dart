@@ -39,14 +39,11 @@ class WorkerProfileService {
     pw.Font? regularFont;
     pw.Font? boldFont;
     try {
-      final regularData = await rootBundle.load(
-        'assets/fonts/SFPRODISPLAYREGULAR.OTF',
+      final fontData = await rootBundle.load(
+        'assets/fonts/SF-Pro.ttf',
       );
-      regularFont = pw.Font.ttf(regularData);
-      final boldData = await rootBundle.load(
-        'assets/fonts/SFPRODISPLAYMEDIUM.OTF',
-      );
-      boldFont = pw.Font.ttf(boldData);
+      regularFont = pw.Font.ttf(fontData);
+      boldFont = pw.Font.ttf(fontData);
     } catch (_) {}
 
     final theme = pw.ThemeData.withFont(

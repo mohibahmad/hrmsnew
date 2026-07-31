@@ -89,5 +89,8 @@ flutter:
         - asset: assets/fonts/SFPRODISPLAYLIGHTITALIC.OTF
           style: italic
           weight: 300
+    - family: SF Pro
+      fonts:
+        - asset: assets/fonts/SF-Pro.ttf
   
   

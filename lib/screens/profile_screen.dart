@@ -1353,7 +1353,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'SF Pro',
+                      fontFamily: 'SF Pro Display',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.0,
@@ -1368,7 +1368,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontFamily: 'SF Pro',
+                    fontFamily: 'SF Pro Display',
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     height: 1.0,

@@ -187,25 +187,43 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'welcome_to_hrms'.tr(),
-                                    style: const TextStyle(
-                                      fontSize: 63,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      fontFamily: 'SF Pro Display',
-                                      letterSpacing: 3,
+                                  SizedBox(
+                                    height: 78,
+                                    width: double.infinity,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.topLeft,
+                                      child: Text(
+                                        'welcome_to_hrms'.tr(),
+                                        maxLines: 1,
+                                        style: const TextStyle(
+                                          fontSize: 63,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontFamily: 'SF Pro Display',
+                                          letterSpacing: 3,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    'welcome_banner_subtitle'.tr(),
-                                    style: TextStyle(
-                                      fontSize: 27,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                      fontFamily: 'SF Pro Display',
-                                      height: 1.4,
-                                      letterSpacing: 2.2,
+                                  SizedBox(
+                                    height: 78,
+                                    width: double.infinity,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.topLeft,
+                                      child: Text(
+                                        'welcome_banner_subtitle'.tr(),
+                                        maxLines: 2,
+                                        style: TextStyle(
+                                          fontSize: 27,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
+                                          fontFamily: 'SF Pro Display',
+                                          height: 1.4,
+                                          letterSpacing: 2.2,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],

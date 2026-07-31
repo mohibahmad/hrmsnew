@@ -3953,40 +3953,7 @@ class DocumentationSection extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: onDeleteCvTap,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF000000),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'delete'.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  SvgPicture.asset(
-                                    'assets/delete_icon.svg',
-                                    height: 14,
-                                    width: 14,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+
                         ],
                       ],
                     ),
@@ -4480,7 +4447,17 @@ Widget _buildInputField(
                   if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),
                   if (isNationalId) LengthLimitingTextInputFormatter(20),
-                  if (isLeaves) LengthLimitingTextInputFormatter(3),
+                  if (isLeaves) ...[
+                    LengthLimitingTextInputFormatter(3),
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      final value = int.tryParse(newValue.text);
+                      if (value == null || value > 366) {
+                        return oldValue;
+                      }
+                      return newValue;
+                    }),
+                  ],
                 ]
               : () {
                   final list = <TextInputFormatter>[];

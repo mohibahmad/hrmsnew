@@ -859,7 +859,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         workerData['annualLeaves']?.toString().trim() ?? '';
     if (annualLeavesText.isNotEmpty) {
       final annualLeaves = int.tryParse(annualLeavesText);
-      if (annualLeaves == null || annualLeaves < 0) {
+      if (annualLeaves == null || annualLeaves < 0 || annualLeaves > 366) {
         fieldErrors['annualLeaves'] = 'invalid_number'.tr();
         workerData['availableAnnualLeaves'] = 0;
       } else {
@@ -2555,7 +2555,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     } else if (fieldKey == 'annualLeaves') {
                                       final annualLeaves = int.tryParse(val);
                                       if (annualLeaves == null ||
-                                          annualLeaves < 0) {
+                                          annualLeaves < 0 ||
+                                          annualLeaves > 366) {
                                         setDialogState(() {
                                           dialogError = 'invalid_number'.tr();
                                         });
