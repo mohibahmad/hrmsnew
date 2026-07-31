@@ -10,6 +10,8 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
+import '../services/preferences_service.dart';
+import '../services/biometric_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../shared/auth_widgets.dart';
 import 'home_screen.dart';
@@ -314,6 +316,17 @@ class _SignupScreenState extends State<SignupScreen> {
         });
       } catch (e, st) {
         ErrorReporter.report(e, st, context: 'signupWelcomeNotification');
+      }
+
+      // Auto-save credentials like Apple Keychain (no prompt)
+      if (mounted) {
+        final available = await BiometricService.isAvailable();
+        if (available) {
+          await PreferencesService.setBiometricCredentials(
+            email: email,
+            password: _passwordController.text,
+          );
+        }
       }
 
       if (mounted) {

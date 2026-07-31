@@ -1,4 +1,4 @@
- {
+{
   "app_name": "HRMS",
   "human_resource_management_system": "Human Resource Management System",
   "welcome_back": "Welcome Back!",
@@ -275,7 +275,7 @@
   "contact_no_label": "Contact no:",
   "national_id": "National ID:",
   "enter_national_id": "Enter national id",
-  "professed_religion": "Professed Religion:",
+  "professed_religion": "Religion:",
   "enter_religion": "Enter religion",
   "worker_dob": "Worker Date of Birth:",
   "gender_label": "Gender:",
@@ -283,7 +283,7 @@
   "enter_address": "Enter address",
   "worker_profile": "Worker Profile",
   "upload_profile": "Upload Profile",
-  "upload_profile_hint": "Upload a profile image\nPNG, JPG or PDF",
+  "upload_profile_hint": "Upload a profile image",
   "relationship_status": "Relationship Status:",
   "married": "Married",
   "single": "Single",
@@ -682,6 +682,7 @@
   "delete_time_off": "Delete Time Off",
   "cancel_time_off": "Cancel Time Off",
   "cancel_payroll": "Cancel Payroll",
+  "cancel_payroll_confirm": "Are you sure you want to cancel payroll for {name}? This action cannot be undone.",
   "payroll_cancelled_for_worker": "Payroll for {name} has been cancelled",
   "payroll_cancel_failed": "Failed to cancel payroll",
   "download_attendance": "Download Attendance",
@@ -995,7 +996,9 @@
   "zip_saved": "ZIP saved: {fileName}",
   "failed_to_generate_zip": "Failed to generate ZIP: {error}",
   "upload_image": "Upload Image",
-  "validation_invalid_relationship": "Only Single, Married, Divorced, or Widowed is allowed",
+  "validation_invalid_experience_level": "Only Fresher, Junior, Mid-Level, or Senior is allowed",
+  "validation_invalid_education": "Only Matric, Intermediate, Bachelor, Master, or Other is allowed",
+  "validation_invalid_relationship": "Only Single or Married is allowed",
   "validation_invalid_employee_type": "Only Full-Time, Part-Time, Contract, or Intern is allowed",
   "validation_invalid_work_model": "Only On-Site, Remote, or Hybrid is allowed",
   "validation_invalid_salary_type": "Only Monthly, Hourly, or Contract is allowed",
@@ -1022,5 +1025,13 @@
   "bulk_media_upload_failed": "Upload failed.",
   "bulk_media_download_timeout": "The download timed out.",
   "bulk_media_unknown_error": "Unknown error.",
-  "worker_updated_successfully": "{name} updated successfully!"
+  "worker_updated_successfully": "{name} updated successfully!",
+  "enable_biometric": "Enable Biometric Login",
+  "enable_biometric_msg": "Would you like to enable {biometric} authentication for faster login next time? Your credentials will be stored securely on this device.",
+  "not_now": "Not Now",
+  "enable": "Enable",
+  "login_with_biometric": "Login with Fingerprint",
+  "login_with_biometric_reason": "Authenticate using {biometric} to sign in",
+  "biometric_auth_failed": "Biometric authentication failed. Please try again.",
+  "biometric_credentials_not_found": "Saved credentials not found. Please login manually."
 }

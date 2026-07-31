@@ -493,11 +493,9 @@ class _ProfileBodyState extends State<ProfileBody> {
               context: 'UploadProfileImage',
             );
             final failedRef = uploadedRef;
-            if (failedRef != null) {
-              try {
-                await failedRef.delete();
-              } catch (_) {}
-            }
+            try {
+              await failedRef.delete();
+            } catch (_) {}
             if (mounted) {
               setState(() => _isLoading = false);
               FlashySnackBar.show(

@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import '../utils/file_opener.dart';
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -639,12 +640,15 @@ class InvoiceService {
   }
 
   static Future<void> shareInvoice(Uint8List bytes, String fileName) async {
-    await FilePicker.saveFile(
+    final result = await FilePicker.saveFile(
       dialogTitle: 'Save Payroll Invoice',
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: ['pdf'],
       bytes: bytes,
     );
+    if (result != null) {
+      await FileOpener.open(result);
+    }
   }
 }

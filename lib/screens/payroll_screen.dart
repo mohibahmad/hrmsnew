@@ -1328,8 +1328,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String rawLeaveDeduction = (data['leaveDeduction'] ?? '0').toString();
     final String rawOvertimeAmount = (data['overtimeAmount'] ?? '0').toString();
     final deductionsAreTotals = data['deductionsAreTotals'] == true;
-    final String overtimeAmount = AmountText.formatCompact(rawOvertimeAmount);
-    final String salary = AmountText.formatCompact(
+    final String overtimeAmount = AmountText.formatFull(rawOvertimeAmount);
+    final String salary = AmountText.formatFull(
       PayrollService.currentSalaryDisplay(data),
     );
     final hasLeaveDeduction = rawLeaveDeduction.trim().isNotEmpty;
@@ -1373,18 +1373,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 PayrollService.currentSalaryDisplay(data),
               );
               final prefix = currency.isEmpty ? '' : '$currency ';
-              return '$prefix${PayrollService.formatNumber(netPayment)}';
+              return '$prefix${PayrollService.formatFullNumber(netPayment)}';
             }(),
           }
         : basePreviewCalculation;
-    final String salaryAfterDeduction = AmountText.formatCompact(
+    final String salaryAfterDeduction = AmountText.formatFull(
       (previewCalculation['formattedNet'] ??
               data['netSalary'] ??
               data['salaryAfterDeduction'] ??
               '0')
           .toString(),
     );
-    final String absentDeduction = AmountText.formatCompact(
+    final String absentDeduction = AmountText.formatFull(
       (deductionsAreTotals
               ? rawAbsentDeduction
               : previewCalculation['formattedAbsentDeduct'] ??

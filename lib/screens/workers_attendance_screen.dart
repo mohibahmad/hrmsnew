@@ -699,6 +699,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
 
   Map<String, dynamic>? get _todayHoliday {
     final now = DateTime.now();
+    final todayHolidays = <Map<String, dynamic>>[];
     for (final h in _holidays) {
       if (h['isEnabled'] == false) continue;
       final isRecurring = h['isRecurring'] == true;
@@ -713,9 +714,17 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
         (h['month'] ?? '').toString(),
       );
       final dayNum = int.tryParse((h['day'] ?? '').toString());
-      if (monthNum == now.month && dayNum == now.day) return h;
+      if (monthNum == now.month && dayNum == now.day) {
+        todayHolidays.add(h);
+      }
     }
-    return null;
+    if (todayHolidays.isEmpty) return null;
+    if (todayHolidays.length == 1) return todayHolidays.first;
+    final combined = Map<String, dynamic>.from(todayHolidays.first);
+    combined['name'] = todayHolidays
+        .map((h) => (h['name'] ?? '').toString())
+        .join(' and ');
+    return combined;
   }
 
   Map<String, dynamic>? get _todayNonWorkingDay {

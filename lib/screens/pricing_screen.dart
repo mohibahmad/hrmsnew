@@ -82,7 +82,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               const SizedBox(height: 20),
 
                               SvgPicture.asset(
-                                'assets/app_icon.svg',
+                                'assets/app_icon.png',
                                 height: 70,
                                 fit: BoxFit.contain,
                               ),

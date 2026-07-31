@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import '../utils/file_opener.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -861,7 +862,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
     }
     rows.add([]);
-    rows.add([]);
   }
 
   Future<void> _generateAndShareAttendance(
@@ -931,6 +931,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           context,
           message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}),
         );
+        await FileOpener.open(outputFile);
       }
     } catch (e) {
       if (mounted) {
@@ -1008,15 +1009,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     int absent = 0;
     int leave = 0;
 
-    for (final record in _attendanceDocs) {
-      if (!_matchesPeriod(record)) continue;
-      final status = record['status'];
-      if (status == 'Present') {
-        present++;
-      } else if (status == 'Absent') {
-        absent++;
-      } else if (status == 'Leave') {
-        leave++;
+    if (_selectedTimeframe == 'Today') {
+      // Today: count from collapsed list (one entry per worker)
+      for (final record in _attendanceDocs) {
+        final status = record['status'];
+        if (status == 'Present') {
+          present++;
+        } else if (status == 'Absent') {
+          absent++;
+        } else if (status == 'Leave') {
+          leave++;
+        }
+      }
+    } else {
+      // Week/Month/6 Month/Yearly: count ALL individual day records
+      for (final record in periodAttendance) {
+        final status = (record['status'] ?? '').toString();
+        if (status == 'Present') {
+          present++;
+        } else if (status == 'Absent') {
+          absent++;
+        } else if (status == 'Leave') {
+          leave++;
+        }
       }
     }
 
@@ -1820,7 +1835,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 final name = (doc['name'] ?? '').toString();
                 final email = (doc['email'] ?? '').toString();
                 final role = (doc['role'] ?? '').toString();
-                final status = (doc['status'] ?? '').toString();
+                (doc['status'] ?? '').toString();
                 final workType = (doc['workType'] ?? 'Full Time').toString();
 
                 final localizeWorkType = LocalizationHelper.localizeWorkType;
@@ -1955,14 +1970,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     // Today shows the worker's current attendance status.
     if (_selectedTimeframe == 'Today') {
+      Color textColor;
+      if (status == 'Present') {
+        textColor = greenPresent;
+      } else if (status == 'Absent') {
+        textColor = redAbsent;
+      } else if (status == 'Leave') {
+        textColor = orangeLeave;
+      } else {
+        textColor = Colors.grey;
+      }
+
       return Text(
         status.isEmpty ? '-' : status.toLowerCase().tr(),
         style: TextStyle(
-          color: status == 'Present'
-              ? greenPresent
-              : (status == 'Absent'
-                    ? redAbsent
-                    : (status.isEmpty ? Colors.grey : orangeLeave)),
+          color: textColor,
           fontSize: 15,
           fontWeight: FontWeight.w600,
           fontFamily: 'SF Pro Display',
@@ -1972,55 +1994,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }
 
-    // Week, Month, 6 Month and Yearly show an attendance summary
-    // instead of the hard-coded dash that was previously displayed.
-    final periodRecords = AttendanceService.recordsForWorker(
-      worker: worker,
-      attendanceRecords: _rawAttendanceDocs.where(_matchesPeriod).toList(),
-    );
-
-    int present = 0;
-    int absent = 0;
-    int leave = 0;
-
-    for (final record in periodRecords) {
-      switch ((record['status'] ?? '').toString()) {
-        case 'Present':
-          present++;
-          break;
-        case 'Absent':
-          absent++;
-          break;
-        case 'Leave':
-          leave++;
-          break;
-      }
-    }
-
-    if (present == 0 && absent == 0 && leave == 0) {
-      return const Text(
-        '-',
-        style: TextStyle(
-          color: Colors.grey,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'SF Pro Display',
-        ),
-      );
-    }
-
-    return Text(
-      '$present ${'present'.tr()} · '
-      '$absent ${'absent'.tr()} · '
-      '$leave ${'leave'.tr()}',
-      style: const TextStyle(
-        color: textDark,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
+    // Week, Month, 6 Month and Yearly show masked status
+    return const Text(
+      '*****',
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF1E293B),
+        letterSpacing: 4,
         fontFamily: 'SF Pro Display',
       ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -2618,6 +2601,7 @@ class _WorkerAttendancePreviewCardState
           context,
           message: 'attendance_report_saved'.tr(namedArgs: {'file': fileName}),
         );
+        await FileOpener.open(outputFile);
       }
     } catch (e) {
       if (context.mounted) {

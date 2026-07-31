@@ -617,7 +617,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: SvgPicture.asset(
-                          'assets/app_icon.svg',
+                          'assets/app_icon.png',
                           width: 20,
                           height: 20,
                         ),

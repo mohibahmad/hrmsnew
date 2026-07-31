@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
+import '../utils/file_opener.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -610,6 +611,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           context,
           message: 'template_saved_successfully'.tr(),
         );
+        await FileOpener.open(outputFile);
       }
     } catch (_) {
       if (mounted) {
@@ -752,11 +754,42 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }
     }
 
+    final experienceLevel =
+        workerData['experienceLevel']?.toString().trim() ?? '';
+    if (experienceLevel.isNotEmpty) {
+      final normalized = experienceLevel.toLowerCase();
+      const valid = {'fresher', 'junior', 'mid-level', 'mid level', 'senior'};
+      if (!valid.contains(normalized)) {
+        fieldErrors['experienceLevel'] = 'validation_invalid_experience_level'
+            .tr();
+      } else {
+        workerData['experienceLevel'] = normalized == 'fresher'
+            ? 'Fresher'
+            : normalized == 'junior'
+            ? 'Junior'
+            : normalized == 'mid-level' || normalized == 'mid level'
+            ? 'Mid-Level'
+            : 'Senior';
+      }
+    }
+
+    final education = workerData['education']?.toString().trim() ?? '';
+    if (education.isNotEmpty) {
+      final normalized = education.toLowerCase();
+      const valid = {'matric', 'intermediate', 'bachelor', 'master', 'other'};
+      if (!valid.contains(normalized)) {
+        fieldErrors['education'] = 'validation_invalid_education'.tr();
+      } else {
+        workerData['education'] =
+            normalized[0].toUpperCase() + normalized.substring(1);
+      }
+    }
+
     final relationshipStatus =
         workerData['relationshipStatus']?.toString().trim() ?? '';
     if (relationshipStatus.isNotEmpty) {
       final normalized = relationshipStatus.toLowerCase();
-      const valid = {'single', 'married', 'divorced', 'widowed'};
+      const valid = {'single', 'married'};
       if (!valid.contains(normalized)) {
         fieldErrors['relationshipStatus'] = 'validation_invalid_relationship'
             .tr();
@@ -1484,26 +1517,32 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 24),
-              Text(
-                'saving_bulk_workers'.tr(),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'SF Pro Display',
+      barrierColor: Colors.black38,
+      builder: (_) => BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 24),
+                Text(
+                  'saving_bulk_workers'.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1612,13 +1651,25 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }) {
     final now = DateTime.now();
     final minimumDate = fieldKey == 'dob' ? DateTime(1920) : DateTime(2000);
+    // Workers must be at least 18 years old, so a DOB cannot be later than
+    // 18 years ago. Clamp only the day when the target date doesn't exist
+    // (e.g. Feb 29 in a non-leap year) so the max stays the exact anniversary.
+    final DateTime maximumDate;
+    if (fieldKey == 'dob') {
+      final targetYear = now.year - 18;
+      final daysInMonth = DateTime(targetYear, now.month + 1, 0).day;
+      final maxDay = now.day > daysInMonth ? daysInMonth : now.day;
+      maximumDate = DateTime(targetYear, now.month, maxDay);
+    } else {
+      maximumDate = now;
+    }
     DateTime selected =
         currentDate ?? (fieldKey == 'dob' ? DateTime(2000, 1, 1) : now);
     if (selected.isBefore(minimumDate)) {
       selected = minimumDate;
     }
-    if (selected.isAfter(now)) {
-      selected = now;
+    if (selected.isAfter(maximumDate)) {
+      selected = maximumDate;
     }
 
     showGeneralDialog(
@@ -1720,7 +1771,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                               mode: CupertinoDatePickerMode.date,
                               initialDateTime: selected,
                               minimumDate: minimumDate,
-                              maximumDate: now,
+                              maximumDate: maximumDate,
                               onDateTimeChanged: (DateTime newDate) {
                                 setPickerState(() {
                                   selected = newDate;
@@ -2080,6 +2131,55 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     onDateSelected: (dateStr) {
                                       controller.text = dateStr;
                                     },
+                                  )
+                                else if (isMediaField &&
+                                    fieldKey == 'profileImage' &&
+                                    !hasExistingUpload &&
+                                    mediaDataUrl == null)
+                                  GestureDetector(
+                                    onTap: () => _pickMediaFile(),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 24,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0xFFD1D5DB),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            width: 56,
+                                            height: 56,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEEF2FF),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.add_a_photo_rounded,
+                                              size: 26,
+                                              color: Color(0xFF0247C4),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            'tap_to_upload_profile_image'.tr(),
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0247C4),
+                                              fontFamily: 'SF Pro Display',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   )
                                 else
                                   Container(
@@ -2443,16 +2543,58 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     } else if (fieldKey ==
                                         'relationshipStatus') {
                                       final normalized = val.toLowerCase();
-                                      const valid = {
-                                        'single',
-                                        'married',
-                                        'divorced',
-                                        'widowed',
-                                      };
+                                      const valid = {'single', 'married'};
                                       if (!valid.contains(normalized)) {
                                         setDialogState(() {
                                           dialogError =
                                               'validation_invalid_relationship'
+                                                  .tr();
+                                        });
+                                      } else {
+                                        final display =
+                                            normalized[0].toUpperCase() +
+                                            normalized.substring(1);
+                                        Navigator.of(ctx).pop(display);
+                                      }
+                                    } else if (fieldKey == 'experienceLevel') {
+                                      final normalized = val.toLowerCase();
+                                      const valid = {
+                                        'fresher',
+                                        'junior',
+                                        'mid-level',
+                                        'mid level',
+                                        'senior',
+                                      };
+                                      if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_experience_level'
+                                                  .tr();
+                                        });
+                                      } else {
+                                        final display = normalized == 'fresher'
+                                            ? 'Fresher'
+                                            : normalized == 'junior'
+                                            ? 'Junior'
+                                            : normalized == 'mid-level' ||
+                                                  normalized == 'mid level'
+                                            ? 'Mid-Level'
+                                            : 'Senior';
+                                        Navigator.of(ctx).pop(display);
+                                      }
+                                    } else if (fieldKey == 'education') {
+                                      final normalized = val.toLowerCase();
+                                      const valid = {
+                                        'matric',
+                                        'intermediate',
+                                        'bachelor',
+                                        'master',
+                                        'other',
+                                      };
+                                      if (!valid.contains(normalized)) {
+                                        setDialogState(() {
+                                          dialogError =
+                                              'validation_invalid_education'
                                                   .tr();
                                         });
                                       } else {
@@ -3506,6 +3648,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   Widget _buildMediaThumbnail(String value, String? fieldKey) {
+    const cvFallback = Icon(
+      Icons.description_outlined,
+      size: 18,
+      color: Color(0xFF64748B),
+    );
     const fallback = Icon(
       Icons.insert_drive_file_outlined,
       size: 18,
@@ -3515,7 +3662,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       return const SizedBox(
         width: 24,
         height: 24,
-        child: Center(child: fallback),
+        child: Center(child: cvFallback),
       );
     }
 

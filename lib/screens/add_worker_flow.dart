@@ -2470,7 +2470,7 @@ class WorkerDetailFormSection extends StatelessWidget {
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildInputField(
-                            'professed_religion'.tr(),
+                            'Religion'.tr(),
                             'enter_your_religion'.tr(),
                             controller: religionController,
                             isReligion: true,
@@ -3953,7 +3953,6 @@ class DocumentationSection extends StatelessWidget {
                               ),
                             ),
                           ),
-
                         ],
                       ],
                     ),

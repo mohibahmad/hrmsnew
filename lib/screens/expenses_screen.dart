@@ -4,7 +4,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -248,7 +247,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     final now = DateTime.now();
     int maxDays = 7;
-    if (period == 'Week')
+    if (period == 'Today')
+      maxDays = 1;
+    else if (period == 'Week')
       maxDays = 7;
     else if (period == 'Month')
       maxDays = 30;

@@ -764,8 +764,8 @@ class _HomeScreenState extends State<HomeScreen> {
           : formattedNet.trim().isNotEmpty
           ? PayrollService.extractSalary(formattedNet)
           : amount is num
-              ? amount.toDouble()
-              : 0.0;
+          ? amount.toDouble()
+          : 0.0;
       return {...item, 'netSalary': netSalary};
     }).toList();
     final totalDummySalary = payrollRecords.fold<double>(
@@ -884,6 +884,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _toggleNotifications() {
     setState(() {
       _showNotifications = !_showNotifications;
+      if (_showNotifications) {
+        _unreadNotifCount = 0;
+      }
     });
   }
 
@@ -1133,14 +1136,23 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'dashboard'.tr(),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF000000),
-                    fontFamily: 'SF Pro Display',
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'dashboard'.tr(),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF000000),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+                    CustomTimeframeDropdown(
+                      selectedPeriod: _selectedPeriod,
+                      onChanged: _handlePeriodChanged,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -1192,7 +1204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         'attendance_overview'.tr(),
                         style: TextStyle(
                           fontSize: 20,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
@@ -1206,13 +1218,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             'leave_types'.tr(),
                             style: TextStyle(
                               fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                               fontFamily: 'SF Pro Display',
                             ),
-                          ),
-                          CustomTimeframeDropdown(
-                            selectedPeriod: _selectedPeriod,
-                            onChanged: _handlePeriodChanged,
                           ),
                         ],
                       ),
@@ -1299,7 +1307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: Color(0xFF000000),
                         fontSize: 20,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -1372,7 +1380,34 @@ class _HomeScreenState extends State<HomeScreen> {
                               9999;
                           return aDays.compareTo(bDays);
                         });
-                        if (activeHolidays.isEmpty) {
+
+                        final groupedHolidays = <Map<String, dynamic>>[];
+                        for (final h in activeHolidays) {
+                          final key =
+                              '${h['day']}_${h['month']}_${h['remainingDays']}';
+                          final existing = groupedHolidays.cast<Map<String, dynamic>?>().firstWhere(
+                            (g) =>
+                                '${g!['day']}_${g['month']}_${g['remainingDays']}' ==
+                                key,
+                            orElse: () => null,
+                          );
+                          if (existing != null) {
+                            final names =
+                                (existing['holidayNames'] ?? existing['name'] ?? '')
+                                    .toString();
+                            final newName = (h['name'] ?? '').toString();
+                            if (!names.contains(newName)) {
+                              existing['holidayNames'] =
+                                  '$names and $newName';
+                            }
+                          } else {
+                            final grouped = Map<String, dynamic>.from(h);
+                            grouped['holidayNames'] = h['name'] ?? '';
+                            groupedHolidays.add(grouped);
+                          }
+                        }
+
+                        if (groupedHolidays.isEmpty) {
                           return Center(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 40),
@@ -1425,7 +1460,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 return Wrap(
                                   spacing: spacing,
                                   runSpacing: spacing,
-                                  children: activeHolidays.map((h) {
+                                  children: groupedHolidays.map((h) {
                                     final remainingDaysStr =
                                         (h['remainingDays'] ?? '').toString();
                                     final remainingDaysInt =
@@ -1443,7 +1478,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                         month: h['month'] ?? 'May',
                                         remainingDays: h['remainingDays'] ?? '',
                                         dayOfWeek: h['dayOfWeek'] ?? '',
-                                        holidayName: h['name'] ?? '',
+                                        holidayName:
+                                            h['holidayNames']?.toString() ??
+                                            h['name'] ??
+                                            '',
                                         isActive: isUrgent,
                                       ),
                                     );

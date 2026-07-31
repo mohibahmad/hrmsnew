@@ -46,6 +46,7 @@ dependencies:
   in_app_review: ^2.0.12
   cloud_functions: ^6.3.5
   archive: ^4.0.9
+  local_auth: ^3.0.2
 
 flutter_launcher_icons:
   android: true

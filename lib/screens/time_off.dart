@@ -86,6 +86,11 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
   String _normalizedValue(dynamic value) =>
       (value ?? '').toString().trim().toLowerCase();
 
+  String _capitalizeFirstLetter(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
   String _firstNonEmptyValue(Iterable<dynamic> values) {
     for (final value in values) {
       final normalized = (value ?? '').toString().trim();
@@ -687,7 +692,10 @@ class _TimeOffScreenState extends State<TimeOffScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (final f in allFilters)
-              _buildTabItem(f, f == 'All' ? 'all_filter'.tr() : f.toLowerCase().tr()),
+              _buildTabItem(
+                f,
+                f == 'All' ? 'all_filter'.tr() : f,
+              ),
           ],
         ),
       ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
@@ -11,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
+import '../services/biometric_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/snackbar_utils.dart';
 import '../shared/auth_widgets.dart';
@@ -32,12 +34,16 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _isGuestLoading = false;
+  bool _isBiometricLoading = false;
   bool _obscurePassword = true;
   bool _submitted = false;
   bool _googleEnabled = true;
   bool _initialized = false;
+  bool _biometricAvailable = false;
+  bool _hasSavedCredentials = false;
 
-  bool get _anyLoading => _isLoading || _isGoogleLoading || _isGuestLoading;
+  bool get _anyLoading =>
+      _isLoading || _isGoogleLoading || _isGuestLoading || _isBiometricLoading;
 
   late AuthService _authService;
   late FirestoreService _firestoreService;
@@ -49,6 +55,19 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _signUpRecognizer = TapGestureRecognizer();
+    _checkBiometricStatus();
+  }
+
+  Future<void> _checkBiometricStatus() async {
+    final available = await BiometricService.isAvailable();
+    final email = await PreferencesService.getBiometricEmail();
+    final hasSaved = email != null;
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = available;
+        _hasSavedCredentials = hasSaved;
+      });
+    }
   }
 
   @override
@@ -234,6 +253,18 @@ class _LoginScreenState extends State<LoginScreen> {
             await _authService.currentUser?.updateDisplayName(username);
           }
         }
+
+        // Auto-save credentials like Apple Keychain (no prompt)
+        if (_biometricAvailable) {
+          await PreferencesService.setBiometricCredentials(
+            email: enteredEmail,
+            password: _passwordController.text,
+          );
+          if (mounted) {
+            setState(() => _hasSavedCredentials = true);
+          }
+        }
+
         if (!mounted) return;
         FlashySnackBar.show(
           context,
@@ -290,6 +321,62 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    if (_anyLoading) return;
+
+    setState(() => _isBiometricLoading = true);
+
+    try {
+      final biometricName = await BiometricService.getBiometricName();
+      final authenticated = await BiometricService.authenticate(
+        localizedReason: 'login_with_biometric_reason'.tr(
+          namedArgs: {'biometric': biometricName},
+        ),
+      );
+
+      if (!authenticated) {
+        if (mounted) {
+          _showErrorSnackBar('biometric_auth_failed'.tr());
+        }
+        return;
+      }
+
+      final email = await PreferencesService.getBiometricEmail();
+      final password = await PreferencesService.getBiometricPassword();
+
+      if (email == null || password == null) {
+        await PreferencesService.clearBiometricCredentials();
+        if (mounted) {
+          setState(() => _hasSavedCredentials = false);
+          _showErrorSnackBar('biometric_credentials_not_found'.tr());
+        }
+        return;
+      }
+
+      // Decode the stored email
+      String decodedEmail;
+      try {
+        decodedEmail = utf8.decode(base64Decode(email));
+      } catch (_) {
+        decodedEmail = email;
+      }
+
+      if (mounted) {
+        _emailController.text = decodedEmail;
+        _passwordController.text = password;
+        await _handleLogin();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('biometric_auth_failed'.tr());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBiometricLoading = false);
+      }
     }
   }
 
@@ -485,6 +572,48 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
 
       const SizedBox(height: 24),
+
+      // Biometric Login Button - like Apple's system password autofill
+      if (_biometricAvailable && _hasSavedCredentials) ...[
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: _anyLoading ? null : _handleBiometricLogin,
+            icon: _isBiometricLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFFFFFFFF),
+                      ),
+                    ),
+                  )
+                : const Icon(Icons.fingerprint, size: 22),
+            label: Text(
+              'login_with_biometric'.tr(),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFFFFFF),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0044C9),
+              foregroundColor: const Color(0xFFFFFFFF),
+              disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
 
       SizedBox(
         width: double.infinity,

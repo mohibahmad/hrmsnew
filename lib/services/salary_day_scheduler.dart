@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import '../utils/file_opener.dart';
 import 'dart:io';
 import 'auth_service.dart';
 import 'firestore_service.dart';
@@ -1080,6 +1081,7 @@ class SalaryDayScheduler {
             context,
             message: 'zip_saved'.tr(namedArgs: {'fileName': fileName}),
           );
+          await FileOpener.open(result);
         }
       }
     } catch (e) {
@@ -1153,20 +1155,6 @@ class SalaryDayScheduler {
               scale: curve,
               child: StatefulBuilder(
                 builder: (context, setDialogState) {
-                  Widget avatarInitials(String name, Color color) {
-                    return Center(
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    );
-                  }
-
                   List<AutoPayrollResult> posFiltered;
                   if (positionFilter == 'All') {
                     posFiltered = summary.results;

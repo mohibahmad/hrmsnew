@@ -777,14 +777,26 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap: () {
-                onMonthChanged(
-                  DateTime(calendarDate.year, calendarDate.month - 1, 1),
-                );
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.chevron_left, size: 20, color: Colors.black),
+              onTap:
+                  (calendarDate.year == DateTime.now().year &&
+                      calendarDate.month == DateTime.now().month)
+                  ? null
+                  : () {
+                      onMonthChanged(
+                        DateTime(calendarDate.year, calendarDate.month - 1, 1),
+                      );
+                    },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(
+                  Icons.chevron_left,
+                  size: 20,
+                  color:
+                      (calendarDate.year == DateTime.now().year &&
+                          calendarDate.month == DateTime.now().month)
+                      ? Colors.grey.shade300
+                      : Colors.black,
+                ),
               ),
             ),
             Text(
@@ -864,6 +876,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     int? selectedDay,
     ValueChanged<int> onDaySelected,
   ) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     List<Widget> rows = [];
     int daysInMonth = DateTime(
       calendarDate.year,
@@ -894,10 +908,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             calendarDate.month,
             currentDay,
           );
+          final isPast = cellDate.isBefore(today);
           rowChildren.add(
-            _buildDayCell('$currentDay', isSelected, () {
-              onDaySelected(tapDay);
-            }, cellDate),
+            _buildDayCell(
+              '$currentDay',
+              isSelected,
+              isPast
+                  ? null
+                  : () {
+                      onDaySelected(tapDay);
+                    },
+              cellDate,
+            ),
           );
           currentDay++;
         } else {
@@ -923,11 +945,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         child: AspectRatio(aspectRatio: 1, child: SizedBox()),
       );
     }
+    final isPast = onTap == null && date != null;
     final isSunday = date?.weekday == 7;
     final isFriday = date?.weekday == 5;
-    final dayColor = isSunday
-        ? const Color(0xFFFF0004)
-        : (isFriday ? const Color(0xFF4AC000) : Colors.black);
+    final dayColor = isPast
+        ? Colors.grey.shade400
+        : (isSunday
+              ? const Color(0xFFFF0004)
+              : (isFriday ? const Color(0xFF4AC000) : Colors.black));
     final selectedBg = isFriday
         ? const Color(0xFF4AC000)
         : const Color(0xFFFF0004);
@@ -943,11 +968,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               border: Border.all(
                 color: isSelected
                     ? selectedBg
-                    : (isSunday
-                          ? const Color(0xFFFF0004).withValues(alpha: 0.4)
-                          : (isFriday
-                                ? const Color(0xFF4AC000).withValues(alpha: 0.4)
-                                : Colors.grey.shade300)),
+                    : (isPast
+                          ? Colors.grey.shade200
+                          : (isSunday
+                                ? const Color(0xFFFF0004).withValues(alpha: 0.4)
+                                : (isFriday
+                                      ? const Color(
+                                          0xFF4AC000,
+                                        ).withValues(alpha: 0.4)
+                                      : Colors.grey.shade300))),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(6),
@@ -1685,7 +1714,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             newDate.month + 1,
                             0,
                           ).day;
-                          if (selectedDay! > daysInNewMonth) {
+                          if (selectedDay > daysInNewMonth) {
                             selectedDay = daysInNewMonth;
                           }
                         });

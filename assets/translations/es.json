@@ -678,6 +678,7 @@
   "delete_time_off": "Eliminar Tiempo Libre",
   "cancel_time_off": "Cancelar Tiempo Libre",
   "cancel_payroll": "Cancelar Nómina",
+  "cancel_payroll_confirm": "¿Está seguro de que desea cancelar la nómina de {name}? Esta acción no se puede deshacer.",
   "payroll_cancelled_for_worker": "La nómina de {name} ha sido cancelada",
   "payroll_cancel_failed": "No se pudo cancelar la nómina",
   "download_attendance": "Descargar Asistencia",

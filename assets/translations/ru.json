@@ -678,6 +678,7 @@
   "delete_time_off": "Удалить отпуск",
   "cancel_time_off": "Отменить отпуск",
   "cancel_payroll": "Отменить расчёт",
+  "cancel_payroll_confirm": "Вы уверены, что хотите отменить расчёт для {name}? Это действие нельзя отменить.",
   "payroll_cancelled_for_worker": "Расчёт для {name} отменён",
   "payroll_cancel_failed": "Не удалось отменить расчёт",
   "download_attendance": "Скачать посещаемость",

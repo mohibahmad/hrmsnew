@@ -610,7 +610,7 @@ class PayrollService {
   }
 
   static String _fmt(num val, String prefix) {
-    return '$prefix${formatNumber(val)}';
+    return '$prefix${formatFullNumber(val)}';
   }
 
   static double calculateNetFromTotals({

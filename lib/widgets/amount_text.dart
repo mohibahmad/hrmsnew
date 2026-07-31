@@ -36,6 +36,27 @@ class AmountText extends StatelessWidget {
     }
   }
 
+  static String formatFull(String input) {
+    try {
+      if (input.trim().isEmpty) return '0';
+      final cleaned = input.replaceAll(RegExp(r"[^0-9.\-]"), '');
+      if (cleaned.isEmpty) return '0';
+      final val = double.tryParse(cleaned);
+      if (val == null) return input;
+      final symbolMatch = RegExp(r"^\s*([^0-9\s.-]+)").firstMatch(input);
+      final symbol = symbolMatch != null ? symbolMatch.group(1) ?? '' : '';
+      final hasDecimals = val != val.roundToDouble();
+      final formatted = NumberFormat.currency(
+        locale: 'en_US',
+        symbol: '',
+        decimalDigits: hasDecimals ? 2 : 0,
+      ).format(val);
+      return symbol + formatted.trim();
+    } catch (_) {
+      return input;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final display = formatCompact(amount);

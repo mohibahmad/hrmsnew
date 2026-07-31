@@ -678,6 +678,7 @@
   "delete_time_off": "Excluir Folga",
   "cancel_time_off": "Cancelar Folga",
   "cancel_payroll": "Cancelar Folha de Pagamento",
+  "cancel_payroll_confirm": "Tem certeza de que deseja cancelar a folha de pagamento de {name}? Esta ação não pode ser desfeita.",
   "payroll_cancelled_for_worker": "A folha de pagamento de {name} foi cancelada",
   "payroll_cancel_failed": "Falha ao cancelar a folha de pagamento",
   "download_attendance": "Baixar Presença",

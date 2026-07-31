@@ -12,6 +12,7 @@ import '../services/payroll_service.dart';
 import '../services/invoice_service.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/delete_dialog.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/notification_bell.dart';
@@ -522,7 +523,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                               ),
                               padding: const EdgeInsets.all(8),
                               child: SvgPicture.asset(
-                                'assets/app_icon.svg',
+                                'assets/app_icon.png',
                                 width: 24,
                                 height: 24,
                                 fit: BoxFit.contain,
@@ -805,32 +806,21 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         ),
         Row(
           children: [
-            OutlinedButton(
-              onPressed: _isSaving || _isCancellingPayroll
-                  ? null
-                  : widget.onBack ?? () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primaryBlue,
-                side: BorderSide(color: _primaryBlue.withValues(alpha: 0.5)),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'discard_changes'.tr(),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(width: 16),
             if (widget.workerData['hasPayrollRecord'] == true) ...[
               OutlinedButton(
                 onPressed: _isSaving || _isCancellingPayroll
                     ? null
-                    : _handleCancelPayroll,
+                    : () async {
+                        final confirmed = await DeleteDialog.show(
+                          context: context,
+                          title: 'cancel_payroll'.tr(),
+                          content: 'cancel_payroll_confirm'.tr(
+                            namedArgs: {'name': _name},
+                          ),
+                          confirmButtonText: 'cancel_payroll',
+                        );
+                        if (confirmed) _handleCancelPayroll();
+                      },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFE53935),
                   side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
@@ -856,47 +846,47 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
               ),
-              const SizedBox(width: 16),
-            ],
-            ElevatedButton(
-              onPressed:
-                  _isSaving || _isCancellingPayroll || _isAttendanceLoading
-                  ? null
-                  : () {
-                      final isGuest =
-                          _authService.currentUser?.isAnonymous ?? false;
-                      if (isGuest) {
-                        showGuestRestrictionDialog(context);
-                        return;
-                      }
-                      _handleSave();
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B50C3),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 18,
+            ] else ...[
+              ElevatedButton(
+                onPressed:
+                    _isSaving || _isCancellingPayroll || _isAttendanceLoading
+                    ? null
+                    : () {
+                        final isGuest =
+                            _authService.currentUser?.isAnonymous ?? false;
+                        if (isGuest) {
+                          showGuestRestrictionDialog(context);
+                          return;
+                        }
+                        _handleSave();
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B50C3),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: _isSaving || _isAttendanceLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+                child: _isSaving || _isAttendanceLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'save_payroll'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                    )
-                  : Text(
-                      'save_payroll'.tr(),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-            ),
+              ),
+            ],
           ],
         ),
       ],

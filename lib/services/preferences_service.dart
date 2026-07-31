@@ -19,6 +19,9 @@ class PreferencesService {
   static const String _guestProfileKey = 'guest_profile_data';
   static const String _guestWorkersKey = 'guest_workers_data';
   static const String _guestPayrollKey = 'guest_payroll_data';
+  static const String _biometricEnabledKey = 'biometric_enabled';
+  static const String _biometricEmailKey = 'biometric_email';
+  static const String _biometricPasswordKey = 'biometric_password';
 
   static String? _cachedProfilePicUrl;
   static bool _cachedIsGuest = false;
@@ -254,6 +257,53 @@ class PreferencesService {
   static Future<void> markFirstAssetTriggered() =>
       _setBool(_rateUsFirstAssetKey, true);
 
+  // ── Biometric Authentication ──
+
+  static Future<bool> isBiometricEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_biometricEnabledKey) ?? false;
+  }
+
+  static Future<void> setBiometricEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_biometricEnabledKey, value);
+  }
+
+  static Future<String?> getBiometricEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_biometricEmailKey);
+  }
+
+  static Future<void> setBiometricCredentials({
+    required String email,
+    required String password,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Store in base64 for basic obfuscation
+    final encodedEmail = base64Encode(utf8.encode(email));
+    final encodedPassword = base64Encode(utf8.encode(password));
+    await prefs.setString(_biometricEmailKey, encodedEmail);
+    await prefs.setString(_biometricPasswordKey, encodedPassword);
+  }
+
+  static Future<String?> getBiometricPassword() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = prefs.getString(_biometricPasswordKey);
+    if (encoded == null) return null;
+    try {
+      return utf8.decode(base64Decode(encoded));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> clearBiometricCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_biometricEnabledKey);
+    await prefs.remove(_biometricEmailKey);
+    await prefs.remove(_biometricPasswordKey);
+  }
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_loggedInKey);
@@ -271,6 +321,9 @@ class PreferencesService {
     await prefs.remove(_companySalaryDayKey);
     await prefs.remove(_activePayrollPeriodKey);
     await prefs.remove(_guestPayrollKey);
+    await prefs.remove(_biometricEnabledKey);
+    await prefs.remove(_biometricEmailKey);
+    await prefs.remove(_biometricPasswordKey);
     _cachedProfilePicUrl = null;
     _cachedIsGuest = false;
   }
