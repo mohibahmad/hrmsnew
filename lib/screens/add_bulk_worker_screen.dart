@@ -703,6 +703,30 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
+  /// Normalizes an education value to its canonical display form
+  /// (e.g. "bachelor's", "bachelors" -> "Bachelor"). Returns null when the
+  /// value is not a supported education level.
+  String? _normalizeEducation(String input) {
+    final normalized = input.trim().toLowerCase();
+    const valid = {
+      'matric',
+      'intermediate',
+      'bachelor',
+      'bachelors',
+      "bachelor's",
+      'master',
+      'masters',
+      "master's",
+      'other',
+    };
+    if (!valid.contains(normalized)) return null;
+    return switch (normalized) {
+      'bachelors' || "bachelor's" => 'Bachelor',
+      'masters' || "master's" => 'Master',
+      _ => normalized[0].toUpperCase() + normalized.substring(1),
+    };
+  }
+
   Map<String, String> _validateWorkerData(
     Map<String, dynamic> workerData, {
     required Set<String> existingEmails,
@@ -775,13 +799,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
 
     final education = workerData['education']?.toString().trim() ?? '';
     if (education.isNotEmpty) {
-      final normalized = education.toLowerCase();
-      const valid = {'matric', 'intermediate', 'bachelor', 'master', 'other'};
-      if (!valid.contains(normalized)) {
+      final normalizedEducation = _normalizeEducation(education);
+      if (normalizedEducation == null) {
         fieldErrors['education'] = 'validation_invalid_education'.tr();
       } else {
-        workerData['education'] =
-            normalized[0].toUpperCase() + normalized.substring(1);
+        workerData['education'] = normalizedEducation;
       }
     }
 
@@ -962,6 +984,33 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
+  Future<({Set<String> emails, Set<String> nationalIds})>
+      _loadExistingIdentitySets() async {
+    final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final emails = <String>{};
+    final nationalIds = <String>{};
+
+    if (isGuest) {
+      for (final w in DummyData.workers) {
+        final e = WorkerIdentity.normalizeEmail(w['email']);
+        if (e.isNotEmpty) emails.add(e);
+        final n = WorkerIdentity.normalizeNationalId(w['nationalId']);
+        if (n.isNotEmpty) nationalIds.add(n);
+      }
+    } else {
+      final snapshot = await _firestore.getWorkersOnce();
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final e = WorkerIdentity.normalizeEmail(data['email']);
+        if (e.isNotEmpty) emails.add(e);
+        final n = WorkerIdentity.normalizeNationalId(data['nationalId']);
+        if (n.isNotEmpty) nationalIds.add(n);
+      }
+    }
+
+    return (emails: emails, nationalIds: nationalIds);
+  }
+
   Future<bool> _processCsvData(List<List<dynamic>> rows) async {
     if (rows.isEmpty) return false;
 
@@ -990,44 +1039,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         .where((field) => !foundFields.contains(field))
         .toList();
 
-    final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
-    Set<String> existingEmails = {};
-    Set<String> existingNationalIds = {};
-
-    if (isGuest) {
-      existingEmails = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeEmail(w['email']))
-          .where((e) => e.isNotEmpty)
-          .toSet();
-      existingNationalIds = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeNationalId(w['nationalId']))
-          .where((n) => n.isNotEmpty)
-          .toSet();
-    } else {
-      try {
-        final snapshot = await _firestore.getWorkersOnce();
-        Map<String, dynamic> d(doc) => doc.data() as Map<String, dynamic>;
-        existingEmails = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeEmail(d(doc)['email']))
-            .where((e) => e.isNotEmpty)
-            .toSet();
-        existingNationalIds = snapshot.docs
-            .map(
-              (doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']),
-            )
-            .where((n) => n.isNotEmpty)
-            .toSet();
-      } catch (_) {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'could_not_validate_csv_duplicates'.tr(),
-            isError: true,
-          );
-        }
-        return false;
+    final ({Set<String> emails, Set<String> nationalIds}) existing;
+    try {
+      existing = await _loadExistingIdentitySets();
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_validate_csv_duplicates'.tr(),
+          isError: true,
+        );
       }
+      return false;
     }
+    final existingEmails = existing.emails;
+    final existingNationalIds = existing.nationalIds;
 
     if (!mounted) return false;
 
@@ -1199,44 +1225,21 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   Future<bool> _revalidateAllWorkers() async {
-    final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
-    Set<String> existingEmails = {};
-    Set<String> existingNationalIds = {};
-
-    if (isGuest) {
-      existingEmails = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeEmail(w['email']))
-          .where((e) => e.isNotEmpty)
-          .toSet();
-      existingNationalIds = DummyData.workers
-          .map((w) => WorkerIdentity.normalizeNationalId(w['nationalId']))
-          .where((n) => n.isNotEmpty)
-          .toSet();
-    } else {
-      try {
-        final snapshot = await _firestore.getWorkersOnce();
-        Map<String, dynamic> d(doc) => doc.data() as Map<String, dynamic>;
-        existingEmails = snapshot.docs
-            .map((doc) => WorkerIdentity.normalizeEmail(d(doc)['email']))
-            .where((e) => e.isNotEmpty)
-            .toSet();
-        existingNationalIds = snapshot.docs
-            .map(
-              (doc) => WorkerIdentity.normalizeNationalId(d(doc)['nationalId']),
-            )
-            .where((n) => n.isNotEmpty)
-            .toSet();
-      } catch (_) {
-        if (mounted) {
-          FlashySnackBar.show(
-            context,
-            message: 'could_not_validate_csv_duplicates'.tr(),
-            isError: true,
-          );
-        }
-        return false;
+    final ({Set<String> emails, Set<String> nationalIds}) existing;
+    try {
+      existing = await _loadExistingIdentitySets();
+    } catch (_) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'could_not_validate_csv_duplicates'.tr(),
+          isError: true,
+        );
       }
+      return false;
     }
+    final existingEmails = existing.emails;
+    final existingNationalIds = existing.nationalIds;
 
     final csvEmails = <String>{};
     final csvNationalIds = <String>{};
@@ -1883,6 +1886,25 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final worker = _validWorkers[workerIndex];
     final currentValue = (worker[fieldKey] ?? '').toString();
     final label = _fieldLabels[fieldKey] ?? fieldKey;
+
+    // Load existing emails/national IDs so the dialog can reject values that
+    // duplicate workers already saved in the database (not just other rows
+    // in the current CSV). Only needed for these two identity fields.
+    final existingEmails = <String>{};
+    final existingNationalIds = <String>{};
+    final bool needsExistingIdentity =
+        fieldKey == 'email' || fieldKey == 'nationalId';
+    if (needsExistingIdentity) {
+      try {
+        final existing = await _loadExistingIdentitySets();
+        existingEmails.addAll(existing.emails);
+        existingNationalIds.addAll(existing.nationalIds);
+      } catch (_) {
+        // Fall back to CSV-only duplicate checks if the DB lookup fails.
+      }
+    }
+    if (!mounted) return;
+
     final result = await showDialog<String>(
       context: context,
       barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
@@ -2465,18 +2487,25 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                               'validation_invalid_email'.tr();
                                         });
                                       } else {
-                                        final isDuplicate = _validWorkers
-                                            .asMap()
-                                            .entries
-                                            .any((entry) {
-                                              return entry.key != workerIndex &&
-                                                  WorkerIdentity.normalizeEmail(
-                                                        entry.value['email']
-                                                                ?.toString() ??
-                                                            '',
-                                                      ) ==
-                                                      normalizedEmail;
-                                            });
+                                        final isDuplicate =
+                                            existingEmails.contains(
+                                                  normalizedEmail,
+                                                ) ||
+                                                _validWorkers
+                                                    .asMap()
+                                                    .entries
+                                                    .any((entry) {
+                                                      return entry.key !=
+                                                              workerIndex &&
+                                                          WorkerIdentity
+                                                                  .normalizeEmail(
+                                                                    entry.value[
+                                                                            'email']
+                                                                        ?.toString() ??
+                                                                        '',
+                                                                  ) ==
+                                                              normalizedEmail;
+                                                    });
                                         if (isDuplicate) {
                                           setDialogState(() {
                                             dialogError =
@@ -2495,18 +2524,25 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           WorkerIdentity.normalizeNationalId(
                                             val,
                                           );
-                                      final isDuplicate = _validWorkers
-                                          .asMap()
-                                          .entries
-                                          .any((entry) {
-                                            return entry.key != workerIndex &&
-                                                WorkerIdentity.normalizeNationalId(
-                                                      entry.value['nationalId']
-                                                              ?.toString() ??
-                                                          '',
-                                                    ) ==
-                                                    normalizedId;
-                                          });
+                                      final isDuplicate =
+                                          existingNationalIds.contains(
+                                                normalizedId,
+                                              ) ||
+                                              _validWorkers
+                                                  .asMap()
+                                                  .entries
+                                                  .any((entry) {
+                                                    return entry.key !=
+                                                            workerIndex &&
+                                                        WorkerIdentity
+                                                                .normalizeNationalId(
+                                                                  entry.value[
+                                                                          'nationalId']
+                                                                      ?.toString() ??
+                                                                      '',
+                                                                ) ==
+                                                            normalizedId;
+                                                  });
                                       if (isDuplicate) {
                                         setDialogState(() {
                                           dialogError =
@@ -2583,25 +2619,18 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         Navigator.of(ctx).pop(display);
                                       }
                                     } else if (fieldKey == 'education') {
-                                      final normalized = val.toLowerCase();
-                                      const valid = {
-                                        'matric',
-                                        'intermediate',
-                                        'bachelor',
-                                        'master',
-                                        'other',
-                                      };
-                                      if (!valid.contains(normalized)) {
+                                      final normalizedEducation =
+                                          _normalizeEducation(val);
+                                      if (normalizedEducation == null) {
                                         setDialogState(() {
                                           dialogError =
                                               'validation_invalid_education'
                                                   .tr();
                                         });
                                       } else {
-                                        final display =
-                                            normalized[0].toUpperCase() +
-                                            normalized.substring(1);
-                                        Navigator.of(ctx).pop(display);
+                                        Navigator.of(ctx).pop(
+                                          normalizedEducation,
+                                        );
                                       }
                                     } else if (fieldKey == 'type1') {
                                       final normalized = val.toLowerCase();

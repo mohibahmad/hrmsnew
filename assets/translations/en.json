@@ -563,7 +563,7 @@
   "available_sick_leave": "Available Sick Leave Days",
   "available_casual_leave": "Available Casual Leave Days",
   "available_medical_leave": "Available Medical Leave Days",
-  "tap_to_upload_profile_image": "Tap to upload a profile image\nPNG or JPG",
+  "tap_to_upload_profile_image": "Tap to upload a profile image",
   "edit_asset": "Edit Asset",
   "enter_asset_type": "Enter asset type",
   "csv_required_columns_error": "CSV must contain all required columns: Full Name, Contact Number, Email Address, Father Name, National ID, Religion, Date of Birth, Gender, Address, Relationship Status, Job Position, Employee Type, Work Model, Experience Level, Education, Salary Type, Currency, Salary Amount, Leave Policy, Annual Leaves, Sick Leaves, Casual Leaves, Joining Date, Front ID Image URL, Back ID Image URL, CV URL. Profile Image URL is optional.",
