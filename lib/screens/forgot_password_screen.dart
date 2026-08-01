@@ -182,7 +182,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           children: [
                             Positioned(
                               top: 50,
-                              left: 90,
+                              left: 100,
                               right: 40,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,12 +191,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     'welcome_to_hrms'.tr(),
                                     maxLines: 1,
                                     style: const TextStyle(
-                                      fontSize: 56,
+                                      fontSize: 58,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
                                       height: 1,
-                                      letterSpacing: 0.8,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
                                   SizedBox(height: 10),
@@ -204,12 +204,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     'welcome_banner_subtitle'.tr(),
                                     maxLines: 2,
                                     style: const TextStyle(
-                                      fontSize: 24,
+                                      fontSize: 23,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
                                       height: 1.2,
-                                      letterSpacing: 0.8,
+                                      letterSpacing: 1.6,
                                     ),
                                   ),
                                 ],

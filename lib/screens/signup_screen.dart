@@ -737,7 +737,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           children: [
                             Positioned(
                               top: 50,
-                              left: 90,
+                              left: 100,
                               right: 40,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,7 +751,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
                                       height: 1,
-                                      letterSpacing: 0.8,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
                                   SizedBox(height: 10),
@@ -759,11 +759,11 @@ class _SignupScreenState extends State<SignupScreen> {
                                     'welcome_banner_subtitle'.tr(),
                                     maxLines: 2,
                                     style: const TextStyle(
-                                      fontSize: 25,
+                                      fontSize: 23,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
-                                      height: 1.2,
+                                      height: 1.6,
                                       letterSpacing: 0.8,
                                     ),
                                   ),

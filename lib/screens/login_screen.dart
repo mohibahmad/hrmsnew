@@ -762,7 +762,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Positioned(
                               top: 50,
-                              left: 90,
+                              left: 100,
                               right: 40,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -776,7 +776,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
                                       height: 1,
-                                      letterSpacing: 0.8,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
                                   SizedBox(height: 10),
@@ -784,12 +784,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     'welcome_banner_subtitle'.tr(),
                                     maxLines: 2,
                                     style: const TextStyle(
-                                      fontSize: 25,
+                                      fontSize: 23,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
                                       height: 1.2,
-                                      letterSpacing: 0.8,
+                                      letterSpacing: 1.6,
                                     ),
                                   ),
                                 ],
