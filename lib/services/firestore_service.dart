@@ -99,6 +99,8 @@ class FirestoreService {
   CollectionReference? get _holidays => _userDoc?.collection('hrms_holidays');
   CollectionReference? get _notifications =>
       _userDoc?.collection('hrms_notifications');
+  CollectionReference? get _leavePolicies =>
+      _userDoc?.collection('hrms_leave_policies');
 
   Future<void> createUserProfile({
     required String username,
@@ -1632,5 +1634,51 @@ class FirestoreService {
     if (snap.docs.isNotEmpty) {
       await batch.commit();
     }
+  }
+
+  Future<DocumentReference?> addLeavePolicy(Map<String, dynamic> data) async {
+    final coll = _leavePolicies;
+    if (coll == null) return null;
+    data['createdAt'] = FieldValue.serverTimestamp();
+    data['updatedAt'] = FieldValue.serverTimestamp();
+    data['isActive'] = true;
+    return await coll.add(data);
+  }
+
+  Future<void> updateLeavePolicy(String id, Map<String, dynamic> data) async {
+    final coll = _leavePolicies;
+    if (coll == null) return;
+    data['updatedAt'] = FieldValue.serverTimestamp();
+    await coll.doc(id).update(data);
+  }
+
+  Future<void> deleteLeavePolicy(String id) async {
+    final coll = _leavePolicies;
+    if (coll == null) return;
+    await coll.doc(id).delete();
+  }
+
+  Future<void> toggleLeavePolicyActive(String id, bool isActive) async {
+    final coll = _leavePolicies;
+    if (coll == null) return;
+    await coll.doc(id).update({
+      'isActive': isActive,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<QuerySnapshot> get leavePoliciesStream {
+    final coll = _leavePolicies;
+    if (coll == null) return const Stream.empty();
+    return coll.orderBy('createdAt', descending: true).snapshots();
+  }
+
+  Future<List<Map<String, dynamic>>> getLeavePolicies() async {
+    final coll = _leavePolicies;
+    if (coll == null) return [];
+    final snap = await coll.orderBy('createdAt', descending: true).get();
+    return snap.docs
+        .map((d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
+        .toList();
   }
 }

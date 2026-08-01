@@ -36,6 +36,28 @@ Uint8List? _compressImageBytes(Uint8List rawBytes) {
 }
 
 const int _maxProfileImageBytes = 10 * 1024 * 1024;
+const int _maxCompanyStampBytes = 5 * 1024 * 1024;
+
+String? _companyStampFormat(Uint8List bytes) {
+  if (bytes.lengthInBytes >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47 &&
+      bytes[4] == 0x0D &&
+      bytes[5] == 0x0A &&
+      bytes[6] == 0x1A &&
+      bytes[7] == 0x0A) {
+    return 'png';
+  }
+  if (bytes.lengthInBytes >= 3 &&
+      bytes[0] == 0xFF &&
+      bytes[1] == 0xD8 &&
+      bytes[2] == 0xFF) {
+    return 'jpg';
+  }
+  return null;
+}
 
 Uint8List? _decodeProfileDataImage(String value) {
   try {
@@ -61,7 +83,7 @@ class ProfileInlineHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 94,
-      padding: const EdgeInsets.only(left: 44, right: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
@@ -79,8 +101,8 @@ class ProfileInlineHeader extends StatelessWidget {
           Text(
             'my_info'.tr(),
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
               color: Color(0xFF000000),
               fontFamily: 'SF Pro Display',
             ),
@@ -88,10 +110,7 @@ class ProfileInlineHeader extends StatelessWidget {
           const Spacer(),
           NotificationBell(onTap: onNotificationTap),
           const SizedBox(width: 20),
-          const Padding(
-            padding: EdgeInsets.only(left: 14, right: 8),
-            child: UserAvatar(),
-          ),
+          const UserAvatar(),
         ],
       ),
     );
@@ -121,6 +140,9 @@ class _ProfileBodyState extends State<ProfileBody> {
   bool _initialized = false;
   int _profileLoadToken = 0;
   String? _profilePicUrl;
+  String? _companyStampUrl;
+  Uint8List? _newCompanyStampBytes;
+  bool _clearCompanyStamp = false;
 
   @override
   void initState() {
@@ -153,6 +175,8 @@ class _ProfileBodyState extends State<ProfileBody> {
         _isEditing = false;
         _newProfileImageBytes = null;
         _newProfileImagePath = null;
+        _newCompanyStampBytes = null;
+        _clearCompanyStamp = false;
       });
       _loadProfile();
     }
@@ -201,6 +225,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           _addressController.text =
               guestData?['address'] ?? '123 Demo Street, Test City';
           _profilePicUrl = AuthService.profilePicNotifier.value;
+          _companyStampUrl = null;
           _isLoading = false;
         });
       }
@@ -215,6 +240,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         final storedCurrency = profile['currency'];
         final normalizedCurrency = CurrencyUtils.normalize(storedCurrency);
         final profileImage = _profileImageText(profile['profilePic']);
+        final companyStamp = _profileImageText(profile['companyStampUrl']);
         setState(() {
           _businessNameController.text = _profileText(profile['businessName']);
           _companyIdController.text = _profileText(profile['companyId']);
@@ -227,6 +253,9 @@ class _ProfileBodyState extends State<ProfileBody> {
           _contact2Controller.text = _profileText(profile['contact2']);
           _addressController.text = _profileText(profile['address']);
           _profilePicUrl = profileImage;
+          _companyStampUrl = companyStamp;
+          _newCompanyStampBytes = null;
+          _clearCompanyStamp = false;
           AuthService.profilePicNotifier.value = profileImage;
           _isLoading = false;
         });
@@ -247,6 +276,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       } else {
         setState(() {
           _profilePicUrl = AuthService.profilePicNotifier.value;
+          _companyStampUrl = null;
           _isLoading = false;
         });
       }
@@ -325,6 +355,70 @@ class _ProfileBodyState extends State<ProfileBody> {
           message: 'error_selecting_image'.tr(
             namedArgs: {'error': error.toString()},
           ),
+          isError: true,
+        );
+      }
+    }
+  }
+
+  Future<void> _pickCompanyStamp() async {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      FlashySnackBar.show(
+        context,
+        message: 'guest_action_not_allowed'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['png', 'jpg', 'jpeg'],
+      );
+      if (file == null || !mounted) return;
+
+      final filePath = file.path?.trim();
+      final Uint8List bytes;
+      if (filePath != null && filePath.isNotEmpty) {
+        final selectedFile = File(filePath);
+        final size = await selectedFile.length();
+        if (size > _maxCompanyStampBytes) {
+          throw const FileSystemException('Company stamp is larger than 5 MB.');
+        }
+        bytes = await selectedFile.readAsBytes();
+      } else {
+        bytes = await file.readAsBytes();
+      }
+
+      if (bytes.isEmpty) {
+        throw const FileSystemException('Unable to read company stamp.');
+      }
+      if (bytes.lengthInBytes > _maxCompanyStampBytes) {
+        throw const FileSystemException('Company stamp is larger than 5 MB.');
+      }
+      if (_companyStampFormat(bytes) == null ||
+          img.decodeImage(bytes) == null) {
+        throw const FormatException(
+          'Only valid PNG or JPG images are allowed.',
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _newCompanyStampBytes = bytes;
+        _clearCompanyStamp = false;
+      });
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'SelectCompanyStamp');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message:
+              error is FileSystemException && error.message.contains('5 MB')
+              ? 'file_too_large'.tr(namedArgs: {'size': '5MB'})
+              : 'company_stamp_invalid'.tr(),
           isError: true,
         );
       }
@@ -436,11 +530,13 @@ class _ProfileBodyState extends State<ProfileBody> {
     setState(() => _isLoading = true);
 
     Reference? uploadedRef;
+    Reference? uploadedStampRef;
     var profileSaved = false;
 
     try {
       final isGuest = _authService.currentUser?.isAnonymous ?? false;
       String? downloadUrl;
+      String? stampDownloadUrl;
 
       if (!isGuest) {
         if (_newProfileImageBytes != null || _newProfileImagePath != null) {
@@ -508,6 +604,27 @@ class _ProfileBodyState extends State<ProfileBody> {
           }
         }
 
+        if (_newCompanyStampBytes != null) {
+          final stampBytes = _newCompanyStampBytes!;
+          final stampFormat = _companyStampFormat(stampBytes);
+          if (stampFormat == null || stampBytes.isEmpty) {
+            throw const FormatException('Unsupported company stamp format.');
+          }
+          final stampFileName =
+              'company_stamp_${_authService.currentUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.$stampFormat';
+          uploadedStampRef = FirebaseStorage.instance
+              .ref()
+              .child('profile_pics')
+              .child(stampFileName);
+          await uploadedStampRef.putData(
+            stampBytes,
+            SettableMetadata(
+              contentType: stampFormat == 'png' ? 'image/png' : 'image/jpeg',
+            ),
+          );
+          stampDownloadUrl = await uploadedStampRef.getDownloadURL();
+        }
+
         await _firestore.updateUserProfile({
           'businessName': businessName,
           'companyId': companyId,
@@ -517,6 +634,10 @@ class _ProfileBodyState extends State<ProfileBody> {
           'contact2': contact2,
           'address': address,
           if (downloadUrl != null) 'profilePic': downloadUrl,
+          if (stampDownloadUrl != null)
+            'companyStampUrl': stampDownloadUrl
+          else if (_clearCompanyStamp)
+            'companyStampUrl': '',
         });
         profileSaved = true;
 
@@ -544,6 +665,11 @@ class _ProfileBodyState extends State<ProfileBody> {
               context: 'CacheProfileImage',
             );
           }
+        }
+        if (stampDownloadUrl != null || _clearCompanyStamp) {
+          _companyStampUrl = stampDownloadUrl;
+          _newCompanyStampBytes = null;
+          _clearCompanyStamp = false;
         }
       } else {
         if (_newProfileImageBytes != null) {
@@ -583,6 +709,12 @@ class _ProfileBodyState extends State<ProfileBody> {
         if (failedRef != null) {
           try {
             await failedRef.delete();
+          } catch (_) {}
+        }
+        final failedStampRef = uploadedStampRef;
+        if (failedStampRef != null) {
+          try {
+            await failedStampRef.delete();
           } catch (_) {}
         }
       }
@@ -756,6 +888,8 @@ class _ProfileBodyState extends State<ProfileBody> {
                   isAddress: true,
                 ),
               ),
+              const SizedBox(height: 24),
+              _buildCompanyStampField(),
             ],
           ),
         ),
@@ -882,6 +1016,199 @@ class _ProfileBodyState extends State<ProfileBody> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCompanyStampField() {
+    final hasNewStamp = _newCompanyStampBytes != null;
+    final hasSavedStamp =
+        !_clearCompanyStamp &&
+        _companyStampUrl != null &&
+        _companyStampUrl!.trim().isNotEmpty;
+    final hasStamp = hasNewStamp || hasSavedStamp;
+
+    final preview = Container(
+      width: 132,
+      height: 88,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFD8DCE5)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: _buildCompanyStampPreview(),
+    );
+
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          hasStamp
+              ? 'company_stamp_ready'.tr()
+              : 'company_stamp_not_uploaded'.tr(),
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          hasStamp
+              ? 'company_stamp_pdf_note'.tr()
+              : 'company_stamp_fallback_note'.tr(),
+          style: const TextStyle(
+            color: Color(0xFF6B7280),
+            fontSize: 13,
+            height: 1.35,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        if (_isEditing) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _isLoading ? null : _pickCompanyStamp,
+                icon: const Icon(Icons.upload_file_rounded, size: 18),
+                label: Text(
+                  hasStamp
+                      ? 'replace_company_stamp'.tr()
+                      : 'upload_company_stamp'.tr(),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF155ED5),
+                  side: const BorderSide(color: Color(0xFF155ED5)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              if (hasStamp)
+                TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _newCompanyStampBytes = null;
+                            _clearCompanyStamp = true;
+                          });
+                        },
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFDC2626),
+                  ),
+                  child: Text('remove'.tr()),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'company_stamp_signature'.tr(),
+          style: const TextStyle(
+            color: Color(0xFF000000),
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _isEditing
+                ? const Color(0xFFFFFFFF)
+                : const Color(0xFFEEEFF2),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFD8DCE5)),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 520) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [preview, const SizedBox(height: 14), details],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  preview,
+                  const SizedBox(width: 18),
+                  Expanded(child: details),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'company_stamp_format_hint'.tr(),
+          style: const TextStyle(
+            color: Color(0xFF6B7280),
+            fontSize: 12,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompanyStampPreview() {
+    Widget fallback() => const Center(
+      child: Icon(Icons.approval_outlined, size: 34, color: Color(0xFF9CA3AF)),
+    );
+
+    if (_newCompanyStampBytes != null) {
+      return Image.memory(
+        _newCompanyStampBytes!,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    }
+    if (_clearCompanyStamp ||
+        _companyStampUrl == null ||
+        _companyStampUrl!.trim().isEmpty) {
+      return fallback();
+    }
+    final value = _companyStampUrl!.trim();
+    if (value.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: value,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (_, __, ___) => fallback(),
+      );
+    }
+    if (value.startsWith('data:image')) {
+      final bytes = _decodeProfileDataImage(value);
+      return bytes == null
+          ? fallback()
+          : Image.memory(
+              bytes,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => fallback(),
+            );
+    }
+    return Image.file(
+      File(value),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => fallback(),
     );
   }
 

@@ -25,10 +25,11 @@ class AmountText extends StatelessWidget {
       if (abs >= 1e9) return '$symbol${(val / 1e9).toStringAsFixed(1)}B';
       if (abs >= 1e6) return '$symbol${(val / 1e6).toStringAsFixed(1)}M';
       if (abs >= 1e3) return '$symbol${(val / 1e3).toStringAsFixed(1)}K';
+      final hasDecimals = val != val.roundToDouble();
       final formatted = NumberFormat.currency(
         locale: 'en_US',
         symbol: '',
-        decimalDigits: 2,
+        decimalDigits: hasDecimals ? 2 : 0,
       ).format(val);
       return symbol + formatted.trim();
     } catch (_) {

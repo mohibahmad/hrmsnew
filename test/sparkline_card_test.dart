@@ -14,6 +14,36 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
+  test('tooltip amount hides meaningless decimal zeros', () {
+    expect(
+      SparklineCard.formatTooltipAmount(
+        value: 30000,
+        locale: 'en_US',
+        currencySymbol: r'$',
+        maxDecimalDigits: 3,
+      ),
+      r'$30,000',
+    );
+    expect(
+      SparklineCard.formatTooltipAmount(
+        value: 30000.5,
+        locale: 'en_US',
+        currencySymbol: r'$',
+        maxDecimalDigits: 3,
+      ),
+      r'$30,000.5',
+    );
+    expect(
+      SparklineCard.formatTooltipAmount(
+        value: 30000.125,
+        locale: 'en_US',
+        currencySymbol: 'Rs',
+        maxDecimalDigits: 3,
+      ),
+      'Rs 30,000.125',
+    );
+  });
+
   testWidgets('tooltip stays anchored above the touched chart point', (
     tester,
   ) async {

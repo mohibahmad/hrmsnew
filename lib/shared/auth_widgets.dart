@@ -2,6 +2,72 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'app_constants.dart';
 
+const double authHeroTitleLetterSpacing = 2;
+const double authHeroSubtitleLetterSpacing = 1.6;
+const double authHeroTitleHeight = 105;
+const double authHeroSubtitleHeight = 106;
+
+class AuthHeroBanner extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const AuthHeroBanner({
+    super.key,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: authHeroTitleHeight,
+          width: double.infinity,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.topLeft,
+            child: Text(
+              title,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(
+                fontSize: 88,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                fontFamily: 'SF Pro',
+                height: 1,
+                letterSpacing: authHeroTitleLetterSpacing,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: authHeroSubtitleHeight,
+          width: double.infinity,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.topLeft,
+            child: Text(
+              subtitle,
+              maxLines: 2,
+              style: const TextStyle(
+                fontSize: 38,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontFamily: 'SF Pro',
+                height: 1.2,
+                letterSpacing: authHeroSubtitleLetterSpacing,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 void showLanguageModal(BuildContext context) {
   showDialog(
     context: context,
@@ -124,13 +190,11 @@ Widget buildSocialButton({
       style: OutlinedButton.styleFrom(
         backgroundColor: backgroundColor ?? Colors.white,
         foregroundColor: textColor ?? const Color(0xFF000000),
-        disabledForegroundColor:
-            (textColor ?? const Color(0xFF000000)).withValues(alpha: 0.6),
+        disabledForegroundColor: (textColor ?? const Color(0xFF000000))
+            .withValues(alpha: 0.6),
         disabledBackgroundColor: backgroundColor ?? Colors.white,
         side: border ?? BorderSide(color: Colors.grey.shade200),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         elevation: 0,
       ),
       child: Row(
@@ -160,8 +224,9 @@ Widget buildSocialButton({
               fontWeight: FontWeight.w600,
               fontFamily: 'SF Pro Display',
               color: isLoading
-                  ? (textColor ?? const Color(0xFF000000))
-                      .withValues(alpha: 0.6)
+                  ? (textColor ?? const Color(0xFF000000)).withValues(
+                      alpha: 0.6,
+                    )
                   : null,
             ),
           ),

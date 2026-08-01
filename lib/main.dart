@@ -10,11 +10,16 @@ import 'package:window_manager/window_manager.dart';
 
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
 import 'services/auth_service.dart';
+import 'services/biometric_service.dart';
 import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'services/firestore_service.dart';
 import 'services/preferences_service.dart';
+import 'widgets/session_timeout_gate.dart';
+
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   await runZonedGuarded(
@@ -44,8 +49,7 @@ Future<void> main() async {
         );
 
         await DummyData.loadFromPrefs();
-        
-        
+
         await _initializeMacOSWindow();
 
         runApp(
@@ -165,6 +169,7 @@ class HRMSApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _rootNavigatorKey,
       title: 'HRMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'SF Pro Display'),
@@ -172,6 +177,39 @@ class HRMSApp extends StatelessWidget {
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       home: const SplashScreen(),
+      builder: (context, child) {
+        return SessionTimeoutGate(
+          isSessionActive: () =>
+              context.read<AuthService>().currentUser != null,
+          isBiometricAvailable: BiometricService.isAvailable,
+          loadBiometricName: BiometricService.getBiometricName,
+          authenticate: () async {
+            final biometricName = await BiometricService.getBiometricName();
+            return BiometricService.authenticate(
+              localizedReason: 'session_unlock_reason'.tr(
+                namedArgs: {'biometric': biometricName},
+              ),
+            );
+          },
+          onSignInAgain: () async {
+            final authService = context.read<AuthService>();
+            try {
+              await authService.signOut(preserveBiometricLogin: true);
+            } catch (error, stackTrace) {
+              ErrorReporter.report(
+                error,
+                stackTrace,
+                context: 'sessionTimeoutSignOut',
+              );
+            }
+            _rootNavigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          },
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

@@ -12,7 +12,9 @@ import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
+import 'leave_policy_screen.dart';
 import 'package:share_plus/share_plus.dart';
+import '../utils/delete_dialog.dart';
 import '../shared/app_constants.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -408,6 +410,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _showLeavePolicyListDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      builder: (_) => _LeavePolicyListDialog(firestore: _firestore),
+    );
+  }
+
   void _showLanguageModal(BuildContext context) {
     showDialog(
       context: context,
@@ -562,6 +573,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'share_app'.tr(),
                     onTap: _shareApp,
                   ),
+                  _buildActionSettingItem(
+                    'assets/leave_settings.svg',
+                    'leave_policy'.tr(),
+                    'add_policy'.tr(),
+                    onTap: widget.isGuest
+                        ? null
+                        : () => _showLeavePolicyListDialog(),
+                    disabled: widget.isGuest,
+                  ),
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
                     'terms_condition'.tr(),
@@ -640,6 +660,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     VoidCallback? onTap,
     bool disabled = false,
     Color? buttonColor,
+    bool showCheckmark = false,
+    bool preserveIconColors = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -650,15 +672,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Row(
         children: [
-          SvgPicture.asset(
-            iconPath,
-            width: 24,
-            height: 24,
-            colorFilter: ColorFilter.mode(
-              disabled ? const Color(0xFFAAAAAA) : const Color(0xFF000000),
-              BlendMode.srcIn,
+          Opacity(
+            opacity: disabled ? 0.4 : 1,
+            child: SvgPicture.asset(
+              iconPath,
+              width: 24,
+              height: 24,
+              colorFilter: preserveIconColors
+                  ? null
+                  : ColorFilter.mode(
+                      disabled
+                          ? const Color(0xFFAAAAAA)
+                          : const Color(0xFF000000),
+                      BlendMode.srcIn,
+                    ),
             ),
           ),
+          if (showCheckmark) ...[
+            const SizedBox(width: 4),
+            SvgPicture.asset(
+              'assets/tick_icon.svg',
+              width: 16,
+              height: 12,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF22C55E),
+                BlendMode.srcIn,
+              ),
+            ),
+          ],
           const SizedBox(width: 16),
           Expanded(
             child: Text(
@@ -819,6 +860,488 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 1.0,
                     letterSpacing: 0,
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LeavePolicyListDialog extends StatefulWidget {
+  final FirestoreService firestore;
+  const _LeavePolicyListDialog({required this.firestore});
+
+  @override
+  State<_LeavePolicyListDialog> createState() => _LeavePolicyListDialogState();
+}
+
+class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
+  List<Map<String, dynamic>> _policies = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPolicies();
+  }
+
+  void _loadPolicies() {
+    widget.firestore.leavePoliciesStream.listen((snap) {
+      if (!mounted) return;
+      setState(() {
+        _policies = snap.docs
+            .map((d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
+            .toList();
+        _isLoading = false;
+      });
+    });
+  }
+
+  String _buildShareText(Map<String, dynamic> p) {
+    final buf = StringBuffer();
+    buf.writeln(p['policyName'] ?? 'Leave Policy');
+    buf.writeln('');
+    buf.writeln('Leave Type: ${p['leaveType'] ?? '-'}');
+    buf.writeln('Allowed Leaves: ${p['allowedLeaves'] ?? '-'}');
+    buf.writeln('Paid/Unpaid: ${p['paidUnpaid'] ?? '-'}');
+    buf.writeln('Applicable To: ${p['applicableTo'] ?? '-'}');
+    if ((p['startDate'] ?? '').toString().isNotEmpty) {
+      buf.writeln('Start Date: ${p['startDate']}');
+    }
+    if ((p['endDate'] ?? '').toString().isNotEmpty) {
+      buf.writeln('End Date: ${p['endDate']}');
+    }
+    buf.writeln('Carry Forward: ${p['carryForward'] == true ? 'Yes' : 'No'}');
+    if (p['carryForward'] == true && p['carryForwardDays'] != null) {
+      buf.writeln('Max Carry Forward: ${p['carryForwardDays']} days');
+    }
+    buf.writeln('Approval Required: ${p['approvalRequired'] == true ? 'Yes' : 'No'}');
+    if ((p['noticePeriod'] ?? '').toString().isNotEmpty) {
+      buf.writeln('Notice Period: ${p['noticePeriod']}');
+    }
+    if ((p['description'] ?? '').toString().isNotEmpty) {
+      buf.writeln('');
+      buf.writeln(p['description']);
+    }
+    return buf.toString();
+  }
+
+  void _showAddForm() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LeavePolicyDialog(
+        onSave: (data) async {
+          await widget.firestore.addLeavePolicy(data);
+        },
+      ),
+    );
+  }
+
+  void _showEditForm(Map<String, dynamic> policy) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LeavePolicyDialog(
+        existingPolicy: policy,
+        onSave: (data) async {
+          await widget.firestore.updateLeavePolicy(policy['id'], data);
+        },
+      ),
+    );
+  }
+
+  void _viewPolicy(Map<String, dynamic> policy) {
+    showDialog(
+      context: context,
+      builder: (_) => PolicyDetailDialog(policy: policy),
+    );
+  }
+
+  void _sharePolicy(Map<String, dynamic> policy) {
+    SharePlus.instance.share(ShareParams(text: _buildShareText(policy)));
+  }
+
+  Future<void> _toggleActive(Map<String, dynamic> policy) async {
+    final current = policy['isActive'] ?? true;
+    await widget.firestore.toggleLeavePolicyActive(policy['id'], !current);
+  }
+
+  Future<void> _deletePolicy(Map<String, dynamic> policy) async {
+    final confirmed = await DeleteDialog.show(
+      context: context,
+      title: 'Delete Policy',
+      content: 'Are you sure you want to delete "${policy['policyName'] ?? ''}"?',
+    );
+    if (confirmed) {
+      await widget.firestore.deleteLeavePolicy(policy['id']);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 480,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.78,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withValues(alpha: 0.12),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 24, 20, 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEEF2FF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.policy_outlined,
+                      color: Color(0xFF4F46E5),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Leave Policy',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Manage company leave policies',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF64748B),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: _showAddForm,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F46E5),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF4F46E5)
+                                  .withValues(alpha: 0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_rounded,
+                                color: Colors.white, size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Add Policy',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, size: 16),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: _isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(48),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF4F46E5),
+                      ),
+                    )
+                  : _policies.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(48),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF1F5F9),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.policy_outlined,
+                                  color: Color(0xFF94A3B8),
+                                  size: 36,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No policies yet',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[600],
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Create your first leave policy\nto get started',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[400],
+                                  height: 1.4,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _policies.length,
+                          itemBuilder: (context, index) {
+                            final p = _policies[index];
+                            final isActive = p['isActive'] ?? true;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? Colors.white
+                                    : const Color(0xFFFAFBFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isActive
+                                      ? const Color(0xFFE2E8F0)
+                                      : const Color(0xFFF1F5F9),
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black
+                                        .withValues(alpha: 0.03),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          color: isActive
+                                              ? const Color(0xFFEEF2FF)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          Icons.description_outlined,
+                                          color: isActive
+                                              ? const Color(0xFF4F46E5)
+                                              : const Color(0xFF94A3B8),
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              p['policyName'] ?? '',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: isActive
+                                                    ? const Color(0xFF1E293B)
+                                                    : const Color(0xFF94A3B8),
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              '${p['leaveType'] ?? ''}  \u2022  ${p['allowedLeaves'] ?? ''} days/yr  \u2022  ${p['paidUnpaid'] ?? ''}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[500],
+                                                fontFamily: 'SF Pro Display',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isActive
+                                              ? const Color(0xFFDCFCE7)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          isActive ? 'Active' : 'Disabled',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: isActive
+                                                ? const Color(0xFF16A34A)
+                                                : const Color(0xFF94A3B8),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: double.infinity,
+                                    height: 1,
+                                    color: const Color(0xFFF1F5F9),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      _actBtn('View',
+                                          Icons.visibility_outlined,
+                                          () => _viewPolicy(p)),
+                                      _actBtn('Edit', Icons.edit_outlined,
+                                          () => _showEditForm(p)),
+                                      _actBtn('Share', Icons.share_outlined,
+                                          () => _sharePolicy(p)),
+                                      _actBtn(
+                                        isActive ? 'Disable' : 'Enable',
+                                        isActive
+                                            ? Icons.pause_outlined
+                                            : Icons.play_arrow_outlined,
+                                        () => _toggleActive(p),
+                                        color: isActive
+                                            ? const Color(0xFFEA580C)
+                                            : const Color(0xFF16A34A),
+                                      ),
+                                      _actBtn(
+                                        'Delete',
+                                        Icons.delete_outline,
+                                        () => _deletePolicy(p),
+                                        color: const Color(0xFFDC2626),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actBtn(String label, IconData icon, VoidCallback onTap,
+      {Color? color}) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color != null ? color.withValues(alpha: 0.06) : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          margin: const EdgeInsets.only(right: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 14,
+                  color: color ?? const Color(0xFF64748B)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: color ?? const Color(0xFF64748B),
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ],

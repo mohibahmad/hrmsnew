@@ -637,7 +637,11 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
       final position = (doc['position'] ?? '').toString().toLowerCase();
       final query = _searchQuery.trim().toLowerCase();
 
-      final matchesSearch = name.contains(query) || position.contains(query);
+      final email = (doc['email'] ?? '').toString().toLowerCase();
+      final matchesSearch =
+          name.contains(query) ||
+          position.contains(query) ||
+          email.contains(query);
       final matchesFilter = _matchesFilter(position, _selectedFilter);
 
       return matchesSearch && matchesFilter;
@@ -1500,8 +1504,21 @@ class _WorkerProfilePreviewDialogState
           ? (currency.isNotEmpty ? '$currency $salaryAmount' : salaryAmount)
           : '';
       final salary = rawSalary.isNotEmpty
-          ? AmountText.formatCompact(rawSalary)
+          ? AmountText.formatFull(rawSalary)
           : '';
+      Map<String, dynamic> companyProfile = const {};
+      try {
+        companyProfile =
+            await context.read<FirestoreService>().getUserProfile() ?? const {};
+      } catch (_) {}
+      final companyName =
+          (companyProfile['businessName'] ??
+                  companyProfile['companyName'] ??
+                  'HRMS Company')
+              .toString();
+      final companyId =
+          (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
+              .toString();
 
       final bytes = await WorkerProfileService.generateWorkerProfile(
         name: name,
@@ -1533,6 +1550,10 @@ class _WorkerProfilePreviewDialogState
         profileImageUrl: profileImage,
         generatedOnText:
             '${'generated_on'.tr()} ${DateTime.now().toString().substring(0, 10)}',
+        companyName: companyName,
+        companyId: companyId,
+        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
+            .toString(),
       ).timeout(const Duration(seconds: 30));
 
       final safeName = name
@@ -1552,7 +1573,7 @@ class _WorkerProfilePreviewDialogState
         if (saved && mounted) {
           FlashySnackBar.show(
             context,
-            message: 'profile_shared_successfully'.tr(),
+            message: 'profile_downloaded_opened'.tr(),
           );
         }
       } else {

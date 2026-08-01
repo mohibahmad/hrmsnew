@@ -6,7 +6,7 @@ class HolidayCard extends StatelessWidget {
   final String month;
   final String remainingDays;
   final String dayOfWeek;
-  final String holidayName;
+  final List<String> holidayNames;
   final bool isActive;
 
   const HolidayCard({
@@ -15,7 +15,7 @@ class HolidayCard extends StatelessWidget {
     required this.month,
     required this.remainingDays,
     required this.dayOfWeek,
-    required this.holidayName,
+    required this.holidayNames,
     this.isActive = false,
   });
 
@@ -195,7 +195,7 @@ class HolidayCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    holidayName,
+                    holidayNames.join(', '),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

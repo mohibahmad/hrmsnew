@@ -790,9 +790,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   String _formatAttendanceDate(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
+      AttendanceReportService.csvDate(date);
 
   void _appendWorkerAttendanceRows(
     List<List<dynamic>> rows,
@@ -848,12 +846,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ]);
 
     if (snapshot.records.isEmpty) {
-      rows.add(['-', 'No Record', workType, attendanceType, '-']);
+      rows.add(['', 'No Record', workType, attendanceType, '']);
     } else {
       for (final record in snapshot.records) {
         final date = AttendanceReportService.recordDateForRecord(record);
         rows.add([
-          date == null ? '-' : _formatAttendanceDate(date),
+          AttendanceReportService.csvDate(date),
           record['status'] ?? '-',
           record['workType'] ?? workType,
           record['attendanceType'] ?? attendanceType,
@@ -2549,28 +2547,8 @@ class _WorkerAttendancePreviewCardState
       return 0;
     });
 
-    String formatDate(dynamic createdAt) {
-      if (createdAt == null) return 'N/A';
-      if (createdAt is DateTime) {
-        return "${createdAt.year}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.day.toString().padLeft(2, '0')}";
-      }
-      if (createdAt is Timestamp) {
-        final date = createdAt.toDate();
-        return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-      }
-      if (createdAt is String) {
-        try {
-          final date = DateTime.parse(createdAt);
-          return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-        } catch (_) {
-          return createdAt;
-        }
-      }
-      return createdAt.toString();
-    }
-
     for (var att in sortedRecords) {
-      final dateStr = formatDate(
+      final dateStr = AttendanceReportService.csvDate(
         AttendanceReportService.recordDateForRecord(att),
       );
       final status = att['status'] ?? '-';

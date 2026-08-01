@@ -173,13 +173,95 @@ class DashboardChartService {
     return leaveDays;
   }
 
+  /// Combines approved time-off dates with attendance rows marked as Leave.
+  /// A worker/date pair is counted once, preferring the explicit time-off type.
+  static List<Map<String, dynamic>> mergedLeaveDaysForPeriod({
+    required List<Map<String, dynamic>> timeOffRecords,
+    required List<Map<String, dynamic>> attendanceRecords,
+    required String period,
+    DateTime? now,
+  }) {
+    final merged = <String, Map<String, dynamic>>{};
+
+    for (final leave in leaveDaysForPeriod(
+      records: timeOffRecords,
+      period: period,
+      now: now,
+    )) {
+      final date = leave['date'] as DateTime;
+      merged[_leaveIdentity(leave, date)] = leave;
+    }
+
+    for (final attendance in attendanceRecords) {
+      final status = (attendance['status'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      if (status != 'leave') continue;
+
+      final date = TimeOffService.parseDate(
+        attendance['attendanceDate'] ??
+            attendance['date'] ??
+            attendance['createdAt'],
+      );
+      if (date == null || !isDateWithinPeriod(date, period, now: now)) {
+        continue;
+      }
+
+      final type = _attendanceLeaveType(attendance);
+      if (!TimeOffService.paidLeaveTypes.contains(type)) continue;
+
+      final normalized = <String, dynamic>{
+        ...attendance,
+        'status': 'leave',
+        'type': type,
+        'date': date,
+      };
+      merged.putIfAbsent(_leaveIdentity(normalized, date), () => normalized);
+    }
+
+    final result = merged.values.toList();
+    result.sort(
+      (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+    );
+    return result;
+  }
+
+  static String _attendanceLeaveType(Map<String, dynamic> record) {
+    final explicit = TimeOffService.normalizeLeaveType(
+      (record['type'] ?? record['leaveType'] ?? record['action'] ?? '')
+          .toString(),
+    );
+    if (TimeOffService.paidLeaveTypes.contains(explicit)) return explicit;
+
+    final reason = (record['reason'] ?? record['desc'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (reason.contains('sick')) return 'Sick Leave';
+    if (reason.contains('medical')) return 'Medical Leave';
+    if (reason.contains('casual') || reason.contains('vacation')) {
+      return 'Casual Leave';
+    }
+    return 'Annual Leave';
+  }
+
+  static String _leaveIdentity(Map<String, dynamic> record, DateTime date) {
+    final worker =
+        (record['workerId'] ?? record['email'] ?? record['name'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+    return '$worker:${date.year}-${date.month}-${date.day}';
+  }
+
   static bool _sameDay(DateTime first, DateTime second) =>
       first.year == second.year &&
       first.month == second.month &&
       first.day == second.day;
 
   static DateTime? salaryRecordDate(Map<String, dynamic> record) {
-    for (final key in ['payrollDate', 'paymentDate', 'paidAt', 'createdAt']) {
+    for (final key in ['paidAt', 'paymentDate', 'payrollDate', 'createdAt']) {
       final parsed = PayrollService.payrollRecordDate({'date': record[key]});
       if (parsed != null) return parsed;
     }
@@ -246,7 +328,7 @@ class DashboardChartService {
       records: salaryRecords,
       valueOf: (record) => ((record['netSalary'] ?? 0) as num).toDouble(),
       period: period,
-      dateOf: PayrollService.payrollRecordDate,
+      dateOf: salaryRecordDate,
       now: now,
       placeUndatedInCurrentPeriod: true,
     );

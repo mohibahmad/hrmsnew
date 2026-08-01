@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import '../utils/file_opener.dart';
@@ -6,6 +10,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 class InvoiceService {
+  static const int _maxCompanyStampBytes = 5 * 1024 * 1024;
+  static const Duration _companyStampTimeout = Duration(seconds: 15);
+
   static Future<Uint8List> generatePayrollInvoice({
     required String employeeName,
     required String email,
@@ -26,9 +33,11 @@ class InvoiceService {
     required String netSalary,
 
     String companyName = 'HRMS Company',
-    String companyAddress = 'Human Resource Department',
+    String companyAddress = 'Human Resource Management System',
     String companyEmail = 'hr@company.com',
     String companyPhone = '',
+    String companyId = '',
+    String? companyStampImageUrl,
     String paymentMethod = 'Company Payroll',
     String terms = 'Standard payroll terms apply.',
   }) async {
@@ -64,6 +73,12 @@ class InvoiceService {
     } catch (_) {
       logoImage = null;
     }
+    final companyStampBytes = await _loadCompanyStampBytes(
+      companyStampImageUrl,
+    );
+    final companyStampImage = companyStampBytes == null
+        ? null
+        : pw.MemoryImage(companyStampBytes);
 
     final now = DateTime.now();
 
@@ -92,19 +107,22 @@ class InvoiceService {
               children: [
                 pw.Row(
                   children: [
-                    pw.Container(
-                      width: 28,
-                      height: 28,
-                      decoration: pw.BoxDecoration(
-                        color: appBlue,
-                        borderRadius: const pw.BorderRadius.all(
-                          pw.Radius.circular(6),
-                        ),
-                      ),
-                      padding: const pw.EdgeInsets.all(4),
-                      child: logoImage != null
-                          ? pw.Image(logoImage, fit: pw.BoxFit.contain)
-                          : pw.Center(
+                    logoImage != null
+                        ? pw.SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                          )
+                        : pw.Container(
+                            width: 32,
+                            height: 32,
+                            decoration: pw.BoxDecoration(
+                              color: appBlue,
+                              borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(6),
+                              ),
+                            ),
+                            child: pw.Center(
                               child: pw.Text(
                                 'H',
                                 style: pw.TextStyle(
@@ -114,7 +132,7 @@ class InvoiceService {
                                 ),
                               ),
                             ),
-                    ),
+                          ),
                     pw.SizedBox(width: 12),
                     pw.Text(
                       'HRMS',
@@ -161,7 +179,9 @@ class InvoiceService {
                     lines: [
                       companyName,
                       companyAddress,
+                      if (companyEmail.trim().isNotEmpty) companyEmail,
                       if (companyPhone.trim().isNotEmpty) companyPhone,
+                      if (companyId.trim().isNotEmpty) 'Company ID: $companyId',
                     ],
                     textColor: textColor,
                   ),
@@ -264,8 +284,16 @@ class InvoiceService {
                         ),
                       ),
                       pw.SizedBox(height: 8),
-                      _smallInfoLine('Payment Method', paymentMethod, textColor),
-                      _smallInfoLine('Contract Salary', _money(salary), textColor),
+                      _smallInfoLine(
+                        'Payment Method',
+                        paymentMethod,
+                        textColor,
+                      ),
+                      _smallInfoLine(
+                        'Contract Salary',
+                        _money(salary),
+                        textColor,
+                      ),
                       _smallInfoLine(
                         'Working Days',
                         '$daysWorked / $totalWorkDays',
@@ -308,8 +336,7 @@ class InvoiceService {
                           vertical: 7,
                         ),
                         child: pw.Row(
-                          mainAxisAlignment:
-                              pw.MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                           children: [
                             pw.Text(
                               'Net Salary',
@@ -330,6 +357,17 @@ class InvoiceService {
                   ),
                 ),
               ],
+            ),
+            pw.SizedBox(height: 20),
+            pw.Align(
+              alignment: pw.Alignment.centerRight,
+              child: _companyAuthorization(
+                companyName: companyName,
+                companyId: companyId,
+                stampImage: companyStampImage,
+                color: appBlue,
+                mutedColor: mutedText,
+              ),
             ),
           ];
         },
@@ -419,7 +457,11 @@ class InvoiceService {
             flex: 5,
             child: pw.Text(
               'Description',
-              style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold),
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                color: white,
+                fontWeight: pw.FontWeight.bold,
+              ),
             ),
           ),
           pw.Expanded(
@@ -428,7 +470,11 @@ class InvoiceService {
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
                 'Rate',
-                style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 8.5,
+                  color: white,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -438,7 +484,11 @@ class InvoiceService {
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
                 'Qty',
-                style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 8.5,
+                  color: white,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -448,7 +498,11 @@ class InvoiceService {
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
                 'Total',
-                style: pw.TextStyle(fontSize: 8.5, color: white, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontSize: 8.5,
+                  color: white,
+                  fontWeight: pw.FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -639,7 +693,188 @@ class InvoiceService {
     }
   }
 
-  static Future<void> shareInvoice(Uint8List bytes, String fileName) async {
+  static pw.Widget _companyAuthorization({
+    required String companyName,
+    required String companyId,
+    pw.MemoryImage? stampImage,
+    required PdfColor color,
+    required PdfColor mutedColor,
+  }) {
+    final cleanName = companyName.trim().isEmpty
+        ? 'HRMS Company'
+        : companyName.trim();
+    final initials = cleanName
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .take(3)
+        .map((word) => word.substring(0, 1).toUpperCase())
+        .join();
+
+    return pw.SizedBox(
+      width: 180,
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
+        children: [
+          if (stampImage != null)
+            pw.Container(
+              width: 66,
+              height: 54,
+              alignment: pw.Alignment.center,
+              child: pw.Image(stampImage, fit: pw.BoxFit.contain),
+            )
+          else
+            pw.Container(
+              width: 54,
+              height: 54,
+              decoration: pw.BoxDecoration(
+                shape: pw.BoxShape.circle,
+                border: pw.Border.all(color: color, width: 1.5),
+              ),
+              child: pw.Center(
+                child: pw.Column(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Text(
+                      initials.isEmpty ? 'HRMS' : initials,
+                      style: pw.TextStyle(
+                        color: color,
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      'APPROVED',
+                      style: pw.TextStyle(color: color, fontSize: 5),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          pw.SizedBox(width: 10),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  cleanName,
+                  style: pw.TextStyle(
+                    color: color,
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Container(height: 0.7, color: color),
+                pw.SizedBox(height: 3),
+                pw.Text(
+                  'Authorized Signatory',
+                  style: pw.TextStyle(color: mutedColor, fontSize: 6),
+                ),
+                if (companyId.trim().isNotEmpty)
+                  pw.Text(
+                    'Company ID: ${companyId.trim()}',
+                    style: pw.TextStyle(color: mutedColor, fontSize: 6),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<Uint8List?> _loadCompanyStampBytes(String? source) async {
+    final value = source?.trim() ?? '';
+    if (value.isEmpty) return null;
+
+    Uint8List? bytes;
+    try {
+      if (value.startsWith('data:image/')) {
+        final separator = value.indexOf(',');
+        if (separator <= 5) return null;
+        final metadata = value.substring(5, separator).toLowerCase();
+        if (!metadata.startsWith('image/') || !metadata.contains(';base64')) {
+          return null;
+        }
+        final encoded = value
+            .substring(separator + 1)
+            .replaceAll(RegExp(r'\s+'), '');
+        if (encoded.isEmpty ||
+            encoded.length > ((_maxCompanyStampBytes * 4) ~/ 3) + 16) {
+          return null;
+        }
+        bytes = base64Decode(encoded);
+      } else {
+        final uri = Uri.tryParse(value);
+        if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+          bytes = await _downloadCompanyStamp(uri);
+        } else if (uri != null && uri.scheme == 'file') {
+          bytes = await _readCompanyStampFile(File.fromUri(uri));
+        } else {
+          bytes = await _readCompanyStampFile(File(value));
+          if (bytes == null) {
+            final data = await rootBundle
+                .load(value)
+                .timeout(_companyStampTimeout);
+            bytes = data.buffer.asUint8List(
+              data.offsetInBytes,
+              data.lengthInBytes,
+            );
+          }
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    if (bytes == null ||
+        bytes.isEmpty ||
+        bytes.lengthInBytes > _maxCompanyStampBytes) {
+      return null;
+    }
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return null;
+    return Uint8List.fromList(img.encodePng(decoded));
+  }
+
+  static Future<Uint8List?> _downloadCompanyStamp(Uri uri) async {
+    final client = HttpClient()..connectionTimeout = _companyStampTimeout;
+    try {
+      final request = await client.getUrl(uri).timeout(_companyStampTimeout);
+      request.followRedirects = true;
+      request.maxRedirects = 5;
+      final response = await request.close().timeout(_companyStampTimeout);
+      if (response.statusCode != HttpStatus.ok) return null;
+      final contentType = response.headers.contentType?.mimeType.toLowerCase();
+      if (contentType != null && !contentType.startsWith('image/')) return null;
+      if (response.contentLength > _maxCompanyStampBytes) return null;
+
+      final builder = BytesBuilder(copy: false);
+      var total = 0;
+      await for (final chunk in response.timeout(_companyStampTimeout)) {
+        total += chunk.length;
+        if (total > _maxCompanyStampBytes) return null;
+        builder.add(chunk);
+      }
+      return builder.takeBytes();
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  static Future<Uint8List?> _readCompanyStampFile(File file) async {
+    try {
+      if (!await file.exists().timeout(_companyStampTimeout)) return null;
+      final length = await file.length().timeout(_companyStampTimeout);
+      if (length <= 0 || length > _maxCompanyStampBytes) return null;
+      return await file.readAsBytes().timeout(_companyStampTimeout);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> shareInvoice(Uint8List bytes, String fileName) async {
     final result = await FilePicker.saveFile(
       dialogTitle: 'Save Payroll Invoice',
       fileName: fileName,
@@ -647,8 +882,14 @@ class InvoiceService {
       allowedExtensions: ['pdf'],
       bytes: bytes,
     );
-    if (result != null) {
-      await FileOpener.open(result);
+    if (result == null || result.trim().isEmpty) return false;
+
+    var outputPath = result.trim();
+    if (!outputPath.toLowerCase().endsWith('.pdf')) {
+      outputPath = '$outputPath.pdf';
     }
+    await File(outputPath).writeAsBytes(bytes, flush: true);
+    await FileOpener.open(outputPath);
+    return true;
   }
 }

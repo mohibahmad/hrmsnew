@@ -174,15 +174,34 @@ class PayrollService {
     return _hasValue(primary) ? primary : fallback;
   }
 
-  static String _salaryDisplayOrEmpty(Map<String, dynamic> data) {
+  static String? _companyCurrencyCode(String? companyCurrency) {
+    final value = companyCurrency?.trim() ?? '';
+    return value.isEmpty ? null : CurrencyUtils.normalize(value);
+  }
+
+  static String formatAmountInCurrency(dynamic value, String currency) {
+    final rawValue = (value ?? '').toString().trim();
+    if (rawValue.isEmpty) return '';
+    final symbol = getCurrencySymbol(CurrencyUtils.normalize(currency));
+    return '$symbol ${formatFullNumber(extractSalary(rawValue))}';
+  }
+
+  static String _salaryDisplayOrEmpty(
+    Map<String, dynamic> data, {
+    String? companyCurrency,
+  }) {
+    final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
     if (salaryAmount.isNotEmpty) {
-      final currency = (data['currency'] ?? 'USD').toString();
+      final currency =
+          companyCurrencyCode ?? (data['currency'] ?? 'USD').toString();
       final symbol = getCurrencySymbol(currency);
       return symbol.isEmpty ? salaryAmount : '$symbol $salaryAmount';
     }
 
-    return (data['salary'] ?? '').toString().trim();
+    final salary = (data['salary'] ?? '').toString().trim();
+    if (salary.isEmpty || companyCurrencyCode == null) return salary;
+    return formatAmountInCurrency(salary, companyCurrencyCode);
   }
 
   static DateTime _recordSortDate(Map<String, dynamic> record) {
@@ -228,7 +247,8 @@ class PayrollService {
     // Name matching is only allowed for legacy records that contain neither
     // workerId nor email, and only when that name is unique in the active
     // roster. This prevents two same-name workers sharing one payroll record.
-    if (recordWorkerId.isNotEmpty || recordEmail.isNotEmpty) {
+    if ((workerId.isNotEmpty && recordWorkerId.isNotEmpty) ||
+        recordEmail.isNotEmpty) {
       return false;
     }
 
@@ -255,8 +275,10 @@ class PayrollService {
     List<Map<String, dynamic>> rawPayrollDocs, {
     DateTime? month,
     bool allowUndatedRecords = false,
+    String? companyCurrency,
   }) {
     final targetMonth = month ?? DateTime.now();
+    final companyCurrencyCode = _companyCurrencyCode(companyCurrency);
     final activeWorkers = workersList
         .where(isWorkerEligibleForPayroll)
         .map(Map<String, dynamic>.from)
@@ -297,9 +319,30 @@ class PayrollService {
           ? ''
           : '${identity}_${payrollPeriodLabel(targetMonth)}'.toLowerCase();
 
-      final matchingRecords = monthlyPayrollDocs.where((record) {
-        return _recordMatchesWorker(record, worker, activeWorkers);
-      }).toList();
+      final canonicalRecord = canonicalPayrollKey.isEmpty
+          ? null
+          : rawPayrollDocs.cast<Map<String, dynamic>?>().firstWhere(
+              (record) =>
+                  (record?['payrollKey'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase() ==
+                  canonicalPayrollKey,
+              orElse: () => null,
+            );
+      final canonicalRecordMovedOut =
+          canonicalRecord != null &&
+          !isRecordInMonth(
+            canonicalRecord,
+            targetMonth,
+            allowUndated: allowUndatedRecords,
+          );
+
+      final matchingRecords = canonicalRecordMovedOut
+          ? <Map<String, dynamic>>[]
+          : monthlyPayrollDocs.where((record) {
+              return _recordMatchesWorker(record, worker, activeWorkers);
+            }).toList();
 
       matchingRecords.sort((a, b) {
         final aKey = (a['payrollKey'] ?? '').toString().trim().toLowerCase();
@@ -325,10 +368,11 @@ class PayrollService {
           worker['salaryAmount'],
           payrollRecord['salaryAmount'],
         );
-        final currency = _preferNonEmpty(
-          worker['currency'],
-          payrollRecord['currency'],
-        );
+        final currency =
+            companyCurrencyCode ??
+            CurrencyUtils.normalize(
+              _preferNonEmpty(worker['currency'], payrollRecord['currency']),
+            );
         final salaryType = _preferNonEmpty(
           worker['salaryType'],
           payrollRecord['salaryType'],
@@ -339,13 +383,26 @@ class PayrollService {
         );
         final phone = _preferNonEmpty(worker['phone'], payrollRecord['phone']);
 
-        final currentSalary = _salaryDisplayOrEmpty(worker);
+        final currentSalary = _salaryDisplayOrEmpty(
+          worker,
+          companyCurrency: companyCurrencyCode,
+        );
         final historicalSalary = (payrollRecord['salary'] ?? '')
             .toString()
             .trim();
         final mergedSalary = currentSalary.isNotEmpty
             ? currentSalary
-            : historicalSalary;
+            : companyCurrencyCode == null || historicalSalary.isEmpty
+            ? historicalSalary
+            : formatAmountInCurrency(historicalSalary, companyCurrencyCode);
+        final historicalNetSalary = _preferNonEmpty(
+          payrollRecord['netSalary'],
+          payrollRecord['netSalaryFormatted'],
+        ).toString().trim();
+        final mergedNetSalary =
+            companyCurrencyCode == null || historicalNetSalary.isEmpty
+            ? historicalNetSalary
+            : formatAmountInCurrency(historicalNetSalary, companyCurrencyCode);
         // Status only: a paid record is still fully editable and saveable.
         final paid = isPayrollRecordPaid(payrollRecord);
 
@@ -361,14 +418,25 @@ class PayrollService {
           'currency': currency,
           'salaryType': salaryType,
           if (mergedSalary.isNotEmpty) 'salary': mergedSalary,
+          if (mergedNetSalary.isNotEmpty) ...{
+            'netSalary': mergedNetSalary,
+            'netSalaryFormatted': mergedNetSalary,
+            'salaryAfterDeduction': mergedNetSalary,
+          },
           'profileImage': profileImage,
           'phone': phone ?? '',
         });
       } else {
-        final salary = _salaryDisplayOrEmpty(worker);
+        final salary = _salaryDisplayOrEmpty(
+          worker,
+          companyCurrency: companyCurrencyCode,
+        );
+        final currency =
+            companyCurrencyCode ?? CurrencyUtils.normalize(worker['currency']);
 
         combined.add({
           ...worker,
+          'status': worker['status'] ?? 'Active',
           'workerId': workerId,
           'workerStatus': worker['employmentStatus'] ?? worker['status'],
           'hasPayrollRecord': false,
@@ -378,6 +446,7 @@ class PayrollService {
           'absents': '',
           'leaves': '',
           'overtimeAmount': '',
+          'currency': currency,
           'salary': salary,
           'netSalary': '',
         });
@@ -450,6 +519,32 @@ class PayrollService {
       }
     }
     return null;
+  }
+
+  /// The actual date money was paid, independent from the payroll period.
+  /// Older records fall back to their creation date so Today filters continue
+  /// to work after migrating from the legacy schema.
+  static DateTime? payrollPaymentDate(Map<String, dynamic> record) {
+    for (final key in [
+      'paidAt',
+      'paidOn',
+      'paymentDate',
+      'payrollDate',
+      'createdAt',
+    ]) {
+      final parsed = _parseDate(record[key]);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  static bool wasPaidOn(Map<String, dynamic> record, DateTime date) {
+    if (!isPayrollRecordPaid(record)) return false;
+    final paidAt = payrollPaymentDate(record);
+    return paidAt != null &&
+        paidAt.year == date.year &&
+        paidAt.month == date.month &&
+        paidAt.day == date.day;
   }
 
   static DateTime? _parseDate(dynamic value) {
@@ -529,16 +624,19 @@ class PayrollService {
     return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 
-  static String currentSalaryDisplay(Map<String, dynamic> data) {
-    final salaryAmount = (data['salaryAmount'] ?? '').toString().trim();
-    if (salaryAmount.isNotEmpty) {
-      final currency = (data['currency'] ?? 'USD').toString();
-      final symbol = getCurrencySymbol(currency);
-      return symbol.isEmpty ? salaryAmount : '$symbol $salaryAmount';
-    }
-    final salary = (data['salary'] ?? '').toString().trim();
+  static String currentSalaryDisplay(
+    Map<String, dynamic> data, {
+    String? companyCurrency,
+  }) {
+    final salary = _salaryDisplayOrEmpty(
+      data,
+      companyCurrency: companyCurrency,
+    );
     if (salary.isNotEmpty) return salary;
-    return '\$ 0';
+    final currency =
+        _companyCurrencyCode(companyCurrency) ??
+        CurrencyUtils.normalize(data['currency']);
+    return '${getCurrencySymbol(currency)} 0';
   }
 
   static Map<String, int> attendanceCounts(

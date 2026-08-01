@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
@@ -14,10 +13,12 @@ import '../services/firestore_service.dart';
 import '../services/preferences_service.dart';
 import '../services/biometric_service.dart';
 import '../services/error_reporter.dart';
+import '../utils/biometric_enrollment.dart';
 import '../utils/snackbar_utils.dart';
-import '../shared/auth_widgets.dart';
+
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
+import '../shared/auth_widgets.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -41,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _initialized = false;
   bool _biometricAvailable = false;
   bool _hasSavedCredentials = false;
+  bool _autoBiometricTriggered = false;
 
   bool get _anyLoading =>
       _isLoading || _isGoogleLoading || _isGuestLoading || _isBiometricLoading;
@@ -59,14 +61,25 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkBiometricStatus() async {
-    final available = await BiometricService.isAvailable();
-    final email = await PreferencesService.getBiometricEmail();
-    final hasSaved = email != null;
+    var available = false;
+    var hasSaved = false;
+    try {
+      available = await BiometricService.isAvailable();
+      final enabled = await PreferencesService.isBiometricEnabled();
+      final email = await PreferencesService.getBiometricEmail();
+      final password = await PreferencesService.getBiometricPassword();
+      hasSaved = enabled && email != null && password != null;
+    } catch (_) {
+      await PreferencesService.clearBiometricCredentials();
+    }
     if (mounted) {
       setState(() {
         _biometricAvailable = available;
         _hasSavedCredentials = hasSaved;
       });
+      if (_biometricAvailable && _hasSavedCredentials) {
+        _autoTriggerBiometric();
+      }
     }
   }
 
@@ -204,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleLogin({bool authenticatedWithBiometrics = false}) async {
     setState(() {
       _submitted = true;
     });
@@ -254,14 +267,29 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
 
-        // Auto-save credentials like Apple Keychain (no prompt)
-        if (_biometricAvailable) {
-          await PreferencesService.setBiometricCredentials(
-            email: enteredEmail,
-            password: _passwordController.text,
-          );
-          if (mounted) {
-            setState(() => _hasSavedCredentials = true);
+        if (!authenticatedWithBiometrics && _biometricAvailable) {
+          final biometricEnabled =
+              await PreferencesService.isBiometricEnabled();
+          final savedEmail = await PreferencesService.getBiometricEmail();
+          final sameAccount =
+              biometricEnabled &&
+              savedEmail?.trim().toLowerCase() == enteredEmail;
+
+          if (sameAccount) {
+            // Keep the secure credential current if the password was changed.
+            await PreferencesService.setBiometricCredentials(
+              email: enteredEmail,
+              password: _passwordController.text,
+            );
+          } else {
+            await PreferencesService.clearBiometricCredentials();
+            if (mounted) {
+              await offerBiometricLogin(
+                context: context,
+                email: enteredEmail,
+                password: _passwordController.text,
+              );
+            }
           }
         }
 
@@ -356,18 +384,10 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Decode the stored email
-      String decodedEmail;
-      try {
-        decodedEmail = utf8.decode(base64Decode(email));
-      } catch (_) {
-        decodedEmail = email;
-      }
-
       if (mounted) {
-        _emailController.text = decodedEmail;
+        _emailController.text = email;
         _passwordController.text = password;
-        await _handleLogin();
+        await _handleLogin(authenticatedWithBiometrics: true);
       }
     } catch (e) {
       if (mounted) {
@@ -378,6 +398,19 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isBiometricLoading = false);
       }
     }
+  }
+
+  void _autoTriggerBiometric() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          !_autoBiometricTriggered &&
+          _biometricAvailable &&
+          _hasSavedCredentials &&
+          !_anyLoading) {
+        _autoBiometricTriggered = true;
+        _handleBiometricLogin();
+      }
+    });
   }
 
   void _showErrorSnackBar(String message) {
@@ -462,7 +495,7 @@ class _LoginScreenState extends State<LoginScreen> {
         'welcome_back'.tr(),
         style: const TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           color: Colors.black,
           fontFamily: 'SF Pro Display',
           letterSpacing: -0.5,
@@ -572,48 +605,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
 
       const SizedBox(height: 24),
-
-      // Biometric Login Button - like Apple's system password autofill
-      if (_biometricAvailable && _hasSavedCredentials) ...[
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton.icon(
-            onPressed: _anyLoading ? null : _handleBiometricLogin,
-            icon: _isBiometricLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFFFFFFFF),
-                      ),
-                    ),
-                  )
-                : const Icon(Icons.fingerprint, size: 22),
-            label: Text(
-              'login_with_biometric'.tr(),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFFFFFFF),
-                fontFamily: 'SF Pro Display',
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0044C9),
-              foregroundColor: const Color(0xFFFFFFFF),
-              disabledBackgroundColor: const Color(0xFF0044C9).withOpacity(0.6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              elevation: 0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-      ],
 
       SizedBox(
         width: double.infinity,
@@ -770,49 +761,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           clipBehavior: Clip.hardEdge,
                           children: [
                             Positioned(
-                              top: 40,
-                              left: 80,
+                              top: 50,
+                              left: 90,
                               right: 40,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  SizedBox(
-                                    height: 78,
-                                    width: double.infinity,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topLeft,
-                                      child: Text(
-                                        'welcome_to_hrms'.tr(),
-                                        maxLines: 1,
-                                        style: const TextStyle(
-                                          fontSize: 63,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                          letterSpacing: 3,
-                                        ),
-                                      ),
+                                  Text(
+                                    'welcome_to_hrms'.tr(),
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      fontSize: 58,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro',
+                                      height: 1,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
-                                  SizedBox(
-                                    height: 78,
-                                    width: double.infinity,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topLeft,
-                                      child: Text(
-                                        'welcome_banner_subtitle'.tr(),
-                                        maxLines: 2,
-                                        style: const TextStyle(
-                                          fontSize: 27,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                          height: 1.4,
-                                          letterSpacing: 2.2,
-                                        ),
-                                      ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'welcome_banner_subtitle'.tr(),
+                                    maxLines: 2,
+                                    style: const TextStyle(
+                                      fontSize: 25,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro',
+                                      height: 1.2,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
                                 ],

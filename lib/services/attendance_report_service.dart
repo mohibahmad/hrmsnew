@@ -49,10 +49,10 @@ class AttendanceReportService {
     };
 
     final start = switch (normalizedPeriod) {
-      'Week' => end.subtract(Duration(days: end.weekday - DateTime.monday)),
-      'Month' => DateTime(now.year, now.month, 1),
-      '6 Month' => DateTime(now.year, now.month - 5, 1),
-      'Yearly' => DateTime(now.year, 1, 1),
+      'Week' => end.subtract(const Duration(days: 7)),
+      'Month' => end.subtract(const Duration(days: 30)),
+      '6 Month' => end.subtract(const Duration(days: 180)),
+      'Yearly' => end.subtract(const Duration(days: 365)),
       _ => end,
     };
 
@@ -67,6 +67,14 @@ class AttendanceReportService {
 
   static DateTime? recordDateForRecord(Map<String, dynamic> record) {
     return AppDateUtils.attendanceRecordDate(record);
+  }
+
+  /// ISO dates remain stable when the CSV is opened in spreadsheet apps.
+  static String csvDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   static DateTime? _recordRevisionDate(Map<String, dynamic> record) {

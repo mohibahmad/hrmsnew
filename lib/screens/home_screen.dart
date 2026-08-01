@@ -26,6 +26,7 @@ import 'login_screen.dart';
 import '../services/payroll_service.dart';
 import '../services/dashboard_chart_service.dart';
 import '../services/dummy_data.dart';
+import '../services/error_reporter.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
 import '../widgets/custom_timeframe_dropdown.dart';
@@ -882,12 +883,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _toggleNotifications() {
+    final opening = !_showNotifications;
     setState(() {
-      _showNotifications = !_showNotifications;
-      if (_showNotifications) {
-        _unreadNotifCount = 0;
-      }
+      _showNotifications = opening;
     });
+  }
+
+  Future<void> _markNotificationsSeen() async {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    try {
+      if (isGuest) {
+        for (final notification in DummyData.notifications) {
+          notification['isRead'] = true;
+        }
+        await DummyData.saveToPrefs();
+      } else {
+        await _firestore.markAllNotificationsRead();
+      }
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'MarkNotificationsSeen');
+    }
   }
 
   void _handleNotificationNavigation(String type) {
@@ -1180,6 +1195,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           points: _salaryChartPoints,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF4C84E0),
+                          currencySymbol: CurrencyUtils.symbolFor(
+                            _currencyCode,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1191,6 +1209,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           points: _expenseChartPoints,
                           period: _selectedPeriod,
                           lineColor: const Color(0xFF0EA5E9),
+                          currencySymbol: CurrencyUtils.symbolFor(
+                            _currencyCode,
+                          ),
+                          tooltipDecimalDigits: 3,
                         ),
                       ),
                     ],
@@ -1234,10 +1256,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                     ).size.width;
                     final bool isNarrow = screenWidth < 1150;
-                    final leaveDocs = DashboardChartService.leaveDaysForPeriod(
-                      records: _allTimeoffDocs,
-                      period: _selectedPeriod,
-                    );
+                    final leaveDocs =
+                        DashboardChartService.mergedLeaveDaysForPeriod(
+                          timeOffRecords: _allTimeoffDocs,
+                          attendanceRecords: _allAttendanceDocs
+                              .where(_attendanceBelongsToExistingWorker)
+                              .toList(),
+                          period: _selectedPeriod,
+                        );
                     final filteredAttendanceDocs = _getFilteredAttendanceDocs(
                       _selectedPeriod,
                     );
@@ -1383,26 +1409,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         final groupedHolidays = <Map<String, dynamic>>[];
                         for (final h in activeHolidays) {
-                          final key =
-                              '${h['day']}_${h['month']}_${h['remainingDays']}';
-                          final existing = groupedHolidays.cast<Map<String, dynamic>?>().firstWhere(
-                            (g) =>
-                                '${g!['day']}_${g['month']}_${g['remainingDays']}' ==
-                                key,
-                            orElse: () => null,
-                          );
+                          final key = '${h['day']}_${h['month']}';
+                          final existing = groupedHolidays
+                              .cast<Map<String, dynamic>?>()
+                              .firstWhere(
+                                (g) => '${g!['day']}_${g['month']}' == key,
+                                orElse: () => null,
+                              );
                           if (existing != null) {
-                            final names =
-                                (existing['holidayNames'] ?? existing['name'] ?? '')
-                                    .toString();
+                            final existingNames =
+                                (existing['holidayNamesList'] ?? <String>[])
+                                    as List;
                             final newName = (h['name'] ?? '').toString();
-                            if (!names.contains(newName)) {
-                              existing['holidayNames'] =
-                                  '$names and $newName';
+                            if (!existingNames.contains(newName)) {
+                              existingNames.add(newName);
+                              existing['holidayNamesList'] = existingNames;
                             }
                           } else {
                             final grouped = Map<String, dynamic>.from(h);
-                            grouped['holidayNames'] = h['name'] ?? '';
+                            final newName = (h['name'] ?? '').toString();
+                            grouped['holidayNamesList'] = <String>[newName];
                             groupedHolidays.add(grouped);
                           }
                         }
@@ -1478,10 +1504,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                         month: h['month'] ?? 'May',
                                         remainingDays: h['remainingDays'] ?? '',
                                         dayOfWeek: h['dayOfWeek'] ?? '',
-                                        holidayName:
-                                            h['holidayNames']?.toString() ??
-                                            h['name'] ??
-                                            '',
+                                        holidayNames:
+                                            (h['holidayNamesList']
+                                                as List<String>?) ??
+                                            <String>[
+                                              (h['name'] ?? '').toString(),
+                                            ],
                                         isActive: isUrgent,
                                       ),
                                     );

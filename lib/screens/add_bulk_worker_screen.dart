@@ -23,6 +23,20 @@ import '../utils/worker_identity.dart';
 import '../utils/validators.dart';
 import 'package:provider/provider.dart';
 
+class UploadProgress {
+  final String phase;
+  final int completed;
+  final int total;
+  final String currentFile;
+
+  const UploadProgress({
+    required this.phase,
+    required this.completed,
+    required this.total,
+    required this.currentFile,
+  });
+}
+
 class AddBulkWorkerScreen extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -145,6 +159,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   int _duplicateCount = 0;
 
   String? _lastFileHash;
+
+  Set<String> _cachedEmails = {};
+  Set<String> _cachedNationalIds = {};
 
   ScrollController? _hScrollController;
   StreamSubscription? _workersSubscription;
@@ -356,14 +373,28 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       }).toList();
 
   Future<List<Map<String, dynamic>>> _uploadEmbeddedWorkerMedia(
-    List<Map<String, dynamic>> workers,
-  ) async {
+    List<Map<String, dynamic>> workers, {
+    void Function(int completed, int total, String currentFile)? onProgress,
+  }) async {
     final prepared = workers
         .map((worker) => Map<String, dynamic>.from(worker))
         .toList();
-    final files = <UploadFile>[];
-    final targets = <({int workerIndex, String field})>[];
     const mediaFields = ['profileImage', 'frontId', 'backId', 'cv'];
+    const downloadBatchSize = 10;
+    const uploadBatchSize = 8;
+
+    var totalMedia = 0;
+    for (final worker in workers) {
+      for (final field in mediaFields) {
+        final value = (worker[field] ?? '').toString().trim();
+        if (value.isNotEmpty) totalMedia++;
+      }
+    }
+
+    final embeddedFiles = <UploadFile>[];
+    final embeddedTargets = <({int workerIndex, String field})>[];
+    final remoteItems =
+        <int, ({int workerIndex, String field, String url, String folder, String fallbackName, String fallbackMime})>{};
 
     for (var workerIndex = 0; workerIndex < prepared.length; workerIndex++) {
       final worker = prepared[workerIndex];
@@ -407,14 +438,14 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           }
           final fallbackExtension = switch (mimeType) {
             'application/pdf' => 'pdf',
-            'application/msword' => 'doc',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' =>
-              'docx',
+            'application/msword' || 'application/doc' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            'application/docx' => 'docx',
             'image/png' => 'png',
             'image/webp' => 'webp',
             _ => 'jpg',
           };
-          files.add(
+          embeddedFiles.add(
             UploadFile(
               folder: folder,
               fileName: storedName.isNotEmpty
@@ -424,56 +455,138 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
               mimeType: mimeType,
             ),
           );
+          embeddedTargets.add((workerIndex: workerIndex, field: field));
         } else {
-          late final UploadFile remoteFile;
-          try {
-            remoteFile = await UploadService.downloadRemoteFile(
-              url: value,
-              folder: folder,
-              fallbackFileName: storedName.isNotEmpty
-                  ? storedName
-                  : '${field}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
-              fallbackMimeType: field == 'cv'
-                  ? 'application/pdf'
-                  : 'image/jpeg',
-            );
-          } catch (error) {
-            final workerName = (worker['name'] ?? 'Worker').toString();
-            throw StateError(
-              '$workerName — ${_mediaFieldName(field)} link: '
-              '${_readableSaveError(error)}',
-            );
-          }
-          if (!_isSupportedMediaType(field, remoteFile.mimeType)) {
-            final workerName = (worker['name'] ?? 'Worker').toString();
-            throw StateError(
-              '$workerName — ${_mediaFieldName(field)} link: '
-              '${_supportedMediaMessage(field, remoteFile.mimeType)}',
-            );
-          }
-          files.add(remoteFile);
+          final key =
+              workerIndex * mediaFields.length + mediaFields.indexOf(field);
+          remoteItems[key] = (
+            workerIndex: workerIndex,
+            field: field,
+            url: value,
+            folder: folder,
+            fallbackName: storedName.isNotEmpty
+                ? storedName
+                : '${field}_$workerIndex.${field == 'cv' ? 'pdf' : 'jpg'}',
+            fallbackMime: field == 'cv' ? 'application/pdf' : 'image/jpeg',
+          );
         }
-        targets.add((workerIndex: workerIndex, field: field));
       }
     }
 
-    final results = await UploadService.uploadFiles(files: files);
-    final failedIndex = results.indexWhere(
-      (result) => !result.isSuccess || result.url == null,
-    );
-    if (failedIndex != -1) {
-      final target = targets[failedIndex];
-      final workerName = (prepared[target.workerIndex]['name'] ?? 'Worker')
-          .toString();
-      throw StateError(
-        '$workerName — ${_mediaFieldName(target.field)} upload: '
-        '${_readableSaveError(results[failedIndex].error ?? 'bulk_media_upload_failed'.tr())}',
+    var completedCount = 0;
+
+    Future<List<UploadResult>> uploadBatch(
+      List<UploadFile> batchFiles,
+    ) async {
+      if (batchFiles.isEmpty) return [];
+      final batchResults = await UploadService.uploadFiles(
+        files: batchFiles,
+        maxConcurrent: uploadBatchSize,
+        onProgress: (completed, total) {
+          final idx = completed - 1;
+          final name =
+              idx >= 0 && idx < batchFiles.length
+                  ? batchFiles[idx].fileName
+                  : '';
+          onProgress?.call(completedCount + completed, totalMedia, name);
+        },
       );
+      final failed = batchResults.indexWhere(
+        (r) => !r.isSuccess || r.url == null,
+      );
+      if (failed != -1) {
+        throw StateError(
+          '${batchFiles[failed].fileName} upload: '
+          '${_readableSaveError(batchResults[failed].error ?? 'bulk_media_upload_failed'.tr())}',
+        );
+      }
+      completedCount += batchFiles.length;
+      return batchResults;
     }
-    for (var i = 0; i < results.length; i++) {
-      final target = targets[i];
-      prepared[target.workerIndex][target.field] = results[i].url;
+
+    Future<List<UploadFile>> downloadBatchRemote(List<int> keys) async {
+      final futures = keys.map((k) {
+        final item = remoteItems[k]!;
+        return UploadService.downloadRemoteFile(
+          url: item.url,
+          folder: item.folder,
+          fallbackFileName: item.fallbackName,
+          fallbackMimeType: item.fallbackMime,
+        );
+      }).toList();
+      return Future.wait(futures);
     }
+
+    if (embeddedFiles.isNotEmpty) {
+      onProgress?.call(0, totalMedia, 'uploading_embedded');
+      final embedResults = await uploadBatch(embeddedFiles);
+      for (var i = 0; i < embedResults.length; i++) {
+        final t = embeddedTargets[i];
+        prepared[t.workerIndex][t.field] = embedResults[i].url;
+      }
+    }
+
+    final remoteKeys = remoteItems.keys.toList();
+    final totalBatches = (remoteKeys.length / downloadBatchSize).ceil();
+
+    if (totalBatches > 0) {
+      var nextDownload = downloadBatchRemote(
+        remoteKeys.sublist(0, downloadBatchSize.clamp(0, remoteKeys.length)),
+      );
+
+      for (var b = 0; b < totalBatches; b++) {
+        final currentDownload = nextDownload;
+
+        if (b + 1 < totalBatches) {
+          final start = (b + 1) * downloadBatchSize;
+          final end = (start + downloadBatchSize).clamp(0, remoteKeys.length);
+          nextDownload = downloadBatchRemote(remoteKeys.sublist(start, end));
+        }
+
+        final downloaded = await currentDownload;
+
+        final batchKeys = remoteKeys.sublist(
+          b * downloadBatchSize,
+          (b * downloadBatchSize + downloaded.length).clamp(
+            0,
+            remoteKeys.length,
+          ),
+        );
+
+        for (var j = 0; j < downloaded.length; j++) {
+          final key = batchKeys[j];
+          final item = remoteItems[key]!;
+          if (!_isSupportedMediaType(item.field, downloaded[j].mimeType)) {
+            final workerName =
+                (prepared[item.workerIndex]['name'] ?? 'Worker').toString();
+            throw StateError(
+              '$workerName — ${_mediaFieldName(item.field)} link: '
+              '${_supportedMediaMessage(item.field, downloaded[j].mimeType)}',
+            );
+          }
+        }
+
+        if (b + 1 < totalBatches) {
+          final uploadFuture = uploadBatch(downloaded);
+          final downloadFuture = nextDownload;
+          final results = await Future.wait([uploadFuture, downloadFuture]);
+          final batchResults = results[0] as List<UploadResult>;
+          for (var j = 0; j < batchResults.length; j++) {
+            final key = batchKeys[j];
+            final item = remoteItems[key]!;
+            prepared[item.workerIndex][item.field] = batchResults[j].url;
+          }
+        } else {
+          final batchResults = await uploadBatch(downloaded);
+          for (var j = 0; j < batchResults.length; j++) {
+            final key = batchKeys[j];
+            final item = remoteItems[key]!;
+            prepared[item.workerIndex][item.field] = batchResults[j].url;
+          }
+        }
+      }
+    }
+
     return prepared;
   }
 
@@ -488,8 +601,15 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   bool _isSupportedMediaType(String field, String mimeType) {
-    final normalized = mimeType.toLowerCase().split(';').first.trim();
-    const supportedImages = {'image/jpeg', 'image/jpg', 'image/png'};
+    final raw = mimeType.toLowerCase().split(';').first.trim();
+    final normalized = switch (raw) {
+      'image/jpg' => 'image/jpeg',
+      'application/doc' => 'application/msword',
+      'application/docx' =>
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      _ => raw,
+    };
+    const supportedImages = {'image/jpeg', 'image/png'};
     if (field != 'cv') return supportedImages.contains(normalized);
     return supportedImages.contains(normalized) ||
         normalized == 'application/pdf' ||
@@ -587,7 +707,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         'Robert Wilson,5553691479,robert@gmail.com,James Wilson,37405-1122334-8,'
         'None,1980-09-05,Male,147 Elm Street Seattle,Married,'
         'HR Director,Full-Time,On-Site,Senior,Master\'s,'
-        'Annual,USD,110000,20,1/10/2025,'
+        'Monthly,USD,110000,20,1/10/2025,'
         'https://i.pravatar.cc/150?u=robert,https://picsum.photos/seed/robert_front/400/300,'
         'https://picsum.photos/seed/robert_back/400/300,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
 
@@ -863,7 +983,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final salaryType = workerData['salaryType']?.toString().trim() ?? '';
     if (salaryType.isNotEmpty) {
       final normalized = salaryType.toLowerCase();
-      const valid = {'monthly', 'hourly', 'contract', 'annual'};
+      const valid = {'monthly', 'hourly', 'contract'};
       if (!valid.contains(normalized)) {
         fieldErrors['salaryType'] = 'validation_invalid_salary_type'.tr();
       } else {
@@ -985,7 +1105,11 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }
 
   Future<({Set<String> emails, Set<String> nationalIds})>
-      _loadExistingIdentitySets() async {
+  _loadExistingIdentitySets() async {
+    if (_cachedEmails.isNotEmpty || _cachedNationalIds.isNotEmpty) {
+      return (emails: _cachedEmails, nationalIds: _cachedNationalIds);
+    }
+
     final bool isGuest = _authService.currentUser?.isAnonymous ?? false;
     final emails = <String>{};
     final nationalIds = <String>{};
@@ -1007,6 +1131,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         if (n.isNotEmpty) nationalIds.add(n);
       }
     }
+
+    _cachedEmails = emails;
+    _cachedNationalIds = nationalIds;
 
     return (emails: emails, nationalIds: nationalIds);
   }
@@ -2489,23 +2616,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                       } else {
                                         final isDuplicate =
                                             existingEmails.contains(
-                                                  normalizedEmail,
-                                                ) ||
-                                                _validWorkers
-                                                    .asMap()
-                                                    .entries
-                                                    .any((entry) {
-                                                      return entry.key !=
-                                                              workerIndex &&
-                                                          WorkerIdentity
-                                                                  .normalizeEmail(
-                                                                    entry.value[
-                                                                            'email']
-                                                                        ?.toString() ??
-                                                                        '',
-                                                                  ) ==
-                                                              normalizedEmail;
-                                                    });
+                                              normalizedEmail,
+                                            ) ||
+                                            _validWorkers.asMap().entries.any((
+                                              entry,
+                                            ) {
+                                              return entry.key != workerIndex &&
+                                                  WorkerIdentity.normalizeEmail(
+                                                        entry.value['email']
+                                                                ?.toString() ??
+                                                            '',
+                                                      ) ==
+                                                      normalizedEmail;
+                                            });
                                         if (isDuplicate) {
                                           setDialogState(() {
                                             dialogError =
@@ -2526,23 +2649,19 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                           );
                                       final isDuplicate =
                                           existingNationalIds.contains(
-                                                normalizedId,
-                                              ) ||
-                                              _validWorkers
-                                                  .asMap()
-                                                  .entries
-                                                  .any((entry) {
-                                                    return entry.key !=
-                                                            workerIndex &&
-                                                        WorkerIdentity
-                                                                .normalizeNationalId(
-                                                                  entry.value[
-                                                                          'nationalId']
-                                                                      ?.toString() ??
-                                                                      '',
-                                                                ) ==
-                                                            normalizedId;
-                                                  });
+                                            normalizedId,
+                                          ) ||
+                                          _validWorkers.asMap().entries.any((
+                                            entry,
+                                          ) {
+                                            return entry.key != workerIndex &&
+                                                WorkerIdentity.normalizeNationalId(
+                                                      entry.value['nationalId']
+                                                              ?.toString() ??
+                                                          '',
+                                                    ) ==
+                                                    normalizedId;
+                                          });
                                       if (isDuplicate) {
                                         setDialogState(() {
                                           dialogError =
@@ -2628,9 +2747,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                                   .tr();
                                         });
                                       } else {
-                                        Navigator.of(ctx).pop(
-                                          normalizedEducation,
-                                        );
+                                        Navigator.of(
+                                          ctx,
+                                        ).pop(normalizedEducation);
                                       }
                                     } else if (fieldKey == 'type1') {
                                       final normalized = val.toLowerCase();
@@ -2689,7 +2808,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                         'monthly',
                                         'hourly',
                                         'contract',
-                                        'annual',
                                       };
                                       if (normalized.isEmpty) {
                                         setDialogState(() {

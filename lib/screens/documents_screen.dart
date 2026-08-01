@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
-import 'dart:io' as io;
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -439,6 +438,18 @@ class _EditDocumentsPage extends StatefulWidget {
 }
 
 class _EditDocumentsPageState extends State<_EditDocumentsPage> {
+  static const List<String> _cvAllowedExtensions = [
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'bmp',
+    'pdf',
+    'doc',
+    'docx',
+  ];
+
   bool _isUploading = false;
   Uint8List? _frontIdBytes;
   String? _frontIdName;
@@ -551,8 +562,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
     try {
       final result = await FilePicker.pickFiles(
         type: field == 'cv' ? FileType.custom : FileType.image,
-        allowedExtensions: field == 'cv' ? ['pdf', 'doc', 'docx'] : null,
-        withData: true,
+        allowedExtensions: field == 'cv' ? _cvAllowedExtensions : null,
       );
       if (result == null || result.files.isEmpty) return;
 
@@ -568,24 +578,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
         return;
       }
 
-      Uint8List? bytes = file.bytes;
-      if (bytes == null && file.path != null) {
-        final selectedFile = io.File(file.path!);
-        final fileLength = await selectedFile.length();
-        if (fileLength > UploadService.maxFileBytes) {
-          if (mounted) {
-            FlashySnackBar.show(
-              context,
-              message: 'file_too_large'.tr(namedArgs: {'size': '10MB'}),
-              isError: true,
-            );
-          }
-          return;
-        }
-        bytes = await selectedFile.readAsBytes();
-      }
+      final bytes = await file.readAsBytes();
 
-      if (bytes == null || bytes.isEmpty) {
+      if (bytes.isEmpty) {
         if (mounted) {
           FlashySnackBar.show(
             context,
@@ -953,6 +948,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                               'assets/edit_icon.svg',
                                               height: 14,
                                               width: 14,
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Colors.white,
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -1016,6 +1016,11 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                               'assets/edit_icon.svg',
                                               height: 14,
                                               width: 14,
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Colors.white,
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -1089,6 +1094,10 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
                                           'assets/edit_icon.svg',
                                           height: 14,
                                           width: 14,
+                                          colorFilter: const ColorFilter.mode(
+                                            Colors.white,
+                                            BlendMode.srcIn,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -1340,35 +1349,68 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => _pickFile('cv'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF000000),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'upload'.tr(),
-                    style: TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      fontFamily: 'SF Pro Display',
-                    ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => _pickFile('cv'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
                   ),
-                  const SizedBox(width: 8),
-                  SvgPicture.asset(
-                    'assets/Upload_profile.svg',
-                    height: 18,
-                    width: 18,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF000000),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'upload'.tr(),
+                        style: TextStyle(
+                          color: Color(0xFFFFFFFF),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SvgPicture.asset(
+                        'assets/Upload_profile.svg',
+                        height: 18,
+                        width: 18,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'upload_cv_hint'.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF4B5563),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1420,9 +1462,9 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFF000000),
+          color: const Color(0xFFF8FAFF),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.grey.shade800, width: 1),
+          border: Border.all(color: const Color(0xFFDCE4F2), width: 1),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -1435,7 +1477,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
               child: Container(
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A),
+                  color: const Color(0xFFF8FAFF),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: isImage
@@ -1511,7 +1553,7 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 }
 
 String _cleanDocumentFileName(String rawName) {
-  if (rawName.trim().isEmpty) return 'Document'.tr();
+  if (rawName.trim().isEmpty) return 'document'.tr();
   String name = rawName.split('?').first;
   try {
     name = Uri.decodeComponent(name);
@@ -1520,7 +1562,7 @@ String _cleanDocumentFileName(String rawName) {
     name = name.split('/').last;
   }
   name = name.replaceFirst(RegExp(r'^\d+_'), '');
-  return name.trim().isNotEmpty ? name.trim() : 'Document'.tr();
+  return name.trim().isNotEmpty ? name.trim() : 'document'.tr();
 }
 
 class _FullScreenPdfPreview extends StatefulWidget {

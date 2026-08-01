@@ -9,7 +9,6 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
-import '../widgets/amount_text.dart';
 
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
@@ -222,6 +221,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     } else if (amount.abs() >= 1e3) {
       return '$symbol${(amount / 1e3).toStringAsFixed(1)}K';
     }
+    try {
+      return NumberFormat.currency(
+        locale: context.locale.toString(),
+        symbol: symbol,
+        decimalDigits: 2,
+      ).format(amount);
+    } catch (_) {
+      return NumberFormat.currency(
+        locale: 'en_US',
+        symbol: symbol,
+        decimalDigits: 2,
+      ).format(amount);
+    }
+  }
+
+  String _formatFullCurrency(double amount) {
+    final symbol = '${CurrencyUtils.symbolFor(_currencyCode)} ';
     try {
       return NumberFormat.currency(
         locale: context.locale.toString(),
@@ -1716,8 +1732,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
             Expanded(
               flex: 2,
-              child: AmountText(
-                _formatCurrency(amount),
+              child: Text(
+                _isPayrollExpense(doc)
+                    ? _formatFullCurrency(amount)
+                    : _formatCurrency(amount),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,

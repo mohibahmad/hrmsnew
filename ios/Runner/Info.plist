@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID for secure login and to unlock your HRMS session.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -44,7 +46,8 @@
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
 				</dict>
-</array>
+			</array>
+		</dict>
 	</dict>
 	<key>GIDClientID</key>
 	<string>343295414565-vr2noki0jr0fujntddpf8p8b5fa12p52.apps.googleusercontent.com</string>

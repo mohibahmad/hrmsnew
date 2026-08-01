@@ -167,13 +167,17 @@ class UploadService {
     required List<UploadFile> files,
     void Function(int completed, int total)? onProgress,
     CancellationToken? cancelToken,
+    int maxConcurrent = 8,
   }) async {
     final total = files.length;
     if (total == 0) return [];
 
     var completed = 0;
+    final placeholder = UploadFile(folder: '', fileName: '', bytes: Uint8List(0), mimeType: 'application/octet-stream');
+    final results = List<UploadResult>.filled(total, UploadResult.cancelled(file: placeholder));
 
-    Future<UploadResult> uploadFile(UploadFile file) async {
+    Future<void> uploadSingle(int index) async {
+      final file = files[index];
       UploadResult result;
 
       if (cancelToken?.isCancelled == true) {
@@ -194,12 +198,21 @@ class UploadService {
         }
       }
 
+      results[index] = result;
       completed++;
       _notifyProgress(onProgress, completed, total);
-      return result;
     }
 
-    return Future.wait(files.map(uploadFile));
+    for (var i = 0; i < total; i += maxConcurrent) {
+      final batchEnd = (i + maxConcurrent).clamp(0, total);
+      final batchFutures = <Future<void>>[];
+      for (var j = i; j < batchEnd; j++) {
+        batchFutures.add(uploadSingle(j));
+      }
+      await Future.wait(batchFutures);
+    }
+
+    return results;
   }
 
   static Future<String> _uploadToStorage(

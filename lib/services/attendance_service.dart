@@ -28,7 +28,12 @@ class AttendanceService {
     required Map<String, dynamic> attendanceRecord,
   }) {
     final attendanceDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
-    if (attendanceDate == null) return false;
+    if (attendanceDate == null) {
+      // Legacy rows may not have a date. They are safe to show for workers
+      // that also predate creation-date tracking, while dated workers remain
+      // protected from accidentally inheriting an old row.
+      return AppDateUtils.dateFromValue(worker['createdAt']) == null;
+    }
     return workerExistedOnDate(worker, attendanceDate);
   }
 
@@ -121,9 +126,9 @@ class AttendanceService {
       }
 
       final date = AppDateUtils.attendanceRecordDate(record);
-      if (date == null) continue;
-
-      final key = _dateKey(date);
+      final key = date == null
+          ? 'undated:${(record['id'] ?? recordsByDay.length).toString()}'
+          : _dateKey(date);
       final existing = recordsByDay[key];
       if (existing == null || _candidateIsNewer(existing, record)) {
         recordsByDay[key] = Map<String, dynamic>.from(record);

@@ -90,6 +90,24 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     });
   }
 
+  Future<void> _removeNotification(String notificationId) async {
+    if (notificationId.trim().isEmpty) return;
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    if (isGuest) {
+      DummyData.notifications.removeWhere(
+        (notification) => notification['id']?.toString() == notificationId,
+      );
+      await DummyData.saveToPrefs();
+    } else {
+      await _firestore.deleteNotification(notificationId);
+    }
+    if (mounted) {
+      setState(() {
+        _notifications.removeWhere((n) => n['id'] == notificationId);
+      });
+    }
+  }
+
   String _localizedTitle(Map<String, dynamic> notif) {
     final type = (notif['type'] ?? '').toString();
     final data = notif['data'] is Map ? notif['data'] as Map : {};
@@ -422,6 +440,9 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                             _authService.currentUser?.isAnonymous ?? false;
                         if (!isGuest) {
                           await _firestore.clearAllNotifications();
+                        } else {
+                          DummyData.notifications.clear();
+                          await DummyData.saveToPrefs();
                         }
                         setState(() {
                           _notifications.clear();
@@ -551,14 +572,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
   }) {
     return GestureDetector(
       onTap: () {
-        if (notificationId.isNotEmpty) {
-          _firestore.deleteNotification(notificationId);
-          setState(() {
-            _notifications.removeWhere((n) => n['id'] == notificationId);
-          });
-        }
-        _close();
         widget.onNotificationTap?.call('welcome');
+        _removeNotification(notificationId);
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -700,14 +715,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                       const Spacer(),
                       GestureDetector(
                         onTap: () async {
-                          if (notificationId.isNotEmpty) {
-                            await _firestore.deleteNotification(notificationId);
-                            setState(() {
-                              _notifications.removeWhere(
-                                (n) => n['id'] == notificationId,
-                              );
-                            });
-                          }
+                          await _removeNotification(notificationId);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -759,14 +767,8 @@ class _NotificationSidebarState extends State<NotificationSidebar>
         children: [
           GestureDetector(
             onTap: () {
-              if (notificationId.isNotEmpty) {
-                _firestore.deleteNotification(notificationId);
-                setState(() {
-                  _notifications.removeWhere((n) => n['id'] == notificationId);
-                });
-              }
-              _close();
               widget.onNotificationTap?.call(type);
+              _removeNotification(notificationId);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -890,14 +892,7 @@ class _NotificationSidebarState extends State<NotificationSidebar>
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap: () async {
-                  if (notificationId.isNotEmpty) {
-                    await _firestore.deleteNotification(notificationId);
-                    setState(() {
-                      _notifications.removeWhere(
-                        (n) => n['id'] == notificationId,
-                      );
-                    });
-                  }
+                  await _removeNotification(notificationId);
                 },
                 child: Container(
                   padding: const EdgeInsets.all(4),

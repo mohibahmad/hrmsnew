@@ -858,10 +858,10 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
           .toString()
           .toLowerCase();
       final query = _searchQuery.toLowerCase();
-      final matchesSearch = name.contains(query) || role.contains(query);
+      final workerStatus = _getWorkerStatus(worker).toLowerCase();
+      final matchesSearch = name.contains(query) || role.contains(query) || workerStatus.contains(query);
       if (_selectedStatusFilter == 'All') return matchesSearch;
-      final workerStatus = _getWorkerStatus(worker);
-      return matchesSearch && workerStatus == _selectedStatusFilter;
+      return matchesSearch && workerStatus == _selectedStatusFilter.toLowerCase();
     }).toList();
   }
 

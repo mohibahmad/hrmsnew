@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart' hide GestureDetector;
 import '../widgets/clickable_gesture_detector.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/preferences_service.dart';
@@ -81,10 +80,14 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                             children: [
                               const SizedBox(height: 20),
 
-                              SvgPicture.asset(
-                                'assets/app_icon.png',
-                                height: 70,
-                                fit: BoxFit.contain,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.asset(
+                                  'assets/app_icon.png',
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                               const SizedBox(height: 36),
 
@@ -123,9 +126,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                           padding: const EdgeInsets.fromLTRB(48, 16, 48, 18),
                           child: SingleChildScrollView(
                             child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: Text(
@@ -175,7 +178,8 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 SizedBox(
                                   width: double.infinity,
                                   height: 50,
-                                  child: ElevatedButton(                                          onPressed: _isSaving
+                                  child: ElevatedButton(
+                                    onPressed: _isSaving
                                         ? null
                                         : () async {
                                             setState(() => _isSaving = true);
@@ -265,15 +269,18 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
-                            
+
                                 const SizedBox(height: 36),
 
                                 SizedBox(
                                   width: double.infinity,
                                   child: Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 10),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         _buildFooterLink(
                                           'privacy_policy'.tr(),
@@ -304,12 +311,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                     ),
                                   ),
                                 ),
-                                ],
-                              ),
+                              ],
                             ),
                           ),
                         ),
-
+                      ),
                     ],
                   ),
                 ),

@@ -5,14 +5,12 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
 
- Future<void> showLogoutDialog(BuildContext context) async {
+Future<void> showLogoutDialog(BuildContext context) async {
   final confirmed = await showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'LogoutDialog',
-    barrierColor: const Color(
-      0xFF0F172A,
-    ).withValues(alpha: 0.3),  
+    barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
     transitionDuration: const Duration(milliseconds: 400),
     pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -38,7 +36,7 @@ import '../screens/login_screen.dart';
 
   if (confirmed == true) {
     try {
-      await context.read<AuthService>().signOut();
+      await context.read<AuthService>().signOut(preserveBiometricLogin: true);
     } catch (_) {}
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
@@ -81,7 +79,6 @@ class _LogoutDialogContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-          
               Container(
                 width: 72,
                 height: 72,
@@ -103,40 +100,40 @@ class _LogoutDialogContent extends StatelessWidget {
                 child: const Center(
                   child: Icon(
                     Icons.logout_rounded,
-                    color: Color(0xFFE11D48), 
+                    color: Color(0xFFE11D48),
                     size: 32,
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-           
+
               Text(
                 'sign_out_dialog_title'.tr(),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A), 
+                  color: Color(0xFF0F172A),
                   fontFamily: 'SF Pro Display',
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 12),
-               
+
               Text(
                 'sign_out_dialog_desc'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF475569),  
+                  color: Color(0xFF475569),
                   fontFamily: 'SF Pro Display',
                   height: 1.5,
                   fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 32),
-               Row(
+              Row(
                 children: [
-                   Expanded(
+                  Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.of(context).pop(false),
                       behavior: HitTestBehavior.opaque,
@@ -160,7 +157,7 @@ class _LogoutDialogContent extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                   Expanded(
+                  Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.of(context).pop(true),
                       behavior: HitTestBehavior.opaque,

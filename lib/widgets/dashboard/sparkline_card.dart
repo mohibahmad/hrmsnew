@@ -12,6 +12,8 @@ class SparklineCard extends StatelessWidget {
   final List<DashboardChartPoint> points;
   final String period;
   final Color lineColor;
+  final String currencySymbol;
+  final int tooltipDecimalDigits;
 
   const SparklineCard({
     super.key,
@@ -21,7 +23,37 @@ class SparklineCard extends StatelessWidget {
     required this.points,
     required this.period,
     required this.lineColor,
+    this.currencySymbol = r'$',
+    this.tooltipDecimalDigits = 0,
   });
+
+  static String formatTooltipAmount({
+    required double value,
+    required String locale,
+    required String currencySymbol,
+    required int maxDecimalDigits,
+  }) {
+    final safeMaxDigits = maxDecimalDigits.clamp(0, 20);
+    var visibleDigits = 0;
+    if (safeMaxDigits > 0 && value.isFinite) {
+      final fixedValue = value.toStringAsFixed(safeMaxDigits);
+      final separatorIndex = fixedValue.indexOf('.');
+      if (separatorIndex >= 0) {
+        final fraction = fixedValue
+            .substring(separatorIndex + 1)
+            .replaceFirst(RegExp(r'0+$'), '');
+        visibleDigits = fraction.length;
+      }
+    }
+    final symbolSpacing = RegExp(r'[A-Za-z]').hasMatch(currencySymbol)
+        ? ' '
+        : '';
+    return NumberFormat.currency(
+      locale: locale,
+      symbol: '$currencySymbol$symbolSpacing',
+      decimalDigits: visibleDigits,
+    ).format(value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -167,11 +199,6 @@ class SparklineCard extends StatelessWidget {
                               getTooltipItems: (tSpots) {
                                 if (tSpots.isEmpty) return <LineTooltipItem>[];
                                 final seenX = <double>{};
-                                final nf = NumberFormat.currency(
-                                  locale: context.locale.toString(),
-                                  symbol: '\$ ',
-                                  decimalDigits: 0,
-                                );
                                 return tSpots.map((tSpot) {
                                   if (seenX.add(tSpot.x)) {
                                     final pointIndex = tSpot.x
@@ -183,8 +210,14 @@ class SparklineCard extends StatelessWidget {
                                       context,
                                       point.date,
                                     );
+                                    final formattedAmount = formatTooltipAmount(
+                                      value: point.value,
+                                      locale: context.locale.toString(),
+                                      currencySymbol: currencySymbol,
+                                      maxDecimalDigits: tooltipDecimalDigits,
+                                    );
                                     final label =
-                                        '$dateLabel\n$title: ${nf.format(point.value)}';
+                                        '$dateLabel\n$title: $formattedAmount';
                                     return LineTooltipItem(
                                       label,
                                       const TextStyle(

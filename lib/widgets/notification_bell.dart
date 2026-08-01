@@ -27,7 +27,9 @@ class _NotificationBellState extends State<NotificationBell> {
     _firestore = context.read<FirestoreService>();
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
-      _unreadCount = DummyData.notifications.where((n) => n['isRead'] != true).length;
+      _unreadCount = DummyData.notifications
+          .where((n) => n['isRead'] != true)
+          .length;
       return;
     }
     _notifSub = _firestore.notificationsStream.listen((snap) {
@@ -53,7 +55,9 @@ class _NotificationBellState extends State<NotificationBell> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: () {
+          widget.onTap?.call();
+        },
         child: Stack(
           clipBehavior: Clip.none,
           children: [

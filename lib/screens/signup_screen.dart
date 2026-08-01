@@ -10,8 +10,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
-import '../services/preferences_service.dart';
-import '../services/biometric_service.dart';
+import '../utils/biometric_enrollment.dart';
 import '../utils/snackbar_utils.dart';
 import '../shared/auth_widgets.dart';
 import 'home_screen.dart';
@@ -318,15 +317,12 @@ class _SignupScreenState extends State<SignupScreen> {
         ErrorReporter.report(e, st, context: 'signupWelcomeNotification');
       }
 
-      // Auto-save credentials like Apple Keychain (no prompt)
       if (mounted) {
-        final available = await BiometricService.isAvailable();
-        if (available) {
-          await PreferencesService.setBiometricCredentials(
-            email: email,
-            password: _passwordController.text,
-          );
-        }
+        await offerBiometricLogin(
+          context: context,
+          email: email,
+          password: _passwordController.text,
+        );
       }
 
       if (mounted) {
@@ -460,7 +456,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'create_account'.tr(),
         style: const TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           color: Colors.black,
           fontFamily: 'SF Pro Display',
           letterSpacing: -0.5,
@@ -740,49 +736,35 @@ class _SignupScreenState extends State<SignupScreen> {
                           clipBehavior: Clip.hardEdge,
                           children: [
                             Positioned(
-                              top: 40,
-                              left: 80,
+                              top: 50,
+                              left: 90,
                               right: 40,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  SizedBox(
-                                    height: 78,
-                                    width: double.infinity,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topLeft,
-                                      child: Text(
-                                        'welcome_to_hrms'.tr(),
-                                        maxLines: 1,
-                                        style: TextStyle(
-                                          fontSize: 63,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                          letterSpacing: 3,
-                                        ),
-                                      ),
+                                  Text(
+                                    'welcome_to_hrms'.tr(),
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      fontSize: 58,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro',
+                                      height: 1,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
-                                  SizedBox(
-                                    height: 78,
-                                    width: double.infinity,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topLeft,
-                                      child: Text(
-                                        'welcome_banner_subtitle'.tr(),
-                                        maxLines: 2,
-                                        style: TextStyle(
-                                          fontSize: 27,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                          height: 1.4,
-                                          letterSpacing: 2.2,
-                                        ),
-                                      ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'welcome_banner_subtitle'.tr(),
+                                    maxLines: 2,
+                                    style: const TextStyle(
+                                      fontSize: 25,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro',
+                                      height: 1.2,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
                                 ],

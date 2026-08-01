@@ -1,0 +1,114 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hrms/widgets/session_timeout_gate.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  Widget buildTestApp({
+    required Future<bool> Function() isBiometricAvailable,
+    required Future<bool> Function() authenticate,
+    required DateTime Function() clock,
+    Future<void> Function()? onSignInAgain,
+  }) {
+    return MaterialApp(
+      home: SessionTimeoutGate(
+        timeout: const Duration(seconds: 1),
+        isSessionActive: () => true,
+        isBiometricAvailable: isBiometricAvailable,
+        loadBiometricName: () async => 'Face ID',
+        authenticate: authenticate,
+        clock: clock,
+        onSignInAgain: onSignInAgain ?? () async {},
+        child: const Scaffold(body: Center(child: Text('Dashboard'))),
+      ),
+    );
+  }
+
+  testWidgets('pointer activity restarts the inactivity countdown', (
+    tester,
+  ) async {
+    var now = DateTime(2026);
+    await tester.pumpWidget(
+      buildTestApp(
+        isBiometricAvailable: () async => false,
+        authenticate: () async => false,
+        clock: () => now,
+      ),
+    );
+    await tester.pump();
+
+    await tester.pump(const Duration(milliseconds: 900));
+    now = now.add(const Duration(milliseconds: 900));
+    await tester.tap(find.text('Dashboard'));
+    now = now.add(const Duration(milliseconds: 900));
+    await tester.pump(const Duration(milliseconds: 900));
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('session_locked_title'), findsNothing);
+
+    now = now.add(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+
+    expect(find.text('session_locked_title'), findsOneWidget);
+  });
+
+  testWidgets('offers sign-in when biometrics are unavailable', (tester) async {
+    var signInAgainCalls = 0;
+    var now = DateTime(2026);
+    await tester.pumpWidget(
+      buildTestApp(
+        isBiometricAvailable: () async => false,
+        authenticate: () async => false,
+        clock: () => now,
+        onSignInAgain: () async => signInAgainCalls++,
+      ),
+    );
+    await tester.pump();
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('session_locked_title'), findsOneWidget);
+    expect(find.text('session_sign_in_again'), findsOneWidget);
+    expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
+
+    await tester.tap(find.text('session_sign_in_again'));
+    await tester.pump();
+
+    expect(signInAgainCalls, 1);
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+  testWidgets('prompts for biometrics and allows a retry after failure', (
+    tester,
+  ) async {
+    var authenticationCalls = 0;
+    var now = DateTime(2026);
+    await tester.pumpWidget(
+      buildTestApp(
+        isBiometricAvailable: () async => true,
+        authenticate: () async {
+          authenticationCalls++;
+          return false;
+        },
+        clock: () => now,
+      ),
+    );
+    await tester.pump();
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump();
+
+    expect(authenticationCalls, 1);
+    expect(find.text('session_unlock_with_biometric'), findsOneWidget);
+    expect(find.text('session_biometric_failed'), findsOneWidget);
+
+    await tester.tap(find.text('session_unlock_with_biometric'));
+    await tester.pump();
+
+    expect(authenticationCalls, 2);
+  });
+}

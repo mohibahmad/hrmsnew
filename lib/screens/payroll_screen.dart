@@ -9,12 +9,14 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
 import '../services/payroll_service.dart';
+import '../services/invoice_service.dart';
 import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/date_utils.dart';
+import '../utils/currency_utils.dart';
 import 'add_payroll_screen.dart';
 import '../services/salary_day_scheduler.dart';
 import '../widgets/notification_bell.dart';
@@ -50,6 +52,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
   bool _isLoading = true;
   bool _isSalaryDaySaving = false;
   int? _salaryPaymentDay;
+  String _companyCurrency = CurrencyUtils.defaultCode;
   DateTime _payrollMonth = PayrollService.currentPayrollMonth();
   bool _payrollPeriodLoaded = false;
   bool _workersLoaded = false;
@@ -87,8 +90,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
       _rawPayrollDocs,
       month: _payrollMonth,
       allowUndatedRecords: isGuest,
+      companyCurrency: _companyCurrency,
     );
 
+    final zeroAmount = '${CurrencyUtils.symbolFor(_companyCurrency)} 0';
     for (var doc in _payrollDocs) {
       if (doc['totalWorkDays'] == null ||
           doc['totalWorkDays'].toString().isEmpty) {
@@ -99,8 +104,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
         doc['paidLeaves'] = '0';
         doc['unpaidLeaves'] = '0';
         doc['overtimeAmount'] = '0';
-        doc['salary'] = doc['salary'] ?? '\$ 0';
-        doc['netSalary'] = '\$ 0';
+        doc['salary'] = doc['salary'] ?? zeroAmount;
+        doc['netSalary'] = zeroAmount;
       }
     }
     _isLoading = false;
@@ -142,9 +147,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     final futures = <Future<void>>[];
     for (final doc in _payrollDocs) {
-      final status = (doc['status'] ?? '').toString().toLowerCase();
-      if (status == 'paid') continue;
-
       final email = (doc['email'] ?? '').toString();
       final workerId = (doc['workerId'] ?? doc['id'] ?? '').toString();
       if (email.isEmpty && workerId.isEmpty) continue;
@@ -229,10 +231,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Future<void> _loadCompanySettings() async {
     int? salaryDay;
     String? savedPayrollPeriod;
+    String companyCurrency = CurrencyUtils.defaultCode;
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       salaryDay = await PreferencesService.getCompanySalaryDay();
       savedPayrollPeriod = await PreferencesService.getActivePayrollPeriod();
+      final profile = await PreferencesService.getGuestProfileData();
+      companyCurrency = CurrencyUtils.normalize(profile?['currency']);
     } else {
       final profile = await _firestore.getUserProfile();
       final rawDay = profile?['salaryPaymentDay'];
@@ -243,6 +248,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       if (salaryDay != null && (salaryDay < 1 || salaryDay > 31)) {
         salaryDay = null;
       }
+      companyCurrency = CurrencyUtils.normalize(profile?['currency']);
     }
     final savedMonth = PayrollService.parsePayrollPeriodLabel(
       savedPayrollPeriod,
@@ -268,6 +274,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (!mounted) return;
     setState(() {
       _salaryPaymentDay = salaryDay;
+      _companyCurrency = companyCurrency;
       _payrollMonth = activeMonth;
       _payrollPeriodLoaded = true;
       _combinePayroll();
@@ -381,131 +388,134 @@ class _PayrollScreenState extends State<PayrollScreen> {
               scale: curve,
               child: StatefulBuilder(
                 builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          title: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0247C4).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  Icons.calendar_month_rounded,
-                  color: Color(0xFF0247C4),
-                  size: 21,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'set_salary_day'.tr(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'SF Pro Display',
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'salary_day_help'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 14,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<int>(
-                  initialValue: selectedDay,
-                  dropdownColor: Colors.white,
-                  decoration: InputDecoration(
-                    labelText: 'salary_day_of_month'.tr(),
-                    prefixIcon: const Icon(
-                      Icons.account_balance_wallet,
-                      color: Color(0xFF0247C4),
-                      size: 22,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  items: [
-                    DropdownMenuItem<int>(value: -1, child: Text('none'.tr())),
-                    ...List.generate(
-                      daysInCurrentMonth,
-                      (index) => DropdownMenuItem<int>(
-                        value: index + 1,
-                        child: Text('${index + 1}'),
+                  title: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0247C4).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: Color(0xFF0247C4),
+                          size: 21,
+                        ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'set_salary_day'.tr(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: SizedBox(
+                    width: 420,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'salary_day_help'.tr(),
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 14,
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        DropdownButtonFormField<int>(
+                          initialValue: selectedDay,
+                          dropdownColor: Colors.white,
+                          decoration: InputDecoration(
+                            labelText: 'salary_day_of_month'.tr(),
+                            prefixIcon: const Icon(
+                              Icons.account_balance_wallet,
+                              color: Color(0xFF0247C4),
+                              size: 22,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          items: [
+                            DropdownMenuItem<int>(
+                              value: -1,
+                              child: Text('none'.tr()),
+                            ),
+                            ...List.generate(
+                              daysInCurrentMonth,
+                              (index) => DropdownMenuItem<int>(
+                                value: index + 1,
+                                child: Text('${index + 1}'),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setDialogState(() => selectedDay = value);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        if (selectedDay != -1)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'salary_day_schedule'.tr(
+                                namedArgs: {'day': '$selectedDay'},
+                              ),
+                              style: const TextStyle(
+                                color: Color(0xFF334155),
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('cancel'.tr()),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0247C4),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(selectedDay),
+                      child: Text('save'.tr()),
                     ),
                   ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setDialogState(() => selectedDay = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 14),
-                if (selectedDay != -1)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'salary_day_schedule'.tr(
-                        namedArgs: {'day': '$selectedDay'},
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFF334155),
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('cancel'.tr()),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0247C4),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(7),
                 ),
               ),
-              onPressed: () => Navigator.of(context).pop(selectedDay),
-              child: Text('save'.tr()),
             ),
-          ],
-        ),
-      ),
-    ),
-  ),
-);
+          ),
+        );
       },
     );
     if (result != null && mounted) {
@@ -926,8 +936,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  bool _matchesFilter(String position, String filter) {
+  bool _matchesFilter(Map<String, dynamic> doc, String filter) {
     if (filter == 'All') return true;
+    if (filter == 'Today') {
+      return PayrollService.wasPaidOn(doc, DateTime.now());
+    }
+    final position = (doc['position'] ?? '').toString();
     return position.toLowerCase().contains(filter.toLowerCase());
   }
 
@@ -939,7 +953,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       final matchesSearch = name.contains(query) || pos.contains(query);
 
       if (!matchesSearch) return false;
-      return _matchesFilter(pos, _selectedFilter);
+      return _matchesFilter(doc, _selectedFilter);
     }).toList();
 
     filtered.sort((a, b) {
@@ -1310,6 +1324,133 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
+  Future<void> _downloadPayrollInvoice(Map<String, dynamic> data) async {
+    if (!mounted) return;
+    FlashySnackBar.show(context, message: 'generating_invoices'.tr());
+    try {
+      final counts = PayrollService.attendanceCounts(data);
+      final totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
+      final absents = (counts['absents'] ?? 0).toString();
+      final unpaidLeaves = (counts['unpaidLeaves'] ?? 0).toString();
+      final totalDays = PayrollService.parseIntSafe(totalWorkDays);
+      final workedDays =
+          (totalDays -
+                  PayrollService.parseIntSafe(absents) -
+                  PayrollService.parseIntSafe(unpaidLeaves))
+              .clamp(0, totalDays);
+      final deductionsAreTotals = data['deductionsAreTotals'] == true;
+      final rawAbsentDeduction = (data['absentDeduction'] ?? '0').toString();
+      final rawLeaveDeduction = (data['leaveDeduction'] ?? '0').toString();
+      final overtime = (data['overtimeAmount'] ?? '0').toString();
+      final salary = PayrollService.currentSalaryDisplay(
+        data,
+        companyCurrency: _companyCurrency,
+      );
+      final calculation = PayrollService.calculatePayroll(
+        salary: salary,
+        totalWorkDays: totalWorkDays,
+        daysWorked: '$workedDays',
+        absents: absents,
+        leaves: unpaidLeaves,
+        overtimeAmount: overtime,
+        absentDeductionPerDay: deductionsAreTotals ? '' : rawAbsentDeduction,
+        leaveDeductionPerDay: deductionsAreTotals ? '' : rawLeaveDeduction,
+        salaryType: (data['salaryType'] ?? 'Monthly').toString(),
+      );
+      final currency = PayrollService.getCurrencyPrefix(salary);
+      final prefix = currency.isEmpty ? '' : '$currency ';
+      final totalDeductions = deductionsAreTotals
+          ? PayrollService.extractSalary(rawAbsentDeduction) +
+                PayrollService.extractSalary(rawLeaveDeduction)
+          : PayrollService.extractSalary(
+              calculation['formattedTotalDeductions'],
+            );
+      final netSalary = deductionsAreTotals
+          ? PayrollService.calculateNetFromTotals(
+              salary: salary,
+              overtimeAmount: overtime,
+              absentDeduction: rawAbsentDeduction,
+              leaveDeduction: rawLeaveDeduction,
+              salaryType: (data['salaryType'] ?? 'Monthly').toString(),
+            )
+          : PayrollService.extractSalary(calculation['formattedNet']);
+
+      Map<String, dynamic> companyProfile = const {};
+      try {
+        companyProfile = await _firestore.getUserProfile() ?? const {};
+      } catch (_) {}
+      final period = (data['payrollPeriod'] ?? '').toString().trim();
+      final payPeriod = period.isNotEmpty
+          ? period
+          : PayrollService.payrollPeriodLabel(_payrollMonth);
+      final bytes = await InvoiceService.generatePayrollInvoice(
+        employeeName: (data['name'] ?? '').toString(),
+        email: (data['email'] ?? '').toString(),
+        position: (data['position'] ?? '').toString(),
+        payPeriod: payPeriod,
+        totalWorkDays: totalWorkDays,
+        daysWorked: '$workedDays',
+        absents: absents,
+        leaves: unpaidLeaves,
+        overtimeAmount: AmountText.formatFull(overtime),
+        salary: AmountText.formatFull(salary),
+        dailyRate: (calculation['formattedDailyRate'] ?? '${prefix}0.00')
+            .toString(),
+        grossPay: (calculation['formattedGross'] ?? '${prefix}0.00').toString(),
+        overtimePay: (calculation['formattedOvertime'] ?? '${prefix}0.00')
+            .toString(),
+        absentDeduction: deductionsAreTotals
+            ? AmountText.formatFull(rawAbsentDeduction)
+            : (calculation['formattedAbsentDeduct'] ?? '${prefix}0.00')
+                  .toString(),
+        leaveDeduction: deductionsAreTotals
+            ? AmountText.formatFull(rawLeaveDeduction)
+            : (calculation['formattedLeaveDeduct'] ?? '${prefix}0.00')
+                  .toString(),
+        totalDeductions:
+            '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
+        netSalary: '$prefix${PayrollService.formatFullNumber(netSalary)}',
+        companyName:
+            (companyProfile['businessName'] ??
+                    companyProfile['companyName'] ??
+                    'HRMS Company')
+                .toString(),
+        companyAddress: (companyProfile['address'] ?? '').toString(),
+        companyEmail: (companyProfile['email'] ?? '').toString(),
+        companyPhone:
+            (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
+                .toString(),
+        companyId:
+            (companyProfile['companyId'] ?? companyProfile['businessId'] ?? '')
+                .toString(),
+        companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
+            .toString(),
+      );
+      final safeName = (data['name'] ?? 'worker').toString().replaceAll(
+        RegExp(r'[^a-zA-Z0-9_-]'),
+        '_',
+      );
+      final safePeriod = payPeriod.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final fileName = 'payroll_${safeName}_$safePeriod.pdf';
+      final saved = await InvoiceService.shareInvoice(bytes, fileName);
+      if (saved && mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'file_saved_and_opened'.tr(namedArgs: {'file': fileName}),
+        );
+      }
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'PayrollPreviewInvoice');
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'unexpected_error'.tr(),
+          isError: true,
+        );
+      }
+    }
+  }
+
   void _showPayrollDataDialog(
     BuildContext context,
     Map<String, dynamic> data,
@@ -1330,7 +1471,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final deductionsAreTotals = data['deductionsAreTotals'] == true;
     final String overtimeAmount = AmountText.formatFull(rawOvertimeAmount);
     final String salary = AmountText.formatFull(
-      PayrollService.currentSalaryDisplay(data),
+      PayrollService.currentSalaryDisplay(
+        data,
+        companyCurrency: _companyCurrency,
+      ),
     );
     final hasLeaveDeduction = rawLeaveDeduction.trim().isNotEmpty;
     final totalDaysValue = PayrollService.parseIntSafe(totalWorkDays);
@@ -1342,7 +1486,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
             : 0);
     final basePreviewCalculation = totalDaysValue > 0
         ? PayrollService.calculatePayroll(
-            salary: PayrollService.currentSalaryDisplay(data),
+            salary: PayrollService.currentSalaryDisplay(
+              data,
+              companyCurrency: _companyCurrency,
+            ),
             totalWorkDays: totalWorkDays,
             daysWorked: effectiveWorkedDays > 0
                 ? effectiveWorkedDays.toString()
@@ -1363,14 +1510,20 @@ class _PayrollScreenState extends State<PayrollScreen> {
             ...basePreviewCalculation,
             'formattedNet': () {
               final netPayment = PayrollService.calculateNetFromTotals(
-                salary: PayrollService.currentSalaryDisplay(data),
+                salary: PayrollService.currentSalaryDisplay(
+                  data,
+                  companyCurrency: _companyCurrency,
+                ),
                 overtimeAmount: rawOvertimeAmount,
                 absentDeduction: rawAbsentDeduction,
                 leaveDeduction: rawLeaveDeduction,
                 salaryType: (data['salaryType'] ?? 'Monthly').toString(),
               );
               final currency = PayrollService.getCurrencyPrefix(
-                PayrollService.currentSalaryDisplay(data),
+                PayrollService.currentSalaryDisplay(
+                  data,
+                  companyCurrency: _companyCurrency,
+                ),
               );
               final prefix = currency.isEmpty ? '' : '$currency ';
               return '$prefix${PayrollService.formatFullNumber(netPayment)}';
@@ -1391,6 +1544,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     rawAbsentDeduction)
           .toString(),
     );
+    final presentDays =
+        (totalDaysValue -
+                PayrollService.parseIntSafe(absents) -
+                PayrollService.parseIntSafe(leaves))
+            .clamp(0, totalDaysValue);
+    final paidDate = PayrollService.payrollPaymentDate(data);
+    final paidDateText = paidDate == null
+        ? '-'
+        : DateFormat.yMMMd(context.locale.toString()).format(paidDate);
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dialogWidth = screenWidth < 500 ? screenWidth * 0.9 : 480.0;
@@ -1423,7 +1585,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 child: Center(
                   child: Container(
                     width: dialogWidth,
-                    height: 430,
+                    height: 535,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: Color(0xFFFFFFFF),
@@ -1436,184 +1598,250 @@ class _PayrollScreenState extends State<PayrollScreen> {
                         ),
                       ],
                     ),
-            child: Column(
-              children: [
-                Container(
-                  height: 40,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF004FDE),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(6),
-                      topRight: Radius.circular(6),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: const Padding(
-                            padding: EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.close,
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 40,
+                          width: double.infinity,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF004FDE),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(6),
+                              topRight: Radius.circular(6),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.of(context).pop(),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Color(0xFFFFFFFF),
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              Expanded(
+                                child: Text(
+                                  'payroll_data_preview'.tr(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () =>
+                                        Navigator.of(context).pop('edit'),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4),
+                                        child: SvgPicture.asset(
+                                          'assets/edit_icon.svg',
+                                          height: 22,
+                                          width: 22,
+                                          colorFilter: const ColorFilter.mode(
+                                            Color(0xFFFFFFFF),
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      await _downloadPayrollInvoice(data);
+                                    },
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4),
+                                        child: SvgPicture.asset(
+                                          'assets/share1.svg',
+                                          height: 22,
+                                          width: 22,
+                                          colorFilter: const ColorFilter.mode(
+                                            Color(0xFFFFFFFF),
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildWorkerPreviewHeader(
+                          name: name,
+                          email: email,
+                          imageUrl: data['profileImage']?.toString(),
+                        ),
+                        Expanded(
+                          child: Container(
+                            decoration: const BoxDecoration(
                               color: Color(0xFFFFFFFF),
-                              size: 22,
+                              border: Border(
+                                left: BorderSide(
+                                  color: Color(0xFFE8E8E8),
+                                  width: 1.5,
+                                ),
+                                right: BorderSide(
+                                  color: Color(0xFFE8E8E8),
+                                  width: 1.5,
+                                ),
+                                bottom: BorderSide(
+                                  color: Color(0xFFE8E8E8),
+                                  width: 1.5,
+                                ),
+                              ),
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(6),
+                                bottomRight: Radius.circular(6),
+                              ),
+                            ),
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                16,
+                                20,
+                                16,
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.how_to_reg_rounded,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'presents'.tr(),
+                                          value: '$presentDays',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: _buildAbsentsIcon(),
+                                          title: 'absents_label'.tr(),
+                                          value: absents,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: _buildLeavesIcon(),
+                                          title: 'leaves_label'.tr(),
+                                          value: leaves,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.event_available_rounded,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'paid_on'.tr(),
+                                          value: paidDateText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.payments,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'absent_deduction'.tr(),
+                                          value: absentDeduction.isEmpty
+                                              ? '0'
+                                              : absentDeduction,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: _buildOvertimeDaysIcon(),
+                                          title: 'overtime_amount'.tr(),
+                                          value: overtimeAmount,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.payments,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'salary'.tr(),
+                                          value: salary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.account_balance_wallet,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'salary_after_deduction'.tr(),
+                                          value: salaryAfterDeduction,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      Expanded(
-                        child: Text(
-                          'payroll_data_preview'.tr(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xFFFFFFFF),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop('edit'),
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: SvgPicture.asset(
-                              'assets/edit_icon.svg',
-                              height: 22,
-                              width: 22,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFFFFFFFF),
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildWorkerPreviewHeader(
-                  name: name,
-                  email: email,
-                  imageUrl: data['profileImage']?.toString(),
-                ),
-                Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFFFFF),
-                      border: Border(
-                        left: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
-                        right: BorderSide(color: Color(0xFFE8E8E8), width: 1.5),
-                        bottom: BorderSide(
-                          color: Color(0xFFE8E8E8),
-                          width: 1.5,
-                        ),
-                      ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(6),
-                        bottomRight: Radius.circular(6),
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: _buildAbsentsIcon(),
-                                  title: 'absents_label'.tr(),
-                                  value: absents,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: _buildLeavesIcon(),
-                                  title: 'leaves_label'.tr(),
-                                  value: leaves,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: const Icon(
-                                    Icons.payments,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'absent_deduction'.tr(),
-                                  value: absentDeduction.isEmpty
-                                      ? '0'
-                                      : absentDeduction,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: _buildOvertimeDaysIcon(),
-                                  title: 'overtime_amount'.tr(),
-                                  value: overtimeAmount,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: const Icon(
-                                    Icons.payments,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'salary'.tr(),
-                                  value: salary,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMetricCard(
-                                  icon: const Icon(
-                                    Icons.account_balance_wallet,
-                                    color: Color(0xFF004FDE),
-                                    size: 20,
-                                  ),
-                                  title: 'salary_after_deduction'.tr(),
-                                  value: salaryAfterDeduction,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    ),
-  ),
-);
+        );
       },
     );
 

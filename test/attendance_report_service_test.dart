@@ -2,6 +2,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/attendance_report_service.dart';
 
 void main() {
+  test(
+    'CSV dates use an unambiguous ISO format and blanks for missing dates',
+    () {
+      expect(
+        AttendanceReportService.csvDate(DateTime(2026, 8, 1)),
+        '2026-08-01',
+      );
+      expect(AttendanceReportService.csvDate(null), isEmpty);
+    },
+  );
+
   test('share period aliases use the same ranges as attendance filters', () {
     final now = DateTime(2026, 7, 29, 18);
 

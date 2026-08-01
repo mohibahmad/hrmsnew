@@ -47,6 +47,7 @@ dependencies:
   cloud_functions: ^6.3.5
   archive: ^4.0.9
   local_auth: ^3.0.2
+  flutter_secure_storage: ^10.3.1
 
 flutter_launcher_icons:
   android: true
@@ -93,5 +94,3 @@ flutter:
     - family: SF Pro
       fonts:
         - asset: assets/fonts/SF-Pro.ttf
-  
-  

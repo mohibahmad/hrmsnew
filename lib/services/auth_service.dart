@@ -287,13 +287,15 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut({bool preserveBiometricLogin = false}) async {
     final isGuest = await PreferencesService.isGuest();
     await PreferencesService.setGuest(false);
     if (!isGuest) {
       await _auth.signOut();
     }
-    await PreferencesService.clear();
+    await PreferencesService.clear(
+      preserveBiometricCredentials: preserveBiometricLogin,
+    );
     profilePicNotifier.value = null;
   }
 

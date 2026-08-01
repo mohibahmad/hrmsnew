@@ -77,11 +77,16 @@ class _SidebarWidgetState extends State<SidebarWidget> {
               },
               child: Container(
                 width: 238,
-                margin: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
+                margin: const EdgeInsets.only(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                ),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Color(0xFFFFFFFF), width: 1.2),
+                  border: Border.all(color: Color(0xFFFFFFFF), width: 1.2),
                   image: const DecorationImage(
                     image: AssetImage('assets/premium_bg.png'),
                     fit: BoxFit.cover,
@@ -136,7 +141,10 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                           decoration: BoxDecoration(
                             color: Color(0xFF000000),
                             borderRadius: BorderRadius.circular(25),
-                            border: Border.all(color: Color(0xFFFFFFFF), width: 1.2),
+                            border: Border.all(
+                              color: Color(0xFFFFFFFF),
+                              width: 1.2,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,7 +206,9 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  SizedBox(height: (!widget.isGuest && !widget.isPremium) ? 4 : 16),
+                  SizedBox(
+                    height: (!widget.isGuest && !widget.isPremium) ? 4 : 16,
+                  ),
                   for (int i = 0; i < _menuItems.length; i++)
                     if (_menuItems[i].$3)
                       _buildWorkforceItem(i)
@@ -488,9 +498,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
                     style: TextStyle(
                       color: Color(0xFFFFFFFF),
                       fontSize: 18,
-                      fontWeight: isSelected
-                          ? FontWeight.w500
-                          : FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       fontFamily: 'SF Pro Display',
                     ),
                     maxLines: 1,

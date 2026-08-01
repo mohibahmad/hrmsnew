@@ -19,6 +19,7 @@ import 'dummy_data.dart';
 import 'invoice_service.dart';
 import 'error_reporter.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/currency_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/amount_text.dart';
 
@@ -41,6 +42,7 @@ class AutoPayrollResult {
   String customDeduction;
   double rawNetSalaryValue;
   final String salary;
+  final String currency;
   final String totalWorkDays;
   final String position;
   final String salaryType;
@@ -65,6 +67,7 @@ class AutoPayrollResult {
     this.customDeduction = '',
     this.rawNetSalaryValue = 0,
     this.salary = '',
+    this.currency = CurrencyUtils.defaultCode,
     this.totalWorkDays = '',
     this.position = '',
     this.salaryType = 'Monthly',
@@ -90,6 +93,7 @@ class AutoPayrollResult {
     customDeduction: customDeduction,
     rawNetSalaryValue: rawNetSalaryValue,
     salary: salary,
+    currency: currency,
     totalWorkDays: totalWorkDays,
     position: position,
     salaryType: salaryType,
@@ -192,6 +196,10 @@ class SalaryDayScheduler {
   }) async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final isGuest = authService.currentUser?.isAnonymous ?? false;
+    final firestoreService = Provider.of<FirestoreService>(
+      context,
+      listen: false,
+    );
 
     List<Map<String, dynamic>> workers;
 
@@ -199,10 +207,7 @@ class SalaryDayScheduler {
       workers = List<Map<String, dynamic>>.from(DummyData.workers);
     } else {
       try {
-        final workerSnap = await Provider.of<FirestoreService>(
-          context,
-          listen: false,
-        ).getWorkersOnce();
+        final workerSnap = await firestoreService.getWorkersOnce();
         workers = workerSnap.docs
             .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
             .where((w) {
@@ -245,9 +250,20 @@ class SalaryDayScheduler {
       effectivePayrollMonth,
     );
 
-    final firestoreService = Provider.of<FirestoreService>(
-      context,
-      listen: false,
+    Map<String, dynamic>? companyProfile;
+    try {
+      companyProfile = isGuest
+          ? await PreferencesService.getGuestProfileData()
+          : await firestoreService.getUserProfile();
+    } catch (error, stackTrace) {
+      ErrorReporter.report(
+        error,
+        stackTrace,
+        context: 'SalaryDayCompanyCurrency',
+      );
+    }
+    final companyCurrency = CurrencyUtils.normalize(
+      companyProfile?['currency'],
     );
 
     if (!isGuest) {
@@ -354,7 +370,10 @@ class SalaryDayScheduler {
           : (worker['id'] ?? worker['workerId'] ?? '').toString().trim();
       final name = (worker['name'] ?? '').toString();
       final email = (worker['email'] ?? '').toString();
-      final salaryStr = PayrollService.currentSalaryDisplay(worker);
+      final salaryStr = PayrollService.currentSalaryDisplay(
+        worker,
+        companyCurrency: companyCurrency,
+      );
       final totalWorkDays = (worker['totalWorkDays'] ?? '').toString();
       final workDays = isGuest
           ? int.tryParse(totalWorkDays) ?? autoWorkDays
@@ -372,6 +391,7 @@ class SalaryDayScheduler {
             success: false,
             error: attendanceError,
             salary: salaryStr,
+            currency: companyCurrency,
             totalWorkDays: workDays.toString(),
             position: (worker['position'] ?? '').toString(),
             salaryType: (worker['salaryType'] ?? 'Monthly').toString(),
@@ -446,7 +466,7 @@ class SalaryDayScheduler {
           );
           final currency = PayrollService.getCurrencyPrefix(salaryStr);
           final prefix = currency.isNotEmpty ? '$currency ' : '';
-          netSalary = '$prefix${PayrollService.formatNumber(rawNetVal)}';
+          netSalary = '$prefix${PayrollService.formatFullNumber(rawNetVal)}';
         }
       } catch (error, stackTrace) {
         if (!isGuest) {
@@ -470,6 +490,7 @@ class SalaryDayScheduler {
             paidLeaves: paidLeaves,
             unpaidLeaves: unpaidLeaves,
             salary: salaryStr,
+            currency: companyCurrency,
             totalWorkDays: workDays.toString(),
             position: (worker['position'] ?? '').toString(),
             salaryType: salaryType,
@@ -499,6 +520,7 @@ class SalaryDayScheduler {
           deductionsAreTotals: true,
           overtimeAmount: overtimeAmount,
           salary: salaryStr,
+          currency: companyCurrency,
           totalWorkDays: workDays.toString(),
           position: (worker['position'] ?? '').toString(),
           salaryType: salaryType,
@@ -759,6 +781,7 @@ class SalaryDayScheduler {
           'leaveDeduction': r.leaveDeduction,
           'deductionsAreTotals': r.deductionsAreTotals,
           'salary': r.salary,
+          'currency': r.currency,
           'salaryType': r.salaryType,
           'netSalary': r.netSalary,
           'netSalaryAmount': r.rawNetSalaryValue,
@@ -864,6 +887,7 @@ class SalaryDayScheduler {
         'leaveDeduction': r.leaveDeduction,
         'deductionsAreTotals': r.deductionsAreTotals,
         'salary': r.salary,
+        'currency': r.currency,
         'salaryType': r.salaryType,
         'netSalary': r.netSalary,
         'netSalaryAmount': r.rawNetSalaryValue,
@@ -883,7 +907,7 @@ class SalaryDayScheduler {
           'workerId': r.workerId,
           'workerEmail': r.email.trim().toLowerCase(),
           'name': r.workerName,
-          'date': payPeriodDate,
+          'date': summary.runDate,
           'paidAt': summary.runDate,
           'payPeriod': payPeriodDate,
           'category': 'Salary',
@@ -983,6 +1007,11 @@ class SalaryDayScheduler {
     try {
       final archive = Archive();
       final now = DateTime.now();
+      Map<String, dynamic> companyProfile = const {};
+      try {
+        companyProfile =
+            await context.read<FirestoreService>().getUserProfile() ?? const {};
+      } catch (_) {}
       final payPeriod = periodLabel.isNotEmpty
           ? periodLabel
           : '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -1018,10 +1047,7 @@ class SalaryDayScheduler {
             (workDays - absentsInt - leavesInt - (r.halfDays * 0.5))
                 .clamp(0, workDays)
                 .toDouble();
-        var currency = PayrollService.getCurrencyPrefix(r.salary);
-        if (currency.isEmpty) {
-          currency = PayrollService.getCurrencyPrefix(r.netSalary);
-        }
+        final currency = PayrollService.getCurrencySymbol(r.currency);
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
           employeeName: r.workerName,
@@ -1040,7 +1066,24 @@ class SalaryDayScheduler {
           absentDeduction: _invoiceMoney(absentTotal, currency),
           leaveDeduction: _invoiceMoney(leaveTotal, currency),
           totalDeductions: _invoiceMoney(totalDeductions, currency),
-          netSalary: r.netSalary,
+          netSalary: _invoiceMoney(r.rawNetSalaryValue, currency),
+          companyName:
+              (companyProfile['businessName'] ??
+                      companyProfile['companyName'] ??
+                      'HRMS Company')
+                  .toString(),
+          companyAddress: (companyProfile['address'] ?? '').toString(),
+          companyEmail: (companyProfile['email'] ?? '').toString(),
+          companyPhone:
+              (companyProfile['contact1'] ?? companyProfile['phone'] ?? '')
+                  .toString(),
+          companyId:
+              (companyProfile['companyId'] ??
+                      companyProfile['businessId'] ??
+                      '')
+                  .toString(),
+          companyStampImageUrl: (companyProfile['companyStampUrl'] ?? '')
+              .toString(),
         );
 
         final sanitizedName = r.workerName
@@ -2925,7 +2968,7 @@ class SalaryDayScheduler {
       );
       final currency = PayrollService.getCurrencyPrefix(r.salary);
       final p = currency.isNotEmpty ? '$currency ' : '';
-      r.netSalary = '$p${PayrollService.formatNumber(netPayment)}';
+      r.netSalary = '$p${PayrollService.formatFullNumber(netPayment)}';
       r.rawNetSalaryValue = netPayment;
       r.deductionsAreTotals = true;
     } catch (e) {
@@ -2958,7 +3001,7 @@ class SalaryDayScheduler {
 
   String _invoiceMoney(double amount, String currency) {
     if (!amount.isFinite || amount <= 0) return '0';
-    final value = PayrollService.formatNumber(amount);
+    final value = PayrollService.formatFullNumber(amount);
     return currency.trim().isEmpty ? value : '${currency.trim()} $value';
   }
 

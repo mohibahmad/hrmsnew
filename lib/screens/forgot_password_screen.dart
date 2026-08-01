@@ -181,49 +181,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           clipBehavior: Clip.hardEdge,
                           children: [
                             Positioned(
-                              top: 40,
-                              left: 80,
+                              top: 50,
+                              left: 90,
                               right: 40,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  SizedBox(
-                                    height: 78,
-                                    width: double.infinity,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topLeft,
-                                      child: Text(
-                                        'welcome_to_hrms'.tr(),
-                                        maxLines: 1,
-                                        style: const TextStyle(
-                                          fontSize: 63,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                          letterSpacing: 3,
-                                        ),
-                                      ),
+                                  Text(
+                                    'welcome_to_hrms'.tr(),
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      fontSize: 56,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro',
+                                      height: 1,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
-                                  SizedBox(
-                                    height: 78,
-                                    width: double.infinity,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.topLeft,
-                                      child: Text(
-                                        'welcome_banner_subtitle'.tr(),
-                                        maxLines: 2,
-                                        style: TextStyle(
-                                          fontSize: 27,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white,
-                                          fontFamily: 'SF Pro Display',
-                                          height: 1.4,
-                                          letterSpacing: 2.2,
-                                        ),
-                                      ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'welcome_banner_subtitle'.tr(),
+                                    maxLines: 2,
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'SF Pro',
+                                      height: 1.2,
+                                      letterSpacing: 0.8,
                                     ),
                                   ),
                                 ],

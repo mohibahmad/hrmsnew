@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesService {
@@ -22,6 +23,7 @@ class PreferencesService {
   static const String _biometricEnabledKey = 'biometric_enabled';
   static const String _biometricEmailKey = 'biometric_email';
   static const String _biometricPasswordKey = 'biometric_password';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static String? _cachedProfilePicUrl;
   static bool _cachedIsGuest = false;
@@ -270,8 +272,7 @@ class PreferencesService {
   }
 
   static Future<String?> getBiometricEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_biometricEmailKey);
+    return _readBiometricCredential(_biometricEmailKey);
   }
 
   static Future<void> setBiometricCredentials({
@@ -279,22 +280,46 @@ class PreferencesService {
     required String password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    // Store in base64 for basic obfuscation
-    final encodedEmail = base64Encode(utf8.encode(email));
-    final encodedPassword = base64Encode(utf8.encode(password));
-    await prefs.setString(_biometricEmailKey, encodedEmail);
-    await prefs.setString(_biometricPasswordKey, encodedPassword);
+    try {
+      await _secureStorage.write(key: _biometricEmailKey, value: email);
+      await _secureStorage.write(key: _biometricPasswordKey, value: password);
+      // Remove credentials written by older versions of the app. Base64 is
+      // encoding, not secure storage.
+      await prefs.remove(_biometricEmailKey);
+      await prefs.remove(_biometricPasswordKey);
+    } catch (_) {
+      await _secureStorage.delete(key: _biometricEmailKey);
+      await _secureStorage.delete(key: _biometricPasswordKey);
+      rethrow;
+    }
   }
 
   static Future<String?> getBiometricPassword() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = prefs.getString(_biometricPasswordKey);
-    if (encoded == null) return null;
-    try {
-      return utf8.decode(base64Decode(encoded));
-    } catch (_) {
-      return null;
+    return _readBiometricCredential(_biometricPasswordKey);
+  }
+
+  static Future<String?> _readBiometricCredential(String key) async {
+    final securelyStored = await _secureStorage.read(key: key);
+    if (securelyStored != null && securelyStored.isNotEmpty) {
+      return securelyStored;
     }
+
+    // Transparently migrate credentials saved by an older app version.
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = prefs.getString(key);
+    if (encoded == null) return null;
+
+    String value;
+    try {
+      value = utf8.decode(base64Decode(encoded));
+    } catch (_) {
+      value = encoded;
+    }
+
+    if (value.isEmpty) return null;
+    await _secureStorage.write(key: key, value: value);
+    await prefs.remove(key);
+    return value;
   }
 
   static Future<void> clearBiometricCredentials() async {
@@ -302,9 +327,11 @@ class PreferencesService {
     await prefs.remove(_biometricEnabledKey);
     await prefs.remove(_biometricEmailKey);
     await prefs.remove(_biometricPasswordKey);
+    await _secureStorage.delete(key: _biometricEmailKey);
+    await _secureStorage.delete(key: _biometricPasswordKey);
   }
 
-  static Future<void> clear() async {
+  static Future<void> clear({bool preserveBiometricCredentials = false}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_loggedInKey);
     await prefs.remove(_guestKey);
@@ -321,9 +348,9 @@ class PreferencesService {
     await prefs.remove(_companySalaryDayKey);
     await prefs.remove(_activePayrollPeriodKey);
     await prefs.remove(_guestPayrollKey);
-    await prefs.remove(_biometricEnabledKey);
-    await prefs.remove(_biometricEmailKey);
-    await prefs.remove(_biometricPasswordKey);
+    if (!preserveBiometricCredentials) {
+      await clearBiometricCredentials();
+    }
     _cachedProfilePicUrl = null;
     _cachedIsGuest = false;
   }

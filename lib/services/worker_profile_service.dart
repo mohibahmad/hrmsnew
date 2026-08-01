@@ -34,15 +34,16 @@ class WorkerProfileService {
     required String address,
     String? profileImageUrl,
     String? generatedOnText,
+    String companyName = 'HRMS Company',
+    String companyId = '',
+    String? companyStampImageUrl,
   }) async {
     final pdf = pw.Document();
 
     pw.Font? regularFont;
     pw.Font? boldFont;
     try {
-      final fontData = await rootBundle.load(
-        'assets/fonts/SF-Pro.ttf',
-      );
+      final fontData = await rootBundle.load('assets/fonts/SF-Pro.ttf');
       regularFont = pw.Font.ttf(fontData);
       boldFont = pw.Font.ttf(fontData);
     } catch (_) {}
@@ -58,6 +59,10 @@ class WorkerProfileService {
     final border = PdfColor.fromHex('#D1D5DB');
 
     final imageBytes = await _loadImageBytes(profileImageUrl);
+    final companyStampBytes = await _loadImageBytes(companyStampImageUrl);
+    final companyStampImage = companyStampBytes == null
+        ? null
+        : pw.MemoryImage(companyStampBytes);
     final profileTitle = _localized('worker_profile', 'Worker Profile');
     final titleLines = _titleLines(profileTitle);
     final employeeDetails = _localized('worker_detail', 'Employee Details');
@@ -268,17 +273,28 @@ class WorkerProfileService {
           pw.SizedBox(height: 40),
           pw.Container(height: 0.5, color: PdfColor.fromHex('#D1D5DB')),
           pw.SizedBox(height: 10),
-          pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              generatedOnText ??
-                  '${_localized('generated_on', 'Generated on')} '
-                      '${DateTime.now().toString().substring(0, 10)}',
-              style: pw.TextStyle(
-                fontSize: 9,
-                color: PdfColor.fromHex('#6B7280'),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              _buildSignatureStamp(
+                companyName,
+                companyId,
+                stampImage: companyStampImage,
               ),
-            ),
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Text(
+                  generatedOnText ??
+                      '${_localized('generated_on', 'Generated on')} '
+                          '${DateTime.now().toString().substring(0, 10)}',
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    color: PdfColor.fromHex('#6B7280'),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -516,6 +532,121 @@ class WorkerProfileService {
           ),
         );
       }).toList(),
+    );
+  }
+
+  static pw.Widget _buildSignatureStamp(
+    String companyName,
+    String companyId, {
+    pw.MemoryImage? stampImage,
+  }) {
+    final navy = PdfColor.fromHex('#162036');
+    final red = PdfColor.fromHex('#DC2626');
+    final grey = PdfColor.fromHex('#6B7280');
+    final cleanName = companyName.trim().isEmpty
+        ? 'HRMS Company'
+        : companyName.trim();
+    final initials = cleanName
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .take(3)
+        .map((word) => word.substring(0, 1).toUpperCase())
+        .join();
+
+    return pw.SizedBox(
+      width: 235,
+      height: 66,
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
+        children: [
+          if (stampImage != null)
+            pw.Container(
+              width: 72,
+              height: 60,
+              alignment: pw.Alignment.center,
+              child: pw.Image(stampImage, fit: pw.BoxFit.contain),
+            )
+          else
+            pw.Container(
+              width: 60,
+              height: 60,
+              decoration: pw.BoxDecoration(
+                shape: pw.BoxShape.circle,
+                border: pw.Border.all(color: red, width: 1.8),
+              ),
+              child: pw.Stack(
+                alignment: pw.Alignment.center,
+                children: [
+                  pw.Container(
+                    width: 50,
+                    height: 50,
+                    decoration: pw.BoxDecoration(
+                      shape: pw.BoxShape.circle,
+                      border: pw.Border.all(color: red, width: 0.7),
+                    ),
+                  ),
+                  pw.Column(
+                    mainAxisAlignment: pw.MainAxisAlignment.center,
+                    children: [
+                      pw.Text(
+                        initials.isEmpty ? 'HRMS' : initials,
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                          color: red,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      pw.Text(
+                        'OFFICIAL',
+                        style: pw.TextStyle(
+                          fontSize: 5,
+                          color: red,
+                          letterSpacing: 0.7,
+                        ),
+                      ),
+                      if (companyId.trim().isNotEmpty)
+                        pw.Text(
+                          companyId.trim(),
+                          style: pw.TextStyle(fontSize: 4.5, color: red),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          pw.SizedBox(width: 12),
+          pw.Expanded(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.end,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  cleanName,
+                  maxLines: 2,
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                    color: navy,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                pw.SizedBox(height: 3),
+                pw.Container(width: double.infinity, height: 1, color: navy),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  _localized('authorized_signatory', 'Authorized Signatory'),
+                  style: pw.TextStyle(
+                    fontSize: 7,
+                    color: grey,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

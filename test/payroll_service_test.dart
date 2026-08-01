@@ -3,6 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/services/payroll_service.dart';
 
 void main() {
+  test('Today payroll uses the actual paid date', () {
+    final record = {
+      'status': 'Paid',
+      'payPeriod': DateTime(2026, 7, 1),
+      'paidAt': DateTime(2026, 8, 1, 14, 30),
+    };
+
+    expect(PayrollService.wasPaidOn(record, DateTime(2026, 8, 1)), isTrue);
+    expect(PayrollService.wasPaidOn(record, DateTime(2026, 7, 1)), isFalse);
+    expect(
+      PayrollService.wasPaidOn({
+        'status': 'Unpaid',
+        'createdAt': DateTime(2026, 8, 1),
+      }, DateTime(2026, 8, 1)),
+      isFalse,
+    );
+  });
+
   test('leave allowance is not used as the payroll leave count', () {
     final counts = PayrollService.attendanceCounts({
       'annualLeaves': '100',
@@ -53,6 +71,58 @@ void main() {
     expect(combined.single['salaryAmount'], '125000');
     expect(combined.single['currency'], 'PKR');
     expect(combined.single['salary'], 'Rs 125000');
+  });
+
+  test('company currency overrides mixed worker currencies in payroll', () {
+    final combined = PayrollService.combinePayroll(
+      const [
+        {
+          'id': 'worker-pk',
+          'name': 'Ali',
+          'email': 'ali@example.com',
+          'salaryAmount': '125000',
+          'currency': 'PKR',
+        },
+        {
+          'id': 'worker-uk',
+          'name': 'Sara',
+          'email': 'sara@example.com',
+          'salary': '£ 3500',
+          'currency': 'GBP',
+        },
+      ],
+      const [],
+      month: DateTime(2026, 8, 1),
+      companyCurrency: 'USD',
+    );
+
+    expect(combined.map((worker) => worker['currency']).toSet(), {'USD'});
+    expect(combined[0]['salary'], r'$ 125000');
+    expect(combined[1]['salary'], r'$ 3,500');
+  });
+
+  test('company currency also normalizes historical payroll amounts', () {
+    final combined = PayrollService.combinePayroll(
+      const [
+        {'id': 'worker-1', 'name': 'Ali', 'email': 'ali@example.com'},
+      ],
+      const [
+        {
+          'workerId': 'worker-1',
+          'email': 'ali@example.com',
+          'salary': 'Rs 125000',
+          'netSalary': 'Rs 120500.25',
+          'currency': 'PKR',
+        },
+      ],
+      month: DateTime(2026, 8, 1),
+      allowUndatedRecords: true,
+      companyCurrency: 'EUR',
+    );
+
+    expect(combined.single['currency'], 'EUR');
+    expect(combined.single['salary'], '€ 125,000');
+    expect(combined.single['netSalary'], '€ 120,500.25');
   });
 
   test('worker ID keeps payroll connected after email changes', () {

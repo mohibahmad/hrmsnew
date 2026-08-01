@@ -187,4 +187,37 @@ void main() {
       expect(yearly.where((day) => day['type'] == 'Medical Leave'), isEmpty);
     },
   );
+
+  test('leave chart merges attendance-only leave types without duplicates', () {
+    final merged = DashboardChartService.mergedLeaveDaysForPeriod(
+      timeOffRecords: [
+        {
+          'workerId': 'worker-1',
+          'type': 'Sick Leave',
+          'selectedDates': ['2026-07-30'],
+          'status': 'Assigned',
+        },
+      ],
+      attendanceRecords: [
+        {
+          'workerId': 'worker-1',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'reason': 'Sick Leave',
+        },
+        {
+          'workerId': 'worker-2',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'reason': 'Medical appointment',
+        },
+      ],
+      period: 'Today',
+      now: DateTime(2026, 7, 30),
+    );
+
+    expect(merged, hasLength(2));
+    expect(merged.where((day) => day['type'] == 'Sick Leave'), hasLength(1));
+    expect(merged.where((day) => day['type'] == 'Medical Leave'), hasLength(1));
+  });
 }
