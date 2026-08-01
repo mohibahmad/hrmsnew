@@ -1462,87 +1462,103 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFF),
+          color: const Color(0xFFF2F3F6),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFDCE4F2), width: 1),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Positioned(
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFF),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: isImage
-                    ? (_cvBytes != null
-                          ? Image.memory(_cvBytes!, fit: BoxFit.cover)
-                          : (cvUrl != null && cvUrl.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: cvUrl,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (context, url, error) =>
-                                        const Center(
-                                          child: Icon(
-                                            Icons.broken_image,
-                                            size: 48,
-                                          ),
-                                        ),
-                                  )
-                                : const SizedBox.shrink()))
-                    : isPdf
-                    ? PdfPagePreview(cvBytes: _cvBytes, existingCvUrl: cvUrl)
-                    : isDoc
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              cvNameLower.endsWith('.docx')
-                                  ? Icons.article_outlined
-                                  : Icons.description_outlined,
-                              size: 48,
-                              color: const Color(0xFF0247C4),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _cvName ?? 'cv_resume'.tr(),
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.description,
-                              size: 48,
-                              color: Color(0xFF0247C4),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _cvName ?? 'cv_resume'.tr(),
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ],
-                        ),
+            Positioned.fill(
+              top: 8,
+              bottom: 8,
+              child: FractionallySizedBox(
+                widthFactor: 0.76,
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
                       ),
+                    ],
+                  ),
+                  child: isImage
+                      ? (_cvBytes != null
+                            ? Image.memory(
+                                _cvBytes!,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
+                              )
+                            : (cvUrl != null && cvUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: cvUrl,
+                                      fit: BoxFit.contain,
+                                      errorWidget: (context, url, error) =>
+                                          const Center(
+                                            child: Icon(
+                                              Icons.broken_image,
+                                              size: 48,
+                                            ),
+                                          ),
+                                    )
+                                  : const SizedBox.shrink()))
+                      : isPdf
+                      ? PdfPagePreview(
+                          cvBytes: _cvBytes,
+                          existingCvUrl: cvUrl,
+                          fit: BoxFit.cover,
+                        )
+                      : isDoc
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                cvNameLower.endsWith('.docx')
+                                    ? Icons.article_outlined
+                                    : Icons.description_outlined,
+                                size: 48,
+                                color: const Color(0xFF0247C4),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _cvName ?? 'cv_resume'.tr(),
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.description,
+                                size: 48,
+                                color: Color(0xFF0247C4),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _cvName ?? 'cv_resume'.tr(),
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                  fontFamily: 'SF Pro Display',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
               ),
             ),
           ],

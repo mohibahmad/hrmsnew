@@ -4570,8 +4570,14 @@ Widget _buildDropdownField({
 class PdfPagePreview extends StatefulWidget {
   final Uint8List? cvBytes;
   final String? existingCvUrl;
+  final BoxFit fit;
 
-  const PdfPagePreview({super.key, this.cvBytes, this.existingCvUrl});
+  const PdfPagePreview({
+    super.key,
+    this.cvBytes,
+    this.existingCvUrl,
+    this.fit = BoxFit.contain,
+  });
 
   @override
   State<PdfPagePreview> createState() => _PdfPagePreviewState();
@@ -4736,7 +4742,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
         child: SizedBox.expand(
           child: Image.memory(
             _pageImages[0],
-            fit: BoxFit.cover,
+            fit: widget.fit,
             filterQuality: FilterQuality.high,
             width: double.infinity,
           ),
