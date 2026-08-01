@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/widgets/session_timeout_gate.dart';
@@ -79,6 +81,36 @@ void main() {
 
     expect(signInAgainCalls, 1);
     expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+  testWidgets('keeps the lock cover visible until sign-in navigation renders', (
+    tester,
+  ) async {
+    final signInCompleter = Completer<void>();
+    var now = DateTime(2026);
+    await tester.pumpWidget(
+      buildTestApp(
+        isBiometricAvailable: () async => false,
+        authenticate: () async => false,
+        clock: () => now,
+        onSignInAgain: () => signInCompleter.future,
+      ),
+    );
+    await tester.pump();
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    await tester.tap(find.text('session_sign_in_again'));
+    await tester.pump();
+    expect(find.text('session_locked_title'), findsOneWidget);
+
+    signInCompleter.complete();
+    await tester.pump();
+    expect(find.text('session_locked_title'), findsOneWidget);
+
+    await tester.pump();
+    expect(find.text('session_locked_title'), findsNothing);
   });
 
   testWidgets('prompts for biometrics and allows a retry after failure', (

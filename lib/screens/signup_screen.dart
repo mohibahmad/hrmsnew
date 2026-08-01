@@ -11,6 +11,7 @@ import '../services/auth_service.dart';
 import '../services/error_reporter.dart';
 import '../services/firestore_service.dart';
 import '../utils/biometric_enrollment.dart';
+import '../utils/navigation_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../shared/auth_widgets.dart';
 import 'home_screen.dart';
@@ -47,6 +48,13 @@ class _SignupScreenState extends State<SignupScreen> {
   late FirestoreService _firestoreService;
 
   StreamSubscription? _googleSub;
+
+  void _openHome() {
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(noTransitionRoute(builder: (_) => const HomeScreen()));
+  }
 
   @override
   void initState() {
@@ -152,9 +160,7 @@ class _SignupScreenState extends State<SignupScreen> {
         title: 'success'.tr(),
         message: 'welcome_back'.tr(),
       );
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+      _openHome();
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled ||
           e.code == GoogleSignInExceptionCode.interrupted) {
@@ -204,9 +210,7 @@ class _SignupScreenState extends State<SignupScreen> {
           message: 'continuing_as_guest'.tr(),
           isError: false,
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _openHome();
       }
     } catch (e) {
       if (mounted) {
@@ -331,9 +335,7 @@ class _SignupScreenState extends State<SignupScreen> {
           title: 'notif_title_welcome'.tr(namedArgs: {'name': emailLocalPart}),
           message: 'notif_msg_welcome'.tr(),
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _openHome();
       }
     } on FirebaseAuthException catch (e) {
       String message;

@@ -197,6 +197,10 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     setState(() => _signingOut = true);
     try {
       await widget.onSignInAgain();
+      // Keep the opaque lock screen in place until the navigator has rendered
+      // the signed-out destination. Otherwise the authenticated screen can
+      // briefly show between sign-out and the next route's first frame.
+      await WidgetsBinding.instance.endOfFrame;
     } finally {
       if (mounted) {
         setState(() {

@@ -17,6 +17,7 @@ import 'services/dummy_data.dart';
 import 'services/error_reporter.dart';
 import 'services/firestore_service.dart';
 import 'services/preferences_service.dart';
+import 'utils/navigation_utils.dart';
 import 'widgets/session_timeout_gate.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -203,7 +204,7 @@ class HRMSApp extends StatelessWidget {
               );
             }
             _rootNavigatorKey.currentState?.pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              noTransitionRoute(builder: (_) => const LoginScreen()),
               (route) => false,
             );
           },

@@ -14,6 +14,7 @@ import '../services/preferences_service.dart';
 import '../services/biometric_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/biometric_enrollment.dart';
+import '../utils/navigation_utils.dart';
 import '../utils/snackbar_utils.dart';
 
 import 'forgot_password_screen.dart';
@@ -52,6 +53,13 @@ class _LoginScreenState extends State<LoginScreen> {
   late final TapGestureRecognizer _signUpRecognizer;
 
   StreamSubscription? _googleSub;
+
+  void _openHome() {
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(noTransitionRoute(builder: (_) => const HomeScreen()));
+  }
 
   @override
   void initState() {
@@ -162,9 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
           title: 'success'.tr(),
           message: 'welcome_back'.tr(),
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _openHome();
       }
     } on GoogleSignInException catch (e, st) {
       ErrorReporter.report(e, st, context: 'googleSignIn');
@@ -204,9 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
           message: 'continuing_as_guest'.tr(),
           isError: false,
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _openHome();
       }
     } catch (_) {
       if (mounted) {
@@ -299,9 +303,7 @@ class _LoginScreenState extends State<LoginScreen> {
           title: 'success'.tr(),
           message: 'welcome_back'.tr(),
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        _openHome();
       }
     } on FirebaseAuthException catch (e) {
       String message;
