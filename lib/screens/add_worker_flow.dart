@@ -4721,6 +4721,7 @@ class _PdfPagePreviewState extends State<PdfPagePreview> {
             width: page.width * 3,
             height: page.height * 3,
             format: PdfPageImageFormat.png,
+            backgroundColor: '#ffffff',
           );
           if (pageImage != null) {
             pages.add(pageImage.bytes);

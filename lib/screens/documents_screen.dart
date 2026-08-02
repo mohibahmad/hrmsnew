@@ -1657,6 +1657,7 @@ class _FullScreenPdfPreviewState extends State<_FullScreenPdfPreview> {
             width: page.width * 3,
             height: page.height * 3,
             format: PdfPageImageFormat.png,
+            backgroundColor: '#ffffff',
           );
           if (pageImage != null) {
             pages.add(pageImage.bytes);
@@ -1903,7 +1904,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
               ),
               child: widget.isImage
                   ? Container(
-                      color: const Color(0xFF000000),
+                      color: const Color(0xFFFFFFFF),
                       width: double.infinity,
                       constraints: BoxConstraints(
                         maxHeight: size.height * 0.85,
@@ -1916,7 +1917,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
                     )
                   : widget.isPdf
                   ? Container(
-                      color: const Color(0xFF000000),
+                      color: const Color(0xFFFFFFFF),
                       width: double.infinity,
                       constraints: BoxConstraints(
                         maxHeight: size.height * 0.85,
