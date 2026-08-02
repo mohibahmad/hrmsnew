@@ -583,23 +583,47 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                               bottom: BorderSide(color: Color(0xFFE5E7EB)),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
+                          child: SizedBox(
+                            height: 40,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Text(
                                   'Invoice Preview',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w700,
                                     fontFamily: 'SF Pro Display',
                                     color: Color(0xFF111827),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              ElevatedButton.icon(
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Tooltip(
+                                    message: 'close'.tr(),
+                                    child: IconButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints.tightFor(
+                                        width: 40,
+                                        height: 40,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 24,
+                                        color: Color(0xFF475569),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF0247C4),
                                   foregroundColor: Colors.white,
@@ -678,11 +702,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                                     fontFamily: 'SF Pro Display',
                                   ),
                                 ),
-                              ),
-                              if (widget.workerData['hasPayrollRecord'] ==
-                                  true) ...[
-                                const SizedBox(width: 8),
-                                Tooltip(
+                                      ),
+                                      if (widget.workerData['hasPayrollRecord'] ==
+                                          true) ...[
+                                        const SizedBox(width: 8),
+                                        Tooltip(
                                   message: 'cancel_payroll'.tr(),
                                   child: Material(
                                     color: Colors.transparent,
@@ -748,37 +772,14 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                              const SizedBox(width: 8),
-                              Tooltip(
-                                message: 'close'.tr(),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(9),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(9),
-                                    onTap: () => Navigator.pop(ctx),
-                                    child: Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F4F6),
-                                        borderRadius: BorderRadius.circular(9),
-                                        border: Border.all(
-                                          color: const Color(0xFFE5E7EB),
                                         ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.close_rounded,
-                                        size: 22,
-                                        color: Color(0xFF475569),
-                                      ),
-                                    ),
+                                      ],
+                                      const SizedBox(width: 48),
+                                    ],
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         Expanded(
@@ -1340,7 +1341,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
             style: TextStyle(
               fontSize: 11,
               color: Colors.grey[500],
-              fontStyle: FontStyle.italic,
             ),
           ),
         ],
