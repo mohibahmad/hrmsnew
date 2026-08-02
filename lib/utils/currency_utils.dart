@@ -13,6 +13,12 @@ class CurrencyUtils {
     'RUB',
     'BRL',
     'SAR',
+    'AED',
+    'CAD',
+    'AUD',
+    'QAR',
+    'KWD',
+    'OMR',
   ];
 
   static const Map<String, String> _symbols = {
@@ -25,6 +31,12 @@ class CurrencyUtils {
     'RUB': '₽',
     'BRL': r'R$',
     'SAR': '﷼',
+    'AED': 'د.إ',
+    'CAD': r'CA$',
+    'AUD': r'A$',
+    'QAR': 'ر.ق',
+    'KWD': 'د.ك',
+    'OMR': 'ر.ع.',
   };
 
   static bool isSupported(dynamic value) {

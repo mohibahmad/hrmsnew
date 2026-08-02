@@ -135,6 +135,18 @@ class LocalizationHelper {
         return 'brl_desc'.tr();
       case 'SAR':
         return 'sar_desc'.tr();
+      case 'AED':
+        return 'aed_desc'.tr();
+      case 'CAD':
+        return 'cad_desc'.tr();
+      case 'AUD':
+        return 'aud_desc'.tr();
+      case 'QAR':
+        return 'qar_desc'.tr();
+      case 'KWD':
+        return 'kwd_desc'.tr();
+      case 'OMR':
+        return 'omr_desc'.tr();
       default:
         return value;
     }

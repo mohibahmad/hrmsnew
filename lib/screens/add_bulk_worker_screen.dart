@@ -19,6 +19,7 @@ import '../utils/snackbar_utils.dart';
 import '../utils/rate_us_helper.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
+import '../utils/localization_helper.dart';
 import '../utils/worker_identity.dart';
 import '../utils/validators.dart';
 import 'package:provider/provider.dart';
@@ -2007,6 +2008,108 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     );
   }
 
+  Widget _buildCurrencyDropdown({
+    required String label,
+    required TextEditingController controller,
+    required void Function(VoidCallback) setDialogState,
+  }) {
+    final currentCode = controller.text.trim().toUpperCase();
+
+    return Container(
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
+      ),
+      child: PopupMenuButton<String>(
+        tooltip: '',
+        onSelected: (val) {
+          setDialogState(() {
+            controller.text = val;
+          });
+        },
+        offset: const Offset(0, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
+        ),
+        color: const Color(0xFFFFFFFF),
+        elevation: 4,
+        itemBuilder: (context) {
+          return CurrencyUtils.supportedCodes.map((code) {
+            final isSelected = code == currentCode;
+            return PopupMenuItem<String>(
+              value: code,
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    size: 18,
+                    color: isSelected
+                        ? const Color(0xFF0247C4)
+                        : const Color(0xFF9CA3AF),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      LocalizationHelper.localizeCurrency(code),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? const Color(0xFF0247C4)
+                            : const Color(0xFF111827),
+                        fontFamily: 'SF Pro Display',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  currentCode.isEmpty
+                      ? 'edit_cell_enter_value'.tr(
+                          namedArgs: {'label': label},
+                        )
+                      : CurrencyUtils.isSupported(currentCode)
+                      ? LocalizationHelper.localizeCurrency(currentCode)
+                      : currentCode,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontFamily: 'SF Pro Display',
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Icon(
+                Icons.arrow_drop_down,
+                color: Color(0xFF9CA3AF),
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _editCell(int workerIndex, String fieldKey) async {
     if (workerIndex >= _validWorkers.length) return;
 
@@ -2087,7 +2190,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           if (fieldKey == 'nationalId') {
             return [
               FilteringTextInputFormatter.allow(RegExp(r'^[\d-]*')),
-              LengthLimitingTextInputFormatter(15),
+              LengthLimitingTextInputFormatter(20),
             ];
           }
           if (fieldKey == 'email') {
@@ -2096,9 +2199,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
           if (fieldKey == 'religion') {
             return [LengthLimitingTextInputFormatter(30)];
           }
-          if (fieldKey == 'currency') {
-            return [LengthLimitingTextInputFormatter(5)];
-          }
           if (fieldKey == 'gender') {
             return [LengthLimitingTextInputFormatter(10)];
           }
@@ -2106,10 +2206,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             return [LengthLimitingTextInputFormatter(10)];
           }
           if (fieldKey == 'name' || fieldKey == 'fatherName') {
-            return [LengthLimitingTextInputFormatter(100)];
+            return [LengthLimitingTextInputFormatter(50)];
           }
-          if (fieldKey == 'position' ||
-              fieldKey == 'type1' ||
+          if (fieldKey == 'position') {
+            return [LengthLimitingTextInputFormatter(60)];
+          }
+          if (fieldKey == 'type1' ||
               fieldKey == 'type2' ||
               fieldKey == 'experienceLevel' ||
               fieldKey == 'education' ||
@@ -2117,7 +2219,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
             return [LengthLimitingTextInputFormatter(50)];
           }
           if (fieldKey == 'address') {
-            return [LengthLimitingTextInputFormatter(200)];
+            return [LengthLimitingTextInputFormatter(500)];
           }
           if (fieldKey == 'annualLeaves') {
             return [
@@ -2280,6 +2382,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     onDateSelected: (dateStr) {
                                       controller.text = dateStr;
                                     },
+                                  )
+                                else if (fieldKey == 'currency')
+                                  _buildCurrencyDropdown(
+                                    label: label,
+                                    controller: controller,
+                                    setDialogState: setDialogState,
                                   )
                                 else if (isMediaField &&
                                     fieldKey == 'profileImage' &&
@@ -2588,7 +2696,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
                                     ),
                                   ),
                                   onPressed: () {
-                                    final val = controller.text.trim();
+                                    final val = controller.text
+                                        .replaceAll(RegExp(r'[\r\n]+'), ' ')
+                                        .trim();
                                     if (!isMediaField && val.isEmpty) {
                                       setDialogState(() {
                                         dialogError =
@@ -3061,7 +3171,6 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       'experienceLevel': 'hint_enter_experience',
       'education': 'hint_enter_education',
       'salaryType': 'hint_enter_salary_type',
-      'currency': 'hint_enter_currency',
       'salaryAmount': 'hint_enter_salary_amount',
       'annualLeaves': 'hint_enter_annual_leaves',
       'joiningDate': 'hint_enter_joining_date',
@@ -3716,6 +3825,12 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       displayText = '-';
     } else {
       displayText = text;
+    }
+
+    // Keep the preview row single-line even if a value somehow contains line
+    // breaks (e.g. pasted multi-line text or a quoted CSV cell).
+    if (displayText.contains('\n') || displayText.contains('\r')) {
+      displayText = displayText.replaceAll(RegExp(r'[\r\n]+'), ' ');
     }
 
     return Container(
