@@ -88,7 +88,7 @@ class LeaveTypesPieChart extends StatelessWidget {
                   Text(
                     CustomTimeframeDropdown.localizePeriod(period),
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       fontSize: 16,
                       fontFamily: 'SF Pro Display',
                     ),
@@ -171,11 +171,14 @@ class LeaveTypesPieChart extends StatelessWidget {
                                 child: buildLegendItem(
                                   const Color(0xFF84A9FF),
                                   'casual_leave'.tr(
-                                    namedArgs: {'value': '${casualVal.toInt()}'},
+                                    namedArgs: {
+                                      'value': '${casualVal.toInt()}',
+                                    },
                                   ),
                                 ),
                               ),
-                            if (casualVal > 0 && sickVal > 0) const SizedBox(width: 16),
+                            if (casualVal > 0 && sickVal > 0)
+                              const SizedBox(width: 16),
                             if (sickVal > 0)
                               Expanded(
                                 child: buildLegendItem(
@@ -187,7 +190,8 @@ class LeaveTypesPieChart extends StatelessWidget {
                               ),
                           ],
                         ),
-                        if (medicalVal > 0 || annualVal > 0) SizedBox(height: 12),
+                        if (medicalVal > 0 || annualVal > 0)
+                          SizedBox(height: 12),
                         Row(
                           children: [
                             if (medicalVal > 0)
@@ -195,17 +199,22 @@ class LeaveTypesPieChart extends StatelessWidget {
                                 child: buildLegendItem(
                                   const Color(0xFF97FFA9),
                                   'medical_leave'.tr(
-                                    namedArgs: {'value': '${medicalVal.toInt()}'},
+                                    namedArgs: {
+                                      'value': '${medicalVal.toInt()}',
+                                    },
                                   ),
                                 ),
                               ),
-                            if (medicalVal > 0 && annualVal > 0) const SizedBox(width: 16),
+                            if (medicalVal > 0 && annualVal > 0)
+                              const SizedBox(width: 16),
                             if (annualVal > 0)
                               Expanded(
                                 child: buildLegendItem(
                                   const Color(0xFFFFC857),
                                   'annual_leave_chart'.tr(
-                                    namedArgs: {'value': '${annualVal.toInt()}'},
+                                    namedArgs: {
+                                      'value': '${annualVal.toInt()}',
+                                    },
                                   ),
                                 ),
                               ),

@@ -54,7 +54,7 @@ class _AttendanceLineChartState extends State<AttendanceLineChart> {
                   Text(
                     CustomTimeframeDropdown.localizePeriod(widget.period),
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       fontSize: 16,
                       fontFamily: 'SF Pro Display',
                     ),
