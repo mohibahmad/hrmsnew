@@ -23,6 +23,7 @@ class PreferencesService {
   static const String _biometricEnabledKey = 'biometric_enabled';
   static const String _biometricEmailKey = 'biometric_email';
   static const String _biometricPasswordKey = 'biometric_password';
+  static const String _sessionLockedKey = 'session_locked';
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static String? _cachedProfilePicUrl;
@@ -259,6 +260,18 @@ class PreferencesService {
   static Future<void> markFirstAssetTriggered() =>
       _setBool(_rateUsFirstAssetKey, true);
 
+  // ── Session Timeout Lock ──
+
+  static Future<bool> isSessionLocked() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_sessionLockedKey) ?? false;
+  }
+
+  static Future<void> setSessionLocked(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_sessionLockedKey, value);
+  }
+
   // ── Biometric Authentication ──
 
   static Future<bool> isBiometricEnabled() async {
@@ -347,6 +360,7 @@ class PreferencesService {
     await prefs.remove(_companyWorkingDaysKey);
     await prefs.remove(_companySalaryDayKey);
     await prefs.remove(_activePayrollPeriodKey);
+    await prefs.remove(_sessionLockedKey);
     await prefs.remove(_guestPayrollKey);
     if (!preserveBiometricCredentials) {
       await clearBiometricCredentials();

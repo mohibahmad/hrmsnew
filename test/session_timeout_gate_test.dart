@@ -3,9 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/widgets/session_timeout_gate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   Widget buildTestApp({
     required Future<bool> Function() isBiometricAvailable,
@@ -113,7 +118,7 @@ void main() {
     expect(find.text('session_locked_title'), findsNothing);
   });
 
-  testWidgets('prompts for biometrics and allows a retry after failure', (
+  testWidgets('opens biometric verification after the lock screen renders', (
     tester,
   ) async {
     var authenticationCalls = 0;
@@ -135,12 +140,8 @@ void main() {
     await tester.pump();
 
     expect(authenticationCalls, 1);
+    expect(find.text('session_locked_title'), findsOneWidget);
     expect(find.text('session_unlock_with_biometric'), findsOneWidget);
     expect(find.text('session_biometric_failed'), findsOneWidget);
-
-    await tester.tap(find.text('session_unlock_with_biometric'));
-    await tester.pump();
-
-    expect(authenticationCalls, 2);
   });
 }

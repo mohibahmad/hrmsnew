@@ -55,6 +55,16 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateWhenReady() async {
     final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
 
+    bool sessionLocked;
+    try {
+      sessionLocked = await PreferencesService.isSessionLocked().timeout(
+        const Duration(seconds: 3),
+      );
+    } catch (e, st) {
+      ErrorReporter.report(e, st, context: 'splashSessionLocked');
+      sessionLocked = false;
+    }
+
     bool isGuest;
     try {
       isGuest = await PreferencesService.isGuest().timeout(
@@ -108,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    final destination = user != null || isGuest
+    final destination = (user != null || isGuest) && !sessionLocked
         ? const HomeScreen()
         : const LoginScreen();
 

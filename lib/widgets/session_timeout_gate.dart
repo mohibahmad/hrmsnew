@@ -4,6 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/preferences_service.dart';
+
 typedef SessionActiveCheck = bool Function();
 typedef BiometricAvailabilityCheck = Future<bool> Function();
 typedef BiometricNameLoader = Future<String> Function();
@@ -42,6 +44,8 @@ class SessionTimeoutGate extends StatefulWidget {
 
 class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     with WidgetsBindingObserver {
+  static const Duration _biometricAttemptTimeout = Duration(seconds: 30);
+
   Timer? _inactivityTimer;
   late DateTime _lastActivityAt;
   bool _locked = false;
@@ -130,6 +134,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
       _locked = true;
       _authenticationFailed = false;
     });
+    PreferencesService.setSessionLocked(true);
     _prepareBiometricUnlock();
   }
 
@@ -156,7 +161,13 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     });
 
     if (available) {
-      await _unlockWithBiometrics();
+      // Let the lock screen render before opening the native biometric sheet.
+      // Starting authentication during the same frame can leave the in-app
+      // button spinning while no system prompt is visible.
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted && _locked) {
+        await _unlockWithBiometrics();
+      }
     }
   }
 
@@ -169,7 +180,10 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
 
     var authenticated = false;
     try {
-      authenticated = await widget.authenticate();
+      authenticated = await widget.authenticate().timeout(
+        _biometricAttemptTimeout,
+        onTimeout: () => false,
+      );
     } catch (_) {
       authenticated = false;
     }
@@ -181,6 +195,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
         _authenticating = false;
         _authenticationFailed = false;
       });
+      PreferencesService.setSessionLocked(false);
       _lastActivityAt = widget.clock();
       _scheduleTimer();
       return;
@@ -196,6 +211,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     if (_signingOut) return;
     setState(() => _signingOut = true);
     try {
+      await PreferencesService.setSessionLocked(false);
       await widget.onSignInAgain();
       // Keep the opaque lock screen in place until the navigator has rendered
       // the signed-out destination. Otherwise the authenticated screen can
