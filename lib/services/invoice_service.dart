@@ -212,10 +212,13 @@ class InvoiceService {
             // ── Table ────────────────────────────────────────────────
             _tableHeader(navy: navy, white: white),
 
+            // Monthly salary is the full contract amount; absence and unpaid
+            // leave are deducted separately in the rows below so the table
+            // always ties out (rate × days = total).
             _tableRow(
-              description: 'Basic Salary - $daysWorked Payable Days',
-              rate: _money(dailyRate, defaultCurrency: detectedCurrency),
-              quantity: daysWorked,
+              description: 'Monthly Salary',
+              rate: '—',
+              quantity: totalWorkDays,
               total: _money(grossPay, defaultCurrency: detectedCurrency),
               textColor: textColor,
               lineColor: lineColor,
@@ -233,8 +236,12 @@ class InvoiceService {
 
             if (hasAbsentDeduction)
               _tableRow(
-                description: 'Absent Deduction',
-                rate: _money(dailyRate, defaultCurrency: detectedCurrency),
+                description: 'Unpaid Absence Deduction',
+                rate: _perDayRate(
+                  absentDeduction,
+                  absents,
+                  defaultCurrency: detectedCurrency,
+                ),
                 quantity: absents,
                 total: '-${_money(absentDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
@@ -244,7 +251,11 @@ class InvoiceService {
             if (hasLeaveDeduction)
               _tableRow(
                 description: 'Unpaid Leave Deduction',
-                rate: _money(dailyRate, defaultCurrency: detectedCurrency),
+                rate: _perDayRate(
+                  leaveDeduction,
+                  leaves,
+                  defaultCurrency: detectedCurrency,
+                ),
                 quantity: leaves,
                 total: '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
@@ -293,6 +304,11 @@ class InvoiceService {
                       _smallInfoLine(
                         'Contract Salary',
                         _money(salary, defaultCurrency: detectedCurrency),
+                        textColor,
+                      ),
+                      _smallInfoLine(
+                        'Daily Rate',
+                        _money(dailyRate, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
                       _smallInfoLine(
@@ -485,7 +501,7 @@ class InvoiceService {
             child: pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
-                'Payable Days',
+                'Days',
                 style: pw.TextStyle(
                   fontSize: 8.5,
                   color: white,
@@ -664,6 +680,25 @@ class InvoiceService {
     final value = _parseValue(trimmed).abs();
 
     return '$prefix ${value.toStringAsFixed(2)}';
+  }
+
+  /// Shows the effective per-day rate actually applied for a deduction row
+  /// (deduction total ÷ deducted days) so rate × days always equals total.
+  static String _perDayRate(
+    String total,
+    String quantity, {
+    String? defaultCurrency,
+  }) {
+    final amount = _parseValue(total);
+    final cleaned = quantity.replaceAll(RegExp(r'[^0-9.]'), '');
+    final days = double.tryParse(cleaned) ?? 0;
+    if (days <= 0 || amount <= 0) {
+      return _money('0', defaultCurrency: defaultCurrency);
+    }
+    return _money(
+      (amount / days).toStringAsFixed(2),
+      defaultCurrency: defaultCurrency,
+    );
   }
 
   static String _detectCurrency(String salary) {

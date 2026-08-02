@@ -39,7 +39,7 @@ class AttendanceReportService {
     DateTime? referenceDate,
   }) {
     final now = referenceDate ?? DateTime.now();
-    final end = DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
     final normalizedPeriod = switch (period.trim()) {
       'Weekly' => 'Week',
       'Monthly' => 'Month',
@@ -49,14 +49,15 @@ class AttendanceReportService {
     };
 
     final start = switch (normalizedPeriod) {
-      'Week' => end.subtract(const Duration(days: 7)),
-      'Month' => end.subtract(const Duration(days: 30)),
-      '6 Month' => end.subtract(const Duration(days: 180)),
-      'Yearly' => end.subtract(const Duration(days: 365)),
-      _ => end,
+      'Today' => today,
+      'Week' => today.subtract(Duration(days: today.weekday - 1)),
+      'Month' => DateTime(today.year, today.month, 1),
+      '6 Month' => DateTime(today.year, today.month - 6, 1),
+      'Yearly' => DateTime(today.year, 1, 1),
+      _ => today,
     };
 
-    return AttendanceDateRange(start: start, end: end);
+    return AttendanceDateRange(start: start, end: today);
   }
 
   static DateTime? recordDate(dynamic value) {
@@ -75,6 +76,30 @@ class AttendanceReportService {
     return '${date.year.toString().padLeft(4, '0')}-'
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Human-readable date for CSV exports (e.g. `01-Aug-2026`), prefixed with
+  /// a tab so spreadsheet apps keep it as text. A bare ISO date is
+  /// auto-converted into a real date cell, which renders as `########` when
+  /// the column is too narrow.
+  static String csvTextDate(DateTime? date) {
+    if (date == null) return '';
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '\t${date.day.toString().padLeft(2, '0')}-'
+        '${months[date.month - 1]}-${date.year}';
   }
 
   static DateTime? _recordRevisionDate(Map<String, dynamic> record) {

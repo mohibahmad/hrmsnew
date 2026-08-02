@@ -789,79 +789,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  String _formatAttendanceDate(DateTime date) =>
-      AttendanceReportService.csvDate(date);
-
-  void _appendWorkerAttendanceRows(
-    List<List<dynamic>> rows,
-    Map<String, dynamic> worker,
-    WorkerAttendanceSnapshot snapshot,
-  ) {
-    final firstRecord = snapshot.records.isEmpty
-        ? const <String, dynamic>{}
-        : snapshot.records.first;
-    final name = (worker['name'] ?? worker['workerName'] ?? 'Worker')
-        .toString();
-    final email = (worker['email'] ?? '').toString();
-    final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
-    final position =
-        (worker['position'] ?? worker['role'] ?? firstRecord['role'] ?? '')
-            .toString();
-    final workType =
-        (worker['type1'] ??
-                worker['workType'] ??
-                firstRecord['workType'] ??
-                'Full Time')
-            .toString();
-    final attendanceType =
-        (worker['type2'] ??
-                worker['attendanceType'] ??
-                firstRecord['attendanceType'] ??
-                'On-Site')
-            .toString();
-
-    rows.add(['Worker Attendance Summary']);
-    rows.add(['Name', name]);
-    rows.add(['Email', email]);
-    rows.add(['Phone', phone]);
-    rows.add(['Position', position]);
-    rows.add(['Work Type', workType]);
-    rows.add(['Attendance Type', attendanceType]);
-    rows.add(['Total Working Days', snapshot.totalWorkingDays]);
-    rows.add(['Total Presents', snapshot.presents]);
-    rows.add(['Total Absents', snapshot.absents]);
-    rows.add(['Total Leaves', snapshot.leaves]);
-    rows.add([
-      'Attendance Percentage',
-      '${snapshot.percentage.toStringAsFixed(1)}%',
-    ]);
-    rows.add([]);
-    rows.add(['Daily Attendance Logs']);
-    rows.add([
-      'Date',
-      'Status',
-      'Work Model',
-      'Attendance Type',
-      'Reason/Notes',
-    ]);
-
-    if (snapshot.records.isEmpty) {
-      rows.add(['', 'No Record', workType, attendanceType, '']);
-    } else {
-      for (final record in snapshot.records) {
-        final date = AttendanceReportService.recordDateForRecord(record);
-        rows.add([
-          AttendanceReportService.csvDate(date),
-          record['status'] ?? '-',
-          record['workType'] ?? workType,
-          record['attendanceType'] ?? attendanceType,
-          record['desc'] ?? record['reason'] ?? '-',
-        ]);
-      }
-    }
-    rows.add([]);
-  }
-
   Future<void> _generateAndShareAttendance(
     String period, {
     DateTime? startDate,
@@ -886,12 +813,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         range = AttendanceReportService.rangeForPeriod(period);
       }
 
+      // Build a readable, preview-style CSV: one block per worker with
+      // worker info, per-day attendance rows, and summary totals. Dates use
+      // a tab prefix so Excel keeps them as text (no `########`).
       final rows = <List<dynamic>>[];
-      rows.add(['All Workers Attendance Report']);
-      rows.add(['Period', _localizeSharePeriod(period)]);
+
+      final periodLabel = _localizeSharePeriod(period);
+      final rangeLabel =
+          '${AttendanceReportService.csvTextDate(range.start).trim()} to '
+          '${AttendanceReportService.csvTextDate(range.end).trim()}';
+
+      rows.add(['Attendance Report - $periodLabel']);
+      rows.add(['Period: $rangeLabel']);
       rows.add([
-        'Date Range',
-        '${_formatAttendanceDate(range.start)} to ${_formatAttendanceDate(range.end)}',
+        'Generated On: '
+            '${AttendanceReportService.csvTextDate(DateTime.now()).trim()}',
       ]);
       rows.add([]);
 
@@ -902,7 +838,59 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           timeOffRecords: _timeOffRecords,
           range: range,
         );
-        _appendWorkerAttendanceRows(rows, worker, snapshot);
+
+        final name = (worker['name'] ?? worker['workerName'] ?? 'Worker')
+            .toString();
+        final email = (worker['email'] ?? '').toString();
+        final phone = (worker['phone'] ?? worker['contact'] ?? '').toString();
+        final position = (worker['position'] ?? worker['role'] ?? '')
+            .toString();
+        final workType = (worker['type1'] ?? worker['workType'] ?? 'Full Time')
+            .toString();
+        final attendanceType =
+            (worker['type2'] ?? worker['attendanceType'] ?? 'On-Site')
+                .toString();
+
+        rows.add(['Worker: $name']);
+        rows.add(['Email: $email']);
+        if (phone.isNotEmpty) rows.add(['Phone: $phone']);
+        rows.add(['Position: $position']);
+        rows.add(['Work Type: $workType']);
+        rows.add(['Attendance Type: $attendanceType']);
+        rows.add([]);
+
+        rows.add([
+          'Date',
+          'Status',
+          'Work Type',
+          'Attendance Type',
+          'Reason/Notes',
+        ]);
+        if (snapshot.records.isEmpty) {
+          rows.add(['No attendance records in this period.', '', '', '', '']);
+        } else {
+          for (final record in snapshot.records) {
+            final date = AttendanceReportService.recordDateForRecord(record);
+            rows.add([
+              AttendanceReportService.csvTextDate(date),
+              record['status'] ?? '-',
+              record['workType'] ?? workType,
+              record['attendanceType'] ?? attendanceType,
+              record['desc'] ?? record['reason'] ?? '',
+            ]);
+          }
+        }
+
+        rows.add([]);
+        rows.add(['Total Working Days', snapshot.totalWorkingDays]);
+        rows.add(['Total Present', snapshot.presents]);
+        rows.add(['Total Absent', snapshot.absents]);
+        rows.add(['Total Leave', snapshot.leaves]);
+        rows.add([
+          'Attendance %',
+          snapshot.percentage.toStringAsFixed(1),
+        ]);
+        rows.add([]);
       }
 
       final csvString = '\ufeff${const CsvEncoder().convert(rows)}';
@@ -1480,6 +1468,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildSummaryCardsRow() {
+    // Today shows worker counts; Week/Month/6 Month/Yearly show day-record counts
+    final bool isToday = _selectedTimeframe == 'Today';
     return Row(
       children: [
         Expanded(
@@ -1493,7 +1483,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
-            title: 'Present'.tr(),
+            title: isToday ? 'Present'.tr() : 'present_days'.tr(),
             count: "$_presentCount",
             iconAsset: 'assets/present_worker.svg',
             countColor: const Color(0xFF00FF2A),
@@ -1502,7 +1492,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
-            title: 'Absent'.tr(),
+            title: isToday ? 'Absent'.tr() : 'absent_days'.tr(),
             count: "$_absentCount",
             iconAsset: 'assets/absent.svg',
             countColor: const Color(0xFFFF0004),
@@ -1511,7 +1501,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _buildSummaryCard(
-            title: 'On leave'.tr(),
+            title: isToday ? 'On leave'.tr() : 'leave_days'.tr(),
             count: "$_leaveCount",
             iconAsset: 'assets/leave.svg',
             countColor: const Color(0xFFFF7B00),
@@ -1652,14 +1642,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+              'assets/placeholder_workers.svg',
+              width: 120,
+              height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
               ),
+            ),
             const SizedBox(height: 16),
             Text(
               isSearchEmpty
@@ -1697,9 +1687,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
-    // Always show the current calendar month's attendance in the preview card
-    // so users can see complete monthly stats regardless of screen timeframe.
-    const previewPeriod = 'Month';
+    // Preview follows the timeframe selected in the dropdown
+    // (Today/Week/Month/6 Month/Yearly).
+    final previewPeriod = _selectedTimeframe;
     final filteredRecordsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
       _filterWorkerRecords(
         doc,
@@ -1774,7 +1764,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         workerDoc,
         _rawAttendanceDocs,
         _timeOffRecords,
-        periodOverride: 'Month',
+        periodOverride: _selectedTimeframe,
       );
     }
   }
@@ -2513,52 +2503,53 @@ class _WorkerAttendancePreviewCardState
   Future<void> _exportCsv(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
-    rows.add(['Worker Attendance Summary']);
-    rows.add(['Name', widget.record.name]);
-    rows.add(['Email', widget.record.email]);
-    rows.add(['Position', widget.record.role]);
-    rows.add(['Work Type', widget.record.workType]);
-    rows.add(['Attendance Type', widget.record.attendanceType]);
-    rows.add(['Period', CustomTimeframeDropdown.localizePeriod(widget.period)]);
+    // Preview-style header with worker info + totals summary.
+    rows.add(['Worker Attendance Preview']);
+    rows.add(['Worker: ${widget.record.name}']);
+    rows.add(['Email: ${widget.record.email}']);
+    rows.add(['Position: ${widget.record.role}']);
     rows.add([]);
-    rows.add(['Total Working Days', '$_totalRecords ${'days_unit'.tr()}']);
-    rows.add(['Total Presents', '$_presents ${'days_unit'.tr()}']);
-    rows.add(['Total Absents', '$_absents ${'days_unit'.tr()}']);
-    rows.add(['Total Leaves', '$_leaves ${'days_unit'.tr()}']);
-    rows.add(['Attendance Percentage', '${_percentage.toStringAsFixed(1)}%']);
+    rows.add(['Total Working Days', _totalRecords]);
+    rows.add(['Total Present', _presents]);
+    rows.add(['Total Absent', _absents]);
+    rows.add(['Total Leave', _leaves]);
+    rows.add(['Attendance %', _percentage.toStringAsFixed(1)]);
     rows.add([]);
 
-    rows.add(['Daily Attendance Logs']);
+    // Detail table header + one row per attendance record.
     rows.add([
       'Date',
       'Status',
-      'Work Model',
+      'Work Type',
       'Attendance Type',
       'Reason/Notes',
     ]);
 
     final sortedRecords = List<Map<String, dynamic>>.from(widget.workerRecords);
     sortedRecords.sort((a, b) {
-      final aTime = a['createdAt'];
-      final bTime = b['createdAt'];
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      if (aTime is Timestamp && bTime is Timestamp) {
-        return bTime.compareTo(aTime);
-      }
-      return 0;
+      final aDate = AttendanceReportService.recordDateForRecord(a);
+      final bDate = AttendanceReportService.recordDateForRecord(b);
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
     });
 
     for (var att in sortedRecords) {
-      final dateStr = AttendanceReportService.csvDate(
+      final dateStr = AttendanceReportService.csvTextDate(
         AttendanceReportService.recordDateForRecord(att),
       );
       final status = att['status'] ?? '-';
-      final model = att['workType'] ?? '-';
-      final type = att['attendanceType'] ?? '-';
-      final notes = att['desc'] ?? att['reason'] ?? '-';
-      rows.add([dateStr, status, model, type, notes]);
+      final model = att['workType'] ?? widget.record.workType;
+      final type = att['attendanceType'] ?? widget.record.attendanceType;
+      final notes = att['desc'] ?? att['reason'] ?? '';
+      rows.add([
+        dateStr,
+        status,
+        model,
+        type,
+        notes,
+      ]);
     }
 
     final csvString = '\ufeff${const CsvEncoder().convert(rows)}';

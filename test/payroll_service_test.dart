@@ -277,7 +277,7 @@ void main() {
     );
   });
 
-  test('absence deduction is 0 when no custom deduction per day is set', () {
+  test('absence falls back to daily rate when no custom per-day deduction', () {
     final result = PayrollService.calculatePayroll(
       salary: 'Rs 100000',
       totalWorkDays: '20',
@@ -289,8 +289,9 @@ void main() {
     expect(result['grossSalary'], 100000);
     expect(result['absentDays'], 2);
     expect(result['workedDays'], 18);
-    expect(result['absentDeduction'], 0);
-    expect(result['netSalary'], 100000);
+    expect(result['dailyRate'], 5000);
+    expect(result['absentDeduction'], 10000);
+    expect(result['netSalary'], 90000);
   });
 
   test('net salary display does not auto-deduct detected absences', () {
@@ -304,7 +305,7 @@ void main() {
   });
 
   test(
-    'unpaid leave deduction is 0 when no custom deduction per day is set',
+    'unpaid leave falls back to daily rate when no custom per-day deduction',
     () {
       final result = PayrollService.calculatePayroll(
         salary: 'Rs 100000',
@@ -314,8 +315,8 @@ void main() {
         leaves: '1',
       );
 
-      expect(result['leaveDeduction'], 0);
-      expect(result['netSalary'], 100000);
+      expect(result['leaveDeduction'], 5000);
+      expect(result['netSalary'], 95000);
     },
   );
 
@@ -596,5 +597,20 @@ void main() {
     });
 
     expect(date, DateTime(2026, 8, 10));
+  });
+
+  test('absence deduction is calculated from daily rate when not specified', () {
+    final result = PayrollService.calculatePayroll(
+      salary: r'$ 25000',
+      totalWorkDays: '31',
+      absents: '1',
+      leaves: '0',
+    );
+
+    expect(result['grossSalary'], 25000.0);
+    expect(result['absentDays'], 1);
+    expect(result['dailyRate'], closeTo(806.45, 0.01));
+    expect(result['absentDeduction'], closeTo(806.45, 0.01));
+    expect(result['netSalary'], closeTo(24193.55, 0.01));
   });
 }

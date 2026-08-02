@@ -604,10 +604,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               leaves: (data?['leaves'] ?? '').toString(),
                               overtimeAmount: (data?['overtimeAmount'] ?? '')
                                   .toString(),
-                              absentDeductionPerDay:
-                                  (data?['absentDeduction'] ?? '').toString(),
-                              leaveDeductionPerDay:
-                                  (data?['leaveDeduction'] ?? '').toString(),
+                              absentDeductionPerDay: data?[
+                                      'deductionsAreTotals'
+                                    ] ==
+                                    true
+                                  ? ''
+                                  : (data?['absentDeduction'] ?? '').toString(),
+                              leaveDeductionPerDay: data?[
+                                      'deductionsAreTotals'
+                                    ] ==
+                                    true
+                                  ? ''
+                                  : (data?['leaveDeduction'] ?? '').toString(),
                               salaryType: (data?['salaryType'] ?? 'Monthly')
                                   .toString(),
                             )['netSalary']

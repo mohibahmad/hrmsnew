@@ -103,37 +103,40 @@ class AppDateUtils {
     return '$dayStr/$monthStr/${date.year}';
   }
 
+  static DateTime _periodStart(String period, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    switch (period) {
+      case 'Today':
+        return today;
+      case 'Week':
+      case 'Weekly':
+        // Current week starting Monday
+        final weekday = today.weekday; // Monday = 1, Sunday = 7
+        return today.subtract(Duration(days: weekday - 1));
+      case 'Month':
+      case 'Monthly':
+        return DateTime(today.year, today.month, 1);
+      case '6 Month':
+      case '6 Months':
+      case '6 Monthly':
+        return DateTime(today.year, today.month - 6, 1);
+      case 'Yearly':
+        return DateTime(today.year, 1, 1);
+      default:
+        return today;
+    }
+  }
+
   static bool isDateWithinPeriod(String dateStr, String period) {
     final date = parseDateString(dateStr);
     if (date == null) return true;
 
     final now = DateTime.now();
+    final start = _periodStart(period, now);
+    final end = DateTime(now.year, now.month, now.day);
 
-    if (period == 'Today') {
-      return date.year == now.year &&
-          date.month == now.month &&
-          date.day == now.day;
-    }
-
-    final refDate = now.isBefore(DateTime(2026, 6, 10))
-        ? DateTime(2026, 6, 10)
-        : now;
-
-    final diff = refDate.difference(date).inDays;
-    if (diff < 0) return true;
-
-    switch (period) {
-      case 'Week':
-        return diff <= 7;
-      case 'Month':
-        return diff <= 30;
-      case '6 Month':
-        return diff <= 180;
-      case 'Yearly':
-        return diff <= 365;
-      default:
-        return true;
-    }
+    final day = DateTime(date.year, date.month, date.day);
+    return !day.isBefore(start) && !day.isAfter(end);
   }
 
   static bool isTimestampWithinPeriod(dynamic createdAt, String period) {
@@ -143,32 +146,11 @@ class AppDateUtils {
     if (date == null) return true;
 
     final now = DateTime.now();
+    final start = _periodStart(period, now);
+    final end = DateTime(now.year, now.month, now.day);
 
-    if (period == 'Today') {
-      return date.year == now.year &&
-          date.month == now.month &&
-          date.day == now.day;
-    }
-
-    final refDate = now.isBefore(DateTime(2026, 6, 10))
-        ? DateTime(2026, 6, 10)
-        : now;
-
-    final diff = refDate.difference(date).inDays;
-    if (diff < 0) return true;
-
-    switch (period) {
-      case 'Week':
-        return diff <= 7;
-      case 'Month':
-        return diff <= 30;
-      case '6 Month':
-        return diff <= 180;
-      case 'Yearly':
-        return diff <= 365;
-      default:
-        return true;
-    }
+    final day = DateTime(date.year, date.month, date.day);
+    return !day.isBefore(start) && !day.isAfter(end);
   }
 
   static DateTime? dateFromValue(dynamic value) {

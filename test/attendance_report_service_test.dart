@@ -13,26 +13,45 @@ void main() {
     },
   );
 
+  test('CSV text dates are readable and tab-prefixed so Excel keeps text', () {
+    expect(
+      AttendanceReportService.csvTextDate(DateTime(2026, 8, 1)),
+      '\t01-Aug-2026',
+    );
+    expect(AttendanceReportService.csvTextDate(null), isEmpty);
+  });
+
   test('share period aliases use the same ranges as attendance filters', () {
+    // July 29, 2026 is a Wednesday.
     final now = DateTime(2026, 7, 29, 18);
 
+    // Week starts on Monday of the current week (July 27, 2026).
     expect(
       AttendanceReportService.rangeForPeriod(
         'Weekly',
         referenceDate: now,
       ).start,
-      DateTime(2026, 7, 22),
+      DateTime(2026, 7, 27),
     );
+    // Month starts on the 1st of the current month.
     expect(
       AttendanceReportService.rangeForPeriod('Month', referenceDate: now).start,
-      DateTime(2026, 6, 29),
+      DateTime(2026, 7, 1),
     );
     expect(
       AttendanceReportService.rangeForPeriod(
         'Monthly',
         referenceDate: now,
       ).start,
-      DateTime(2026, 6, 29),
+      DateTime(2026, 7, 1),
+    );
+    // Yearly starts on January 1st of the current year.
+    expect(
+      AttendanceReportService.rangeForPeriod(
+        'Yearly',
+        referenceDate: now,
+      ).start,
+      DateTime(2026, 1, 1),
     );
     expect(
       AttendanceReportService.rangeForPeriod('Yearly', referenceDate: now).end,

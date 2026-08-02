@@ -771,12 +771,15 @@ class PayrollService {
 
     final overtimePay = customOvertimeAmount;
 
+    // When no custom per-day deduction is provided, absent and unpaid-leave
+    // days are deducted at the daily rate (salary ÷ total working days) so
+    // the numbers always tie out with the invoice table.
     final absentRate = absentDeductionPerDay.trim().isNotEmpty
         ? customAbsentDeduction
-        : 0.0;
+        : dailyRate;
     final leaveRate = leaveDeductionPerDay.trim().isNotEmpty
         ? customLeaveDeduction
-        : 0.0;
+        : dailyRate;
     final absentDeduction = absentDays * absentRate;
     final leaveDeduction = leaveDays * leaveRate;
 
@@ -836,8 +839,9 @@ class PayrollService {
     final currency = getCurrencyPrefix(salary);
     final prefix = currency.isNotEmpty ? '$currency ' : '';
 
-    // Attendance is detected and displayed separately. It must not reduce net
-    // salary automatically; HR applies any deduction explicitly in payroll.
+    // Explicit no-deduction display helper: unlike calculatePayroll (which
+    // defaults absent/unpaid-leave days to the daily rate), this never
+    // auto-deducts attendance. Used only for compact list displays.
     final netSalary = periodSalary + overtime;
 
     return '$prefix${formatNumber(netSalary)}';

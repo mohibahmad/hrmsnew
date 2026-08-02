@@ -379,11 +379,14 @@ class SalaryDayScheduler {
       attendanceResults = await Future.wait(attendanceFutures);
     }
 
-    final autoWorkDays = isGuest
-        ? await firestoreService.getMonthlyWorkingDays(
-            month: effectivePayrollMonth,
-          )
-        : 30;
+    int autoWorkDays;
+    try {
+      autoWorkDays = await firestoreService.getMonthlyWorkingDays(
+        month: effectivePayrollMonth,
+      );
+    } catch (_) {
+      autoWorkDays = 30;
+    }
 
     final results = <AutoPayrollResult>[];
     for (int i = 0; i < workers.length; i++) {
@@ -398,9 +401,8 @@ class SalaryDayScheduler {
         companyCurrency: companyCurrency,
       );
       final totalWorkDays = (worker['totalWorkDays'] ?? '').toString();
-      final workDays = isGuest
-          ? int.tryParse(totalWorkDays) ?? autoWorkDays
-          : 30;
+      final workDays =
+          int.tryParse(totalWorkDays) ?? (autoWorkDays > 0 ? autoWorkDays : 30);
       final attendance = attendanceResults[i];
       final attendanceError = (attendance['_error'] ?? '').toString();
 
@@ -440,6 +442,13 @@ class SalaryDayScheduler {
       double rawNetVal = 0;
 
       try {
+        final enteredSalary = PayrollService.extractSalary(salaryStr);
+        final periodSalary = salaryType.trim().toLowerCase() == 'annual'
+            ? enteredSalary / 12
+            : enteredSalary;
+        // Daily rate is salary ÷ actual working days so the stored payroll
+        // matches the invoice (and vice versa).
+        final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
         if (isGuest) {
           final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
               .toString()
@@ -447,17 +456,14 @@ class SalaryDayScheduler {
           final leaveDeductionPerDay = (worker['leaveDeduction'] ?? '')
               .toString()
               .trim();
-          final effectiveAbsentDeduction = absentDeductionPerDay.isNotEmpty
-              ? absentDeductionPerDay
-              : '0';
-          final effectiveLeaveDeduction = leaveDeductionPerDay.isNotEmpty
-              ? leaveDeductionPerDay
-              : '0';
-          absentDeductionTotal =
-              PayrollService.extractSalary(effectiveAbsentDeduction) * absents;
-          leaveDeductionTotal =
-              PayrollService.extractSalary(effectiveLeaveDeduction) *
-              unpaidLeaves;
+          // No explicit per-day deduction → deduct at the daily rate.
+          absentDeductionTotal = absentDeductionPerDay.isEmpty
+              ? dailyRate * absents
+              : PayrollService.extractSalary(absentDeductionPerDay) * absents;
+          leaveDeductionTotal = leaveDeductionPerDay.isEmpty
+              ? dailyRate * unpaidLeaves
+              : PayrollService.extractSalary(leaveDeductionPerDay) *
+                    unpaidLeaves;
           final effectiveDays = workDays - absents - unpaidLeaves;
           final calc = PayrollService.calculatePayroll(
             salary: salaryStr,
@@ -466,18 +472,13 @@ class SalaryDayScheduler {
             absents: absents.toString(),
             leaves: unpaidLeaves.toString(),
             overtimeAmount: overtimeAmount,
-            absentDeductionPerDay: effectiveAbsentDeduction,
-            leaveDeductionPerDay: effectiveLeaveDeduction,
+            absentDeductionPerDay: absentDeductionPerDay,
+            leaveDeductionPerDay: leaveDeductionPerDay,
             salaryType: salaryType,
           );
           netSalary = calc['formattedNet'] as String? ?? '0';
           rawNetVal = (calc['netSalary'] as num?)?.toDouble() ?? 0;
         } else {
-          final enteredSalary = PayrollService.extractSalary(salaryStr);
-          final periodSalary = salaryType.trim().toLowerCase() == 'annual'
-              ? enteredSalary / 12
-              : enteredSalary;
-          final dailyRate = periodSalary / 30;
           absentDeductionTotal = dailyRate * (absents + (halfDays * 0.5));
           leaveDeductionTotal = dailyRate * unpaidLeaves;
           rawNetVal = PayrollService.calculateNetFromTotals(
@@ -1054,15 +1055,23 @@ class SalaryDayScheduler {
         final deductibleLeaves = r.unpaidLeaves;
         final absentEquivalent = absentsInt + (r.halfDays * 0.5);
         final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
-        // Payable days = the days the worker is actually paid for. Absent and
-        // unpaid-leave days are already excluded from this count, so no
-        // separate deduction applies: gross = daily rate × payable days.
+        // Payable days (shown in the invoice info panel) = the days the
+        // worker is actually paid for. Gross stays the full contract salary
+        // with absence and unpaid leave deducted separately below.
         final payableDays =
             (workDays - absentsInt - deductibleLeaves - (r.halfDays * 0.5))
                 .clamp(0, workDays)
                 .toDouble();
-        final grossSalary = dailyRate * payableDays;
-        final netSalary = grossSalary + overtimeAmt;
+        final grossSalary = rawSalary;
+        final absentDeductionTotal =
+            PayrollService.extractSalary(r.absentDeduction);
+        final leaveDeductionTotal =
+            PayrollService.extractSalary(r.leaveDeduction);
+        final netSalary = (grossSalary +
+                overtimeAmt -
+                absentDeductionTotal -
+                leaveDeductionTotal)
+            .clamp(0.0, double.infinity);
         final currency = PayrollService.getCurrencySymbol(r.currency);
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
@@ -1079,9 +1088,12 @@ class SalaryDayScheduler {
           dailyRate: _invoiceMoney(dailyRate, currency),
           grossPay: _invoiceMoney(grossSalary, currency),
           overtimePay: _invoiceMoney(overtimeAmt, currency),
-          absentDeduction: _invoiceMoney(0, currency),
-          leaveDeduction: _invoiceMoney(0, currency),
-          totalDeductions: _invoiceMoney(0, currency),
+          absentDeduction: _invoiceMoney(absentDeductionTotal, currency),
+          leaveDeduction: _invoiceMoney(leaveDeductionTotal, currency),
+          totalDeductions: _invoiceMoney(
+            absentDeductionTotal + leaveDeductionTotal,
+            currency,
+          ),
           netSalary: _invoiceMoney(netSalary, currency),
           companyName:
               (companyProfile['businessName'] ??
