@@ -409,7 +409,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               ? null
                               : () async {
                                   setModalState(() => isSaving = true);
-                                  if (categoryController.text.trim().isEmpty) {
+                                  final category = categoryController.text
+                                      .trim();
+                                  final amountText = amountController.text.trim();
+                                  final description = descriptionController.text
+                                      .trim();
+
+                                  if (category.isEmpty &&
+                                      amountText.isEmpty &&
+                                      description.isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_fill_all_fields'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (category.isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
@@ -419,7 +437,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     return;
                                   }
                                   final double? amt = double.tryParse(
-                                    amountController.text.trim(),
+                                    amountText,
                                   );
                                   if (amt == null ||
                                       !amt.isFinite ||
@@ -432,9 +450,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
-                                  if (descriptionController.text
-                                      .trim()
-                                      .isEmpty) {
+                                  if (description.isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
@@ -709,7 +725,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               ? null
                               : () async {
                                   setModalState(() => isSaving = true);
-                                  if (categoryController.text.trim().isEmpty) {
+                                  final category = categoryController.text
+                                      .trim();
+                                  final amountText = amountController.text.trim();
+                                  final description = descriptionController.text
+                                      .trim();
+
+                                  if (category.isEmpty &&
+                                      amountText.isEmpty &&
+                                      description.isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_fill_all_fields'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (category.isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,
@@ -719,7 +753,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     return;
                                   }
                                   final double? amt = double.tryParse(
-                                    amountController.text.trim(),
+                                    amountText,
                                   );
                                   if (amt == null ||
                                       !amt.isFinite ||
@@ -732,9 +766,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     );
                                     return;
                                   }
-                                  if (descriptionController.text
-                                      .trim()
-                                      .isEmpty) {
+                                  if (description.isEmpty) {
                                     setModalState(() => isSaving = false);
                                     FlashySnackBar.show(
                                       context,

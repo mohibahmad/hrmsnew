@@ -822,14 +822,6 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_policyNameCtrl.text.trim().isEmpty) {
-      FlashySnackBar.show(
-        context,
-        message: 'Enter a policy name',
-        isError: true,
-      );
-      return;
-    }
     final leaveTypes = _leaveEntries
         .where(
           (entry) =>
@@ -838,6 +830,22 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
         )
         .map((entry) => entry.toMap())
         .toList();
+    if (_policyNameCtrl.text.trim().isEmpty && leaveTypes.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return;
+    }
+    if (_policyNameCtrl.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Enter a policy name',
+        isError: true,
+      );
+      return;
+    }
     if (leaveTypes.isEmpty) {
       FlashySnackBar.show(
         context,

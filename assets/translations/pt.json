@@ -284,6 +284,7 @@
   "relationship_status": "Estado Civil:",
   "married": "Casado",
   "single": "Solteiro",
+  "please_fill_all_fields": "Por favor, preencha todos os campos",
   "please_fill_name_contact": "Por favor, preencha pelo menos Nome e Contato!",
   "worker_added_successfully": "Trabalhador Adicionado com Sucesso!",
   "error_saving_data": "Erro ao salvar dados: {error}",

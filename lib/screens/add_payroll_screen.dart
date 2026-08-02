@@ -293,11 +293,28 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       );
       return;
     }
+    final workDaysText = _workDaysCtrl.text.trim();
+    final absentsText = _absentsCtrl.text.trim();
+    final leavesText = _leavesCtrl.text.trim();
+    final salaryText = _salaryStr.trim();
+
+    if ((workDaysText.isEmpty || workDaysText == r'$ 0') &&
+        (absentsText.isEmpty || absentsText == r'$ 0') &&
+        (leavesText.isEmpty || leavesText == r'$ 0') &&
+        (salaryText.isEmpty || salaryText == r'$ 0')) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     final validators = <(String, String)>[
-      (_workDaysCtrl.text.trim(), 'please_enter_total_work_days'.tr()),
-      (_absentsCtrl.text.trim(), 'please_enter_absents'.tr()),
-      (_leavesCtrl.text.trim(), 'please_enter_leaves'.tr()),
-      (_salaryStr.trim(), 'please_enter_salary'.tr()),
+      (workDaysText, 'please_enter_total_work_days'.tr()),
+      (absentsText, 'please_enter_absents'.tr()),
+      (leavesText, 'please_enter_leaves'.tr()),
+      (salaryText, 'please_enter_salary'.tr()),
     ];
 
     for (final (value, message) in validators) {

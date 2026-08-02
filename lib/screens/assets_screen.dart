@@ -341,6 +341,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   final position = positionController.text
                                       .trim();
 
+                                  final allFieldsEmpty =
+                                      (selectedOption == null ||
+                                          selectedOption.trim().isEmpty) &&
+                                      assetType.isEmpty &&
+                                      position.isEmpty;
+
+                                  if (allFieldsEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_fill_all_fields'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
                                   if (selectedOption == null ||
                                       selectedOption.trim().isEmpty) {
                                     FlashySnackBar.show(
@@ -1637,6 +1652,21 @@ class _AssetsScreenState extends State<AssetsScreen> {
                                   final assetType = typeController.text.trim();
                                   final position = positionController.text
                                       .trim();
+
+                                  final allFieldsEmpty =
+                                      (selectedOption == null ||
+                                          selectedOption.trim().isEmpty) &&
+                                      assetType.isEmpty &&
+                                      position.isEmpty;
+
+                                  if (allFieldsEmpty) {
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_fill_all_fields'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
 
                                   if (selectedOption == null ||
                                       selectedOption.trim().isEmpty) {

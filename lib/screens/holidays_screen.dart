@@ -525,6 +525,17 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                               ? null
                               : () async {
                                   setModalState(() => isSaving = true);
+                                  if (selectedDay == null &&
+                                      holidayNameController.text.trim().isEmpty) {
+                                    setModalState(() => isSaving = false);
+                                    if (!context.mounted) return;
+                                    FlashySnackBar.show(
+                                      context,
+                                      message: 'please_fill_all_fields'.tr(),
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
                                   if (selectedDay == null) {
                                     setModalState(() => isSaving = false);
                                     if (!context.mounted) return;

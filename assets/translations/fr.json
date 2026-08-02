@@ -284,6 +284,7 @@
   "relationship_status": "Statut relationnel :",
   "married": "Marié",
   "single": "Célibataire",
+  "please_fill_all_fields": "Veuillez remplir tous les champs",
   "please_fill_name_contact": "Veuillez remplir au moins le nom et le contact !",
   "worker_added_successfully": "Travailleur ajouté avec succès !",
   "error_saving_data": "Erreur lors de l'enregistrement des données : {error}",

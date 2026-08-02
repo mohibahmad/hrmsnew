@@ -284,6 +284,7 @@
   "relationship_status": "Семейное положение:",
   "married": "Женат/Замужем",
   "single": "Холост/Не замужем",
+  "please_fill_all_fields": "Пожалуйста, заполните все поля",
   "please_fill_name_contact": "Пожалуйста, заполните хотя бы Имя и Контакт!",
   "worker_added_successfully": "Сотрудник успешно добавлен!",
   "error_saving_data": "Ошибка сохранения данных: {error}",

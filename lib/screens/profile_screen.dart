@@ -442,6 +442,21 @@ class _ProfileBodyState extends State<ProfileBody> {
     final contact2 = _contact2Controller.text.trim();
     final address = _addressController.text.trim();
 
+    if (businessName.isEmpty &&
+        companyId.isEmpty &&
+        email.isEmpty &&
+        contact1.isEmpty &&
+        address.isEmpty) {
+      if (mounted) {
+        FlashySnackBar.show(
+          context,
+          message: 'please_fill_all_fields'.tr(),
+          isError: true,
+        );
+      }
+      return false;
+    }
+
     if (businessName.isEmpty) {
       if (mounted) {
         FlashySnackBar.show(

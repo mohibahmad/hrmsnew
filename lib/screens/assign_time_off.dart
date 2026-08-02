@@ -1345,6 +1345,18 @@ class _AssignTimeOffScreenState extends State<AssignTimeOffScreen> {
 
   Future<void> _handleSave() async {
     if (_isLoading) return;
+
+    if (_selectedWorker == null &&
+        _notesController.text.trim().isEmpty &&
+        _selectedDates.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
     if (_selectedWorker == null) {
       FlashySnackBar.show(
         context,

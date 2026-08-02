@@ -287,6 +287,7 @@
   "relationship_status": "Relationship Status:",
   "married": "Married",
   "single": "Single",
+  "please_fill_all_fields": "Please fill all fields",
   "please_fill_name_contact": "Please fill Name and Contact at least!",
   "worker_added_successfully": "Worker Added Successfully!",
   "error_saving_data": "Error saving data: {error}",

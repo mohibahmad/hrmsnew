@@ -675,6 +675,18 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final annualLeavesText = _annualLeavesController.text.trim();
     final joiningDateText = (_joiningDate ?? '').trim();
 
+    if (position.isEmpty &&
+        salaryText.isEmpty &&
+        annualLeavesText.isEmpty &&
+        joiningDateText.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return false;
+    }
+
     if (position.isEmpty) {
       FlashySnackBar.show(
         context,
@@ -1092,6 +1104,23 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final nationalId = _nationalIdController.text.trim();
     final religion = _religionController.text.trim();
     final address = _addressController.text.trim();
+
+    final allFieldsEmpty = name.isEmpty &&
+        phone.isEmpty &&
+        email.isEmpty &&
+        nationalId.isEmpty &&
+        religion.isEmpty &&
+        _dobController.text.trim().isEmpty &&
+        address.isEmpty;
+
+    if (allFieldsEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return;
+    }
 
     if (name.isEmpty) {
       FlashySnackBar.show(
@@ -1550,6 +1579,26 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
     final nationalId = _nationalIdController.text.trim();
+    final religion = _religionController.text.trim();
+    final address = _addressController.text.trim();
+    final dobStr = _dobController.text.trim();
+
+    final allFieldsEmpty = name.isEmpty &&
+        phone.isEmpty &&
+        email.isEmpty &&
+        nationalId.isEmpty &&
+        religion.isEmpty &&
+        dobStr.isEmpty &&
+        address.isEmpty;
+
+    if (allFieldsEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_fill_all_fields'.tr(),
+        isError: true,
+      );
+      return;
+    }
 
     if (name.isEmpty) {
       FlashySnackBar.show(
@@ -1586,10 +1635,6 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
       );
       return;
     }
-
-    final religion = _religionController.text.trim();
-    final address = _addressController.text.trim();
-    final dobStr = _dobController.text.trim();
 
     if (nationalId.isEmpty) {
       FlashySnackBar.show(
