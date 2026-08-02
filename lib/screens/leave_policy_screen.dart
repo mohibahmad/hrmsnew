@@ -237,7 +237,7 @@ class _LeavePolicyScreenState extends State<LeavePolicyScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SvgPicture.asset(
-            'assets/leave_grey.svg',
+            'assets/leave.svg',
             width: 80,
             height: 80,
           ),

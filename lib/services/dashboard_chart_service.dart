@@ -193,6 +193,8 @@ class DashboardChartService {
     }
 
     for (final attendance in attendanceRecords) {
+      if (attendance['excludeFromLeaveChart'] == true) continue;
+
       final status = (attendance['status'] ?? '')
           .toString()
           .trim()

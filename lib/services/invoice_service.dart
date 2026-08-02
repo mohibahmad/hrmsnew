@@ -41,6 +41,7 @@ class InvoiceService {
     String paymentMethod = 'Company Payroll',
     String terms = 'Standard payroll terms apply.',
   }) async {
+    final detectedCurrency = _detectCurrency(salary);
     final pdf = pw.Document();
 
     // ✅ Use BUILT-IN fonts - no external files needed
@@ -212,10 +213,10 @@ class InvoiceService {
             _tableHeader(navy: navy, white: white),
 
             _tableRow(
-              description: 'Basic Salary ($daysWorked worked days)',
-              rate: _money(dailyRate),
+              description: 'Basic Salary - $daysWorked of $totalWorkDays Working Days',
+              rate: _money(dailyRate, defaultCurrency: detectedCurrency),
               quantity: daysWorked,
-              total: _money(grossPay),
+              total: _money(grossPay, defaultCurrency: detectedCurrency),
               textColor: textColor,
               lineColor: lineColor,
             ),
@@ -223,9 +224,9 @@ class InvoiceService {
             if (hasOvertime)
               _tableRow(
                 description: 'Overtime Pay',
-                rate: _money(overtimeAmount),
+                rate: _money(overtimeAmount, defaultCurrency: detectedCurrency),
                 quantity: '1',
-                total: _money(overtimePay),
+                total: _money(overtimePay, defaultCurrency: detectedCurrency),
                 textColor: textColor,
                 lineColor: lineColor,
               ),
@@ -233,9 +234,9 @@ class InvoiceService {
             if (hasAbsentDeduction)
               _tableRow(
                 description: 'Absent Deduction',
-                rate: _money(dailyRate),
+                rate: _money(dailyRate, defaultCurrency: detectedCurrency),
                 quantity: absents,
-                total: '-${_money(absentDeduction)}',
+                total: '-${_money(absentDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
                 lineColor: lineColor,
               ),
@@ -243,9 +244,9 @@ class InvoiceService {
             if (hasLeaveDeduction)
               _tableRow(
                 description: 'Unpaid Leave Deduction',
-                rate: _money(dailyRate),
+                rate: _money(dailyRate, defaultCurrency: detectedCurrency),
                 quantity: leaves,
-                total: '-${_money(leaveDeduction)}',
+                total: '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
                 lineColor: lineColor,
               ),
@@ -291,7 +292,7 @@ class InvoiceService {
                       ),
                       _smallInfoLine(
                         'Contract Salary',
-                        _money(salary),
+                        _money(salary, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
                       _smallInfoLine(
@@ -312,18 +313,18 @@ class InvoiceService {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                     children: [
-                      _summaryLine('Gross Pay', _money(grossPay), textColor),
+                      _summaryLine('Gross Pay', _money(grossPay, defaultCurrency: detectedCurrency), textColor),
                       if (hasOvertime)
                         _summaryLine(
                           'Overtime Pay',
-                          _money(overtimePay),
+                          _money(overtimePay, defaultCurrency: detectedCurrency),
                           textColor,
                         ),
                       _summaryLine(
                         'Deductions',
                         hasDeductions
-                            ? '-${_money(totalDeductions)}'
-                            : _money('0'),
+                            ? '-${_money(totalDeductions, defaultCurrency: detectedCurrency)}'
+                            : _money('0', defaultCurrency: detectedCurrency),
                         textColor,
                       ),
                       pw.SizedBox(height: 8),
@@ -343,7 +344,7 @@ class InvoiceService {
                               style: pw.TextStyle(fontSize: 10, color: white),
                             ),
                             pw.Text(
-                              _money(netSalary),
+                              _money(netSalary, defaultCurrency: detectedCurrency),
                               style: pw.TextStyle(
                                 fontSize: 10,
                                 color: white,
@@ -636,14 +637,14 @@ class InvoiceService {
     return value.toString().padLeft(2, '0');
   }
 
-  static String _money(String raw) {
+  static String _money(String raw, {String? defaultCurrency}) {
     final trimmed = raw.trim();
 
     if (trimmed.isEmpty) {
-      return 'Rs 0.00';
+      return '${defaultCurrency ?? 'Rs'} 0.00';
     }
 
-    String prefix = 'Rs';
+    String prefix = defaultCurrency ?? 'Rs';
 
     final firstDigit = RegExp(r'\d').firstMatch(trimmed);
 
@@ -655,13 +656,23 @@ class InvoiceService {
           .trim();
 
       if (detected.isNotEmpty) {
-        prefix = detected;
+        prefix = detected[0].toUpperCase() + detected.substring(1);
       }
     }
 
     final value = _parseValue(trimmed).abs();
 
     return '$prefix ${value.toStringAsFixed(2)}';
+  }
+
+  static String _detectCurrency(String salary) {
+    final trimmed = salary.trim();
+    if (trimmed.isEmpty) return 'Rs';
+    final match = RegExp(r'\d').firstMatch(trimmed);
+    if (match == null || match.start == 0) return 'Rs';
+    final prefix = trimmed.substring(0, match.start).trim();
+    if (prefix.isEmpty) return 'Rs';
+    return prefix[0].toUpperCase() + prefix.substring(1);
   }
 
   static double _parseValue(String formatted) {

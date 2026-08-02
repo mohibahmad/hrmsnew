@@ -485,13 +485,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return [
       Center(
-        child: SvgPicture.asset(
-          'assets/HR_dark.svg',
-          height: 80,
+        child: Image.asset(
+          'assets/app_icon.png',
+          height: 120,
           fit: BoxFit.contain,
         ),
       ),
-      const SizedBox(height: 50),
+      const SizedBox(height: 30),
 
       Text(
         'welcome_back'.tr(),

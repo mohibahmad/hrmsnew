@@ -16,12 +16,13 @@ void main() {
     required Future<bool> Function() isBiometricAvailable,
     required Future<bool> Function() authenticate,
     required DateTime Function() clock,
+    bool isSessionActive = true,
     Future<void> Function()? onSignInAgain,
   }) {
     return MaterialApp(
       home: SessionTimeoutGate(
         timeout: const Duration(seconds: 1),
-        isSessionActive: () => true,
+        isSessionActive: () => isSessionActive,
         isBiometricAvailable: isBiometricAvailable,
         loadBiometricName: () async => 'Face ID',
         authenticate: authenticate,
@@ -31,6 +32,27 @@ void main() {
       ),
     );
   }
+
+  testWidgets('inactive guest session never opens the timeout lock', (
+    tester,
+  ) async {
+    var now = DateTime(2026);
+    await tester.pumpWidget(
+      buildTestApp(
+        isSessionActive: false,
+        isBiometricAvailable: () async => false,
+        authenticate: () async => false,
+        clock: () => now,
+      ),
+    );
+
+    now = now.add(const Duration(minutes: 5));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('session_locked_title'), findsNothing);
+  });
 
   testWidgets('pointer activity restarts the inactivity countdown', (
     tester,

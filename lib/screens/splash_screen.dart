@@ -118,7 +118,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    final destination = (user != null || isGuest) && !sessionLocked
+    // A stale lock from a previous authenticated session must never block the
+    // guest experience, which intentionally has no inactivity timeout.
+    final destination = (user != null || isGuest) &&
+            (!sessionLocked || isGuest)
         ? const HomeScreen()
         : const LoginScreen();
 

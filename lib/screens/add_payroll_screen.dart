@@ -234,14 +234,33 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       return;
     }
     try {
-      final results = await _firestore.getWorkerMonthlyAttendance(
-        _email,
-        workerId: _workerId,
-        month: _payrollMonth,
-      );
-      final workingDays = await _firestore.getMonthlyWorkingDays(
-        month: _payrollMonth,
-      );
+      final results = await _firestore
+          .getWorkerMonthlyAttendance(
+            _email,
+            workerId: _workerId,
+            month: _payrollMonth,
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('⚠️ getWorkerMonthlyAttendance timed out for $_email');
+              return <String, int>{
+                'absents': 0,
+                'paidLeaves': 0,
+                'unpaidLeaves': 0,
+                'leaves': 0,
+              };
+            },
+          );
+      final workingDays = await _firestore
+          .getMonthlyWorkingDays(month: _payrollMonth)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('⚠️ getMonthlyWorkingDays timed out');
+              return 0;
+            },
+          );
       if (!mounted) return;
       setState(() {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
@@ -396,6 +415,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
       if (!mounted) return;
 
+      setState(() => _isSaving = false);
+
       FlashySnackBar.show(context, message: 'payroll_saved_successfully'.tr());
     } catch (_) {
       if (mounted) {
@@ -421,7 +442,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isSaving = false);
         widget.onBack?.call();
       }
     }
@@ -522,6 +542,16 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     if (mounted) await _showInvoicePreviewDialog(bytes, fileName);
   }
 
+  static Future<pdfx.PdfPageImage?> _renderPdfPageHighQuality(
+    pdfx.PdfPage page,
+  ) =>
+      page.render(
+        width: page.width * 3,
+        height: page.height * 3,
+        format: pdfx.PdfPageImageFormat.png,
+        backgroundColor: '#ffffff',
+      );
+
   Future<void> _showInvoicePreviewDialog(
     Uint8List pdfBytes,
     String fileName,
@@ -606,10 +636,11 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                                     child: IconButton(
                                       onPressed: () => Navigator.pop(ctx),
                                       padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints.tightFor(
-                                        width: 40,
-                                        height: 40,
-                                      ),
+                                      constraints:
+                                          const BoxConstraints.tightFor(
+                                            width: 40,
+                                            height: 40,
+                                          ),
                                       icon: const Icon(
                                         Icons.close_rounded,
                                         size: 24,
@@ -624,157 +655,178 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0247C4),
-                                  foregroundColor: Colors.white,
-                                  disabledBackgroundColor: const Color(
-                                    0xFF0247C4,
-                                  ).withValues(alpha: 0.55),
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(9),
-                                  ),
-                                ),
-                                onPressed: isSharing
-                                    ? null
-                                    : () async {
-                                        setDialogState(() => isSharing = true);
-                                        try {
-                                          final saved =
-                                              await InvoiceService.shareInvoice(
-                                                pdfBytes,
-                                                fileName,
-                                              );
-                                          if (saved && ctx.mounted) {
-                                            FlashySnackBar.show(
-                                              ctx,
-                                              message: 'file_saved_and_opened'
-                                                  .tr(
-                                                    namedArgs: {
-                                                      'file': fileName,
-                                                    },
-                                                  ),
-                                            );
-                                          }
-                                        } catch (_) {
-                                          if (ctx.mounted) {
-                                            FlashySnackBar.show(
-                                              ctx,
-                                              message: 'unexpected_error'.tr(),
-                                              isError: true,
-                                            );
-                                          }
-                                        } finally {
-                                          if (ctx.mounted) {
-                                            setDialogState(
-                                              () => isSharing = false,
-                                            );
-                                          }
-                                        }
-                                      },
-                                icon: isSharing
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF0247C4,
+                                          ),
+                                          foregroundColor: Colors.white,
+                                          disabledBackgroundColor: const Color(
+                                            0xFF0247C4,
+                                          ).withValues(alpha: 0.55),
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
+                                          ),
                                         ),
-                                      )
-                                    : SvgPicture.asset(
-                                        'assets/share1.svg',
-                                        width: 16,
-                                        height: 16,
-                                        colorFilter: const ColorFilter.mode(
-                                          Colors.white,
-                                          BlendMode.srcIn,
+                                        onPressed: isSharing
+                                            ? null
+                                            : () async {
+                                                setDialogState(
+                                                  () => isSharing = true,
+                                                );
+                                                try {
+                                                  final saved =
+                                                      await InvoiceService.shareInvoice(
+                                                        pdfBytes,
+                                                        fileName,
+                                                      );
+                                                  if (saved && ctx.mounted) {
+                                                    FlashySnackBar.show(
+                                                      ctx,
+                                                      message:
+                                                          'file_saved_and_opened'
+                                                              .tr(
+                                                                namedArgs: {
+                                                                  'file':
+                                                                      fileName,
+                                                                },
+                                                              ),
+                                                    );
+                                                  }
+                                                } catch (_) {
+                                                  if (ctx.mounted) {
+                                                    FlashySnackBar.show(
+                                                      ctx,
+                                                      message:
+                                                          'unexpected_error'
+                                                              .tr(),
+                                                      isError: true,
+                                                    );
+                                                  }
+                                                } finally {
+                                                  if (ctx.mounted) {
+                                                    setDialogState(
+                                                      () => isSharing = false,
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                        icon: isSharing
+                                            ? const SizedBox(
+                                                width: 23,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
+                                              )
+                                            : SvgPicture.asset(
+                                                'assets/share1.svg',
+                                                width: 16,
+                                                height: 16,
+                                                colorFilter:
+                                                    const ColorFilter.mode(
+                                                      Colors.white,
+                                                      BlendMode.srcIn,
+                                                    ),
+                                              ),
+                                        label: Text(
+                                          'share'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
                                         ),
                                       ),
-                                label: Text(
-                                  'share'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                                      ),
-                                      if (widget.workerData['hasPayrollRecord'] ==
+                                      if (widget
+                                              .workerData['hasPayrollRecord'] ==
                                           true) ...[
                                         const SizedBox(width: 8),
                                         Tooltip(
-                                  message: 'cancel_payroll'.tr(),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    borderRadius: BorderRadius.circular(9),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(9),
-                                      onTap: isSharing || _isCancellingPayroll
-                                          ? null
-                                          : () async {
-                                              final confirmed =
-                                                  await DeleteDialog.show(
-                                                    context: ctx,
-                                                    title: 'cancel_payroll'
-                                                        .tr(),
-                                                    content:
-                                                        'cancel_payroll_confirm'
-                                                            .tr(
-                                                              namedArgs: {
-                                                                'name': _name,
-                                                              },
+                                          message: 'cancel_payroll'.tr(),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                              onTap:
+                                                  isSharing ||
+                                                      _isCancellingPayroll
+                                                  ? null
+                                                  : () async {
+                                                      final confirmed =
+                                                          await DeleteDialog.show(
+                                                            context: ctx,
+                                                            title:
+                                                                'cancel_payroll'
+                                                                    .tr(),
+                                                            content:
+                                                                'cancel_payroll_confirm'.tr(
+                                                                  namedArgs: {
+                                                                    'name':
+                                                                        _name,
+                                                                  },
+                                                                ),
+                                                            confirmButtonText:
+                                                                'cancel_payroll',
+                                                          );
+                                                      if (confirmed) {
+                                                        if (ctx.mounted) {
+                                                          Navigator.pop(ctx);
+                                                        }
+                                                        await _handleCancelPayroll();
+                                                      }
+                                                    },
+                                              child: Container(
+                                                width: 40,
+                                                height: 40,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFEF4444,
+                                                  ).withValues(alpha: 0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(9),
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFEF4444,
+                                                    ).withValues(alpha: 0.2),
+                                                  ),
+                                                ),
+                                                child: _isCancellingPayroll
+                                                    ? const SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              color: Color(
+                                                                0xFFEF4444,
+                                                              ),
+                                                              strokeWidth: 2,
                                                             ),
-                                                    confirmButtonText:
-                                                        'cancel_payroll',
-                                                  );
-                                              if (confirmed) {
-                                                if (ctx.mounted) {
-                                                  Navigator.pop(ctx);
-                                                }
-                                                await _handleCancelPayroll();
-                                              }
-                                            },
-                                      child: Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFFEF4444,
-                                          ).withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(
-                                            9,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(
-                                              0xFFEF4444,
-                                            ).withValues(alpha: 0.2),
-                                          ),
-                                        ),
-                                        child: _isCancellingPayroll
-                                            ? const SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      color: Color(0xFFEF4444),
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : const Icon(
-                                                Icons.cancel_outlined,
-                                                size: 22,
-                                                color: Color(0xFFEF4444),
+                                                      )
+                                                    : const Icon(
+                                                        Icons.cancel_outlined,
+                                                        size: 22,
+                                                        color: Color(
+                                                          0xFFEF4444,
+                                                        ),
+                                                      ),
                                               ),
-                                      ),
-                                    ),
-                                  ),
+                                            ),
+                                          ),
                                         ),
                                       ],
-                                      const SizedBox(width: 48),
                                     ],
                                   ),
                                 ),
@@ -803,7 +855,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                                   ),
                                 ],
                               ),
-                              child: pdfx.PdfView(controller: controller),
+                              child: pdfx.PdfView(
+                                controller: controller,
+                                renderer: _renderPdfPageHighQuality,
+                              ),
                             ),
                           ),
                         ),
@@ -831,55 +886,218 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     setState(() => _showNotifications = false);
   }
 
+  Future<bool> _onWillPop() async {
+    if (!_hasUnsavedChanges) return true;
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'UnsavedChangesDialog',
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 12 * animation.value,
+            sigmaY: 12 * animation.value,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: curve,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  width: 380,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withValues(alpha: 0.15),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFEE2E2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.warning_rounded,
+                            color: Color(0xFFEF4444),
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'discard_changes'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF000000),
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'unsaved_changes_message'.tr(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context, false),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'cancel'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF000000),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context, true),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  'discard'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: const Color(0xFFF8F9FB),
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(32),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildPayrollDataHeader(),
-                            const SizedBox(height: 24),
-                            _buildEmployeeBanner(),
-                            const SizedBox(height: 12),
-                            _buildDetailsCard(),
-                            const SizedBox(height: 40),
-                          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          widget.onBack?.call();
+        }
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: const Color(0xFFF8F9FB),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _buildAppBar(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1200),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildPayrollDataHeader(),
+                              const SizedBox(height: 24),
+                              _buildEmployeeBanner(),
+                              const SizedBox(height: 12),
+                              _buildDetailsCard(),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
 
-        if (_showNotifications) ...[
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _toggleNotifications,
-              behavior: HitTestBehavior.opaque,
+          if (_showNotifications) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _toggleNotifications,
+                behavior: HitTestBehavior.opaque,
+              ),
             ),
-          ),
-          NotificationSidebar(
-            onClose: _toggleNotifications,
-            onNotificationTap: _onNotificationTap,
-          ),
+            NotificationSidebar(
+              onClose: _toggleNotifications,
+              onNotificationTap: _onNotificationTap,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -894,7 +1112,10 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+            onTap: () async {
+              final shouldPop = await _onWillPop();
+              if (shouldPop) widget.onBack?.call();
+            },
             child: const Padding(
               padding: EdgeInsets.only(right: 12),
               child: Icon(Icons.arrow_back, color: _textDark, size: 24),
@@ -1338,10 +1559,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           const SizedBox(height: 4),
           Text(
             helperText,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
           ),
         ],
       ],
@@ -1361,29 +1579,32 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _netCtrl,
-          readOnly: true,
-          style: const TextStyle(
-            fontSize: 16,
-            color: _darkBlue,
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+        IgnorePointer(
+          child: TextField(
+            controller: _netCtrl,
+            readOnly: true,
+            enableInteractiveSelection: false,
+            style: const TextStyle(
+              fontSize: 16,
+              color: _darkBlue,
+              fontWeight: FontWeight.w600,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFEDF2FA),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFD2E3FC)),
-            ),
-            filled: true,
-            fillColor: const Color(0xFFEDF2FA),
           ),
         ),
       ],

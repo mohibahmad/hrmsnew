@@ -446,13 +446,13 @@ class _SignupScreenState extends State<SignupScreen> {
   List<Widget> _buildFormContent(BuildContext context) {
     return [
       Center(
-        child: SvgPicture.asset(
-          'assets/HR_dark.svg',
-          height: 80,
+        child: Image.asset(
+          'assets/app_icon.png',
+          height: 120,
           fit: BoxFit.contain,
         ),
       ),
-      const SizedBox(height: 50),
+      const SizedBox(height: 10),
 
       Text(
         'create_account'.tr(),

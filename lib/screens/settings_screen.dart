@@ -16,6 +16,7 @@ import 'leave_policy_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../utils/delete_dialog.dart';
 import '../shared/app_constants.dart';
+import '../utils/svg_fill_color_mapper.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -574,13 +575,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: _shareApp,
                   ),
                   _buildActionSettingItem(
-                    'assets/leave_settings.svg',
+                    'assets/leave.svg',
                     'leave_policy'.tr(),
                     'add_policy'.tr(),
                     onTap: widget.isGuest
                         ? null
                         : () => _showLeavePolicyListDialog(),
                     disabled: widget.isGuest,
+                    preserveIconColors: true,
+                    iconColorMapper: const SvgFillColorMapper(
+                      source: Color(0xFFFF7B00),
+                      replacement: Color(0xFF000000),
+                    ),
                   ),
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
@@ -662,6 +668,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color? buttonColor,
     bool showCheckmark = false,
     bool preserveIconColors = false,
+    ColorMapper? iconColorMapper,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -674,19 +681,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Opacity(
             opacity: disabled ? 0.4 : 1,
-            child: SvgPicture.asset(
-              iconPath,
-              width: 24,
-              height: 24,
-              colorFilter: preserveIconColors
-                  ? null
-                  : ColorFilter.mode(
-                      disabled
-                          ? const Color(0xFFAAAAAA)
-                          : const Color(0xFF000000),
-                      BlendMode.srcIn,
-                    ),
-            ),
+            child: iconPath.endsWith('.svg')
+                ? SvgPicture.asset(
+                    iconPath,
+                    width: 24,
+                    height: 24,
+                    colorMapper: iconColorMapper,
+                    colorFilter: preserveIconColors
+                        ? null
+                        : ColorFilter.mode(
+                            disabled
+                                ? const Color(0xFFAAAAAA)
+                                : const Color(0xFF000000),
+                            BlendMode.srcIn,
+                          ),
+                  )
+                : Image.asset(
+                    iconPath,
+                    width: 24,
+                    height: 24,
+                  ),
           ),
           if (showCheckmark) ...[
             const SizedBox(width: 4),
@@ -769,13 +783,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Row(
             children: [
-              SvgPicture.asset(
-                'assets/lanuguage.svg',
-                width: 24,
-                height: 24,
+              ColorFiltered(
                 colorFilter: const ColorFilter.mode(
                   Color(0xFF000000),
                   BlendMode.srcIn,
+                ),
+                child: Image.asset(
+                  'assets/langauge_icon.png',
+                  width: 24,
+                  height: 24,
                 ),
               ),
               const SizedBox(width: 16),

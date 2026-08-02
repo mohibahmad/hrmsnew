@@ -1070,12 +1070,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/placeholdemptystate.png',
-              width: 120,
-              height: 100,
-              color: const Color(0xFFCBCBCB),
-            ),
+            SvgPicture.asset(
+                'assets/placeholder_workers.svg',
+                width: 120,
+                height: 100,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFFCBCBCB),
+                  BlendMode.srcIn,
+                ),
+              ),
             const SizedBox(height: 16),
             Text(
               isSearchEmpty

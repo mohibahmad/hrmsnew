@@ -188,6 +188,7 @@ class AuthService {
   }) async {
     await PreferencesService.setLoggedIn(true);
     await PreferencesService.setGuest(true);
+    await PreferencesService.setSessionLocked(false);
     await DummyData.resetToDefaults();
     profilePicNotifier.value = null;
     return GuestUserCredential(_guestUser);

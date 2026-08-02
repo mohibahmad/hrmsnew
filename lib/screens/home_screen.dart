@@ -1256,12 +1256,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                     ).size.width;
                     final bool isNarrow = screenWidth < 1150;
+                    final isGuest =
+                        (_authService.currentUser?.isAnonymous ?? false) ||
+                        PreferencesService.cachedIsGuest;
                     final leaveDocs =
                         DashboardChartService.mergedLeaveDaysForPeriod(
                           timeOffRecords: _allTimeoffDocs,
-                          attendanceRecords: _allAttendanceDocs
-                              .where(_attendanceBelongsToExistingWorker)
-                              .toList(),
+                          attendanceRecords: isGuest
+                              ? const <Map<String, dynamic>>[]
+                              : _allAttendanceDocs
+                                    .where(_attendanceBelongsToExistingWorker)
+                                    .toList(),
                           period: _selectedPeriod,
                         );
                     final filteredAttendanceDocs = _getFilteredAttendanceDocs(

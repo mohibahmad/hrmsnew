@@ -39,6 +39,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Touch ID to securely sign in and unlock your HRMS session.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

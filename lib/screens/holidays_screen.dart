@@ -1976,11 +1976,14 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/placeholdemptystate.png',
+              SvgPicture.asset(
+                'assets/placeholder_workers.svg',
                 width: 120,
                 height: 100,
-                color: const Color(0xFFCBCBCB),
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFFCBCBCB),
+                  BlendMode.srcIn,
+                ),
               ),
               const SizedBox(height: 16),
               Text(

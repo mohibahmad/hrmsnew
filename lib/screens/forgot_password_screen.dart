@@ -288,9 +288,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Center(
-                              child: SvgPicture.asset(
-                                'assets/HR_dark.svg',
-                                height: 80,
+                              child: Image.asset(
+                                'assets/app_icon.png',
+                                height: 120,
                                 fit: BoxFit.contain,
                               ),
                             ),

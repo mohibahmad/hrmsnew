@@ -274,12 +274,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/placeholdemptystate.png',
-              width: 120,
-              height: 100,
-              color: const Color(0xFFCBCBCB),
-            ),
+            SvgPicture.asset(
+                'assets/placeholder_workers.svg',
+                width: 120,
+                height: 100,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFFCBCBCB),
+                  BlendMode.srcIn,
+                ),
+              ),
             const SizedBox(height: 16),
             Text(
               isSearchEmpty
@@ -1570,14 +1573,17 @@ class _EditDocumentsPageState extends State<_EditDocumentsPage> {
 
 String _cleanDocumentFileName(String rawName) {
   if (rawName.trim().isEmpty) return 'document'.tr();
-  String name = rawName.split('?').first;
+  String name = rawName.trim().split('?').first;
   try {
     name = Uri.decodeComponent(name);
   } catch (_) {}
   if (name.contains('/')) {
     name = name.split('/').last;
   }
-  name = name.replaceFirst(RegExp(r'^\d+_'), '');
+  name = name.trim();
+  name = name.replaceFirst(RegExp(r'^\d+[_-]+'), '');
+  name = name.replaceAll(RegExp(r'_+'), ' ');
+  name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
   return name.trim().isNotEmpty ? name.trim() : 'document'.tr();
 }
 

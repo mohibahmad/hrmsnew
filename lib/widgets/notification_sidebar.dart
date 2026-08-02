@@ -625,16 +625,13 @@ class _NotificationSidebarState extends State<NotificationSidebar>
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: SvgPicture.asset(
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
                           'assets/app_icon.png',
-                          width: 20,
-                          height: 20,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
                         ),
                       ),
                       const SizedBox(width: 10),

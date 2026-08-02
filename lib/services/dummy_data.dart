@@ -1374,127 +1374,50 @@ class DummyData {
     },
   ];
 
+  static String _guestAttendanceDate(int daysAgo) {
+    final date = DateTime.now().subtract(Duration(days: daysAgo));
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  static Map<String, dynamic> _guestAttendanceRecord(
+    int workerIndex,
+    int daysAgo,
+  ) {
+    const statuses = ['Present', 'Present', 'Present', 'Absent', 'Leave'];
+    const absentReasons = ['Sick', 'Family Emergency', 'Without Notice'];
+    const leaveTypes = ['Sick Leave', 'Casual Leave', 'Medical Leave'];
+    final worker = workers[workerIndex];
+    final status = statuses[(workerIndex + daysAgo) % statuses.length];
+    final date = _guestAttendanceDate(daysAgo);
+    final leaveType = leaveTypes[(workerIndex + daysAgo) % leaveTypes.length];
+    final reason = status == 'Absent'
+        ? absentReasons[(workerIndex + daysAgo) % absentReasons.length]
+        : status == 'Leave'
+        ? leaveType
+        : '';
+
+    return {
+      'id': 'guest_attendance_${worker['workerId']}_$date',
+      'workerId': worker['workerId'],
+      'name': worker['name'],
+      'email': worker['email'],
+      'date': date,
+      'attendanceDate': date,
+      'status': status,
+      'reason': reason,
+      // These rows exist to populate the guest attendance tabs only. Leave
+      // types shown on the dashboard must continue to come from time-off data.
+      'excludeFromLeaveChart': true,
+      if (status == 'Leave') 'type': leaveType,
+    };
+  }
+
   static final List<Map<String, dynamic>> attendance = [
-    {
-      'name': 'Michael Johnson',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Sophia Martinez',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Daniel Anderson',
-      'date': '27/01/2026',
-      'status': 'absent',
-      'reason': 'Sick',
-    },
-    {
-      'name': 'Olivia Thomas',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'James Miller',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Emily Davis',
-      'date': '27/01/2026',
-      'status': 'leave',
-      'reason': 'Vacation',
-    },
-    {
-      'name': 'William Brown',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Amelia White',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Charlotte Martin',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Harper Garcia',
-      'date': '27/01/2026',
-      'status': 'leave',
-      'reason': 'Vacation',
-    },
-    {
-      'name': 'Benjamin Harris',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Lucas Taylor',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Ethan Clark',
-      'date': '27/01/2026',
-      'status': 'leave',
-      'reason': 'Sick',
-    },
-    {
-      'name': 'Mia Robinson',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Alexander Lee',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Isabella Walker',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'John Smith',
-      'date': '27/01/2026',
-      'status': 'present',
-      'reason': '',
-    },
-    {
-      'name': 'Noah Wilson',
-      'date': '27/01/2026',
-      'status': 'leave',
-      'reason': 'Medical',
-    },
-    {
-      'name': 'Ava Turner',
-      'date': '27/01/2026',
-      'status': 'leave',
-      'reason': 'Sick',
-    },
-    {
-      'name': 'Emma Wilson',
-      'date': '27/01/2026',
-      'status': 'leave',
-      'reason': 'Medical',
-    },
+    for (var daysAgo = 0; daysAgo < 7; daysAgo++)
+      for (var workerIndex = 0; workerIndex < workers.length; workerIndex++)
+        _guestAttendanceRecord(workerIndex, daysAgo),
   ];
 
   static final List<Map<String, dynamic>> payroll = [

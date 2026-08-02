@@ -180,8 +180,10 @@ class HRMSApp extends StatelessWidget {
       home: const SplashScreen(),
       builder: (context, child) {
         return SessionTimeoutGate(
-          isSessionActive: () =>
-              context.read<AuthService>().currentUser != null,
+          isSessionActive: () {
+            final user = context.read<AuthService>().currentUser;
+            return user != null && !user.isAnonymous;
+          },
           isBiometricAvailable: BiometricService.isAvailable,
           loadBiometricName: BiometricService.getBiometricName,
           authenticate: () async {

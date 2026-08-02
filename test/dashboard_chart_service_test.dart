@@ -211,6 +211,13 @@ void main() {
           'attendanceDate': '2026-07-30',
           'reason': 'Medical appointment',
         },
+        {
+          'workerId': 'guest-worker',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'type': 'Casual Leave',
+          'excludeFromLeaveChart': true,
+        },
       ],
       period: 'Today',
       now: DateTime(2026, 7, 30),
@@ -219,5 +226,6 @@ void main() {
     expect(merged, hasLength(2));
     expect(merged.where((day) => day['type'] == 'Sick Leave'), hasLength(1));
     expect(merged.where((day) => day['type'] == 'Medical Leave'), hasLength(1));
+    expect(merged.where((day) => day['type'] == 'Casual Leave'), isEmpty);
   });
 }
