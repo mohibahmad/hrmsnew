@@ -458,7 +458,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'create_account'.tr(),
         style: const TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: Colors.black,
           fontFamily: 'SF Pro Display',
           letterSpacing: -0.5,
