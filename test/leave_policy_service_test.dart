@@ -9,6 +9,12 @@ void main() {
     'leaveType': 'Casual',
     'allowedLeaves': '10',
     'paidUnpaid': 'Paid',
+    'leaveTypes': [
+      {'leaveType': 'Casual', 'allowedLeaves': '10', 'paidUnpaid': 'Paid'},
+      {'leaveType': 'Sick', 'allowedLeaves': '8', 'paidUnpaid': 'Paid'},
+      {'leaveType': 'Medical', 'allowedLeaves': '5', 'paidUnpaid': 'Paid'},
+      {'leaveType': 'Unpaid', 'allowedLeaves': '', 'paidUnpaid': 'Unpaid'},
+    ],
     'applicableTo': 'All Workers',
     'startDate': '2026-08-01',
     'carryForward': false,
@@ -19,7 +25,10 @@ void main() {
     final text = LeavePolicyService.formattedText(policy);
 
     expect(text, contains('Company Leave Policy 2026'));
-    expect(text, contains('Casual Leave: 10 days (Paid)'));
+    expect(text, contains('Casual Leave: 10 days'));
+    expect(text, contains('Sick Leave: 8 days'));
+    expect(text, contains('Medical Leave: 5 days'));
+    expect(text, contains('Unpaid Leave: As required'));
     expect(text, contains('Effective From: 1 August 2026'));
     expect(text, contains('Approval Required: Yes'));
   });

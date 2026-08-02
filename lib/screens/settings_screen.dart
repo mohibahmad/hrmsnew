@@ -15,7 +15,6 @@ import 'home_screen.dart';
 import 'forgot_password_screen.dart';
 import 'leave_policy_screen.dart';
 import 'package:share_plus/share_plus.dart';
-import '../utils/delete_dialog.dart';
 import '../shared/app_constants.dart';
 import '../utils/svg_fill_color_mapper.dart';
 import 'package:provider/provider.dart';
@@ -947,13 +946,6 @@ class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
     );
   }
 
-  void _viewPolicy(Map<String, dynamic> policy) {
-    showDialog(
-      context: context,
-      builder: (_) => PolicyDetailDialog(policy: policy),
-    );
-  }
-
   Future<void> _downloadPolicy(Map<String, dynamic> policy) async {
     final id = (policy['id'] ?? policy['policyName'] ?? '').toString();
     if (_busyPolicyId != null) return;
@@ -1228,6 +1220,12 @@ class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
                       itemBuilder: (context, index) {
                         final p = _policies[index];
                         final isActive = p['isActive'] ?? true;
+                        final savedLeaveTypes = p['leaveTypes'];
+                        final leaveSummary =
+                            savedLeaveTypes is List &&
+                                savedLeaveTypes.isNotEmpty
+                            ? '${savedLeaveTypes.length} leave types  •  ${p['applicableTo'] ?? ''}'
+                            : '${p['leaveType'] ?? ''}  •  ${p['allowedLeaves'] ?? ''} days/yr  •  ${p['paidUnpaid'] ?? ''}';
                         final isBusy =
                             _busyPolicyId ==
                             (p['id'] ?? p['policyName'] ?? '').toString();
@@ -1294,7 +1292,7 @@ class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
-                                          '${p['leaveType'] ?? ''}  \u2022  ${p['allowedLeaves'] ?? ''} days/yr  \u2022  ${p['paidUnpaid'] ?? ''}',
+                                          leaveSummary,
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[500],

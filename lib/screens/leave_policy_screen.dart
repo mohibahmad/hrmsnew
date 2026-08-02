@@ -299,6 +299,10 @@ class _LeavePolicyScreenState extends State<LeavePolicyScreen> {
     final allowedLeaves = policy['allowedLeaves'] ?? '';
     final paidUnpaid = policy['paidUnpaid'] ?? '';
     final applicableTo = policy['applicableTo'] ?? '';
+    final savedLeaveTypes = policy['leaveTypes'];
+    final leaveSummary = savedLeaveTypes is List && savedLeaveTypes.isNotEmpty
+        ? '${savedLeaveTypes.length} leave types • $applicableTo'
+        : '$leaveType • $allowedLeaves days/year • $paidUnpaid';
     final isBusy = _busyPolicyId == (policy['id'] ?? policyName).toString();
 
     return Container(
@@ -358,7 +362,7 @@ class _LeavePolicyScreenState extends State<LeavePolicyScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$leaveType • $allowedLeaves days/year • $paidUnpaid',
+                      leaveSummary,
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[500],
@@ -664,23 +668,41 @@ class LeavePolicyDialog extends StatefulWidget {
   State<LeavePolicyDialog> createState() => _LeavePolicyDialogState();
 }
 
+class _LeaveAllowanceEntry {
+  String leaveType;
+  String paidUnpaid;
+  final TextEditingController daysController;
+
+  _LeaveAllowanceEntry({
+    required this.leaveType,
+    required this.paidUnpaid,
+    String days = '',
+  }) : daysController = TextEditingController(text: days);
+
+  void dispose() => daysController.dispose();
+
+  Map<String, dynamic> toMap() => {
+    'leaveType': leaveType,
+    'allowedLeaves': daysController.text.trim(),
+    'paidUnpaid': paidUnpaid,
+  };
+}
+
 class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _policyNameCtrl;
-  late TextEditingController _allowedLeavesCtrl;
   late TextEditingController _carryForwardDaysCtrl;
   late TextEditingController _noticePeriodCtrl;
   late TextEditingController _descriptionCtrl;
   late TextEditingController _startDateCtrl;
   late TextEditingController _endDateCtrl;
 
-  String _leaveType = 'Sick';
-  String _paidUnpaid = 'Paid';
   String _applicableTo = 'All Workers';
   bool _carryForward = false;
   bool _approvalRequired = false;
   bool _isSaving = false;
+  late List<_LeaveAllowanceEntry> _leaveEntries;
 
   final List<String> _leaveTypes = [
     'Sick',
@@ -705,9 +727,7 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
     super.initState();
     final p = widget.existingPolicy;
     _policyNameCtrl = TextEditingController(text: p?['policyName'] ?? '');
-    _allowedLeavesCtrl = TextEditingController(
-      text: p?['allowedLeaves']?.toString() ?? '',
-    );
+    _leaveEntries = _initialLeaveEntries(p);
     _carryForwardDaysCtrl = TextEditingController(
       text: p?['carryForwardDays']?.toString() ?? '',
     );
@@ -717,8 +737,6 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
     _endDateCtrl = TextEditingController(text: p?['endDate'] ?? '');
 
     if (p != null) {
-      _leaveType = p['leaveType'] ?? 'Sick';
-      _paidUnpaid = p['paidUnpaid'] ?? 'Paid';
       _applicableTo = p['applicableTo'] ?? 'All Workers';
       _carryForward = p['carryForward'] ?? false;
       _approvalRequired = p['approvalRequired'] ?? false;
@@ -728,13 +746,65 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
   @override
   void dispose() {
     _policyNameCtrl.dispose();
-    _allowedLeavesCtrl.dispose();
+    for (final entry in _leaveEntries) {
+      entry.dispose();
+    }
     _carryForwardDaysCtrl.dispose();
     _noticePeriodCtrl.dispose();
     _descriptionCtrl.dispose();
     _startDateCtrl.dispose();
     _endDateCtrl.dispose();
     super.dispose();
+  }
+
+  List<_LeaveAllowanceEntry> _initialLeaveEntries(
+    Map<String, dynamic>? policy,
+  ) {
+    final saved = policy?['leaveTypes'];
+    if (saved is List) {
+      final entries = saved.whereType<Map>().map((raw) {
+        final item = Map<String, dynamic>.from(raw);
+        return _LeaveAllowanceEntry(
+          leaveType: (item['leaveType'] ?? item['type'] ?? 'Casual').toString(),
+          paidUnpaid: (item['paidUnpaid'] ?? 'Paid').toString(),
+          days: (item['allowedLeaves'] ?? item['days'] ?? '').toString(),
+        );
+      }).toList();
+      if (entries.isNotEmpty) return entries;
+    }
+
+    if (policy != null) {
+      return [
+        _LeaveAllowanceEntry(
+          leaveType: (policy['leaveType'] ?? 'Casual').toString(),
+          paidUnpaid: (policy['paidUnpaid'] ?? 'Paid').toString(),
+          days: (policy['allowedLeaves'] ?? '').toString(),
+        ),
+      ];
+    }
+
+    return [
+      _LeaveAllowanceEntry(leaveType: 'Casual', paidUnpaid: 'Paid'),
+      _LeaveAllowanceEntry(leaveType: 'Sick', paidUnpaid: 'Paid'),
+      _LeaveAllowanceEntry(leaveType: 'Medical', paidUnpaid: 'Paid'),
+      _LeaveAllowanceEntry(leaveType: 'Unpaid', paidUnpaid: 'Unpaid'),
+    ];
+  }
+
+  void _addLeaveEntry() {
+    setState(() {
+      _leaveEntries.add(
+        _LeaveAllowanceEntry(leaveType: 'Annual', paidUnpaid: 'Paid'),
+      );
+    });
+  }
+
+  void _removeLeaveEntry(int index) {
+    if (_leaveEntries.length == 1) return;
+    setState(() {
+      final removed = _leaveEntries.removeAt(index);
+      removed.dispose();
+    });
   }
 
   Future<void> _pickDate(TextEditingController ctrl) async {
@@ -752,13 +822,39 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_policyNameCtrl.text.trim().isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Enter a policy name',
+        isError: true,
+      );
+      return;
+    }
+    final leaveTypes = _leaveEntries
+        .where(
+          (entry) =>
+              entry.daysController.text.trim().isNotEmpty ||
+              entry.leaveType == 'Unpaid',
+        )
+        .map((entry) => entry.toMap())
+        .toList();
+    if (leaveTypes.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'Add days for at least one leave type',
+        isError: true,
+      );
+      return;
+    }
     setState(() => _isSaving = true);
     try {
+      final firstLeave = leaveTypes.first;
       final data = {
         'policyName': _policyNameCtrl.text.trim(),
-        'leaveType': _leaveType,
-        'allowedLeaves': _allowedLeavesCtrl.text.trim(),
-        'paidUnpaid': _paidUnpaid,
+        'leaveTypes': leaveTypes,
+        'leaveType': firstLeave['leaveType'],
+        'allowedLeaves': firstLeave['allowedLeaves'],
+        'paidUnpaid': firstLeave['paidUnpaid'],
         'applicableTo': _applicableTo,
         'startDate': _startDateCtrl.text.trim(),
         'endDate': _endDateCtrl.text.trim(),
@@ -884,18 +980,20 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
                         'e.g. Company Leave Policy 2026',
                       ),
                       const SizedBox(height: 16),
-                      _fieldLabel('Leave Type'),
-                      _dropdown(_leaveType, _leaveTypes, (v) {
-                        setState(() => _leaveType = v);
-                      }),
-                      const SizedBox(height: 16),
-                      _fieldLabel('Allowed Leaves (days per year)'),
-                      _numberInput(_allowedLeavesCtrl, 'e.g. 10'),
-                      const SizedBox(height: 16),
-                      _fieldLabel('Paid / Unpaid'),
-                      _dropdown(_paidUnpaid, _paidUnpaidOptions, (v) {
-                        setState(() => _paidUnpaid = v);
-                      }),
+                      Row(
+                        children: [
+                          Expanded(child: _fieldLabel('Leave Entitlements')),
+                          TextButton.icon(
+                            onPressed: _addLeaveEntry,
+                            icon: const Icon(Icons.add, size: 17),
+                            label: const Text('Add leave type'),
+                          ),
+                        ],
+                      ),
+                      ...List.generate(
+                        _leaveEntries.length,
+                        (index) => _leaveEntryFields(index),
+                      ),
                       const SizedBox(height: 16),
                       _fieldLabel('Applicable To'),
                       _dropdown(_applicableTo, _applicableToOptions, (v) {
@@ -1039,6 +1137,70 @@ class _LeavePolicyDialogState extends State<LeavePolicyDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _leaveEntryFields(int index) {
+    final entry = _leaveEntries[index];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _dropdown(entry.leaveType, _leaveTypes, (value) {
+                  setState(() {
+                    entry.leaveType = value;
+                    if (value == 'Unpaid') {
+                      entry.paidUnpaid = 'Unpaid';
+                    } else if (entry.paidUnpaid == 'Unpaid') {
+                      entry.paidUnpaid = 'Paid';
+                    }
+                  });
+                }),
+              ),
+              if (_leaveEntries.length > 1) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Remove leave type',
+                  onPressed: () => _removeLeaveEntry(index),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 19,
+                    color: Color(0xFFDC2626),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _numberInput(
+                  entry.daysController,
+                  entry.leaveType == 'Unpaid' ? 'As required' : 'Days/year',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _dropdown(
+                  entry.paidUnpaid,
+                  _paidUnpaidOptions,
+                  (value) => setState(() => entry.paidUnpaid = value),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

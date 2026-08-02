@@ -1175,7 +1175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       'dashboard'.tr(),
                       style: TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: Color(0xFF000000),
                         fontFamily: 'SF Pro Display',
                       ),
@@ -1243,7 +1243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         'attendance_overview'.tr(),
                         style: TextStyle(
                           fontSize: 20,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           fontFamily: 'SF Pro Display',
                         ),
                       ),
@@ -1257,7 +1257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             'leave_types'.tr(),
                             style: TextStyle(
                               fontSize: 20,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               fontFamily: 'SF Pro Display',
                             ),
                           ),
@@ -1318,15 +1318,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
-                              child: Transform.translate(
-                                offset: const Offset(-10, 0),
-                                child: AttendanceLineChart(
-                                  period: _selectedPeriod,
-                                  isEmpty:
-                                      filteredAttendanceDocs.isEmpty ||
-                                      _totalWorkersCount == 0,
-                                  attendanceDocs: filteredAttendanceDocs,
-                                ),
+                              child: AttendanceLineChart(
+                                period: _selectedPeriod,
+                                isEmpty:
+                                    filteredAttendanceDocs.isEmpty ||
+                                    _totalWorkersCount == 0,
+                                attendanceDocs: filteredAttendanceDocs,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -1345,7 +1342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1355,7 +1352,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: Color(0xFF000000),
                         fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),

@@ -340,7 +340,7 @@ class LeavePolicyService {
       return type == 'unpaid' ? 'As required' : '-';
     }
     final suffix = allowed == '1' ? 'day' : 'days';
-    return paidStatus.isEmpty
+    return paidStatus.isEmpty || paidStatus.toLowerCase() == 'paid'
         ? '$allowed $suffix'
         : '$allowed $suffix ($paidStatus)';
   }
