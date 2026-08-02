@@ -1792,7 +1792,7 @@ class _FullScreenDocumentViewerState extends State<_FullScreenDocumentViewer> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final previewWidth = (size.width * 0.85).clamp(450.0, 720.0);
+    final previewWidth = size.width > 720 ? (size.width * 0.85).clamp(450.0, 720.0) : size.width;
     final failedToLoadText = 'failed_to_load'.tr();
     final cleanTitle = _cleanDocumentFileName(widget.label);
     final cleanFileName = _cleanDocumentFileName(widget.url);
