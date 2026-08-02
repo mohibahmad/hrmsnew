@@ -14,6 +14,7 @@ import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
 import '../utils/image_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/svg_fill_color_mapper.dart';
 import '../utils/guest_restriction.dart';
 import '../utils/date_utils.dart';
 import '../utils/currency_utils.dart';
@@ -1740,11 +1741,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     children: [
                                       Expanded(
                                         child: _buildMetricCard(
-                                          icon: const Icon(
-                                            Icons.how_to_reg_rounded,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
+                                          icon: _buildPresentsIcon(),
                                           title: 'presents'.tr(),
                                           value: '$presentDays',
                                         ),
@@ -1788,11 +1785,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     children: [
                                       Expanded(
                                         child: _buildMetricCard(
-                                          icon: const Icon(
-                                            Icons.payments,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
+                                          icon: _buildAbsentsIcon(),
                                           title: 'absent_deduction'.tr(),
                                           value: absentDeduction.isEmpty
                                               ? '0'
@@ -1814,11 +1807,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                     children: [
                                       Expanded(
                                         child: _buildMetricCard(
-                                          icon: const Icon(
-                                            Icons.payments,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
+                                          icon: _buildSalaryIcon(),
                                           title: 'salary'.tr(),
                                           value: salary,
                                         ),
@@ -1997,74 +1986,61 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
+  Widget _buildPresentsIcon() {
+    return SvgPicture.asset(
+      'assets/present_worker.svg',
+      width: 20,
+      height: 20,
+      colorMapper: const SvgFillColorMapper(
+        source: Color(0xFF00FF2A),
+        replacement: Color(0xFF004FDE),
+      ),
+    );
+  }
+
   Widget _buildAbsentsIcon() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        const Icon(Icons.person, color: Color(0xFF004FDE), size: 20),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFE5EEFC),
-              shape: BoxShape.circle,
-            ),
-            padding: const EdgeInsets.all(0.5),
-            child: const Icon(Icons.cancel, color: Color(0xFF004FDE), size: 10),
-          ),
-        ),
-      ],
+    return SvgPicture.asset(
+      'assets/absent.svg',
+      width: 20,
+      height: 20,
+      colorMapper: const SvgFillColorMapper(
+        source: Color(0xFFFF0004),
+        replacement: Color(0xFF004FDE),
+      ),
     );
   }
 
   Widget _buildLeavesIcon() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        const Icon(Icons.person, color: Color(0xFF004FDE), size: 20),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFE5EEFC),
-              shape: BoxShape.circle,
-            ),
-            padding: const EdgeInsets.all(0.5),
-            child: const Icon(
-              Icons.remove_circle,
-              color: Color(0xFF004FDE),
-              size: 10,
-            ),
-          ),
-        ),
-      ],
+    return SvgPicture.asset(
+      'assets/leave.svg',
+      width: 20,
+      height: 20,
+      colorMapper: const SvgFillColorMapper(
+        source: Color(0xFFFF7B00),
+        replacement: Color(0xFF004FDE),
+      ),
+    );
+  }
+
+  Widget _buildSalaryIcon() {
+    return Image.asset(
+      'assets/salary.png',
+      width: 20,
+      height: 20,
+      fit: BoxFit.contain,
+      color: const Color(0xFF004FDE),
+      colorBlendMode: BlendMode.srcIn,
     );
   }
 
   Widget _buildOvertimeDaysIcon() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        const Icon(Icons.watch_later, color: Color(0xFF004FDE), size: 20),
-        Positioned(
-          bottom: -1,
-          right: -1,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFE5EEFC),
-              shape: BoxShape.circle,
-            ),
-            padding: const EdgeInsets.all(0.5),
-            child: const Icon(
-              Icons.add_circle,
-              color: Color(0xFF004FDE),
-              size: 10,
-            ),
-          ),
-        ),
-      ],
+    return Image.asset(
+      'assets/overtime.png',
+      width: 20,
+      height: 20,
+      fit: BoxFit.contain,
+      color: const Color(0xFF004FDE),
+      colorBlendMode: BlendMode.srcIn,
     );
   }
 }

@@ -1827,7 +1827,7 @@ class _WorkerProfilePreviewDialogState
                           _na(_v(worker, 'nationalId')),
                         ),
                         _buildInfoCard(
-                          Icons.location_on_outlined,
+                          Icons.location_on,
                           'attendance_type'.tr(),
                           LocalizationHelper.localizeType2(_v(worker, 'type2')),
                         ),
@@ -1837,6 +1837,7 @@ class _WorkerProfilePreviewDialogState
                           Icons.schedule,
                           'work_type'.tr(),
                           LocalizationHelper.localizeType1(_v(worker, 'type1')),
+                          assetImage: 'assets/worktype.png',
                         ),
                         _buildInfoCard(
                           Icons.show_chart,
@@ -1846,6 +1847,7 @@ class _WorkerProfilePreviewDialogState
                               _v(worker, 'experienceLevel'),
                             ),
                           ),
+                          assetImage: 'assets/experiencelevel.png',
                         ),
                       ),
                       _buildRow(
@@ -1888,7 +1890,7 @@ class _WorkerProfilePreviewDialogState
                           ),
                         ),
                         _buildInfoCard(
-                          Icons.art_track_outlined,
+                          Icons.art_track,
                           'religion_title'.tr(),
                           _na(_v(worker, 'religion')),
                           assetImage: 'assets/religion.png',
@@ -1971,8 +1973,8 @@ class _WorkerProfilePreviewDialogState
                   ? assetImage.endsWith('.svg')
                         ? SvgPicture.asset(
                             assetImage,
-                            width: 22,
-                            height: 22,
+                            width: 20,
+                            height: 20,
                             colorFilter: ColorFilter.mode(
                               primaryBlue,
                               BlendMode.srcIn,
@@ -1980,13 +1982,13 @@ class _WorkerProfilePreviewDialogState
                           )
                         : Image.asset(
                             assetImage,
-                            width: 22,
-                            height: 22,
+                            width: 20,
+                            height: 20,
                             fit: BoxFit.contain,
                             color: primaryBlue,
                             colorBlendMode: BlendMode.srcIn,
                           )
-                  : Icon(icon, color: primaryBlue, size: 22),
+                  : Icon(icon, color: primaryBlue, size: 20),
             ),
           ),
           const SizedBox(width: 10),
