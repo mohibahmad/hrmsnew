@@ -1940,34 +1940,42 @@ class DummyData {
 
   static final List<Map<String, dynamic>> notifications = [
     {
+      'id': 'notif_1',
       'type': 'welcome',
       'data': {'name': 'to HRMS'},
     },
     {
+      'id': 'notif_2',
       'type': 'attendance_marked',
       'data': {'name': '15 employees'},
     },
     {
+      'id': 'notif_3',
       'type': 'time_off_added',
       'data': {'name': 'Michael Johnson', 'type': 'Sick Leave'},
     },
     {
+      'id': 'notif_4',
       'type': 'payroll_added',
       'data': {'name': 'June 2026'},
     },
     {
+      'id': 'notif_5',
       'type': 'holiday_added',
       'data': {'name': 'Independence Day'},
     },
     {
+      'id': 'notif_6',
       'type': 'expense_added',
       'data': {'amount': '\$475.00'},
     },
     {
+      'id': 'notif_7',
       'type': 'expense_added',
       'data': {'amount': '\$124.50'},
     },
     {
+      'id': 'notif_8',
       'type': 'asset_added',
       'data': {'type': 'MacBook Pro', 'name': 'Sophia Martinez'},
     },

@@ -77,8 +77,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = await PreferencesService.getBiometricEmail();
       final password = await PreferencesService.getBiometricPassword();
       hasSaved = enabled && email != null && password != null;
-    } catch (_) {
-      await PreferencesService.clearBiometricCredentials();
+    } catch (error, stackTrace) {
+      // Never wipe saved credentials on a transient storage error, otherwise
+      // biometric login is lost for good and never offered again.
+      ErrorReporter.report(error, stackTrace, context: 'checkBiometricStatus');
     }
     if (mounted) {
       setState(() {
@@ -479,7 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ? null
         : () {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const SignupScreen()),
+              authTransitionRoute(builder: (_) => const SignupScreen()),
             );
           };
 
@@ -589,7 +591,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ? null
             : () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
+                  authTransitionRoute(
                     builder: (_) => const ForgotPasswordScreen(),
                   ),
                 );
@@ -646,6 +648,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
 
       const SizedBox(height: 24),
+
       Row(
         children: [
           Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -778,7 +781,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                       fontFamily: 'SF Pro',
                                       height: 1,
-                                      letterSpacing: 1.2,
+                                      letterSpacing: 2,
                                     ),
                                   ),
                                   SizedBox(height: 10),
@@ -788,10 +791,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                     style: const TextStyle(
                                       fontSize: 23,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
+
                                       fontFamily: 'SF Pro',
                                       height: 1.2,
-                                      letterSpacing: 1.6,
+                                      letterSpacing: 2,
                                     ),
                                   ),
                                 ],

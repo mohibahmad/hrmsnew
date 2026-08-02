@@ -861,8 +861,16 @@ class _HomeScreenState extends State<HomeScreen> {
     showLogoutDialog(context);
   }
 
-  void _handleBackToLogin() async {
-    await _authService.signOut();
+  bool _backToLoginInProgress = false;
+
+  Future<void> _handleBackToLogin() async {
+    if (_backToLoginInProgress) return;
+    _backToLoginInProgress = true;
+    try {
+      await _authService.signOut(preserveBiometricLogin: true);
+    } catch (error, stackTrace) {
+      ErrorReporter.report(error, stackTrace, context: 'backToLoginSignOut');
+    }
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -887,6 +895,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _showNotifications = opening;
     });
+    if (opening) {
+      // Opening the panel counts as "seen": clear the unread badge so it
+      // does not keep showing stale counts (e.g. "8") forever.
+      _markNotificationsSeen();
+    }
   }
 
   Future<void> _markNotificationsSeen() async {
@@ -1135,12 +1148,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDashboardView() {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    final unreadCount = isGuest
+        ? DummyData.notifications.where((n) => n['isRead'] != true).length
+        : _unreadNotifCount;
     return Column(
       children: [
         TopHeader(
           onProfileTap: _openProfile,
           onNotificationTap: _toggleNotifications,
-          unreadCount: _unreadNotifCount,
+          unreadCount: unreadCount,
         ),
         Expanded(
           child: SingleChildScrollView(
@@ -1218,7 +1235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(

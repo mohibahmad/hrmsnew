@@ -3,13 +3,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hrms/utils/navigation_utils.dart';
 
 void main() {
-  test('noTransitionRoute disables forward and reverse animations', () {
-    final route = noTransitionRoute<void>(
-      builder: (_) => const SizedBox.shrink(),
+  testWidgets('auth transition supports forward navigation and reverse pop', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push(
+                authTransitionRoute<void>(
+                  builder: (destinationContext) => Scaffold(
+                    body: TextButton(
+                      onPressed: () => Navigator.of(destinationContext).pop(),
+                      child: const Text('Back to Sign In'),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('Forgot Password'),
+            ),
+          ),
+        ),
+      ),
     );
 
-    expect(route.transitionDuration, Duration.zero);
-    expect(route.reverseTransitionDuration, Duration.zero);
-    expect(route.opaque, isTrue);
+    await tester.tap(find.text('Forgot Password'));
+    await tester.pumpAndSettle();
+    expect(find.text('Back to Sign In'), findsOneWidget);
+
+    await tester.tap(find.text('Back to Sign In'));
+    await tester.pumpAndSettle();
+    expect(find.text('Forgot Password'), findsOneWidget);
   });
 }

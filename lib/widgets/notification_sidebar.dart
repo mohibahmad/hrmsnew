@@ -56,6 +56,21 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _notifications = List<Map<String, dynamic>>.from(DummyData.notifications);
+      // Notifications persisted by older app versions have no id, which made
+      // them impossible to remove (and the unread count never went down).
+      // The maps are shared with DummyData, so assigning here also fixes the
+      // in-memory source of truth.
+      var backfilled = false;
+      for (var i = 0; i < _notifications.length; i++) {
+        final id = _notifications[i]['id']?.toString();
+        if (id == null || id.isEmpty) {
+          _notifications[i]['id'] = 'notif_$i';
+          backfilled = true;
+        }
+      }
+      if (backfilled) {
+        unawaited(DummyData.saveToPrefs());
+      }
       _isLoading = false;
     } else {
       _notifSub = _firestore.notificationsStream.listen(

@@ -106,7 +106,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!mounted || _anyLoading) return;
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    ).pushReplacement(authTransitionRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
@@ -750,10 +750,10 @@ class _SignupScreenState extends State<SignupScreen> {
                                     style: const TextStyle(
                                       fontSize: 58,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontFamily: 'SF Pro',
                                       height: 1,
-                                      letterSpacing: 1.2,
+                                      letterSpacing: 2,
                                     ),
                                   ),
                                   SizedBox(height: 10),
@@ -763,10 +763,10 @@ class _SignupScreenState extends State<SignupScreen> {
                                     style: const TextStyle(
                                       fontSize: 23,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                      color: Color(0xFFFFFFFF),
                                       fontFamily: 'SF Pro',
-                                      height: 1.6,
-                                      letterSpacing: 0.8,
+                                      height: 1.2,
+                                      letterSpacing: 2,
                                     ),
                                   ),
                                 ],

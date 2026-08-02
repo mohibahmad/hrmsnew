@@ -951,7 +951,7 @@ class _WorkersAttendanceScreenState extends State<WorkersAttendanceScreen> {
                 );
               },
               onBackToLogin: () async {
-                await _authService.signOut();
+                await _authService.signOut(preserveBiometricLogin: true);
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const LoginScreen()),

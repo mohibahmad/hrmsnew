@@ -52,6 +52,12 @@ class _NotificationBellState extends State<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
+    final isGuest = _authService.currentUser?.isAnonymous ?? false;
+    // Guest notifications live in memory and change as items are removed,
+    // so the unread count must be recomputed on every build.
+    final int unreadCount = isGuest
+        ? DummyData.notifications.where((n) => n['isRead'] != true).length
+        : _unreadCount;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -70,7 +76,7 @@ class _NotificationBellState extends State<NotificationBell> {
                 BlendMode.srcIn,
               ),
             ),
-            if (_unreadCount > 0)
+            if (unreadCount > 0)
               Positioned(
                 right: -4,
                 top: -4,
@@ -81,7 +87,7 @@ class _NotificationBellState extends State<NotificationBell> {
                     shape: BoxShape.circle,
                   ),
                   child: Text(
-                    '$_unreadCount',
+                    '$unreadCount',
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
