@@ -213,7 +213,7 @@ class InvoiceService {
             _tableHeader(navy: navy, white: white),
 
             _tableRow(
-              description: 'Basic Salary - $daysWorked of $totalWorkDays Working Days',
+              description: 'Basic Salary - $daysWorked Payable Days',
               rate: _money(dailyRate, defaultCurrency: detectedCurrency),
               quantity: daysWorked,
               total: _money(grossPay, defaultCurrency: detectedCurrency),
@@ -296,10 +296,11 @@ class InvoiceService {
                         textColor,
                       ),
                       _smallInfoLine(
-                        'Working Days',
-                        '$daysWorked / $totalWorkDays',
+                        'Payable Days',
+                        daysWorked,
                         textColor,
                       ),
+                      _smallInfoLine('Working Days', totalWorkDays, textColor),
                       _smallInfoLine('Absents', absents, textColor),
                       _smallInfoLine('Leaves', leaves, textColor),
                     ],
@@ -480,11 +481,11 @@ class InvoiceService {
             ),
           ),
           pw.Expanded(
-            flex: 1,
+            flex: 2,
             child: pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
-                'Qty',
+                'Payable Days',
                 style: pw.TextStyle(
                   fontSize: 8.5,
                   color: white,
@@ -545,7 +546,7 @@ class InvoiceService {
             ),
           ),
           pw.Expanded(
-            flex: 1,
+            flex: 2,
             child: pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Text(

@@ -11,7 +11,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 class WorkerProfileService {
   static const int _maxProfileImageBytes = 10 * 1024 * 1024;
-  static const Duration _imageLoadTimeout = Duration(seconds: 15);
+  static const Duration _imageLoadTimeout = Duration(seconds: 8);
 
   static Future<Uint8List> generateWorkerProfile({
     required String name,
@@ -58,8 +58,13 @@ class WorkerProfileService {
     final lightGrey = PdfColor.fromHex('#F3F4F6');
     final border = PdfColor.fromHex('#D1D5DB');
 
-    final imageBytes = await _loadImageBytes(profileImageUrl);
-    final companyStampBytes = await _loadImageBytes(companyStampImageUrl);
+    // Load images in parallel to reduce wait time.
+    final imageResults = await Future.wait([
+      _loadImageBytes(profileImageUrl),
+      _loadImageBytes(companyStampImageUrl),
+    ]);
+    final imageBytes = imageResults[0];
+    final companyStampBytes = imageResults[1];
     final companyStampImage = companyStampBytes == null
         ? null
         : pw.MemoryImage(companyStampBytes);

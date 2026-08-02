@@ -162,6 +162,7 @@ class SalaryDayScheduler {
     BuildContext context, {
     bool autoMode = false,
     DateTime? payrollMonth,
+    String? positionFilter,
   }) async {
     final isGuest =
         Provider.of<AuthService>(
@@ -174,6 +175,7 @@ class SalaryDayScheduler {
         context,
         autoMode: autoMode,
         payrollMonth: payrollMonth,
+        positionFilter: positionFilter,
       );
     }
     if (_runInProgress) return null;
@@ -183,6 +185,7 @@ class SalaryDayScheduler {
         context,
         autoMode: autoMode,
         payrollMonth: payrollMonth,
+        positionFilter: positionFilter,
       );
     } finally {
       _runInProgress = false;
@@ -193,6 +196,7 @@ class SalaryDayScheduler {
     BuildContext context, {
     required bool autoMode,
     DateTime? payrollMonth,
+    String? positionFilter,
   }) async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final isGuest = authService.currentUser?.isAnonymous ?? false;
@@ -241,6 +245,25 @@ class SalaryDayScheduler {
         );
       }
       return null;
+    }
+
+    if (positionFilter != null && positionFilter.trim().isNotEmpty) {
+      final filter = positionFilter.trim();
+      workers = workers.where((worker) {
+        final position = (worker['position'] ?? '').toString().trim();
+        return position.isNotEmpty &&
+            position.toLowerCase().contains(filter.toLowerCase());
+      }).toList();
+      if (workers.isEmpty) {
+        if (context.mounted && !autoMode) {
+          FlashySnackBar.show(
+            context,
+            message: 'no_workers_found'.tr(),
+            isError: true,
+          );
+        }
+        return null;
+      }
     }
 
     final now = DateTime.now();
@@ -649,11 +672,13 @@ class SalaryDayScheduler {
   Future<PayrollRunSummary?> payAll(
     BuildContext context, {
     DateTime? payrollMonth,
+    String? positionFilter,
   }) async {
     final result = await runPayroll(
       context,
       autoMode: false,
       payrollMonth: payrollMonth,
+      positionFilter: positionFilter,
     );
     return result;
   }
@@ -1026,27 +1051,18 @@ class SalaryDayScheduler {
         final workDays = int.tryParse(r.totalWorkDays) ?? 30;
         final dailyRate = workDays > 0 ? rawSalary / workDays : 0.0;
         final absentsInt = r.absents;
-        final leavesInt = r.leaves;
         final deductibleLeaves = r.unpaidLeaves;
         final absentEquivalent = absentsInt + (r.halfDays * 0.5);
-        final absentDeductionAmt = PayrollService.extractSalary(
-          r.absentDeduction,
-        );
-        final leaveDeductionAmt = PayrollService.extractSalary(
-          r.leaveDeduction,
-        );
         final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
-        final absentTotal = r.deductionsAreTotals
-            ? absentDeductionAmt
-            : absentDeductionAmt * absentEquivalent;
-        final leaveTotal = r.deductionsAreTotals
-            ? leaveDeductionAmt
-            : leaveDeductionAmt * deductibleLeaves;
-        final totalDeductions = absentTotal + leaveTotal;
-        final effectiveDays =
-            (workDays - absentsInt - leavesInt - (r.halfDays * 0.5))
+        // Payable days = the days the worker is actually paid for. Absent and
+        // unpaid-leave days are already excluded from this count, so no
+        // separate deduction applies: gross = daily rate × payable days.
+        final payableDays =
+            (workDays - absentsInt - deductibleLeaves - (r.halfDays * 0.5))
                 .clamp(0, workDays)
                 .toDouble();
+        final grossSalary = dailyRate * payableDays;
+        final netSalary = grossSalary + overtimeAmt;
         final currency = PayrollService.getCurrencySymbol(r.currency);
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
@@ -1055,18 +1071,18 @@ class SalaryDayScheduler {
           position: r.position,
           payPeriod: payPeriod,
           totalWorkDays: r.totalWorkDays,
-          daysWorked: _formatDayCount(effectiveDays),
+          daysWorked: _formatDayCount(payableDays),
           absents: _formatDayCount(absentEquivalent),
           leaves: deductibleLeaves.toString(),
           overtimeAmount: _invoiceMoney(overtimeAmt, currency),
           salary: r.salary,
           dailyRate: _invoiceMoney(dailyRate, currency),
-          grossPay: _invoiceMoney(rawSalary, currency),
+          grossPay: _invoiceMoney(grossSalary, currency),
           overtimePay: _invoiceMoney(overtimeAmt, currency),
-          absentDeduction: _invoiceMoney(absentTotal, currency),
-          leaveDeduction: _invoiceMoney(leaveTotal, currency),
-          totalDeductions: _invoiceMoney(totalDeductions, currency),
-          netSalary: _invoiceMoney(r.rawNetSalaryValue, currency),
+          absentDeduction: _invoiceMoney(0, currency),
+          leaveDeduction: _invoiceMoney(0, currency),
+          totalDeductions: _invoiceMoney(0, currency),
+          netSalary: _invoiceMoney(netSalary, currency),
           companyName:
               (companyProfile['businessName'] ??
                       companyProfile['companyName'] ??
@@ -1232,12 +1248,13 @@ class SalaryDayScheduler {
                         ),
                       )
                       .length;
-                  final selectedCount = selectedIndices
+                  final filteredPayCount = filteredResults
                       .where(
-                        (index) =>
-                            index >= 0 &&
-                            index < summary.results.length &&
-                            summary.results[index].success,
+                        (r) =>
+                            r.success &&
+                            selectedIndices.contains(
+                              summary.results.indexOf(r),
+                            ),
                       )
                       .length;
 
@@ -2140,23 +2157,22 @@ class SalaryDayScheduler {
                                       const SizedBox(width: 14),
 
                                       GestureDetector(
-                                        onTap: selectedCount == 0
+                                        onTap: filteredPayCount == 0
                                             ? null
                                             : () {
-                                                final selected = selectedIndices
+                                                final selected = filteredResults
                                                     .where(
-                                                      (index) =>
-                                                          index >= 0 &&
-                                                          index <
-                                                              summary
-                                                                  .results
-                                                                  .length,
+                                                      (r) =>
+                                                          r.success &&
+                                                          selectedIndices
+                                                              .contains(
+                                                                summary
+                                                                    .results
+                                                                    .indexOf(
+                                                                      r,
+                                                                    ),
+                                                              ),
                                                     )
-                                                    .map(
-                                                      (index) => summary
-                                                          .results[index],
-                                                    )
-                                                    .where((r) => r.success)
                                                     .toList();
                                                 Navigator.of(
                                                   context,
@@ -2169,7 +2185,7 @@ class SalaryDayScheduler {
                                           ),
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
-                                            color: selectedCount == 0
+                                            color: filteredPayCount == 0
                                                 ? const Color(
                                                     0xFF0247C4,
                                                   ).withValues(alpha: 0.4)
@@ -2177,7 +2193,7 @@ class SalaryDayScheduler {
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
-                                            boxShadow: selectedCount > 0
+                                            boxShadow: filteredPayCount > 0
                                                 ? [
                                                     BoxShadow(
                                                       color: const Color(
@@ -2204,7 +2220,8 @@ class SalaryDayScheduler {
                                               Text(
                                                 'pay_all_count'.tr(
                                                   namedArgs: {
-                                                    'count': '$selectedCount',
+                                                    'count':
+                                                        '$filteredPayCount',
                                                   },
                                                 ),
                                                 style: const TextStyle(

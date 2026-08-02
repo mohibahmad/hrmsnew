@@ -1063,5 +1063,7 @@
   "company_stamp_format_hint": "Utilisez un PNG net (recommandé) ou un JPG de 5 Mo maximum.",
   "upload_company_stamp": "Importer le cachet",
   "replace_company_stamp": "Remplacer le cachet",
-  "company_stamp_invalid": "Sélectionnez un cachet d’entreprise PNG ou JPG valide."
+  "company_stamp_invalid": "Sélectionnez un cachet d'entreprise PNG ou JPG valide.",
+  "field": "Champ",
+  "details": "Détails"
 }

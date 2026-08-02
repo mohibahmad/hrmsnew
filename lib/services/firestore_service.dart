@@ -377,7 +377,10 @@ class FirestoreService {
             normalizedName.isNotEmpty && sameNameWorkers.length == 1,
       );
     }
-    await coll.doc(id).update(_withNormalizedCurrency(data));
+    await coll.doc(id).update({
+      ..._withNormalizedCurrency(data),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> _backfillLegacyWorkerReferences({

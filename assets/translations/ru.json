@@ -1063,5 +1063,7 @@
   "company_stamp_format_hint": "Используйте чёткий PNG (рекомендуется) или JPG до 5 МБ.",
   "upload_company_stamp": "Загрузить печать",
   "replace_company_stamp": "Заменить печать",
-  "company_stamp_invalid": "Выберите корректную печать компании в формате PNG или JPG."
+  "company_stamp_invalid": "Выберите корректную печать компании в формате PNG или JPG.",
+  "field": "Поле",
+  "details": "Детали"
 }

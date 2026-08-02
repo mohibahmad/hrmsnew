@@ -561,13 +561,12 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
   static Future<pdfx.PdfPageImage?> _renderPdfPageHighQuality(
     pdfx.PdfPage page,
-  ) =>
-      page.render(
-        width: page.width * 3,
-        height: page.height * 3,
-        format: pdfx.PdfPageImageFormat.png,
-        backgroundColor: '#ffffff',
-      );
+  ) => page.render(
+    width: page.width * 3,
+    height: page.height * 3,
+    format: pdfx.PdfPageImageFormat.png,
+    backgroundColor: '#ffffff',
+  );
 
   Future<void> _showInvoicePreviewDialog(
     Uint8List pdfBytes,
@@ -763,87 +762,6 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                                           ),
                                         ),
                                       ),
-                                      if (widget
-                                              .workerData['hasPayrollRecord'] ==
-                                          true) ...[
-                                        const SizedBox(width: 8),
-                                        Tooltip(
-                                          message: 'cancel_payroll'.tr(),
-                                          child: Material(
-                                            color: Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              9,
-                                            ),
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(9),
-                                              onTap:
-                                                  isSharing ||
-                                                      _isCancellingPayroll
-                                                  ? null
-                                                  : () async {
-                                                      final confirmed =
-                                                          await DeleteDialog.show(
-                                                            context: ctx,
-                                                            title:
-                                                                'cancel_payroll'
-                                                                    .tr(),
-                                                            content:
-                                                                'cancel_payroll_confirm'.tr(
-                                                                  namedArgs: {
-                                                                    'name':
-                                                                        _name,
-                                                                  },
-                                                                ),
-                                                            confirmButtonText:
-                                                                'cancel_payroll',
-                                                          );
-                                                      if (confirmed) {
-                                                        if (ctx.mounted) {
-                                                          Navigator.pop(ctx);
-                                                        }
-                                                        await _handleCancelPayroll();
-                                                      }
-                                                    },
-                                              child: Container(
-                                                width: 40,
-                                                height: 40,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFEF4444,
-                                                  ).withValues(alpha: 0.08),
-                                                  borderRadius:
-                                                      BorderRadius.circular(9),
-                                                  border: Border.all(
-                                                    color: const Color(
-                                                      0xFFEF4444,
-                                                    ).withValues(alpha: 0.2),
-                                                  ),
-                                                ),
-                                                child: _isCancellingPayroll
-                                                    ? const SizedBox(
-                                                        width: 20,
-                                                        height: 20,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              color: Color(
-                                                                0xFFEF4444,
-                                                              ),
-                                                              strokeWidth: 2,
-                                                            ),
-                                                      )
-                                                    : const Icon(
-                                                        Icons.cancel_outlined,
-                                                        size: 22,
-                                                        color: Color(
-                                                          0xFFEF4444,
-                                                        ),
-                                                      ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
                                     ],
                                   ),
                                 ),

@@ -1062,5 +1062,7 @@
   "company_stamp_format_hint": "Use un PNG nítido (recomendado) o JPG de hasta 5 MB.",
   "upload_company_stamp": "Cargar sello",
   "replace_company_stamp": "Cambiar sello",
-  "company_stamp_invalid": "Seleccione un sello de empresa PNG o JPG válido."
+  "company_stamp_invalid": "Seleccione un sello de empresa PNG o JPG válido.",
+  "field": "Campo",
+  "details": "Detalles"
 }

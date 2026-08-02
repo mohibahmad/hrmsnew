@@ -1065,5 +1065,7 @@
   "company_stamp_format_hint": "Use um PNG nítido (recomendado) ou JPG de até 5 MB.",
   "upload_company_stamp": "Enviar carimbo",
   "replace_company_stamp": "Substituir carimbo",
-  "company_stamp_invalid": "Selecione um carimbo PNG ou JPG válido."
+  "company_stamp_invalid": "Selecione um carimbo PNG ou JPG válido.",
+  "field": "Campo",
+  "details": "Detalhes"
 }

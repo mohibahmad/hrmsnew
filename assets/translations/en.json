@@ -160,7 +160,6 @@
   "delete_account_desc": "Are you sure you want to permanently delete your profile and all data? This action cannot be undone.",
   "cancel": "Cancel",
   "delete": "Delete",
-  "account_deleted": "Account deleted",
   "signed_out_for_security": "Signed out for security. Please sign in again to fully delete your account.",
   "failed_delete_account": "Failed to delete account. {error}",
   "sign_out_dialog_title": "Sign Out",
@@ -1070,5 +1069,7 @@
   "company_stamp_format_hint": "Use a clear PNG (recommended) or JPG, up to 5 MB.",
   "upload_company_stamp": "Upload stamp",
   "replace_company_stamp": "Replace stamp",
-  "company_stamp_invalid": "Select a valid PNG or JPG company stamp."
+  "company_stamp_invalid": "Select a valid PNG or JPG company stamp.",
+  "field": "Field",
+  "details": "Details"
 }

@@ -593,8 +593,8 @@ class _DashboardWorkerListState extends State<DashboardWorkerList> {
                 .map((d) => {...d.data() as Map<String, dynamic>, 'id': d.id})
                 .toList();
             sortedList.sort((a, b) {
-              final aDate = _workerDateTime(a['createdAt']);
-              final bDate = _workerDateTime(b['createdAt']);
+              final aDate = _workerDateTime(a['updatedAt'] ?? a['createdAt']);
+              final bDate = _workerDateTime(b['updatedAt'] ?? b['createdAt']);
               if (aDate == null && bDate == null) {
                 return (a['name'] ?? '').toString().toLowerCase().compareTo(
                   (b['name'] ?? '').toString().toLowerCase(),
@@ -1960,8 +1960,8 @@ class _WorkerProfilePreviewDialogState
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: iconLightBlue,
               borderRadius: BorderRadius.circular(6),
@@ -1971,8 +1971,8 @@ class _WorkerProfilePreviewDialogState
                   ? assetImage.endsWith('.svg')
                         ? SvgPicture.asset(
                             assetImage,
-                            width: 18,
-                            height: 18,
+                            width: 22,
+                            height: 22,
                             colorFilter: ColorFilter.mode(
                               primaryBlue,
                               BlendMode.srcIn,
@@ -1980,13 +1980,13 @@ class _WorkerProfilePreviewDialogState
                           )
                         : Image.asset(
                             assetImage,
-                            width: 18,
-                            height: 18,
+                            width: 22,
+                            height: 22,
                             fit: BoxFit.contain,
                             color: primaryBlue,
                             colorBlendMode: BlendMode.srcIn,
                           )
-                  : Icon(icon, color: primaryBlue, size: 18),
+                  : Icon(icon, color: primaryBlue, size: 22),
             ),
           ),
           const SizedBox(width: 10),
@@ -1998,7 +1998,7 @@ class _WorkerProfilePreviewDialogState
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     color: Colors.black,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'SF Pro Display',
