@@ -1471,7 +1471,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final String totalWorkDays = (data['totalWorkDays'] ?? '0').toString();
     final String absents = (data['absents'] ?? '0').toString();
     final attendanceCounts = PayrollService.attendanceCounts(data);
-    final String leaves = (attendanceCounts['leaves'] ?? 0).toString();
+    final String paidLeaves = (attendanceCounts['paidLeaves'] ?? 0).toString();
+    final String unpaidLeaves = (attendanceCounts['unpaidLeaves'] ?? 0)
+        .toString();
     final String deductionLeaveDays = (attendanceCounts['unpaidLeaves'] ?? 0)
         .toString();
     final String rawAbsentDeduction = (data['absentDeduction'] ?? '0')
@@ -1554,10 +1556,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     rawAbsentDeduction)
           .toString(),
     );
+    final totalLeaves =
+        PayrollService.parseIntSafe(paidLeaves) +
+        PayrollService.parseIntSafe(unpaidLeaves);
     final presentDays =
         (totalDaysValue -
                 PayrollService.parseIntSafe(absents) -
-                PayrollService.parseIntSafe(leaves))
+                totalLeaves)
             .clamp(0, totalDaysValue);
     final paidDate = PayrollService.payrollPaymentDate(data);
     final paidDateText = paidDate == null
@@ -1764,19 +1769,15 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                         child: _buildMetricCard(
                                           icon: _buildLeavesIcon(),
                                           title: 'leaves_label'.tr(),
-                                          value: leaves,
+                                          value: paidLeaves,
                                         ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: _buildMetricCard(
-                                          icon: const Icon(
-                                            Icons.event_available_rounded,
-                                            color: Color(0xFF004FDE),
-                                            size: 20,
-                                          ),
-                                          title: 'paid_on'.tr(),
-                                          value: paidDateText,
+                                          icon: _buildUnpaidLeavesIcon(),
+                                          title: 'unpaid_leaves_label'.tr(),
+                                          value: unpaidLeaves,
                                         ),
                                       ),
                                     ],
@@ -1823,6 +1824,34 @@ class _PayrollScreenState extends State<PayrollScreen> {
                                           ),
                                           title: 'salary_after_deduction'.tr(),
                                           value: salaryAfterDeduction,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.calendar_view_day_rounded,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'total_working_days'.tr(),
+                                          value: totalWorkDays,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildMetricCard(
+                                          icon: const Icon(
+                                            Icons.event_available_rounded,
+                                            color: Color(0xFF004FDE),
+                                            size: 20,
+                                          ),
+                                          title: 'paid_on'.tr(),
+                                          value: paidDateText,
                                         ),
                                       ),
                                     ],
@@ -2020,6 +2049,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
         source: Color(0xFFFF7B00),
         replacement: Color(0xFF004FDE),
       ),
+    );
+  }
+
+  Widget _buildUnpaidLeavesIcon() {
+    return const Icon(
+      Icons.event_busy_rounded,
+      color: Color(0xFF004FDE),
+      size: 20,
     );
   }
 

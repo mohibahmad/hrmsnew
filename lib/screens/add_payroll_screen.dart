@@ -54,6 +54,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
 
   final _workDaysCtrl = TextEditingController();
   final _absentsCtrl = TextEditingController();
+  final _paidLeavesCtrl = TextEditingController();
+  final _unpaidLeavesCtrl = TextEditingController();
   final _leavesCtrl = TextEditingController();
   final _overtimeAmountCtrl = TextEditingController();
   final _salaryCtrl = TextEditingController();
@@ -120,6 +122,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
     _absentsCtrl.text = attendanceCounts['absents'].toString();
     _paidLeaves = attendanceCounts['paidLeaves'] ?? 0;
     _unpaidLeaves = attendanceCounts['unpaidLeaves'] ?? 0;
+    _paidLeavesCtrl.text = _paidLeaves.toString();
+    _unpaidLeavesCtrl.text = _unpaidLeaves.toString();
     _leavesCtrl.text = (attendanceCounts['leaves'] ?? 0).toString();
 
     final totalDays = (widget.workerData['totalWorkDays'] ?? '').toString();
@@ -149,6 +153,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
   void dispose() {
     _workDaysCtrl.dispose();
     _absentsCtrl.dispose();
+    _paidLeavesCtrl.dispose();
+    _unpaidLeavesCtrl.dispose();
     _leavesCtrl.dispose();
     _overtimeAmountCtrl.dispose();
     _salaryCtrl.dispose();
@@ -266,6 +272,8 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
         _absentsCtrl.text = (results['absents'] ?? 0).toString();
         _paidLeaves = results['paidLeaves'] ?? 0;
         _unpaidLeaves = results['unpaidLeaves'] ?? 0;
+        _paidLeavesCtrl.text = _paidLeaves.toString();
+        _unpaidLeavesCtrl.text = _unpaidLeaves.toString();
         _leavesCtrl.text = (results['leaves'] ?? 0).toString();
 
         if (_workDaysCtrl.text.trim().isEmpty && workingDays > 0) {
@@ -1170,7 +1178,9 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                         ),
                       )
                     : Text(
-                        'save_payroll'.tr(),
+                        widget.workerData['hasPayrollRecord'] == true
+                            ? 'save_changes'.tr()
+                            : 'save_payroll'.tr(),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
               ),
@@ -1351,7 +1361,17 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                 child: _buildInput(
                   'leaves_label'.tr(),
                   '0',
-                  _leavesCtrl,
+                  _paidLeavesCtrl,
+                  readOnly: true,
+                  focusedBorderColor: _borderLight,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildInput(
+                  'unpaid_leaves_label'.tr(),
+                  '0',
+                  _unpaidLeavesCtrl,
                   readOnly: true,
                   focusedBorderColor: _borderLight,
                 ),
@@ -1365,7 +1385,13 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                   isCurrency: true,
                 ),
               ),
-              const SizedBox(width: 8),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Expanded(
                 child: _buildInput(
                   'absent_deduction_per_day'.tr(),
@@ -1377,13 +1403,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
                       : null,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildInput(
                   'unpaid_leave_deduction_per_day'.tr(),
