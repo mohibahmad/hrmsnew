@@ -31,11 +31,6 @@ DateTime? _safeTimestamp(dynamic value) {
   return DateTime.tryParse(text)?.toUtc();
 }
 
-/// Parses a date-only business value (DOB, joining date) WITHOUT UTC shifting.
-/// A date selected as 03 Aug 2026 00:00 +05 must stay 03 Aug in every
-/// timezone, so we produce a UTC-anchored date at midnight UTC based on the
-/// *local* calendar fields. This prevents the one-day-back bug where a caller
-/// doing `date.year/month/day` would see 02 Aug after a UTC conversion.
 DateTime? _safeBusinessDate(dynamic value) {
   DateTime? parsed;
 
