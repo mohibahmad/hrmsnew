@@ -4264,7 +4264,6 @@ class DocumentationSection extends StatelessWidget {
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
         final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
-        final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
         return Container(
           height: containerHeight,
           width: double.infinity,
@@ -4273,141 +4272,106 @@ class DocumentationSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.grey.shade200, width: 1),
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                top: 8,
-                bottom: 8,
-                left: sidePadding,
-                right: sidePadding,
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: isImage
-                      ? GestureDetector(
-                          onTap: null,
-                          child: cvBytes != null
-                              ? Image.memory(
-                                  cvBytes!,
-                                  fit: BoxFit.cover,
-                                  filterQuality: FilterQuality.high,
-                                )
-                              : (existingCvUrl != null &&
-                                        existingCvUrl!.isNotEmpty
-                                    ? CachedNetworkImage(
-                                        imageUrl: existingCvUrl!,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (context, url, error) =>
-                                            const Center(
-                                              child: Icon(
-                                                Icons.broken_image,
-                                                size: 48,
-                                              ),
-                                            ),
-                                      )
-                                    : const SizedBox.shrink()),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: isImage
+                  ? (cvBytes != null
+                      ? Image.memory(
+                          cvBytes!,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.high,
                         )
-                      : (isPdf || isDoc)
-                      ? GestureDetector(
-                          onTap: null,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (cvBytes == null &&
-                                  (existingCvUrl == null ||
-                                      existingCvUrl!.isEmpty))
-                                Container(
-                                  height: double.infinity,
-                                  width: double.infinity,
-                                  color: Colors.grey.shade200,
-                                ),
-                              if (isDoc &&
-                                  (cvBytes != null ||
-                                      (existingCvUrl != null &&
-                                          existingCvUrl!.isNotEmpty)))
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            cvName?.endsWith('.docx') ?? false
-                                                ? Icons.article_outlined
-                                                : Icons.description_outlined,
-                                            size: 64,
-                                            color: const Color(0xFF0B50C3),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            cvName ?? 'documentation'.tr(),
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey.shade600,
-                                              fontFamily: 'SF Pro Display',
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                      : (existingCvUrl != null && existingCvUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: existingCvUrl!,
+                              fit: BoxFit.cover,
+                              errorWidget: (context, url, error) =>
+                                  const Center(
+                                    child: Icon(Icons.broken_image, size: 48),
                                   ),
-                                ),
-                              if (isPdf &&
-                                  (cvBytes != null ||
-                                      (existingCvUrl != null &&
-                                          existingCvUrl!.isNotEmpty)))
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: PdfPagePreview(
-                                      cvBytes: cvBytes,
-                                      existingCvUrl: existingCvUrl,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                            )
+                          : const SizedBox.shrink()))
+                  : (isPdf || isDoc)
+                  ? Stack(
+                      children: [
+                        if (cvBytes == null &&
+                            (existingCvUrl == null || existingCvUrl!.isEmpty))
+                          Container(
+                            height: double.infinity,
+                            width: double.infinity,
+                            color: Colors.grey.shade200,
                           ),
-                        )
-                      : GestureDetector(
-                          onTap: null,
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.insert_drive_file,
-                                  size: 64,
-                                  color: Colors.grey.shade400,
+                        if (isDoc &&
+                            (cvBytes != null ||
+                                (existingCvUrl != null &&
+                                    existingCvUrl!.isNotEmpty)))
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      cvName?.endsWith('.docx') ?? false
+                                          ? Icons.article_outlined
+                                          : Icons.description_outlined,
+                                      size: 64,
+                                      color: const Color(0xFF0B50C3),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      cvName ?? 'documentation'.tr(),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  cvName ?? 'upload_cv_label'.tr(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade600,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                ),
-              ),
-            ],
+                        if (isPdf &&
+                            (cvBytes != null ||
+                                (existingCvUrl != null &&
+                                    existingCvUrl!.isNotEmpty)))
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: PdfPagePreview(
+                                cvBytes: cvBytes,
+                                existingCvUrl: existingCvUrl,
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.insert_drive_file,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            cvName ?? 'upload_cv_label'.tr(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
           ),
         );
       },
@@ -4419,7 +4383,6 @@ class DocumentationSection extends StatelessWidget {
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
         final containerHeight = (availableWidth * 1.8).clamp(320.0, 650.0);
-        final sidePadding = (availableWidth * 0.12).clamp(12.0, 48.0);
         return Container(
           height: containerHeight,
           width: double.infinity,
@@ -4428,56 +4391,7 @@ class DocumentationSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.grey.shade200, width: 1),
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Positioned(
-                top: 12,
-                bottom: 12,
-                left: sidePadding,
-                right: sidePadding,
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          height: 16,
-                          width: 200,
-                          color: Colors.grey.shade300,
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 10,
-                          width: 150,
-                          color: Colors.grey.shade300,
-                        ),
-                        const SizedBox(height: 40),
-                        ...List.generate(
-                          8,
-                          (index) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Container(
-                              height: 12,
-                              width: double.infinity,
-                              color: Colors.grey.shade300,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              overlay,
-            ],
-          ),
+          child: Center(child: overlay),
         );
       },
     );
