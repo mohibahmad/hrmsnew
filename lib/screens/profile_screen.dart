@@ -13,6 +13,7 @@ import '../services/preferences_service.dart';
 import '../services/error_reporter.dart';
 import '../services/upload_service.dart';
 import '../utils/currency_utils.dart';
+import '../utils/delete_dialog.dart';
 import '../utils/localization_helper.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/guest_restriction.dart';
@@ -438,7 +439,7 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'please_fill_all_fields'.tr(),
+          message: 'please_enter_field'.tr(),
           isError: true,
         );
       }
@@ -1124,7 +1125,14 @@ class _ProfileBodyState extends State<ProfileBody> {
                 TextButton(
                   onPressed: _isLoading
                       ? null
-                      : () {
+                      : () async {
+                          final confirmed = await DeleteDialog.show(
+                            context: context,
+                            title: 'remove_company_stamp_title'.tr(),
+                            content: 'remove_company_stamp_desc'.tr(),
+                            confirmButtonText: 'remove',
+                          );
+                          if (!confirmed || !mounted) return;
                           setState(() {
                             _newCompanyStampBytes = null;
                             _clearCompanyStamp = true;
@@ -1147,9 +1155,9 @@ class _ProfileBodyState extends State<ProfileBody> {
         Text(
           'company_stamp_signature'.tr(),
           style: const TextStyle(
-            color: Color(0xFF000000),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            color: Colors.black,
             fontFamily: 'SF Pro Display',
           ),
         ),
@@ -1197,8 +1205,18 @@ class _ProfileBodyState extends State<ProfileBody> {
   }
 
   Widget _buildCompanyStampPreview() {
-    Widget fallback() => const Center(
-      child: Icon(Icons.approval_outlined, size: 34, color: Color(0xFF9CA3AF)),
+    Widget fallback() => Center(
+      child: Image.asset(
+        'assets/stamp.png',
+        width: 34,
+        height: 34,
+        color: const Color(0xFF9CA3AF),
+        errorBuilder: (_, __, ___) => const Icon(
+          Icons.approval_outlined,
+          size: 34,
+          color: Color(0xFF9CA3AF),
+        ),
+      ),
     );
 
     if (_newCompanyStampBytes != null) {
@@ -1360,7 +1378,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                             ),
                           if (isCompanyId)
                             FilteringTextInputFormatter.allow(
-                              RegExp(r'[A-Z0-9]'),
+                              RegExp(r'[A-Z0-9-]'),
                             ),
                         ]
                       : null,
@@ -1532,7 +1550,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                         icon: const Icon(
                           Icons.close,
                           color: Color(0xFFFFFFFF),
-                          size: 28,
+                          size: 26,
                         ),
                         onPressed: () => Navigator.of(context).pop(),
                         constraints: const BoxConstraints(),
@@ -1540,7 +1558,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                       ),
                     ),
                     Align(
-                      alignment: Alignment(0.93, 0),
+                      alignment: Alignment(0.95, 0),
                       child: IconButton(
                         icon: SvgPicture.asset(
                           'assets/edit_icon.svg',
@@ -1713,7 +1731,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'SF Pro Display',
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       height: 1.0,
                       letterSpacing: 0,
                       color: Color(0xFF000000),
@@ -1728,7 +1746,7 @@ class ProfilePreviewDialog extends StatelessWidget {
                   style: const TextStyle(
                     fontFamily: 'SF Pro Display',
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     height: 1.0,
                     letterSpacing: 0,
                     color: Color(0xFF000000),

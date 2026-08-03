@@ -26,7 +26,7 @@ class Validators {
     return _email.hasMatch(value.trim());
   }
 
-  static final RegExp _companyId = RegExp(r'^[A-Z0-9]+$');
+  static final RegExp _companyId = RegExp(r'^[A-Z0-9-]+$');
 
   static bool isValidCompanyId(String? value) {
     final trimmed = value?.trim() ?? '';
