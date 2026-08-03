@@ -1007,8 +1007,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: widget.isGuest
                         ? const Color(0xFFE0E0E0)
-                        : const Color(0xFFF1F3F5),
+                        : const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: widget.isGuest
+                          ? const Color(0xFFE0E0E0)
+                          : const Color(0xFF0247C4),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1017,7 +1023,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           size: 18,
                           color: widget.isGuest
                               ? const Color(0xFFAAAAAA)
-                              : const Color(0xFF0247C4)),
+                              : const Color(0xFF000000)),
                       const SizedBox(width: 6),
                       Text(
                         'share_policy'.tr(),
@@ -1025,7 +1031,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           fontSize: 16,
                           color: widget.isGuest
                               ? const Color(0xFFAAAAAA)
-                              : const Color(0xFF0247C4),
+                              : const Color(0xFF000000),
                           fontWeight: FontWeight.w500,
                           fontFamily: 'SF Pro Display',
                           height: 1.0,
@@ -1041,6 +1047,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert,
                   color: Color(0xFF6B7280), size: 24),
+              color: const Color(0xFFFFFFFF),
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
+              ),
               onSelected: (value) {
                 if (value == 'delete') {
                   _showDeletePolicyDialog();
@@ -1048,11 +1060,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
+                  height: 42,
                   value: 'delete',
                   child: Row(
                     children: [
-                      const Icon(Icons.delete_outline,
-                          size: 18, color: Color(0xFFEF4444)),
+                      SvgPicture.asset(
+                        'assets/delete_icon.svg',
+                        width: 18,
+                        height: 18,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFFEF4444),
+                          BlendMode.srcIn,
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       Text('delete_policy'.tr(),
                           style: const TextStyle(
@@ -1115,53 +1135,199 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeletePolicyDialog() {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text('delete_policy'.tr(),
-            style: const TextStyle(fontFamily: 'SF Pro Display')),
-        content: Text('delete_policy_confirm'.tr(),
-            style: const TextStyle(fontFamily: 'SF Pro Display')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('cancel'.tr(),
-                style: const TextStyle(fontFamily: 'SF Pro Display')),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await _firestore.deleteLeavePolicy(_currentLeavePolicy!['id']);
-                if (mounted) {
-                  setState(() => _currentLeavePolicy = null);
-                  FlashySnackBar.show(
-                    context,
-                    message: 'policy_deleted_success'.tr(),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  FlashySnackBar.show(
-                    context,
-                    message: 'failed_to_delete_policy'.tr(
-                        namedArgs: {'error': e.toString()}),
-                    isError: true,
-                  );
-                }
-              }
-            },
-            child: Text(
-              'delete'.tr(),
-              style: const TextStyle(
-                color: Color(0xFFEF4444),
-                fontFamily: 'SF Pro Display',
+      barrierDismissible: true,
+      barrierLabel: 'DeletePolicyDialog',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 12 * animation.value,
+                  sigmaY: 12 * animation.value,
+                ),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: Container(
+                    color: const Color(0xFF0247C4).withValues(alpha: 0.18),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: curve,
+                child: Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: Container(
+                    width: 380,
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF000000)
+                              .withValues(alpha: 0.15),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFEE2E2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.warning_rounded,
+                              color: Color(0xFFEF4444),
+                              size: 36,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'delete_policy'.tr(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF000000),
+                            fontFamily: 'SF Pro Display',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'delete_policy_confirm'.tr(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w400,
+                            fontFamily: 'SF Pro Display',
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () => Navigator.pop(context, false),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    height: 48,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'cancel'.tr(),
+                                      style: const TextStyle(
+                                        color: Color(0xFF000000),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    Navigator.pop(context, true);
+                                    try {
+                                      await _firestore.deleteLeavePolicy(
+                                          _currentLeavePolicy!['id']);
+                                      if (mounted && context.mounted) {
+                                        setState(
+                                            () => _currentLeavePolicy = null);
+                                        FlashySnackBar.show(
+                                          context,
+                                          message:
+                                              'policy_deleted_success'.tr(),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted && context.mounted) {
+                                        FlashySnackBar.show(
+                                          context,
+                                          message:
+                                              'failed_to_delete_policy'.tr(
+                                            namedArgs: {
+                                              'error': e.toString()
+                                            },
+                                          ),
+                                          isError: true,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    height: 48,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444),
+                                      borderRadius: BorderRadius.circular(6),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFEF4444)
+                                              .withValues(alpha: 0.2),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      'delete'.tr(),
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1246,6 +1412,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
   DateTime _leaveYearDate = DateTime(2026, 1, 1);
   final String _applyTo = 'All Workers';
   bool _isSaving = false;
+  bool _isFullyEditable = false;
   bool get _isEditing => widget.editPolicy != null;
 
   @override
@@ -1608,7 +1775,8 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                       const SizedBox(height: 24),
                       _buildSectionTitle('policy_name'.tr()),
                       const SizedBox(height: 8),
-                      _buildTextField(_policyNameController),
+                      _buildTextField(_policyNameController,
+                          enabled: !_isEditing || _isFullyEditable),
                       const SizedBox(height: 20),
                       Row(
                         children: [
@@ -1674,18 +1842,21 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                         'sick_leave_title'.tr(),
                         _sickLeaveController,
                         Icons.sick_outlined,
+                        enabled: !_isEditing || _isFullyEditable,
                       ),
                       const SizedBox(height: 12),
                       _buildLeaveTypeField(
                         'casual_leave_title'.tr(),
                         _casualLeaveController,
                         Icons.weekend_outlined,
+                        enabled: !_isEditing || _isFullyEditable,
                       ),
                       const SizedBox(height: 12),
                       _buildLeaveTypeField(
                         'medical_leave_title'.tr(),
                         _medicalLeaveController,
                         Icons.medical_services_outlined,
+                        enabled: !_isEditing || _isFullyEditable,
                       ),
                       const SizedBox(height: 24),
                       _buildTotalLeavesBox(),
@@ -1717,7 +1888,8 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                       const SizedBox(height: 24),
                       _buildSectionTitle('policy_notes_optional'.tr()),
                       const SizedBox(height: 8),
-                      _buildLargeTextField(_notesController),
+                      _buildLargeTextField(_notesController,
+                          enabled: !_isEditing || _isFullyEditable),
                     ],
                   ),
                 ),
@@ -1745,18 +1917,23 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5EEFC),
-              borderRadius: BorderRadius.circular(8),
+          if (!_isFullyEditable)
+            GestureDetector(
+              onTap: () =>
+                  setState(() => _isFullyEditable = true),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5EEFC),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SvgPicture.asset(
+                  'assets/edit_icon.svg',
+                  width: 20,
+                  height: 20,
+                ),
+              ),
             ),
-            child: const Icon(
-              Icons.edit_outlined,
-              size: 20,
-              color: Color(0xFF0247C4),
-            ),
-          ),
         ],
       );
     }
@@ -1797,9 +1974,10 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller) {
+  Widget _buildTextField(TextEditingController controller, {bool enabled = true}) {
     return TextField(
       controller: controller,
+      enabled: enabled,
       style: TextStyle(
         fontSize: 14,
         color: _textDark,
@@ -1816,14 +1994,21 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: _primaryBlue),
         ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _borderLight),
+        ),
+        fillColor: enabled ? null : _bgLight,
+        filled: !enabled,
       ),
     );
   }
 
-  Widget _buildLargeTextField(TextEditingController controller) {
+  Widget _buildLargeTextField(TextEditingController controller, {bool enabled = true}) {
     return TextField(
       controller: controller,
       maxLines: 5,
+      enabled: enabled,
       style: TextStyle(
         fontSize: 13,
         color: _textDark,
@@ -1840,6 +2025,12 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: _primaryBlue),
         ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _borderLight),
+        ),
+        fillColor: enabled ? null : _bgLight,
+        filled: !enabled,
       ),
     );
   }
@@ -1917,8 +2108,9 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
   Widget _buildLeaveTypeField(
     String title,
     TextEditingController controller,
-    IconData icon,
-  ) {
+    IconData icon, {
+    bool enabled = true,
+  }) {
     return Row(
       children: [
         Container(
@@ -1949,6 +2141,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
           child: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
+            enabled: enabled,
             style: TextStyle(
               fontSize: 14,
               color: _textDark,
@@ -1965,6 +2158,12 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: _primaryBlue),
               ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _borderLight),
+              ),
+              fillColor: enabled ? null : _bgLight,
+              filled: !enabled,
               suffixText: 'days',
               suffixStyle: TextStyle(
                 fontSize: 12,
@@ -2027,6 +2226,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
   }
 
   Widget _buildBottomBar() {
+    final canSave = !_isEditing || _isFullyEditable;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(
@@ -2064,9 +2264,9 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
             height: 44,
             width: 150,
             child: ElevatedButton(
-              onPressed: _isSaving ? null : _savePolicy,
+              onPressed: _isSaving || !canSave ? null : _savePolicy,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryBlue,
+                backgroundColor: canSave ? _primaryBlue : const Color(0xFFD1D5DB),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -2084,7 +2284,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                   : Text(
                       _isEditing ? 'update_policy'.tr() : 'save_policy'.tr(),
                       style: TextStyle(
-                        color: Colors.white,
+                        color: canSave ? Colors.white : const Color(0xFF9CA3AF),
                         fontWeight: FontWeight.w500,
                         fontFamily: 'SF Pro Display',
                       ),
