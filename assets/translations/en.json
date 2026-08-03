@@ -1106,6 +1106,7 @@
   "leave_policy_saved_applied": "Leave policy saved and applied to {count} worker(s)!",
   "please_enter_policy_name": "Please enter a policy name",
   "please_enter_valid_days": "Please enter valid days for leave types",
+  "max_days_limit_reached": "Total leave days cannot exceed {limit} days. Please reduce the leave days.",
   "failed_to_save_leave_policy": "Failed to save leave policy: {error}",
   "edit_policy": "Edit Policy",
   "update_policy": "Update Policy",

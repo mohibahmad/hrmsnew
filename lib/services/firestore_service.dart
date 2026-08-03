@@ -1655,10 +1655,10 @@ class FirestoreService {
     await coll.doc(id).update(data);
   }
 
-  Future<void> deleteLeavePolicy(String id) async {
+  Future<void> deleteLeavePolicy(dynamic id) async {
     final coll = _leavePolicies;
-    if (coll == null) return;
-    await coll.doc(id).delete();
+    if (coll == null || id == null) return;
+    await coll.doc(id.toString()).delete();
   }
 
   Future<void> toggleLeavePolicyActive(String id, bool isActive) async {
