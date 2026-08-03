@@ -812,6 +812,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _profileImageBytes = bytes;
           _profileImageName = file.name;
         });
+        FlashySnackBar.show(
+          context,
+          message: 'file_uploaded'.tr(),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -854,6 +858,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _frontIdBytes = bytes;
           _frontIdName = file.name;
         });
+        FlashySnackBar.show(
+          context,
+          message: 'file_uploaded'.tr(),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -896,6 +904,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _backIdBytes = bytes;
           _backIdName = file.name;
         });
+        FlashySnackBar.show(
+          context,
+          message: 'file_uploaded'.tr(),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -939,6 +951,10 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
           _cvName = file.name;
           _isCvUploaded = true;
         });
+        FlashySnackBar.show(
+          context,
+          message: 'file_uploaded'.tr(),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -4521,7 +4537,11 @@ Widget _buildInputField(
                   FilteringTextInputFormatter.allow(
                     isAmount
                         ? RegExp(r'^\d*\.?\d*')
-                        : (isNationalId ? RegExp(r'^[\d-]*') : RegExp(r'^\d*')),
+                        : (isNationalId
+                              ? RegExp(r'^[\d-]*')
+                              : isContact
+                              ? RegExp(r'[0-9+\-\s()]')
+                              : RegExp(r'^\d*')),
                   ),
                   if (isAmount) LengthLimitingTextInputFormatter(15),
                   if (isContact) LengthLimitingTextInputFormatter(20),

@@ -224,9 +224,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       doc['unpaidLeaves'] = (attendance['unpaidLeaves'] ?? 0).toString();
       doc['leaves'] = (attendance['leaves'] ?? 0).toString();
       doc['totalWorkDays'] = workingDays.toString();
-    } catch (_) {
-      
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadCompanySettings() async {
@@ -543,9 +541,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     _loadCompanySettings();
 
-    
-    
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startPayrollListeners();
     });
@@ -570,8 +565,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
       return;
     }
 
-    
-    
     _workersList = latestWorkers;
     _combinePayroll();
     _scheduleAttendanceFetch();
@@ -1074,14 +1067,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-                'assets/placeholder_workers.svg',
-                width: 120,
-                height: 100,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFCBCBCB),
-                  BlendMode.srcIn,
-                ),
+              'assets/placeholder_workers.svg',
+              width: 120,
+              height: 100,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFCBCBCB),
+                BlendMode.srcIn,
               ),
+            ),
             const SizedBox(height: 16),
             Text(
               isSearchEmpty
@@ -1365,23 +1358,16 @@ class _PayrollScreenState extends State<PayrollScreen> {
       );
       final currency = PayrollService.getCurrencyPrefix(salary);
       final prefix = currency.isEmpty ? '' : '$currency ';
-      
-      
-      
-      
+
       final grossSalary = PayrollService.extractSalary(
         calculation['formattedGross'],
       );
       final absentDeductionTotal = deductionsAreTotals
           ? PayrollService.extractSalary(rawAbsentDeduction)
-          : PayrollService.extractSalary(
-              calculation['formattedAbsentDeduct'],
-            );
+          : PayrollService.extractSalary(calculation['formattedAbsentDeduct']);
       final leaveDeductionTotal = deductionsAreTotals
           ? PayrollService.extractSalary(rawLeaveDeduction)
-          : PayrollService.extractSalary(
-              calculation['formattedLeaveDeduct'],
-            );
+          : PayrollService.extractSalary(calculation['formattedLeaveDeduct']);
       final overtimeValue = PayrollService.extractSalary(overtime);
       final totalDeductions = absentDeductionTotal + leaveDeductionTotal;
       final netSalary = (grossSalary + overtimeValue - totalDeductions).clamp(
@@ -1420,6 +1406,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         totalDeductions:
             '$prefix${PayrollService.formatFullNumber(totalDeductions)}',
         netSalary: '$prefix${PayrollService.formatFullNumber(netSalary)}',
+        currency: _companyCurrency,
         companyName:
             (companyProfile['businessName'] ??
                     companyProfile['companyName'] ??
@@ -1560,9 +1547,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         PayrollService.parseIntSafe(paidLeaves) +
         PayrollService.parseIntSafe(unpaidLeaves);
     final presentDays =
-        (totalDaysValue -
-                PayrollService.parseIntSafe(absents) -
-                totalLeaves)
+        (totalDaysValue - PayrollService.parseIntSafe(absents) - totalLeaves)
             .clamp(0, totalDaysValue);
     final paidDate = PayrollService.payrollPaymentDate(data);
     final paidDateText = paidDate == null

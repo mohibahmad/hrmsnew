@@ -1019,22 +1019,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Expanded(
                               child: _buildShareOptionCard(
                                 iconAsset: 'assets/whatsapp.png',
-                                label: 'share_whatsapp'.tr(),
-                                onTap: () async {
-                                  Navigator.pop(context);
-                                  await _sharePolicyPdf(policy);
-                                },
+                                 label: 'share_whatsapp'.tr(),
+                                 onTap: () async {
+                                   Navigator.pop(context);
+                                   await _sharePolicyToWhatsApp(text);
+                                 },
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildShareOptionCard(
                                 iconAsset: 'assets/email_icon.png',
-                                label: 'share_email'.tr(),
-                                onTap: () async {
-                                  Navigator.pop(context);
-                                  await _sharePolicyPdf(policy);
-                                },
+                                 label: 'share_email'.tr(),
+                                 onTap: () async {
+                                   Navigator.pop(context);
+                                   await _sharePolicyToEmail(text);
+                                 },
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -1259,6 +1259,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _sharePolicyToWhatsApp(String text) async {
+    try {
+      final uri = Uri.parse(
+          'whatsapp://send?text=${Uri.encodeComponent(text)}');
+      final launched = await canLaunchUrl(uri);
+      if (launched) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await SharePlus.instance.share(ShareParams(text: text));
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.toString(), isError: true);
+      }
+    }
+  }
+
+  Future<void> _sharePolicyToEmail(String text) async {
+    try {
+      final subject = Uri.encodeComponent('Leave Policy');
+      final uri = Uri.parse(
+          'mailto:?subject=$subject&body=${Uri.encodeComponent(text)}');
+      final launched = await canLaunchUrl(uri);
+      if (launched) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await SharePlus.instance.share(
+          ShareParams(text: text, subject: 'Leave Policy'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.toString(), isError: true);
+      }
+    }
+  }
+
   void _copyPolicyText(String text) {
     Clipboard.setData(ClipboardData(text: text));
     FlashySnackBar.show(context, message: 'policy_copied'.tr());
@@ -1456,13 +1493,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? null
                     : () => _showLeavePolicyListDialog(),
                 behavior: HitTestBehavior.opaque,
-                child: Container(
+                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: widget.isGuest
                         ? const Color(0xFFE0E0E0)
-                        : const Color(0xFFF1F3F5),
+                        : const Color(0xFF0247C4),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
@@ -1472,7 +1509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           size: 18,
                           color: widget.isGuest
                               ? const Color(0xFFAAAAAA)
-                              : const Color(0xFF000000)),
+                              : Colors.white),
                       const SizedBox(width: 6),
                       Text(
                         'add_policy'.tr(),
@@ -1480,7 +1517,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           fontSize: 16,
                           color: widget.isGuest
                               ? const Color(0xFFAAAAAA)
-                              : const Color(0xFF000000),
+                              : Colors.white,
                           fontWeight: FontWeight.w500,
                           fontFamily: 'SF Pro Display',
                           height: 1.0,

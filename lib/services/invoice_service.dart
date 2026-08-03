@@ -31,6 +31,7 @@ class InvoiceService {
     required String leaveDeduction,
     required String totalDeductions,
     required String netSalary,
+    required String currency,
 
     String companyName = 'HRMS Company',
     String companyAddress = 'Human Resource Management System',
@@ -41,10 +42,11 @@ class InvoiceService {
     String paymentMethod = 'Company Payroll',
     String terms = 'Standard payroll terms apply.',
   }) async {
-    final detectedCurrency = _detectCurrency(salary);
+    final detectedCurrency = currency.isEmpty
+        ? _detectCurrency(salary)
+        : currency;
     final pdf = pw.Document();
 
-    
     final regularFont = pw.Font.helvetica();
     final boldFont = pw.Font.helveticaBold();
 
@@ -57,7 +59,6 @@ class InvoiceService {
     final lineColor = PdfColor.fromHex('#6B7398');
     final white = PdfColors.white;
 
-    
     pw.MemoryImage? logoImage;
     try {
       final byteData = await rootBundle.load('assets/app_icon.png');
@@ -101,7 +102,6 @@ class InvoiceService {
         margin: const pw.EdgeInsets.fromLTRB(24, 28, 24, 40),
         build: (context) {
           return [
-            
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -168,7 +168,6 @@ class InvoiceService {
 
             pw.SizedBox(height: 38),
 
-            
             pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -209,14 +208,10 @@ class InvoiceService {
 
             pw.SizedBox(height: 28),
 
-            
             _tableHeader(navy: navy, white: white),
 
-            
-            
-            
             _tableRow(
-              description: 'Monthly Salary',
+              description: 'Basic Salary ($totalWorkDays working days)',
               rate: '—',
               quantity: totalWorkDays,
               total: _money(grossPay, defaultCurrency: detectedCurrency),
@@ -243,7 +238,8 @@ class InvoiceService {
                   defaultCurrency: detectedCurrency,
                 ),
                 quantity: absents,
-                total: '-${_money(absentDeduction, defaultCurrency: detectedCurrency)}',
+                total:
+                    '-${_money(absentDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
                 lineColor: lineColor,
               ),
@@ -257,12 +253,12 @@ class InvoiceService {
                   defaultCurrency: detectedCurrency,
                 ),
                 quantity: leaves,
-                total: '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
+                total:
+                    '-${_money(leaveDeduction, defaultCurrency: detectedCurrency)}',
                 textColor: textColor,
                 lineColor: lineColor,
               ),
 
-            
             if (!hasOvertime)
               _emptyTableRow(textColor: textColor, lineColor: lineColor),
             if (!hasAbsentDeduction)
@@ -274,7 +270,6 @@ class InvoiceService {
 
             pw.SizedBox(height: 18),
 
-            
             pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -302,7 +297,7 @@ class InvoiceService {
                         textColor,
                       ),
                       _smallInfoLine(
-                        'Contract Salary',
+                        'Basic Salary',
                         _money(salary, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
@@ -311,11 +306,7 @@ class InvoiceService {
                         _money(dailyRate, defaultCurrency: detectedCurrency),
                         textColor,
                       ),
-                      _smallInfoLine(
-                        'Payable Days',
-                        daysWorked,
-                        textColor,
-                      ),
+                      _smallInfoLine('Payable Days', daysWorked, textColor),
                       _smallInfoLine('Working Days', totalWorkDays, textColor),
                       _smallInfoLine('Absents', absents, textColor),
                       _smallInfoLine('Leaves', leaves, textColor),
@@ -330,11 +321,18 @@ class InvoiceService {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                     children: [
-                      _summaryLine('Gross Pay', _money(grossPay, defaultCurrency: detectedCurrency), textColor),
+                      _summaryLine(
+                        'Gross Pay',
+                        _money(grossPay, defaultCurrency: detectedCurrency),
+                        textColor,
+                      ),
                       if (hasOvertime)
                         _summaryLine(
                           'Overtime Pay',
-                          _money(overtimePay, defaultCurrency: detectedCurrency),
+                          _money(
+                            overtimePay,
+                            defaultCurrency: detectedCurrency,
+                          ),
                           textColor,
                         ),
                       _summaryLine(
@@ -346,7 +344,6 @@ class InvoiceService {
                       ),
                       pw.SizedBox(height: 8),
 
-                      
                       pw.Container(
                         color: navy,
                         padding: const pw.EdgeInsets.symmetric(
@@ -361,7 +358,10 @@ class InvoiceService {
                               style: pw.TextStyle(fontSize: 10, color: white),
                             ),
                             pw.Text(
-                              _money(netSalary, defaultCurrency: detectedCurrency),
+                              _money(
+                                netSalary,
+                                defaultCurrency: detectedCurrency,
+                              ),
                               style: pw.TextStyle(
                                 fontSize: 10,
                                 color: white,
@@ -682,8 +682,6 @@ class InvoiceService {
     return '$prefix ${value.toStringAsFixed(2)}';
   }
 
-  
-  
   static String _perDayRate(
     String total,
     String quantity, {

@@ -26,6 +26,7 @@ void main() {
         leaveDeduction: 'Rs 0.00',
         totalDeductions: 'Rs 431.85',
         netSalary: 'Rs 9,192.36',
+        currency: 'Rs',
         companyName: 'Example HRMS Limited',
         companyId: 'COMP-101',
         companyStampImageUrl: 'assets/app_icon.png',

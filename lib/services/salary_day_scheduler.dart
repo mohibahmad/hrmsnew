@@ -446,8 +446,7 @@ class SalaryDayScheduler {
         final periodSalary = salaryType.trim().toLowerCase() == 'annual'
             ? enteredSalary / 12
             : enteredSalary;
-        
-        
+
         final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
         if (isGuest) {
           final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
@@ -456,7 +455,7 @@ class SalaryDayScheduler {
           final leaveDeductionPerDay = (worker['leaveDeduction'] ?? '')
               .toString()
               .trim();
-          
+
           absentDeductionTotal = absentDeductionPerDay.isEmpty
               ? dailyRate * absents
               : PayrollService.extractSalary(absentDeductionPerDay) * absents;
@@ -1055,23 +1054,24 @@ class SalaryDayScheduler {
         final deductibleLeaves = r.unpaidLeaves;
         final absentEquivalent = absentsInt + (r.halfDays * 0.5);
         final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
-        
-        
-        
+
         final payableDays =
             (workDays - absentsInt - deductibleLeaves - (r.halfDays * 0.5))
                 .clamp(0, workDays)
                 .toDouble();
         final grossSalary = rawSalary;
-        final absentDeductionTotal =
-            PayrollService.extractSalary(r.absentDeduction);
-        final leaveDeductionTotal =
-            PayrollService.extractSalary(r.leaveDeduction);
-        final netSalary = (grossSalary +
-                overtimeAmt -
-                absentDeductionTotal -
-                leaveDeductionTotal)
-            .clamp(0.0, double.infinity);
+        final absentDeductionTotal = PayrollService.extractSalary(
+          r.absentDeduction,
+        );
+        final leaveDeductionTotal = PayrollService.extractSalary(
+          r.leaveDeduction,
+        );
+        final netSalary =
+            (grossSalary +
+                    overtimeAmt -
+                    absentDeductionTotal -
+                    leaveDeductionTotal)
+                .clamp(0.0, double.infinity);
         final currency = PayrollService.getCurrencySymbol(r.currency);
 
         final pdfBytes = await InvoiceService.generatePayrollInvoice(
@@ -1095,6 +1095,7 @@ class SalaryDayScheduler {
             currency,
           ),
           netSalary: _invoiceMoney(netSalary, currency),
+          currency: currency,
           companyName:
               (companyProfile['businessName'] ??
                       companyProfile['companyName'] ??
@@ -2178,11 +2179,8 @@ class SalaryDayScheduler {
                                                           r.success &&
                                                           selectedIndices
                                                               .contains(
-                                                                summary
-                                                                    .results
-                                                                    .indexOf(
-                                                                      r,
-                                                                    ),
+                                                                summary.results
+                                                                    .indexOf(r),
                                                               ),
                                                     )
                                                     .toList();

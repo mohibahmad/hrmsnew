@@ -511,6 +511,9 @@
   "search_expenses_hint": "Search by workers or categories",
   "add_expenses": "Add Expenses",
   "this_month_expense": "This Month Expense",
+  "this_week_expense": "This Week Expense",
+  "last_6_months_expense": "Last 6 Months Expense",
+  "this_year_expense": "This Year Expense",
   "date_header": "Date",
   "amount_header": "Amount",
   "edit_expense": "Edit Expense",
@@ -1128,5 +1131,8 @@
   "create_leave_policy_desc": "Create a leave policy and set annual entitlements.",
   "coming_soon": "Coming Soon",
   "leave_policy_coming_soon_desc": "Leave policy management will be available soon! You will be able to add, edit, download and share your leave policies here.",
-  "got_it": "Got It!"
+  "got_it": "Got It!",
+  "work_schedule": "Work Schedule",
+  "set_workdays": "Set Workdays",
+  "today_expense": "Today's Expense"
 }

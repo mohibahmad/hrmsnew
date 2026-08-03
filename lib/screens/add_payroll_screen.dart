@@ -547,6 +547,7 @@ class _AddPayrollScreenState extends State<AddPayrollScreen> {
       leaveDeduction: (cr['formattedLeaveDeduct'] as String?) ?? '',
       totalDeductions: (cr['formattedTotalDeductions'] as String?) ?? '',
       netSalary: (cr['formattedNet'] as String?) ?? '',
+      currency: _currencyCode,
       companyName:
           (companyProfile['businessName'] ??
                   companyProfile['companyName'] ??
