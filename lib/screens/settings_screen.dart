@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart' hide GestureDetector;
+import 'package:flutter/cupertino.dart'
+    show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,13 +9,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
-import '../services/leave_policy_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
-import 'leave_policy_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../shared/app_constants.dart';
 import '../utils/svg_fill_color_mapper.dart';
@@ -45,6 +45,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDeletingAccount = false;
   bool _isOpeningExternalLink = false;
   bool _isSharingApp = false;
+  Map<String, dynamic>? _currentLeavePolicy;
+  bool _isLoadingPolicy = false;
 
   @override
   void didChangeDependencies() {
@@ -53,6 +55,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _initialized = true;
     _authService = Provider.of<AuthService>(context, listen: false);
     _firestore = Provider.of<FirestoreService>(context, listen: false);
+    _loadLeavePolicy();
+  }
+
+  Future<void> _loadLeavePolicy() async {
+    if (!mounted || _isLoadingPolicy) return;
+    setState(() => _isLoadingPolicy = true);
+    try {
+      final policies = await _firestore.getLeavePolicies();
+      if (mounted) {
+        setState(() {
+          _currentLeavePolicy =
+              policies.isNotEmpty ? policies.first : null;
+          _isLoadingPolicy = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingPolicy = false);
+    }
   }
 
   String _getCurrentLanguageName() {
@@ -411,13 +431,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _showLeavePolicyListDialog() {
-    showDialog(
+  void _showLeavePolicyListDialog({Map<String, dynamic>? editPolicy}) {
+    showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.3),
-      builder: (_) => _LeavePolicyListDialog(firestore: _firestore),
-    );
+      barrierLabel: 'AddLeavePolicyDialog',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 8 * animation.value,
+                  sigmaY: 8 * animation.value,
+                ),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: Container(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                  ),
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutBack,
+                ),
+                child: _AddLeavePolicyDialog(
+                  onSaved: _loadLeavePolicy,
+                  editPolicy: editPolicy,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ).then((_) => _loadLeavePolicy());
   }
 
   void _showLanguageModal(BuildContext context) {
@@ -574,20 +630,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'share_app'.tr(),
                     onTap: _shareApp,
                   ),
-                  _buildActionSettingItem(
-                    'assets/leave.svg',
-                    'leave_policy'.tr(),
-                    'add_policy'.tr(),
-                    onTap: widget.isGuest
-                        ? null
-                        : () => _showLeavePolicyListDialog(),
-                    disabled: widget.isGuest,
-                    preserveIconColors: true,
-                    iconColorMapper: const SvgFillColorMapper(
-                      source: Color(0xFFFF7B00),
-                      replacement: Color(0xFF000000),
-                    ),
-                  ),
+                  _buildLeavePolicySettingItem(),
                   _buildSimpleSettingItem(
                     'assets/terms&condition.svg',
                     'terms_condition'.tr(),
@@ -669,6 +712,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool showCheckmark = false,
     bool preserveIconColors = false,
     ColorMapper? iconColorMapper,
+    IconData? buttonIcon,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -742,20 +786,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : buttonColor ?? const Color(0xFFF1F3F5),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(
-                  buttonText,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: disabled
-                        ? const Color(0xFFAAAAAA)
-                        : buttonColor != null
-                        ? Colors.white
-                        : const Color(0xFF000000),
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                    height: 1.0,
-                    letterSpacing: 0,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (buttonIcon != null) ...[
+                      Icon(
+                        buttonIcon,
+                        size: 18,
+                        color: disabled
+                            ? const Color(0xFFAAAAAA)
+                            : buttonColor != null
+                                ? Colors.white
+                                : const Color(0xFF000000),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      buttonText,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: disabled
+                            ? const Color(0xFFAAAAAA)
+                            : buttonColor != null
+                                ? Colors.white
+                                : const Color(0xFF000000),
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                        height: 1.0,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -827,6 +888,283 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _sharePolicy(Map<String, dynamic> policy) {
+    final policyName = (policy['policyName'] ?? 'Leave Policy').toString();
+    final annualDays = policy['annualLeaveDays'] ?? 0;
+    final sickDays = policy['sickLeaves'] ?? '0';
+    final casualDays = policy['casualLeaves'] ?? '0';
+    final medicalDays = policy['medicalLeaves'] ?? '0';
+    final notes = (policy['description'] ?? '').toString();
+
+    final text = StringBuffer()
+      ..writeln('Leave Policy: $policyName')
+      ..writeln()
+      ..writeln('Annual Leave Allowance: $annualDays days')
+      ..writeln('  - Sick Leave: $sickDays days')
+      ..writeln('  - Casual Leave: $casualDays days')
+      ..writeln('  - Medical Leave: $medicalDays days')
+      ..writeln('  Applies to: All Workers');
+    if (notes.isNotEmpty) {
+      text
+        ..writeln()
+        ..writeln('Notes: $notes');
+    }
+    text.writeln('\nShared via HRMS App');
+
+    SharePlus.instance.share(ShareParams(text: text.toString()));
+  }
+
+  Widget _buildLeavePolicySettingItem() {
+    final hasPolicy = _currentLeavePolicy != null;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Opacity(
+            opacity: widget.isGuest ? 0.4 : 1,
+            child: SvgPicture.asset(
+              'assets/leave.svg',
+              width: 24,
+              height: 24,
+              colorMapper: const SvgFillColorMapper(
+                source: Color(0xFFFF7B00),
+                replacement: Color(0xFF000000),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              'leave_policy'.tr(),
+              style: TextStyle(
+                fontSize: 16,
+                color: widget.isGuest
+                    ? const Color(0xFFAAAAAA)
+                    : const Color(0xFF000000),
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+                height: 1.0,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+          if (hasPolicy) ...[
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: widget.isGuest
+                    ? null
+                    : () => _showLeavePolicyListDialog(
+                        editPolicy: _currentLeavePolicy),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.isGuest
+                        ? const Color(0xFFE0E0E0)
+                        : const Color(0xFF0247C4),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.visibility,
+                          size: 18, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'view_policy'.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.0,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: widget.isGuest
+                    ? null
+                    : () => _sharePolicy(_currentLeavePolicy!),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.isGuest
+                        ? const Color(0xFFE0E0E0)
+                        : const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.share_outlined,
+                          size: 18,
+                          color: widget.isGuest
+                              ? const Color(0xFFAAAAAA)
+                              : const Color(0xFF0247C4)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'share_policy'.tr(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: widget.isGuest
+                              ? const Color(0xFFAAAAAA)
+                              : const Color(0xFF0247C4),
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.0,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert,
+                  color: Color(0xFF6B7280), size: 24),
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _showDeletePolicyDialog();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_outline,
+                          size: 18, color: Color(0xFFEF4444)),
+                      const SizedBox(width: 10),
+                      Text('delete_policy'.tr(),
+                          style: const TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontFamily: 'SF Pro Display',
+                          )),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (!hasPolicy)
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: widget.isGuest
+                    ? null
+                    : () => _showLeavePolicyListDialog(),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.isGuest
+                        ? const Color(0xFFE0E0E0)
+                        : const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add,
+                          size: 18,
+                          color: widget.isGuest
+                              ? const Color(0xFFAAAAAA)
+                              : const Color(0xFF000000)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'add_policy'.tr(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: widget.isGuest
+                              ? const Color(0xFFAAAAAA)
+                              : const Color(0xFF000000),
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'SF Pro Display',
+                          height: 1.0,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeletePolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text('delete_policy'.tr(),
+            style: const TextStyle(fontFamily: 'SF Pro Display')),
+        content: Text('delete_policy_confirm'.tr(),
+            style: const TextStyle(fontFamily: 'SF Pro Display')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('cancel'.tr(),
+                style: const TextStyle(fontFamily: 'SF Pro Display')),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _firestore.deleteLeavePolicy(_currentLeavePolicy!['id']);
+                if (mounted) {
+                  setState(() => _currentLeavePolicy = null);
+                  FlashySnackBar.show(
+                    context,
+                    message: 'policy_deleted_success'.tr(),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  FlashySnackBar.show(
+                    context,
+                    message: 'failed_to_delete_policy'.tr(
+                        namedArgs: {'error': e.toString()}),
+                    isError: true,
+                  );
+                }
+              }
+            },
+            child: Text(
+              'delete'.tr(),
+              style: const TextStyle(
+                color: Color(0xFFEF4444),
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSimpleSettingItem(
     String iconPath,
     String text, {
@@ -882,147 +1220,356 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _LeavePolicyListDialog extends StatefulWidget {
-  final FirestoreService firestore;
-  const _LeavePolicyListDialog({required this.firestore});
+class _AddLeavePolicyDialog extends StatefulWidget {
+  const _AddLeavePolicyDialog({this.onSaved, this.editPolicy});
+
+  final VoidCallback? onSaved;
+  final Map<String, dynamic>? editPolicy;
 
   @override
-  State<_LeavePolicyListDialog> createState() => _LeavePolicyListDialogState();
+  State<_AddLeavePolicyDialog> createState() => _AddLeavePolicyDialogState();
 }
 
-class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
-  List<Map<String, dynamic>> _policies = [];
-  bool _isLoading = true;
-  String? _busyPolicyId;
+class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
+  static const Color _textDark = Color(0xFF111827);
+  static const Color _textGrey = Color(0xFF6B7280);
+  static const Color _borderLight = Color(0xFFE5E7EB);
+  static const Color _primaryBlue = Color(0xFF0247C4);
+  static const Color _bgLight = Color(0xFFF9FAFB);
+
+  late final TextEditingController _policyNameController;
+  late final TextEditingController _sickLeaveController;
+  late final TextEditingController _casualLeaveController;
+  late final TextEditingController _medicalLeaveController;
+  late final TextEditingController _notesController;
+  DateTime _effectiveFromDate = DateTime(2026, 1, 1);
+  DateTime _leaveYearDate = DateTime(2026, 1, 1);
+  final String _applyTo = 'All Workers';
+  bool _isSaving = false;
+  bool get _isEditing => widget.editPolicy != null;
 
   @override
   void initState() {
     super.initState();
-    _loadPolicies();
-  }
-
-  void _loadPolicies() {
-    widget.firestore.leavePoliciesStream.listen((snap) {
-      if (!mounted) return;
-      setState(() {
-        _policies = snap.docs
-            .map((d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
-            .toList();
-        _isLoading = false;
-      });
-    });
-  }
-
-  Future<Map<String, dynamic>> _companyProfile() async {
-    try {
-      return await widget.firestore.getUserProfile() ?? const {};
-    } catch (_) {
-      return const {};
+    if (_isEditing) {
+      final p = widget.editPolicy!;
+      _policyNameController =
+          TextEditingController(text: (p['policyName'] ?? '').toString());
+      _sickLeaveController =
+          TextEditingController(text: (p['sickLeaves'] ?? '0').toString());
+      _casualLeaveController =
+          TextEditingController(text: (p['casualLeaves'] ?? '0').toString());
+      _medicalLeaveController =
+          TextEditingController(text: (p['medicalLeaves'] ?? '0').toString());
+      _notesController =
+          TextEditingController(text: (p['description'] ?? '').toString());
+      if (p['startDate'] != null) {
+        try {
+          _effectiveFromDate = DateTime.parse(p['startDate'].toString());
+        } catch (_) {}
+      }
+    } else {
+      _policyNameController =
+          TextEditingController(text: 'Standard Leave Policy 2026');
+      _sickLeaveController = TextEditingController(text: '8');
+      _casualLeaveController = TextEditingController(text: '10');
+      _medicalLeaveController = TextEditingController(text: '7');
+      _notesController = TextEditingController(
+        text:
+            'Leave will be counted on working days only. Company holidays and weekly off days are excluded.',
+      );
     }
   }
 
-  void _showAddForm() {
-    showDialog(
+  int get _totalDays {
+    final sick = int.tryParse(_sickLeaveController.text.trim()) ?? 0;
+    final casual = int.tryParse(_casualLeaveController.text.trim()) ?? 0;
+    final medical = int.tryParse(_medicalLeaveController.text.trim()) ?? 0;
+    return sick + casual + medical;
+  }
+
+  @override
+  void dispose() {
+    _policyNameController.dispose();
+    _sickLeaveController.dispose();
+    _casualLeaveController.dispose();
+    _medicalLeaveController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  String _formatYearRange(DateTime date) {
+    final monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${monthNames[date.month - 1]} - Dec ${date.year}';
+  }
+
+  void _showCupertinoDatePicker({
+    required DateTime initialDate,
+    required void Function(DateTime) onDateSelected,
+  }) {
+    DateTime selected = initialDate;
+
+    showGeneralDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => LeavePolicyDialog(
-        onSave: (data) async {
-          await widget.firestore.addLeavePolicy(data);
-        },
-      ),
-    );
-  }
-
-  void _showEditForm(Map<String, dynamic> policy) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => LeavePolicyDialog(
-        existingPolicy: policy,
-        onSave: (data) async {
-          await widget.firestore.updateLeavePolicy(policy['id'], data);
-        },
-      ),
-    );
-  }
-
-  Future<void> _downloadPolicy(Map<String, dynamic> policy) async {
-    final id = (policy['id'] ?? policy['policyName'] ?? '').toString();
-    if (_busyPolicyId != null) return;
-    setState(() => _busyPolicyId = id);
-    try {
-      final profile = await _companyProfile();
-      final companyName = (profile['businessName'] ?? profile['companyName'])
-          ?.toString();
-      final bytes = await LeavePolicyService.generatePdf(
-        policy,
-        companyName: companyName,
-        companyId: profile['companyId']?.toString(),
-      );
-      final saved = await LeavePolicyService.downloadPdf(
-        bytes,
-        (policy['policyName'] ?? 'company_leave_policy').toString(),
-      );
-      if (saved && mounted) {
-        FlashySnackBar.show(context, message: 'Leave policy PDF downloaded');
-      }
-    } catch (_) {
-      if (mounted) {
-        FlashySnackBar.show(
-          context,
-          message: 'Unable to download leave policy PDF',
-          isError: true,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busyPolicyId = null);
-    }
-  }
-
-  Future<void> _sharePolicy(Map<String, dynamic> policy) async {
-    final id = (policy['id'] ?? policy['policyName'] ?? '').toString();
-    if (_busyPolicyId != null) return;
-    setState(() => _busyPolicyId = id);
-    try {
-      final profile = await _companyProfile();
-      final companyName = (profile['businessName'] ?? profile['companyName'])
-          ?.toString();
-      final bytes = await LeavePolicyService.generatePdf(
-        policy,
-        companyName: companyName,
-        companyId: profile['companyId']?.toString(),
-      );
-      final fileName = LeavePolicyService.safeFileName(
-        (policy['policyName'] ?? 'company_leave_policy').toString(),
-      );
-      if (!mounted) return;
-      final renderBox = context.findRenderObject() as RenderBox?;
-      await SharePlus.instance.share(
-        ShareParams(
-          text: LeavePolicyService.formattedText(
-            policy,
-            companyName: companyName,
+      barrierDismissible: true,
+      barrierLabel: 'Date Picker',
+      barrierColor: const Color(0xFF0247C4).withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(
+            opacity: anim,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
+              child: Center(
+                child: StatefulBuilder(
+                  builder: (_, setPickerState) {
+                    return Container(
+                      width: 380,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0247C4)
+                                .withValues(alpha: 0.18),
+                            blurRadius: 40,
+                            offset: const Offset(0, 12),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.calendar,
+                                  size: 20,
+                                  color: _primaryBlue,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'select_date'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: _textDark,
+                                    fontFamily: 'SF Pro Display',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 200,
+                            child: CupertinoDatePicker(
+                              mode: CupertinoDatePickerMode.date,
+                              initialDateTime: initialDate,
+                              minimumDate: DateTime(2020),
+                              maximumDate: DateTime(2100),
+                              onDateTimeChanged: (DateTime newDate) {
+                                setPickerState(() {
+                                  selected = newDate;
+                                });
+                              },
+                            ),
+                          ),
+                          Container(
+                            padding:
+                                const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.of(ctx).pop(),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'cancel'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      onDateSelected(selected);
+                                      Navigator.of(ctx).pop();
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _primaryBlue,
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'done'.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
           ),
-          subject: (policy['policyName'] ?? 'Company Leave Policy').toString(),
-          files: [
-            XFile.fromData(bytes, name: fileName, mimeType: 'application/pdf'),
-          ],
-          fileNameOverrides: [fileName],
-          sharePositionOrigin: renderBox == null
-              ? null
-              : renderBox.localToGlobal(Offset.zero) & renderBox.size,
-        ),
+        );
+      },
+    );
+  }
+
+  Future<void> _savePolicy() async {
+    if (_isSaving) return;
+
+    final policyName = _policyNameController.text.trim();
+    if (policyName.isEmpty) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_policy_name'.tr(),
+        isError: true,
       );
-    } catch (_) {
+      return;
+    }
+
+    final annualLeaveDays = _totalDays;
+    if (annualLeaveDays <= 0) {
+      FlashySnackBar.show(
+        context,
+        message: 'please_enter_valid_days'.tr(),
+        isError: true,
+      );
+      return;
+    }
+
+    final sickDays = int.tryParse(_sickLeaveController.text.trim()) ?? 0;
+    final casualDays = int.tryParse(_casualLeaveController.text.trim()) ?? 0;
+    final medicalDays = int.tryParse(_medicalLeaveController.text.trim()) ?? 0;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final firestore = Provider.of<FirestoreService>(context, listen: false);
+
+      final policyData = <String, dynamic>{
+        'policyName': policyName,
+        'annualLeaveDays': annualLeaveDays,
+        'sickLeaves': sickDays.toString(),
+        'casualLeaves': casualDays.toString(),
+        'medicalLeaves': medicalDays.toString(),
+        'startDate': _effectiveFromDate.toIso8601String(),
+        'leaveYear': _formatYearRange(_leaveYearDate),
+        'applicableTo': _applyTo,
+        'description': _notesController.text.trim(),
+      };
+
+      if (_isEditing) {
+        await firestore.updateLeavePolicy(widget.editPolicy!['id'], policyData);
+      } else {
+        await firestore.addLeavePolicy(policyData);
+      }
+
+      final workersSnapshot = await firestore.getWorkersOnce();
+      final workers = workersSnapshot.docs;
+
+      for (final doc in workers) {
+        await firestore.updateWorkerLeaves(
+          doc.id,
+          {
+            'annualLeaves': annualLeaveDays.toString(),
+            'availableAnnualLeaves': annualLeaveDays.toString(),
+            'leavePolicy': policyName,
+          },
+        );
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSaved?.call();
+        FlashySnackBar.show(
+          context,
+          message: (_isEditing
+                  ? 'policy_updated_applied'
+                  : 'leave_policy_saved_applied')
+              .tr(
+            namedArgs: {'count': workers.length.toString()},
+          ),
+          title: 'Success',
+        );
+      }
+    } catch (e) {
       if (mounted) {
         FlashySnackBar.show(
           context,
-          message: 'Unable to share leave policy',
+          message: 'failed_to_save_leave_policy'.tr(
+            namedArgs: {'error': e.toString()},
+          ),
           isError: true,
         );
       }
     } finally {
-      if (mounted) setState(() => _busyPolicyId = null);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -1031,9 +1578,9 @@ class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 480,
+        width: 560,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.78,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -1046,330 +1593,261 @@ class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 24, 20, 20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEEF2FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.policy_outlined,
-                      color: Color(0xFF4F46E5),
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Leave Policy',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Manage company leave policies',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF64748B),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: _showAddForm,
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF4F46E5,
-                              ).withValues(alpha: 0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.add_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'Add Policy',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, size: 16),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Flexible(
-              child: _isLoading
-                  ? const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF4F46E5),
-                      ),
-                    )
-                  : _policies.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(48),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('policy_name'.tr()),
+                      const SizedBox(height: 8),
+                      _buildTextField(_policyNameController),
+                      const SizedBox(height: 20),
+                      Row(
                         children: [
-                          Container(
-                            width: 72,
-                            height: 72,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFF1F5F9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.policy_outlined,
-                              color: Color(0xFF94A3B8),
-                              size: 36,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No policies yet',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[600],
-                              fontFamily: 'SF Pro Display',
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionTitle('effective_from'.tr()),
+                                const SizedBox(height: 8),
+                                _buildDateField(
+                                  _formatDate(_effectiveFromDate),
+                                  prefixIcon: Icons.calendar_month_rounded,
+                                  onTap: () => _showCupertinoDatePicker(
+                                    initialDate: _effectiveFromDate,
+                                    onDateSelected: (date) => setState(
+                                        () => _effectiveFromDate = date),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Create your first leave policy\nto get started',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[400],
-                              height: 1.4,
-                              fontFamily: 'SF Pro Display',
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionTitle('leave_year'.tr()),
+                                const SizedBox(height: 8),
+                                _buildDateField(
+                                  _formatYearRange(_leaveYearDate),
+                                  onTap: () => _showCupertinoDatePicker(
+                                    initialDate: _leaveYearDate,
+                                    onDateSelected: (date) =>
+                                        setState(() => _leaveYearDate = date),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _policies.length,
-                      itemBuilder: (context, index) {
-                        final p = _policies[index];
-                        final isActive = p['isActive'] ?? true;
-                        final savedLeaveTypes = p['leaveTypes'];
-                        final leaveSummary =
-                            savedLeaveTypes is List &&
-                                savedLeaveTypes.isNotEmpty
-                            ? '${savedLeaveTypes.length} leave types  •  ${p['applicableTo'] ?? ''}'
-                            : '${p['leaveType'] ?? ''}  •  ${p['allowedLeaves'] ?? ''} days/yr  •  ${p['paidUnpaid'] ?? ''}';
-                        final isBusy =
-                            _busyPolicyId ==
-                            (p['id'] ?? p['policyName'] ?? '').toString();
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? Colors.white
-                                : const Color(0xFFFAFBFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isActive
-                                  ? const Color(0xFFE2E8F0)
-                                  : const Color(0xFFF1F5F9),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: isActive
-                                          ? const Color(0xFFEEF2FF)
-                                          : const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      Icons.description_outlined,
-                                      color: isActive
-                                          ? const Color(0xFF4F46E5)
-                                          : const Color(0xFF94A3B8),
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          p['policyName'] ?? '',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: isActive
-                                                ? const Color(0xFF1E293B)
-                                                : const Color(0xFF94A3B8),
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          leaveSummary,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[500],
-                                            fontFamily: 'SF Pro Display',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isActive
-                                          ? const Color(0xFFDCFCE7)
-                                          : const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      isActive ? 'Active' : 'Disabled',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: isActive
-                                            ? const Color(0xFF16A34A)
-                                            : const Color(0xFF94A3B8),
-                                        fontFamily: 'SF Pro Display',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                width: double.infinity,
-                                height: 1,
-                                color: const Color(0xFFF1F5F9),
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  _actBtn(
-                                    'Edit',
-                                    Icons.edit_outlined,
-                                    () => _showEditForm(p),
-                                  ),
-                                  _actBtn(
-                                    isBusy ? 'Generating…' : 'Download PDF',
-                                    Icons.download_outlined,
-                                    isBusy ? () {} : () => _downloadPolicy(p),
-                                  ),
-                                  _actBtn(
-                                    'Share',
-                                    Icons.share_outlined,
-                                    isBusy ? () {} : () => _sharePolicy(p),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                      const SizedBox(height: 32),
+                      Text(
+                        'leave_types_entitlements'.tr(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _textDark,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'set_days_for_leave_types'.tr(),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: _textGrey,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildLeaveTypeField(
+                        'sick_leave_title'.tr(),
+                        _sickLeaveController,
+                        Icons.sick_outlined,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLeaveTypeField(
+                        'casual_leave_title'.tr(),
+                        _casualLeaveController,
+                        Icons.weekend_outlined,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLeaveTypeField(
+                        'medical_leave_title'.tr(),
+                        _medicalLeaveController,
+                        Icons.medical_services_outlined,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildTotalLeavesBox(),
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('apply_to'.tr()),
+                      const SizedBox(height: 8),
+                      _buildReadonlyField(
+                        'all_workers'.tr(),
+                        prefixIcon: Icons.people_outline,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'applied_to_all_workers'.tr(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _textGrey,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'all_leave_types_deducted'.tr(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _textGrey,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('policy_notes_optional'.tr()),
+                      const SizedBox(height: 8),
+                      _buildLargeTextField(_notesController),
+                    ],
+                  ),
+                ),
+              ),
+              _buildBottomBar(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _actBtn(
-    String label,
-    IconData icon,
-    VoidCallback onTap, {
-    Color? color,
+  Widget _buildHeader() {
+    if (_isEditing) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(
+              widget.editPolicy?['policyName'] ?? 'view_policy'.tr(),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: _textDark,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5EEFC),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.edit_outlined,
+              size: 20,
+              color: Color(0xFF0247C4),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'add_leave_policy'.tr(),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: _textDark,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'create_leave_policy_desc'.tr(),
+          style: TextStyle(
+            fontSize: 13,
+            color: _textGrey,
+            fontFamily: 'SF Pro Display',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: _textDark,
+        fontFamily: 'SF Pro Display',
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: TextStyle(
+        fontSize: 14,
+        color: _textDark,
+        fontFamily: 'SF Pro Display',
+      ),
+      decoration: InputDecoration(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _borderLight),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _primaryBlue),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLargeTextField(TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      maxLines: 5,
+      style: TextStyle(
+        fontSize: 13,
+        color: _textDark,
+        height: 1.5,
+        fontFamily: 'SF Pro Display',
+      ),
+      decoration: InputDecoration(
+        contentPadding: const EdgeInsets.all(16),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _borderLight),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _primaryBlue),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateField(
+    String text, {
+    IconData? prefixIcon,
+    VoidCallback? onTap,
   }) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1377,31 +1855,243 @@ class _LeavePolicyListDialogState extends State<_LeavePolicyListDialog> {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: color != null
-                ? color.withValues(alpha: 0.06)
-                : const Color(0xFFF8FAFC),
+            border: Border.all(color: _borderLight),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              if (prefixIcon != null) ...[
+                Icon(prefixIcon, size: 18, color: _textGrey),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _textDark,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                ),
+              ),
+              Icon(Icons.keyboard_arrow_down, size: 20, color: _textGrey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadonlyField(String text, {IconData? prefixIcon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: _bgLight,
+        border: Border.all(color: _borderLight),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          if (prefixIcon != null) ...[
+            Icon(prefixIcon, size: 18, color: _textGrey),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: _textDark,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+          ),
+          const Icon(Icons.lock_outline, size: 16, color: _textGrey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeaveTypeField(
+    String title,
+    TextEditingController controller,
+    IconData icon,
+  ) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5EEFC),
             borderRadius: BorderRadius.circular(6),
           ),
-          margin: const EdgeInsets.only(right: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Center(
+            child: Icon(icon, size: 20, color: _primaryBlue),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: _textDark,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 120,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: TextStyle(
+              fontSize: 14,
+              color: _textDark,
+              fontFamily: 'SF Pro Display',
+            ),
+            decoration: InputDecoration(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _borderLight),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _primaryBlue),
+              ),
+              suffixText: 'days',
+              suffixStyle: TextStyle(
+                fontSize: 12,
+                color: _textGrey,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTotalLeavesBox() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: _bgLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 14, color: color ?? const Color(0xFF64748B)),
-              const SizedBox(width: 4),
               Text(
-                label,
+                'total_annual_leaves'.tr(),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: _textDark,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'sick_casual_medical'.tr(),
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color ?? const Color(0xFF64748B),
+                  color: _textGrey,
                   fontFamily: 'SF Pro Display',
                 ),
               ),
             ],
           ),
+          Text(
+            '$_totalDays days',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: _textDark,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: _borderLight, width: 1),
         ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          SizedBox(
+            height: 44,
+            width: 100,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: _borderLight),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'cancel'.tr(),
+                style: TextStyle(
+                  color: _textDark,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 44,
+            width: 150,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _savePolicy,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryBlue,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      _isEditing ? 'update_policy'.tr() : 'save_policy'.tr(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'SF Pro Display',
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }

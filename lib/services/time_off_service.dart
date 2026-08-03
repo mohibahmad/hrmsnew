@@ -287,7 +287,7 @@ class TimeOffService {
     final total = configuredPaidLeaveAllowance(worker);
     if (timeOffRecords.isEmpty) return total;
 
-    final used = leaveDaysUsedForWorker(
+    final used = paidDaysUsedForWorker(
       worker,
       timeOffRecords,
       excludingRecordId: excludingRecordId,

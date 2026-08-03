@@ -188,6 +188,100 @@ void main() {
     },
   );
 
+  test('leave chart dedups same worker/date across mismatched identities', () {
+    final workers = [
+      {
+        'id': 'worker-1',
+        'workerId': 'worker-1',
+        'email': 'jane@example.com',
+        'name': 'Jane',
+      },
+      {
+        'id': 'worker-2',
+        'workerId': 'worker-2',
+        'email': 'bob@example.com',
+        'name': 'Bob',
+      },
+    ];
+    final merged = DashboardChartService.mergedLeaveDaysForPeriod(
+      timeOffRecords: [
+        {
+          'workerId': 'worker-1',
+          'type': 'Sick Leave',
+          'selectedDates': ['2026-07-30'],
+          'status': 'Assigned',
+        },
+      ],
+      attendanceRecords: [
+        // Same worker as the time-off record, but identified by email only.
+        {
+          'email': 'jane@example.com',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'reason': 'Sick Leave',
+        },
+        // Different worker identified by name only.
+        {
+          'name': 'Bob',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'reason': 'Casual Leave',
+        },
+      ],
+      period: 'Today',
+      now: DateTime(2026, 7, 30),
+      workers: workers,
+    );
+
+    // worker-1 appears once (time-off + attendance collapsed to one day),
+    // worker-2 (attendance only) is a second day.
+    expect(merged, hasLength(2));
+    expect(merged.where((day) => day['type'] == 'Sick Leave'), hasLength(1));
+    expect(merged.where((day) => day['type'] == 'Casual Leave'), hasLength(1));
+  });
+
+  test('leave chart keeps same-named workers separate (no name collapse)', () {
+    final workers = [
+      {
+        'id': 'worker-1',
+        'workerId': 'worker-1',
+        'email': 'a@example.com',
+        'name': 'Alex',
+      },
+      {
+        'id': 'worker-2',
+        'workerId': 'worker-2',
+        'email': 'b@example.com',
+        'name': 'Alex',
+      },
+    ];
+    final merged = DashboardChartService.mergedLeaveDaysForPeriod(
+      timeOffRecords: const [],
+      attendanceRecords: [
+        {
+          'email': 'a@example.com',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'reason': 'Sick Leave',
+        },
+        {
+          'email': 'b@example.com',
+          'status': 'Leave',
+          'attendanceDate': '2026-07-30',
+          'reason': 'Casual Leave',
+        },
+      ],
+      period: 'Today',
+      now: DateTime(2026, 7, 30),
+      workers: workers,
+    );
+
+    // Same name but different emails → both days must be kept.
+    expect(merged, hasLength(2));
+    expect(merged.where((day) => day['type'] == 'Sick Leave'), hasLength(1));
+    expect(merged.where((day) => day['type'] == 'Casual Leave'), hasLength(1));
+  });
+
   test('leave chart merges attendance-only leave types without duplicates', () {
     final merged = DashboardChartService.mergedLeaveDaysForPeriod(
       timeOffRecords: [

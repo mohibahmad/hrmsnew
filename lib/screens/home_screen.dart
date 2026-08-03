@@ -1293,6 +1293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     .where(_attendanceBelongsToExistingWorker)
                                     .toList(),
                           period: _selectedPeriod,
+                          workers: _workersDocs,
                         );
                     final filteredAttendanceDocs = _getFilteredAttendanceDocs(
                       _selectedPeriod,

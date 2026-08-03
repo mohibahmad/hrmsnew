@@ -1,5 +1,6 @@
 import 'payroll_service.dart';
 import 'time_off_service.dart';
+import '../utils/worker_identity.dart';
 
 class DashboardChartPoint {
   final DateTime date;
@@ -167,6 +168,8 @@ class DashboardChartService {
           'type': type,
           'date': date,
           'workerId': record['workerId'],
+          'email': record['email'],
+          'name': record['name'] ?? record['workerName'],
         });
       }
     }
@@ -175,13 +178,23 @@ class DashboardChartService {
 
   /// Combines approved time-off dates with attendance rows marked as Leave.
   /// A worker/date pair is counted once, preferring the explicit time-off type.
+  ///
+  /// [workers] is used to resolve records that identify the same worker in
+  /// different ways (workerId vs email vs name) so attendance and time-off
+  /// rows for the same person/date are not double counted.
   static List<Map<String, dynamic>> mergedLeaveDaysForPeriod({
     required List<Map<String, dynamic>> timeOffRecords,
     required List<Map<String, dynamic>> attendanceRecords,
     required String period,
     DateTime? now,
+    List<Map<String, dynamic>> workers = const [],
   }) {
     final merged = <String, Map<String, dynamic>>{};
+    // Pre-index workers once so identity resolution is O(records), not
+    // O(records × workers), and name matching only applies to unique names.
+    final identityIndex = workers.isEmpty
+        ? null
+        : _buildWorkerIdentityIndex(workers);
 
     for (final leave in leaveDaysForPeriod(
       records: timeOffRecords,
@@ -189,7 +202,7 @@ class DashboardChartService {
       now: now,
     )) {
       final date = leave['date'] as DateTime;
-      merged[_leaveIdentity(leave, date)] = leave;
+      merged[_leaveIdentity(leave, date, identityIndex)] = leave;
     }
 
     for (final attendance in attendanceRecords) {
@@ -219,7 +232,10 @@ class DashboardChartService {
         'type': type,
         'date': date,
       };
-      merged.putIfAbsent(_leaveIdentity(normalized, date), () => normalized);
+      merged.putIfAbsent(
+        _leaveIdentity(normalized, date, identityIndex),
+        () => normalized,
+      );
     }
 
     final result = merged.values.toList();
@@ -248,12 +264,89 @@ class DashboardChartService {
     return 'Annual Leave';
   }
 
-  static String _leaveIdentity(Map<String, dynamic> record, DateTime date) {
-    final worker =
-        (record['workerId'] ?? record['email'] ?? record['name'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
+  /// Builds a lookup index mapping each worker's possible identities
+  /// (workerId, email, and - only when unique - name) to a canonical key.
+  /// Name entries are skipped for duplicated names so two same-named
+  /// workers are never merged into one leave day.
+  static Map<String, String> _buildWorkerIdentityIndex(
+    List<Map<String, dynamic>> workers,
+  ) {
+    final index = <String, String>{};
+    final nameCounts = <String, int>{};
+
+    for (final worker in workers) {
+      final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final email = WorkerIdentity.normalizeEmail(worker['email']);
+      final name = WorkerIdentity.normalizeName(worker['name']);
+
+      final canonical = workerId.isNotEmpty
+          ? 'id:$workerId'
+          : (email.isNotEmpty ? 'email:$email' : 'name:$name');
+      if (workerId.isNotEmpty) index['id:$workerId'] = canonical;
+      if (email.isNotEmpty) index['email:$email'] = canonical;
+      if (name.isNotEmpty) {
+        nameCounts[name] = (nameCounts[name] ?? 0) + 1;
+      }
+    }
+
+    for (final worker in workers) {
+      final name = WorkerIdentity.normalizeName(worker['name']);
+      if (name.isEmpty || (nameCounts[name] ?? 0) != 1) continue;
+      final workerId = (worker['workerId'] ?? worker['id'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final email = WorkerIdentity.normalizeEmail(worker['email']);
+      final canonical = workerId.isNotEmpty
+          ? 'id:$workerId'
+          : (email.isNotEmpty ? 'email:$email' : 'name:$name');
+      index['name:$name'] = canonical;
+    }
+    return index;
+  }
+
+  /// Resolves a record to its canonical worker key via the pre-built index.
+  static String _canonicalWorkerKey(
+    Map<String, dynamic> record,
+    Map<String, String> index,
+  ) {
+    final recordWorkerId = (record['workerId'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (recordWorkerId.isNotEmpty && index.containsKey('id:$recordWorkerId')) {
+      return index['id:$recordWorkerId']!;
+    }
+    final recordEmail = WorkerIdentity.normalizeEmail(record['email']);
+    if (recordEmail.isNotEmpty && index.containsKey('email:$recordEmail')) {
+      return index['email:$recordEmail']!;
+    }
+    final recordName = WorkerIdentity.normalizeName(
+      record['name'] ?? record['workerName'],
+    );
+    if (recordName.isNotEmpty && index.containsKey('name:$recordName')) {
+      return index['name:$recordName']!;
+    }
+
+    if (recordWorkerId.isNotEmpty) return 'id:$recordWorkerId';
+    if (recordEmail.isNotEmpty) return 'email:$recordEmail';
+    return 'name:$recordName';
+  }
+
+  static String _leaveIdentity(
+    Map<String, dynamic> record,
+    DateTime date,
+    Map<String, String>? identityIndex,
+  ) {
+    final worker = identityIndex == null
+        ? (record['workerId'] ?? record['email'] ?? record['name'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase()
+        : _canonicalWorkerKey(record, identityIndex);
     return '$worker:${date.year}-${date.month}-${date.day}';
   }
 

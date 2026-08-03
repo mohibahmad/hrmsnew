@@ -1024,6 +1024,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   const SizedBox(height: 16),
                   _buildCompanyWorkDaysSummary(),
                   const SizedBox(height: 24),
+                  _buildHolidayListHeader(context),
+                  const SizedBox(height: 16),
                   _isLoading
                       ? const Padding(
                           padding: EdgeInsets.all(40.0),
@@ -1082,118 +1084,146 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   Widget _buildTopActionRow(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          'holiday_list'.tr(),
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF000000),
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-        Flexible(
-          child: Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 12,
-            runSpacing: 8,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  final isGuest =
-                      _authService.currentUser?.isAnonymous ?? false;
-                  if (isGuest) {
-                    showGuestRestrictionDialog(context);
-                    return;
-                  }
-                  _showCompanyWorkDaysModal();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0247C4),
-                  foregroundColor: const Color(0xFFFFFFFF),
-                  minimumSize: const Size(32, 50),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  elevation: 0,
-                ),
-                icon: const Icon(
-                  Icons.edit_calendar_rounded,
-                  size: 22,
-                  color: Color(0xFFFFFFFF),
-                ),
-                label: Text(
-                  'add_company_work_days'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'SF Pro Display',
-                  ),
+              Text(
+                'work_schedule'.tr(),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF000000),
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final isGuest =
-                        _authService.currentUser?.isAnonymous ?? false;
-                    if (isGuest) {
-                      if (!mounted) return;
-                      showGuestRestrictionDialog(context);
-                      return;
-                    }
-                    final isPremium = await PreferencesService.isPremium();
-                    if (!mounted) return;
-                    if (!PremiumGate.canAddEntry(
-                      currentEntryCount: _holidaysByMonth.values.fold<int>(
-                        0,
-                        (sum, list) => sum + list.length,
-                      ),
-                      isPremium: isPremium,
-                      isGuest: isGuest,
-                    )) {
-                      final upgraded =
-                          await PremiumGate.shouldShowUpgradeDialog(context);
-                      if (upgraded == true && mounted) {
-                        _showAddHolidayModal(context);
-                      }
-                      return;
-                    }
-                    if (!mounted) return;
-                    _showAddHolidayModal(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0247C4),
-                    minimumSize: const Size(32, 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: SvgPicture.asset(
-                    'assets/holidays_icon.svg',
-                    width: 22,
-                    height: 22,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFFFFFFFF),
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  label: Text(
-                    'add_holiday'.tr(),
-                    style: TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                'company_work_days_help'.tr(),
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.3,
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        ElevatedButton.icon(
+          onPressed: () {
+            final isGuest = _authService.currentUser?.isAnonymous ?? false;
+            if (isGuest) {
+              showGuestRestrictionDialog(context);
+              return;
+            }
+            _showCompanyWorkDaysModal();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0247C4),
+            foregroundColor: const Color(0xFFFFFFFF),
+            minimumSize: const Size(32, 50),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            elevation: 0,
+          ),
+          icon: const Icon(
+            Icons.edit_calendar_rounded,
+            size: 22,
+            color: Color(0xFFFFFFFF),
+          ),
+          label: Text(
+            'set_workdays'.tr(),
+            style: const TextStyle(
+              color: Color(0xFFFFFFFF),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHolidayListHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(
+          child: Text(
+            'holiday_list'.tr(),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF000000),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              final isGuest = _authService.currentUser?.isAnonymous ?? false;
+              if (isGuest) {
+                if (!mounted) return;
+                showGuestRestrictionDialog(context);
+                return;
+              }
+              final isPremium = await PreferencesService.isPremium();
+              if (!mounted) return;
+              if (!PremiumGate.canAddEntry(
+                currentEntryCount: _holidaysByMonth.values.fold<int>(
+                  0,
+                  (sum, list) => sum + list.length,
+                ),
+                isPremium: isPremium,
+                isGuest: isGuest,
+              )) {
+                final upgraded =
+                    await PremiumGate.shouldShowUpgradeDialog(context);
+                if (upgraded == true && mounted) {
+                  _showAddHolidayModal(context);
+                }
+                return;
+              }
+              if (!mounted) return;
+              _showAddHolidayModal(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0247C4),
+              minimumSize: const Size(32, 50),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              elevation: 0,
+            ),
+            icon: SvgPicture.asset(
+              'assets/holidays_icon.svg',
+              width: 22,
+              height: 22,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFFFFFFF),
+                BlendMode.srcIn,
+              ),
+            ),
+            label: Text(
+              'add_holiday'.tr(),
+              style: const TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'SF Pro Display',
+              ),
+            ),
           ),
         ),
       ],

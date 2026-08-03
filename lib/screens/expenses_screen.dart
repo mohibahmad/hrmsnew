@@ -49,7 +49,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _searchQuery = '';
   List<Map<String, dynamic>> _expensesDocs = [];
   bool _isLoading = true;
-  String _selectedPeriod = 'Yearly';
+  String _selectedPeriod = 'Month';
   StreamSubscription? _expensesSub;
   StreamSubscription? _profileSub;
   StreamSubscription? _payrollSub;
@@ -176,15 +176,29 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     });
   }
 
-  double get _monthExpenseSum {
-    final now = DateTime.now();
+  double get _selectedPeriodExpenseSum {
     return _expensesDocs.fold(0.0, (sum, doc) {
-      final date = AppDateUtils.dateFromValue(doc['date']);
-      if (date != null && date.month == now.month && date.year == now.year) {
+      final dateStr = _eds(doc['date']);
+      if (_isDateWithinPeriod(dateStr, _selectedPeriod)) {
         return sum + _expenseAmount(doc);
       }
       return sum;
     });
+  }
+
+  String get _selectedPeriodExpenseTitle {
+    switch (_selectedPeriod) {
+      case 'Today':
+        return 'today_expense'.tr();
+      case 'Week':
+        return 'this_week_expense'.tr();
+      case '6 Month':
+        return 'last_6_months_expense'.tr();
+      case 'Yearly':
+        return 'this_year_expense'.tr();
+      default:
+        return 'this_month_expense'.tr();
+    }
   }
 
   double _expenseAmount(Map<String, dynamic> expense) {
@@ -301,7 +315,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _deleteExpense(Map<String, dynamic> doc) async {
     final docId = (doc['id'] ?? '').toString().trim();
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (!isGuest && (_isPayrollExpense(doc) || docId.isEmpty)) return;
+    if (docId.isEmpty) return;
 
     final confirmed = await DeleteDialog.show(
       context: context,
@@ -334,7 +348,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Future<void> _editExpense(Map<String, dynamic> doc) async {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (!isGuest && _isPayrollExpense(doc)) return;
     final categoryController = TextEditingController(
       text: doc['category']?.toString() ?? '',
     );
@@ -472,6 +485,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     'name': descriptionController.text.trim(),
                                     'description': descriptionController.text
                                         .trim(),
+                                    // Editing a payroll-linked expense converts it
+                                    // into a manual expense so the edited amount
+                                    // actually shows (instead of the live payroll
+                                    // figure).
+                                    if (_isPayrollExpense(doc))
+                                      'payrollKey': '',
                                   };
                                   try {
                                     if (isGuest) {
@@ -1482,9 +1501,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       children: [
         Expanded(
           child: _buildCard(
-            title: 'this_month_expense'.tr(),
+            title: _selectedPeriodExpenseTitle,
             titleColor: const Color(0xFF0247C4),
-            amount: _formatCurrency(_monthExpenseSum),
+            amount: _formatCurrency(_selectedPeriodExpenseSum),
             iconWidget: SvgPicture.asset(
               'assets/expense_month.svg',
               width: 44,
@@ -1692,18 +1711,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final amount = _expenseAmount(doc);
 
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    final isLockedPayrollExpense = !isGuest && _isPayrollExpense(doc);
 
     return GestureDetector(
-      onTap: isLockedPayrollExpense
-          ? null
-          : () {
-              if (isGuest) {
-                showGuestRestrictionDialog(context);
-                return;
-              }
-              _editExpense(doc);
-            },
+      onTap: () {
+        if (isGuest) {
+          showGuestRestrictionDialog(context);
+          return;
+        }
+        _editExpense(doc);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -1785,10 +1801,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildActionMenu(Map<String, dynamic> doc) {
-    final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    if (!isGuest && _isPayrollExpense(doc)) {
-      return const SizedBox(width: 48);
-    }
     return SizedBox(
       width: 48,
       child: PopupMenuButton<String>(

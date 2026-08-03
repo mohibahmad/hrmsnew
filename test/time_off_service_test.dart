@@ -157,7 +157,7 @@ void main() {
     ]);
   });
 
-  test('annual allowance is consumed by both paid and unpaid records', () {
+  test('annual allowance is consumed only by paid records', () {
     const workerWithAllowance = {
       'name': 'Ali Khan',
       'email': 'ali@example.com',
@@ -189,7 +189,7 @@ void main() {
       TimeOffService.leaveDaysUsedForWorker(workerWithAllowance, records),
       3,
     );
-    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 2);
+    expect(TimeOffService.remainingPaidLeave(workerWithAllowance, records), 3);
   });
 
   test('the same time-off date only consumes annual allowance once', () {

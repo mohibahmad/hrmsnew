@@ -501,6 +501,41 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
     _casualLeavesController.addListener(_onControllerChanged);
 
     _annualLeavesController.addListener(_clampAnnualLeaves);
+
+    if (widget.workerToEdit == null) {
+      _applyActiveLeavePolicyToNewWorker();
+    }
+  }
+
+  Future<void> _applyActiveLeavePolicyToNewWorker() async {
+    if (!mounted) return;
+    try {
+      final policies = await _firestore.getLeavePolicies();
+      if (!mounted || policies.isEmpty) return;
+      final active = policies.first;
+      final annual = (active['annualLeaveDays'] ?? 0).toString();
+      final sick = (active['sickLeaves'] ?? '0').toString();
+      final casual = (active['casualLeaves'] ?? '0').toString();
+      final policyName = (active['policyName'] ?? '').toString();
+
+      setState(() {
+        if (_annualLeavesController.text.trim().isEmpty) {
+          _annualLeavesController.text = annual;
+        }
+        if (_sickLeavesController.text.trim().isEmpty) {
+          _sickLeavesController.text = sick;
+        }
+        if (_casualLeavesController.text.trim().isEmpty) {
+          _casualLeavesController.text = casual;
+        }
+        if (policyName.isNotEmpty &&
+            _leavePolicyController.text.trim() == 'Standard') {
+          _leavePolicyController.text = policyName;
+        }
+      });
+    } catch (_) {
+      // Policy not available; user can still enter values manually.
+    }
   }
 
   void _clampAnnualLeaves() {
