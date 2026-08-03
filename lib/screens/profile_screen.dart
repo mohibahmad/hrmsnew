@@ -100,6 +100,7 @@ class ProfileInlineHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          SizedBox(width: 12),
           Text(
             'my_info'.tr(),
             style: TextStyle(
