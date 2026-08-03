@@ -85,7 +85,7 @@ class ProfileInlineHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 94,
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 28),
       decoration: const BoxDecoration(
         color: Color(0xFFFFFFFF),
         border: Border(bottom: BorderSide(color: Color(0xFFEEEFF2))),
@@ -100,7 +100,7 @@ class ProfileInlineHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(width: 12),
+          SizedBox(width: 8),
           Text(
             'my_info'.tr(),
             style: TextStyle(
@@ -800,7 +800,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 12),
+              padding: const EdgeInsets.only(left: 24),
               child: _buildProfileIcon(),
             ),
             if (_isEditing)
@@ -815,10 +815,10 @@ class _ProfileBodyState extends State<ProfileBody> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF155ED5),
+                  backgroundColor: const Color(0xFF0247C4),
                   foregroundColor: const Color(0xFFFFFFFF),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
+                    horizontal: 30,
                     vertical: 18,
                   ),
                   shape: RoundedRectangleBorder(
@@ -828,8 +828,8 @@ class _ProfileBodyState extends State<ProfileBody> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 30,
+                        height: 30,
                         child: CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,
@@ -877,7 +877,7 @@ class _ProfileBodyState extends State<ProfileBody> {
         ),
         const SizedBox(height: 30),
         Container(
-          padding: const EdgeInsets.all(30),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: const Color(0xFFF4F5F7),
             borderRadius: BorderRadius.circular(6),
@@ -898,7 +898,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   isCompanyId: true,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               _buildFormRow(
                 _buildInputField(
                   'company_email'.tr(),
@@ -908,7 +908,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                 ),
                 _buildCurrencyField(_isEditing),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               _buildFormRow(
                 _buildInputField(
                   'contact_number'.tr(),
@@ -923,7 +923,7 @@ class _ProfileBodyState extends State<ProfileBody> {
                   isAddress: true,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               _buildCompanyStampField(),
             ],
           ),
@@ -1031,10 +1031,10 @@ class _ProfileBodyState extends State<ProfileBody> {
               bottom: 0,
               right: 0,
               child: Container(
-                width: 28,
+                width: 25,
                 height: 28,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF155ED5),
+                  color: Color(0xFF0247C4),
                   shape: BoxShape.circle,
                 ),
                 child: Padding(
