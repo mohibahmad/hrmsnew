@@ -176,12 +176,12 @@ class DashboardChartService {
     return leaveDays;
   }
 
-  /// Combines approved time-off dates with attendance rows marked as Leave.
-  /// A worker/date pair is counted once, preferring the explicit time-off type.
-  ///
-  /// [workers] is used to resolve records that identify the same worker in
-  /// different ways (workerId vs email vs name) so attendance and time-off
-  /// rows for the same person/date are not double counted.
+  
+  
+  
+  
+  
+  
   static List<Map<String, dynamic>> mergedLeaveDaysForPeriod({
     required List<Map<String, dynamic>> timeOffRecords,
     required List<Map<String, dynamic>> attendanceRecords,
@@ -190,8 +190,8 @@ class DashboardChartService {
     List<Map<String, dynamic>> workers = const [],
   }) {
     final merged = <String, Map<String, dynamic>>{};
-    // Pre-index workers once so identity resolution is O(records), not
-    // O(records × workers), and name matching only applies to unique names.
+    
+    
     final identityIndex = workers.isEmpty
         ? null
         : _buildWorkerIdentityIndex(workers);
@@ -264,10 +264,10 @@ class DashboardChartService {
     return 'Annual Leave';
   }
 
-  /// Builds a lookup index mapping each worker's possible identities
-  /// (workerId, email, and - only when unique - name) to a canonical key.
-  /// Name entries are skipped for duplicated names so two same-named
-  /// workers are never merged into one leave day.
+  
+  
+  
+  
   static Map<String, String> _buildWorkerIdentityIndex(
     List<Map<String, dynamic>> workers,
   ) {
@@ -308,7 +308,7 @@ class DashboardChartService {
     return index;
   }
 
-  /// Resolves a record to its canonical worker key via the pre-built index.
+  
   static String _canonicalWorkerKey(
     Map<String, dynamic> record,
     Map<String, String> index,

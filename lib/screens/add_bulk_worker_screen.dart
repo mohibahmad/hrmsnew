@@ -824,9 +824,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     }
   }
 
-  /// Normalizes an education value to its canonical display form
-  /// (e.g. "bachelor's", "bachelors" -> "Bachelor"). Returns null when the
-  /// value is not a supported education level.
+  
+  
+  
   String? _normalizeEducation(String input) {
     final normalized = input.trim().toLowerCase();
     const valid = {
@@ -1782,9 +1782,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
   }) {
     final now = DateTime.now();
     final minimumDate = fieldKey == 'dob' ? DateTime(1920) : DateTime(2000);
-    // Workers must be at least 18 years old, so a DOB cannot be later than
-    // 18 years ago. Clamp only the day when the target date doesn't exist
-    // (e.g. Feb 29 in a non-leap year) so the max stays the exact anniversary.
+    
+    
+    
     final DateTime maximumDate;
     if (fieldKey == 'dob') {
       final targetYear = now.year - 18;
@@ -2117,9 +2117,9 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
     final currentValue = (worker[fieldKey] ?? '').toString();
     final label = _fieldLabels[fieldKey] ?? fieldKey;
 
-    // Load existing emails/national IDs so the dialog can reject values that
-    // duplicate workers already saved in the database (not just other rows
-    // in the current CSV). Only needed for these two identity fields.
+    
+    
+    
     final existingEmails = <String>{};
     final existingNationalIds = <String>{};
     final bool needsExistingIdentity =
@@ -2130,7 +2130,7 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
         existingEmails.addAll(existing.emails);
         existingNationalIds.addAll(existing.nationalIds);
       } catch (_) {
-        // Fall back to CSV-only duplicate checks if the DB lookup fails.
+        
       }
     }
     if (!mounted) return;
@@ -3827,8 +3827,8 @@ class AddBulkWorkerScreenState extends State<AddBulkWorkerScreen> {
       displayText = text;
     }
 
-    // Keep the preview row single-line even if a value somehow contains line
-    // breaks (e.g. pasted multi-line text or a quoted CSV cell).
+    
+    
     if (displayText.contains('\n') || displayText.contains('\r')) {
       displayText = displayText.replaceAll(RegExp(r'[\r\n]+'), ' ');
     }

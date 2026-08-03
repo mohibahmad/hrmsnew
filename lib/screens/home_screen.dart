@@ -904,8 +904,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _showNotifications = opening;
     });
     if (opening) {
-      // Opening the panel counts as "seen": clear the unread badge so it
-      // does not keep showing stale counts (e.g. "8") forever.
+      
+      
       _markNotificationsSeen();
     }
   }

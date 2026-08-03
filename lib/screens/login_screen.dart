@@ -78,8 +78,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = await PreferencesService.getBiometricPassword();
       hasSaved = enabled && email != null && password != null;
     } catch (error, stackTrace) {
-      // Never wipe saved credentials on a transient storage error, otherwise
-      // biometric login is lost for good and never offered again.
+      
+      
       ErrorReporter.report(error, stackTrace, context: 'checkBiometricStatus');
     }
     if (mounted) {
@@ -282,7 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
               savedEmail?.trim().toLowerCase() == enteredEmail;
 
           if (sameAccount) {
-            // Keep the secure credential current if the password was changed.
+            
             await PreferencesService.setBiometricCredentials(
               email: enteredEmail,
               password: _passwordController.text,

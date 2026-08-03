@@ -446,8 +446,8 @@ class SalaryDayScheduler {
         final periodSalary = salaryType.trim().toLowerCase() == 'annual'
             ? enteredSalary / 12
             : enteredSalary;
-        // Daily rate is salary ÷ actual working days so the stored payroll
-        // matches the invoice (and vice versa).
+        
+        
         final dailyRate = workDays > 0 ? periodSalary / workDays : 0.0;
         if (isGuest) {
           final absentDeductionPerDay = (worker['absentDeduction'] ?? '')
@@ -456,7 +456,7 @@ class SalaryDayScheduler {
           final leaveDeductionPerDay = (worker['leaveDeduction'] ?? '')
               .toString()
               .trim();
-          // No explicit per-day deduction → deduct at the daily rate.
+          
           absentDeductionTotal = absentDeductionPerDay.isEmpty
               ? dailyRate * absents
               : PayrollService.extractSalary(absentDeductionPerDay) * absents;
@@ -1055,9 +1055,9 @@ class SalaryDayScheduler {
         final deductibleLeaves = r.unpaidLeaves;
         final absentEquivalent = absentsInt + (r.halfDays * 0.5);
         final overtimeAmt = PayrollService.extractSalary(r.overtimeAmount);
-        // Payable days (shown in the invoice info panel) = the days the
-        // worker is actually paid for. Gross stays the full contract salary
-        // with absence and unpaid leave deducted separately below.
+        
+        
+        
         final payableDays =
             (workDays - absentsInt - deductibleLeaves - (r.halfDays * 0.5))
                 .clamp(0, workDays)

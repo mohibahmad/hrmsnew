@@ -1407,8 +1407,8 @@ class DummyData {
       'attendanceDate': date,
       'status': status,
       'reason': reason,
-      // These rows exist to populate the guest attendance tabs only. Leave
-      // types shown on the dashboard must continue to come from time-off data.
+      
+      
       'excludeFromLeaveChart': true,
       if (status == 'Leave') 'type': leaveType,
     };

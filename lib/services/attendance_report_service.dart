@@ -70,7 +70,7 @@ class AttendanceReportService {
     return AppDateUtils.attendanceRecordDate(record);
   }
 
-  /// ISO dates remain stable when the CSV is opened in spreadsheet apps.
+  
   static String csvDate(DateTime? date) {
     if (date == null) return '';
     return '${date.year.toString().padLeft(4, '0')}-'
@@ -78,10 +78,10 @@ class AttendanceReportService {
         '${date.day.toString().padLeft(2, '0')}';
   }
 
-  /// Human-readable date for CSV exports (e.g. `01-Aug-2026`), prefixed with
-  /// a tab so spreadsheet apps keep it as text. A bare ISO date is
-  /// auto-converted into a real date cell, which renders as `########` when
-  /// the column is too narrow.
+  
+  
+  
+  
   static String csvTextDate(DateTime? date) {
     if (date == null) return '';
     const months = [

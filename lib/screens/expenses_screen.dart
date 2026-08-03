@@ -485,10 +485,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     'name': descriptionController.text.trim(),
                                     'description': descriptionController.text
                                         .trim(),
-                                    // Editing a payroll-linked expense converts it
-                                    // into a manual expense so the edited amount
-                                    // actually shows (instead of the live payroll
-                                    // figure).
+                                    
+                                    
+                                    
+                                    
                                     if (_isPayrollExpense(doc))
                                       'payrollKey': '',
                                   };

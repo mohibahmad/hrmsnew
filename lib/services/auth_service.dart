@@ -295,8 +295,8 @@ class AuthService {
       await _auth.signOut();
     }
     await PreferencesService.clear(
-      // Guest mode must not erase biometric credentials that belong to the
-      // previously signed-in real account.
+      
+      
       preserveBiometricCredentials: preserveBiometricLogin || isGuest,
     );
     profilePicNotifier.value = null;

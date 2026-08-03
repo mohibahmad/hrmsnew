@@ -225,7 +225,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
       doc['leaves'] = (attendance['leaves'] ?? 0).toString();
       doc['totalWorkDays'] = workingDays.toString();
     } catch (_) {
-      // Keep defaults (0) if attendance fetch fails
+      
     }
   }
 
@@ -543,9 +543,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
     _firestore = Provider.of<FirestoreService>(context, listen: false);
     _loadCompanySettings();
 
-    // A cached Firestore snapshot can be delivered while the first frame is
-    // still building. Starting the listeners after that frame prevents their
-    // callbacks from calling setState during build.
+    
+    
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startPayrollListeners();
     });
@@ -570,8 +570,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
       return;
     }
 
-    // Guest screens stay alive inside HomeScreen's IndexedStack, so refresh
-    // the cached roster when the user navigates back to Payroll.
+    
+    
     _workersList = latestWorkers;
     _combinePayroll();
     _scheduleAttendanceFetch();
@@ -1365,10 +1365,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
       );
       final currency = PayrollService.getCurrencyPrefix(salary);
       final prefix = currency.isEmpty ? '' : '$currency ';
-      // Gross is always the full contract salary; absence and unpaid leave
-      // are deducted separately (Option A). Auto-generated records store the
-      // deduction totals; manual records store a per-day value that falls
-      // back to the daily rate when left empty.
+      
+      
+      
+      
       final grossSalary = PayrollService.extractSalary(
         calculation['formattedGross'],
       );

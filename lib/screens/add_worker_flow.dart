@@ -534,7 +534,7 @@ class _AddNewWorkerFlowState extends State<AddNewWorkerFlow> {
         }
       });
     } catch (_) {
-      // Policy not available; user can still enter values manually.
+      
     }
   }
 

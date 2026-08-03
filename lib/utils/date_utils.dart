@@ -110,8 +110,8 @@ class AppDateUtils {
         return today;
       case 'Week':
       case 'Weekly':
-        // Current week starting Monday
-        final weekday = today.weekday; // Monday = 1, Sunday = 7
+        
+        final weekday = today.weekday; 
         return today.subtract(Duration(days: weekday - 1));
       case 'Month':
       case 'Monthly':

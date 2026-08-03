@@ -53,8 +53,8 @@ class _NotificationBellState extends State<NotificationBell> {
   @override
   Widget build(BuildContext context) {
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
-    // Guest notifications live in memory and change as items are removed,
-    // so the unread count must be recomputed on every build.
+    
+    
     final int unreadCount = isGuest
         ? DummyData.notifications.where((n) => n['isRead'] != true).length
         : _unreadCount;

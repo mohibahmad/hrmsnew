@@ -58,7 +58,7 @@ class WorkerProfileService {
     final lightGrey = PdfColor.fromHex('#F3F4F6');
     final border = PdfColor.fromHex('#D1D5DB');
 
-    // Load images in parallel to reduce wait time.
+    
     final imageResults = await Future.wait([
       _loadImageBytes(profileImageUrl),
       _loadImageBytes(companyStampImageUrl),

@@ -29,9 +29,9 @@ class AttendanceService {
   }) {
     final attendanceDate = AppDateUtils.attendanceRecordDate(attendanceRecord);
     if (attendanceDate == null) {
-      // Legacy rows may not have a date. They are safe to show for workers
-      // that also predate creation-date tracking, while dated workers remain
-      // protected from accidentally inheriting an old row.
+      
+      
+      
       return AppDateUtils.dateFromValue(worker['createdAt']) == null;
     }
     return workerExistedOnDate(worker, attendanceDate);

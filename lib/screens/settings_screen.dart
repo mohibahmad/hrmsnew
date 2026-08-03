@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/material.dart' hide GestureDetector;
 import 'package:flutter/cupertino.dart'
     show CupertinoDatePicker, CupertinoDatePickerMode, CupertinoIcons;
@@ -9,12 +12,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:in_app_review/in_app_review.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/leave_policy_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../widgets/notification_bell.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../shared/app_constants.dart';
 import '../utils/svg_fill_color_mapper.dart';
 import 'package:provider/provider.dart';
@@ -911,7 +916,352 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     text.writeln('\nShared via HRMS App');
 
-    SharePlus.instance.share(ShareParams(text: text.toString()));
+    _showShareOptionsDialog(policy, text.toString());
+  }
+
+  void _showShareOptionsDialog(Map<String, dynamic> policy, String text) {
+    final borderLight = const Color(0xFFE5E7EB);
+    final bgLight = const Color(0xFFF8FAFC);
+    final primaryBlue = const Color(0xFF0D52D6);
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'SharePolicyDialog',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const SizedBox(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 3 * animation.value,
+                  sigmaY: 3 * animation.value,
+                ),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: Container(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.3),
+                  ),
+                ),
+              ),
+            ),
+            FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutBack,
+                ),
+                child: Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: Container(
+                    width: 580,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF000000).withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'share_policy'.tr(),
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF111827),
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(
+                                    Icons.close,
+                                    color: Color(0xFF6B7280),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'share_policy_subtitle'.tr(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildShareOptionCard(
+                                iconAsset: 'assets/whatsapp.png',
+                                label: 'share_whatsapp'.tr(),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _sharePolicyPdf(policy);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildShareOptionCard(
+                                iconAsset: 'assets/email_icon.png',
+                                label: 'share_email'.tr(),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _sharePolicyPdf(policy);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildShareOptionCard(
+                                iconAsset: 'assets/pdf.png',
+                                label: 'download_pdf'.tr(),
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _downloadPolicyPdf(policy);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildShareOptionCard(
+                                iconAsset: 'assets/copylink.png',
+                                label: 'copy_link'.tr(),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _copyPolicyText(text);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: bgLight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.description_outlined,
+                                color: Color(0xFF6B7280),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'share_as_pdf'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF4B5563),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            SizedBox(
+                              height: 40,
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20),
+                                  side: BorderSide(
+                                      color: borderLight, width: 1),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                child: Text(
+                                  'cancel'.tr(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF111827),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              height: 40,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _sharePolicyPdf(policy);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryBlue,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                child: Text(
+                                  'share'.tr(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildShareOptionCard({
+    required String label,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color? iconColor,
+    String? iconAsset,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (iconAsset != null)
+                SizedBox(
+                  height: 32,
+                  width: 32,
+                  child: Image.asset(
+                    iconAsset,
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.contain,
+                  ),
+                )
+              else
+                Icon(icon, color: iconColor, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<Uint8List> _generatePolicyPdf(Map<String, dynamic> policy) async {
+    String? companyName;
+    String? companyId;
+    try {
+      final profile = await _firestore.getUserProfile();
+      companyName = profile?['businessName']?.toString();
+      companyId = profile?['companyId']?.toString();
+    } catch (_) {}
+    return LeavePolicyService.generatePdf(
+      policy,
+      companyName: companyName,
+      companyId: companyId,
+    );
+  }
+
+  Future<void> _downloadPolicyPdf(Map<String, dynamic> policy) async {
+    try {
+      final bytes = await _generatePolicyPdf(policy);
+      final name = LeavePolicyService.safeFileName(
+          (policy['policyName'] ?? 'leave_policy').toString());
+      final saved = await LeavePolicyService.downloadPdf(bytes, name);
+      if (saved && mounted) {
+        FlashySnackBar.show(context, message: 'policy_pdf_saved'.tr());
+      }
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.toString(), isError: true);
+      }
+    }
+  }
+
+  Future<void> _sharePolicyPdf(Map<String, dynamic> policy) async {
+    try {
+      final bytes = await _generatePolicyPdf(policy);
+      final dir = await getTemporaryDirectory();
+      final name = LeavePolicyService.safeFileName(
+          (policy['policyName'] ?? 'leave_policy').toString());
+      final file = File('${dir.path}/$name');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'application/pdf')],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        FlashySnackBar.show(context, message: e.toString(), isError: true);
+      }
+    }
+  }
+
+  void _copyPolicyText(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    FlashySnackBar.show(context, message: 'policy_copied'.tr());
   }
 
   Widget _buildLeavePolicySettingItem() {
@@ -2331,7 +2681,7 @@ class _AddLeavePolicyDialogState extends State<_AddLeavePolicyDialog> {
                       ),
                     )
                   : Text(
-                      _isEditing ? 'update_policy'.tr() : 'save_policy'.tr(),
+                      _isEditing ? 'save_changes'.tr() : 'save_policy'.tr(),
                       style: TextStyle(
                         color: canSave ? Colors.white : const Color(0xFF9CA3AF),
                         fontWeight: FontWeight.w500,

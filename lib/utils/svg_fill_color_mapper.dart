@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-/// Replaces one SVG fill color while preserving every other color.
+
 class SvgFillColorMapper extends ColorMapper {
   const SvgFillColorMapper({
     required this.source,

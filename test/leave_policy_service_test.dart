@@ -29,8 +29,8 @@ void main() {
     expect(text, contains('Sick Leave: 8 days'));
     expect(text, contains('Medical Leave: 5 days'));
     expect(text, contains('Unpaid Leave: As required'));
+    expect(text, contains('Applicable To: All Workers'));
     expect(text, contains('Effective From: 1 August 2026'));
-    expect(text, contains('Approval Required: Yes'));
   });
 
   test('leave policy PDF is generated as a valid PDF document', () async {

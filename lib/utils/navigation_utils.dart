@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Builds an opaque route that swaps screens without a visual transition.
+
 PageRoute<T> noTransitionRoute<T>({
   required WidgetBuilder builder,
   RouteSettings? settings,
@@ -15,8 +15,8 @@ PageRoute<T> noTransitionRoute<T>({
   );
 }
 
-/// A consistent, lightweight transition for Login, Sign Up, and Forgot
-/// Password. Popping the route automatically plays the matching reverse.
+
+
 PageRoute<T> authTransitionRoute<T>({
   required WidgetBuilder builder,
   RouteSettings? settings,

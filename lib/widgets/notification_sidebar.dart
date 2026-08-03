@@ -56,10 +56,10 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     final isGuest = _authService.currentUser?.isAnonymous ?? false;
     if (isGuest) {
       _notifications = List<Map<String, dynamic>>.from(DummyData.notifications);
-      // Notifications persisted by older app versions have no id, which made
-      // them impossible to remove (and the unread count never went down).
-      // The maps are shared with DummyData, so assigning here also fixes the
-      // in-memory source of truth.
+      
+      
+      
+      
       var backfilled = false;
       for (var i = 0; i < _notifications.length; i++) {
         final id = _notifications[i]['id']?.toString();
@@ -97,12 +97,6 @@ class _NotificationSidebarState extends State<NotificationSidebar>
     _notifSub?.cancel();
     _controller.dispose();
     super.dispose();
-  }
-
-  void _close() {
-    _controller.reverse().then((_) {
-      widget.onClose();
-    });
   }
 
   Future<void> _removeNotification(String notificationId) async {

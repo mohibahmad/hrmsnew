@@ -13,9 +13,9 @@ typedef BiometricUnlock = Future<bool> Function();
 
 DateTime _systemNow() => DateTime.now();
 
-/// Covers authenticated content after a period without pointer or keyboard
-/// activity. The underlying route tree stays mounted so a successful biometric
-/// check returns the user to the exact screen they were using.
+
+
+
 class SessionTimeoutGate extends StatefulWidget {
   const SessionTimeoutGate({
     super.key,
@@ -123,7 +123,7 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     }
 
     if (!widget.isSessionActive()) {
-      // Keep monitoring while the user is on splash, login, or sign-up screens.
+      
       _lastActivityAt = widget.clock();
       _scheduleTimer();
       return;
@@ -161,9 +161,9 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     });
 
     if (available) {
-      // Let the lock screen render before opening the native biometric sheet.
-      // Starting authentication during the same frame can leave the in-app
-      // button spinning while no system prompt is visible.
+      
+      
+      
       await WidgetsBinding.instance.endOfFrame;
       if (mounted && _locked) {
         await _unlockWithBiometrics();
@@ -213,9 +213,9 @@ class _SessionTimeoutGateState extends State<SessionTimeoutGate>
     try {
       await PreferencesService.setSessionLocked(false);
       await widget.onSignInAgain();
-      // Keep the opaque lock screen in place until the navigator has rendered
-      // the signed-out destination. Otherwise the authenticated screen can
-      // briefly show between sign-out and the next route's first frame.
+      
+      
+      
       await WidgetsBinding.instance.endOfFrame;
     } finally {
       if (mounted) {

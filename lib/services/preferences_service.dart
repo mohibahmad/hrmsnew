@@ -260,7 +260,7 @@ class PreferencesService {
   static Future<void> markFirstAssetTriggered() =>
       _setBool(_rateUsFirstAssetKey, true);
 
-  // ── Session Timeout Lock ──
+  
 
   static Future<bool> isSessionLocked() async {
     final prefs = await SharedPreferences.getInstance();
@@ -272,7 +272,7 @@ class PreferencesService {
     await prefs.setBool(_sessionLockedKey, value);
   }
 
-  // ── Biometric Authentication ──
+  
 
   static Future<bool> isBiometricEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -296,8 +296,8 @@ class PreferencesService {
     try {
       await _secureStorage.write(key: _biometricEmailKey, value: email);
       await _secureStorage.write(key: _biometricPasswordKey, value: password);
-      // Remove credentials written by older versions of the app. Base64 is
-      // encoding, not secure storage.
+      
+      
       await prefs.remove(_biometricEmailKey);
       await prefs.remove(_biometricPasswordKey);
     } catch (_) {
@@ -317,7 +317,7 @@ class PreferencesService {
       return securelyStored;
     }
 
-    // Transparently migrate credentials saved by an older app version.
+    
     final prefs = await SharedPreferences.getInstance();
     final encoded = prefs.getString(key);
     if (encoded == null) return null;

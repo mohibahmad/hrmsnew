@@ -9,7 +9,6 @@ import 'package:file_picker/file_picker.dart';
 import '../utils/file_opener.dart';
 import '../widgets/clickable_gesture_detector.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/dummy_data.dart';
@@ -813,9 +812,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         range = AttendanceReportService.rangeForPeriod(period);
       }
 
-      // Build a readable, preview-style CSV: one block per worker with
-      // worker info, per-day attendance rows, and summary totals. Dates use
-      // a tab prefix so Excel keeps them as text (no `########`).
+      
+      
+      
       final rows = <List<dynamic>>[];
 
       final periodLabel = _localizeSharePeriod(period);
@@ -932,7 +931,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   void deactivate() {
-    // Remove the route-owned overlay while its OverlayState is still active.
+    
     _removeShareDropdownOverlay();
     _isShareDropdownOpen = false;
     super.deactivate();
@@ -996,7 +995,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     int leave = 0;
 
     if (_selectedTimeframe == 'Today') {
-      // Today: count from collapsed list (one entry per worker)
+      
       for (final record in _attendanceDocs) {
         final status = record['status'];
         if (status == 'Present') {
@@ -1008,7 +1007,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
       }
     } else {
-      // Week/Month/6 Month/Yearly: count ALL individual day records
+      
       for (final record in periodAttendance) {
         final status = (record['status'] ?? '').toString();
         if (status == 'Present') {
@@ -1468,7 +1467,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildSummaryCardsRow() {
-    // Today shows worker counts; Week/Month/6 Month/Yearly show day-record counts
+    
     final bool isToday = _selectedTimeframe == 'Today';
     return Row(
       children: [
@@ -1687,8 +1686,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showAttendancePreview(BuildContext context, Map<String, dynamic> doc) {
-    // Preview follows the timeframe selected in the dropdown
-    // (Today/Week/Month/6 Month/Yearly).
+    
+    
     final previewPeriod = _selectedTimeframe;
     final filteredRecordsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
       _filterWorkerRecords(
@@ -1959,7 +1958,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildStatusText(Map<String, dynamic> worker) {
     final status = (worker['status'] ?? '').toString();
 
-    // Today shows the worker's current attendance status.
+    
     if (_selectedTimeframe == 'Today') {
       Color textColor;
       if (status == 'Present') {
@@ -1985,7 +1984,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }
 
-    // Week, Month, 6 Month and Yearly show masked status
+    
     return const Text(
       '*****',
       style: TextStyle(
@@ -2503,7 +2502,7 @@ class _WorkerAttendancePreviewCardState
   Future<void> _exportCsv(BuildContext context) async {
     final List<List<dynamic>> rows = [];
 
-    // Preview-style header with worker info + totals summary.
+    
     rows.add(['Worker Attendance Preview']);
     rows.add(['Worker: ${widget.record.name}']);
     rows.add(['Email: ${widget.record.email}']);
@@ -2516,7 +2515,7 @@ class _WorkerAttendancePreviewCardState
     rows.add(['Attendance %', _percentage.toStringAsFixed(1)]);
     rows.add([]);
 
-    // Detail table header + one row per attendance record.
+    
     rows.add([
       'Date',
       'Status',

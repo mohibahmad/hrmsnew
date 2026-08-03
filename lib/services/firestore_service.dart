@@ -455,9 +455,9 @@ class FirestoreService {
     final expensesColl = _expenses;
     final notificationsColl = _notifications;
 
-    // Collect payroll keys before deleting payroll records. Salary expenses and
-    // payroll notifications may not contain workerId, so they must be removed
-    // through payrollKey as well.
+    
+    
+    
     final payrollKeys = <String>{};
     if (payrollColl != null) {
       final payrollSnapshot = await payrollColl
@@ -504,8 +504,8 @@ class FirestoreService {
       }
     }
 
-    // Avoid deleting the same document twice if it matched both workerId and
-    // payrollKey cleanup.
+    
+    
     final uniqueReferences = <String, DocumentReference>{};
     for (final reference in referencesToDelete) {
       uniqueReferences[reference.path] = reference;
@@ -587,7 +587,7 @@ class FirestoreService {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    // Clean legacy/random-ID duplicates and retain one deterministic expense.
+    
     for (final document in existing.docs) {
       if (document.reference.path != targetRef.path) {
         batch.delete(document.reference);
@@ -878,7 +878,7 @@ class FirestoreService {
     final holidayYear = rawYear is num
         ? rawYear.toInt()
         : int.tryParse((rawYear ?? '').toString());
-    // Legacy holidays without a year were recurring.
+    
     return holidayYear == null || holidayYear == year;
   }
 
@@ -983,8 +983,8 @@ class FirestoreService {
 
     var saved = 0;
 
-    // Smaller chunks avoid opening hundreds of concurrent reads/writes while
-    // still preserving createdAt on existing payroll records.
+    
+    
     const chunkSize = 50;
     for (var start = 0; start < records.length; start += chunkSize) {
       final end = (start + chunkSize).clamp(0, records.length).toInt();
@@ -1044,7 +1044,7 @@ class FirestoreService {
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
           } catch (_) {
-            // Invalid expense rows are skipped without blocking valid rows.
+            
           }
         }),
       );
@@ -1096,7 +1096,7 @@ class FirestoreService {
     final merged = <String, dynamic>{...existing, ...data};
     Validators.validatePayroll(merged);
 
-    // A paid payroll remains editable. No paid/status-based lock is applied.
+    
     await docRef.update({
       ...data,
       'updatedAt': FieldValue.serverTimestamp(),

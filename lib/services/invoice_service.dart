@@ -44,7 +44,7 @@ class InvoiceService {
     final detectedCurrency = _detectCurrency(salary);
     final pdf = pw.Document();
 
-    // ✅ Use BUILT-IN fonts - no external files needed
+    
     final regularFont = pw.Font.helvetica();
     final boldFont = pw.Font.helveticaBold();
 
@@ -57,7 +57,7 @@ class InvoiceService {
     final lineColor = PdfColor.fromHex('#6B7398');
     final white = PdfColors.white;
 
-    // ✅ Load & resize logo image for PDF
+    
     pw.MemoryImage? logoImage;
     try {
       final byteData = await rootBundle.load('assets/app_icon.png');
@@ -101,7 +101,7 @@ class InvoiceService {
         margin: const pw.EdgeInsets.fromLTRB(24, 28, 24, 40),
         build: (context) {
           return [
-            // ✅ Header with actual logo
+            
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -168,7 +168,7 @@ class InvoiceService {
 
             pw.SizedBox(height: 38),
 
-            // Employer and Employee Info
+            
             pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -209,12 +209,12 @@ class InvoiceService {
 
             pw.SizedBox(height: 28),
 
-            // ── Table ────────────────────────────────────────────────
+            
             _tableHeader(navy: navy, white: white),
 
-            // Monthly salary is the full contract amount; absence and unpaid
-            // leave are deducted separately in the rows below so the table
-            // always ties out (rate × days = total).
+            
+            
+            
             _tableRow(
               description: 'Monthly Salary',
               rate: '—',
@@ -262,7 +262,7 @@ class InvoiceService {
                 lineColor: lineColor,
               ),
 
-            // Fill remaining rows so the table always has the same height
+            
             if (!hasOvertime)
               _emptyTableRow(textColor: textColor, lineColor: lineColor),
             if (!hasAbsentDeduction)
@@ -274,7 +274,7 @@ class InvoiceService {
 
             pw.SizedBox(height: 18),
 
-            // ── Summary Section ──────────────────────────────────────
+            
             pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -346,7 +346,7 @@ class InvoiceService {
                       ),
                       pw.SizedBox(height: 8),
 
-                      // Net Salary — navy highlight box
+                      
                       pw.Container(
                         color: navy,
                         padding: const pw.EdgeInsets.symmetric(
@@ -682,8 +682,8 @@ class InvoiceService {
     return '$prefix ${value.toStringAsFixed(2)}';
   }
 
-  /// Shows the effective per-day rate actually applied for a deduction row
-  /// (deduction total ÷ deducted days) so rate × days always equals total.
+  
+  
   static String _perDayRate(
     String total,
     String quantity, {

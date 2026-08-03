@@ -11,8 +11,8 @@ class PayrollService {
     return DateTime(reference.year, reference.month, 1);
   }
 
-  /// Kept for older callers and stored data that explicitly need the last
-  /// fully completed calendar month.
+  
+  
   static DateTime completedPayrollMonth({DateTime? referenceDate}) {
     final reference = referenceDate ?? DateTime.now();
     return DateTime(reference.year, reference.month - 1, 1);
@@ -49,8 +49,8 @@ class PayrollService {
     return date.day > lastDay - reminderDays;
   }
 
-  /// Reporting helper only. Do not use this value to disable, lock, or make
-  /// the payroll screen read-only. Paid payroll records remain editable.
+  
+  
   static bool allWorkersPaidForMonth(
     List<Map<String, dynamic>> workersList,
     List<Map<String, dynamic>> rawPayrollDocs,
@@ -147,12 +147,12 @@ class PayrollService {
         _parseDate(record['paymentDate']) != null;
   }
 
-  /// Payroll is intentionally never locked after payment.
-  /// `isPaid` is only a status used for display, filtering and reporting.
+  
+  
   static bool canEditPayrollRecord(Map<String, dynamic>? record) => true;
 
-  /// Backward-compatible helper for screens/controllers that previously
-  /// expected a lock decision from the service. Always returns false.
+  
+  
   static bool shouldLockPayrollScreen({
     Map<String, dynamic>? payrollRecord,
     DateTime? month,
@@ -244,9 +244,9 @@ class PayrollService {
       return workerEmail == recordEmail;
     }
 
-    // Name matching is only allowed for legacy records that contain neither
-    // workerId nor email, and only when that name is unique in the active
-    // roster. This prevents two same-name workers sharing one payroll record.
+    
+    
+    
     if ((workerId.isNotEmpty && recordWorkerId.isNotEmpty) ||
         recordEmail.isNotEmpty) {
       return false;
@@ -403,7 +403,7 @@ class PayrollService {
             companyCurrencyCode == null || historicalNetSalary.isEmpty
             ? historicalNetSalary
             : formatAmountInCurrency(historicalNetSalary, companyCurrencyCode);
-        // Status only: a paid record is still fully editable and saveable.
+        
         final paid = isPayrollRecordPaid(payrollRecord);
 
         combined.add({
@@ -521,9 +521,9 @@ class PayrollService {
     return null;
   }
 
-  /// The actual date money was paid, independent from the payroll period.
-  /// Older records fall back to their creation date so Today filters continue
-  /// to work after migrating from the legacy schema.
+  
+  
+  
   static DateTime? payrollPaymentDate(Map<String, dynamic> record) {
     for (final key in [
       'paidAt',
@@ -596,24 +596,24 @@ class PayrollService {
     final lastComma = cleaned.lastIndexOf(',');
     if (lastDot >= 0 && lastComma >= 0) {
       if (lastComma > lastDot) {
-        // European format: 1.234,56
+        
         cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
       } else {
-        // US format: 1,234.56
+        
         cleaned = cleaned.replaceAll(',', '');
       }
     } else if (lastComma >= 0) {
       final commaCount = ','.allMatches(cleaned).length;
       final digitsAfterComma = cleaned.length - lastComma - 1;
       if (commaCount > 1 || digitsAfterComma == 3) {
-        // Thousands grouping: 1,234 or 1,234,567
+        
         cleaned = cleaned.replaceAll(',', '');
       } else {
-        // Decimal comma: 123,45
+        
         cleaned = cleaned.replaceAll(',', '.');
       }
     } else if ('.'.allMatches(cleaned).length > 1) {
-      // European thousands grouping without a decimal part: 1.234.567
+      
       cleaned = cleaned.replaceAll('.', '');
     }
     return (double.tryParse(cleaned) ?? 0) * multiplier;
@@ -771,9 +771,9 @@ class PayrollService {
 
     final overtimePay = customOvertimeAmount;
 
-    // When no custom per-day deduction is provided, absent and unpaid-leave
-    // days are deducted at the daily rate (salary ÷ total working days) so
-    // the numbers always tie out with the invoice table.
+    
+    
+    
     final absentRate = absentDeductionPerDay.trim().isNotEmpty
         ? customAbsentDeduction
         : dailyRate;
@@ -839,9 +839,9 @@ class PayrollService {
     final currency = getCurrencyPrefix(salary);
     final prefix = currency.isNotEmpty ? '$currency ' : '';
 
-    // Explicit no-deduction display helper: unlike calculatePayroll (which
-    // defaults absent/unpaid-leave days to the daily rate), this never
-    // auto-deducts attendance. Used only for compact list displays.
+    
+    
+    
     final netSalary = periodSalary + overtime;
 
     return '$prefix${formatNumber(netSalary)}';
